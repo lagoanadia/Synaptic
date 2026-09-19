@@ -1,10 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import type Anthropic from "@anthropic-ai/sdk";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { anthropic } from "@/lib/anthropic";
+import { groq } from "@/lib/groq";
 
 async function requireAccess(pursuitId: string) {
   const session = await auth();
@@ -107,41 +106,39 @@ export async function organizeDumps(pursuitId: string) {
     select: { name: true },
   });
 
-  const content: Anthropic.MessageParam["content"] = [];
-  for (const dump of dumps) {
-    if (dump.content) {
-      content.push({ type: "text", text: dump.content });
-    }
-    for (const url of dump.images) {
-      content.push({ type: "image", source: { type: "url", url } });
-    }
-  }
-  content.push({
-    type: "text",
-    text: `---\nExisting tags for this pursuit: ${
-      existingTags.map((t) => t.name).join(", ") || "(none yet)"
-    }\n\nSynthesize the material above into one organized, structured note. Then suggest 1-3 short lowercase tags — reuse an existing tag if one genuinely fits, otherwise propose a new short one. Respond with ONLY a JSON object, no other text: {"content": "...", "tags": ["...", "..."]}`,
+  // Groq's hosted models here are text-only, so an image is referenced by
+  // URL rather than actually shown to the model — the model can't see the
+  // picture, only that one was attached and where it lives.
+  const rawMaterial = dumps
+    .map((dump) => {
+      const parts = [];
+      if (dump.content) parts.push(dump.content);
+      for (const url of dump.images) parts.push(`[attached image: ${url}]`);
+      return parts.join("\n");
+    })
+    .join("\n---\n");
+
+  const prompt = `${rawMaterial}\n---\nExisting tags for this pursuit: ${
+    existingTags.map((t) => t.name).join(", ") || "(none yet)"
+  }\n\nSynthesize the material above into one organized, structured note. Then suggest 1-3 short lowercase tags — reuse an existing tag if one genuinely fits, otherwise propose a new short one. Respond with ONLY a JSON object, no other text: {"content": "...", "tags": ["...", "..."]}`;
+
+  const completion = await groq.chat.completions.create({
+    model: "llama-3.3-70b-versatile",
+    messages: [{ role: "user", content: prompt }],
+    response_format: { type: "json_object" },
   });
 
-  const response = await anthropic.messages.create({
-    model: "claude-opus-5",
-    max_tokens: 4096,
-    messages: [{ role: "user", content }],
-  });
-
-  const textBlock = response.content.find(
-    (b): b is Anthropic.TextBlock => b.type === "text",
-  );
-  if (!textBlock) {
+  const text = completion.choices[0]?.message?.content;
+  if (!text) {
     throw new Error("AI did not return a usable response");
   }
 
   let parsed: { content: string; tags: string[] };
   try {
-    parsed = JSON.parse(textBlock.text);
+    parsed = JSON.parse(text);
   } catch {
     // Fall back to treating the whole response as the note, no tags.
-    parsed = { content: textBlock.text, tags: [] };
+    parsed = { content: text, tags: [] };
   }
 
   const tagRecords = await Promise.all(

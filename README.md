@@ -5,7 +5,7 @@ Most tracking apps ask you to organize as you capture — pick a category, add a
 Pick one **Pursuit** (a project, a book, a language, a skill — anything you're learning by doing) and the whole app becomes just that pursuit. Inside it:
 
 - **Brain Dump** — zero-friction capture. Type whatever's in your head, paste an image, no structure required.
-- **Organized** — hit "Organize" and Claude synthesizes your raw dumps into a coherent, tagged note. You stay in control of the tags; the AI just does the tedious first pass.
+- **Organized** — hit "Organize" and an LLM synthesizes your raw dumps into a coherent, tagged note. You stay in control of the tags; the AI just does the tedious first pass.
 - **Files** — loose reference material that lives with the pursuit, no AI pipeline involved.
 
 Pursuits can be shared: invite a collaborator by email and you both dump into and organize the same pursuit together.
@@ -23,7 +23,7 @@ A flat, unlimited tag list (like a Notion database's free-text multi-select) ten
 - **Next.js 16** (App Router, TypeScript, Server Components + Server Actions — no separate API layer for most mutations)
 - **Prisma 7** + PostgreSQL
 - **NextAuth v5** (Auth.js) with the Prisma adapter — GitHub OAuth, database-backed sessions
-- **Claude API** (`@anthropic-ai/sdk`, `claude-opus-5`) for the Organize step, including image input from brain-dumped photos/screenshots
+- **Groq API** (`groq-sdk`, `llama-3.3-70b-versatile`) for the Organize step — Groq's free tier keeps this at no cost for personal use. (Text-only for now: an attached brain-dump image is referenced by URL in the prompt, not actually seen by the model.)
 - **Tailwind CSS**
 
 ## Data model
@@ -58,7 +58,7 @@ DATABASE_URL="<the connection string from `prisma dev` above>"
 AUTH_SECRET="<generate with: openssl rand -base64 33>"
 AUTH_GITHUB_ID="<from a GitHub OAuth App: github.com/settings/applications/new>"
 AUTH_GITHUB_SECRET="<same place>"
-ANTHROPIC_API_KEY="<from console.anthropic.com — required for the Organize feature>"
+GROQ_API_KEY="<free, from console.groq.com — required for the Organize feature>"
 ```
 
 For the GitHub OAuth App: Homepage URL `http://localhost:3000`, Authorization callback URL `http://localhost:3000/api/auth/callback/github`.
