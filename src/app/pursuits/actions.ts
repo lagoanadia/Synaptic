@@ -13,6 +13,7 @@ export async function createPursuit(formData: FormData) {
 
   const title = formData.get("title");
   const type = formData.get("type");
+  const customType = formData.get("customType");
 
   if (typeof title !== "string" || title.trim() === "") {
     throw new Error("Title is required");
@@ -20,11 +21,18 @@ export async function createPursuit(formData: FormData) {
   if (typeof type !== "string" || !(type in PursuitType)) {
     throw new Error("Invalid pursuit type");
   }
+  if (type === "OTHER" && (typeof customType !== "string" || customType.trim() === "")) {
+    throw new Error("Custom type name is required");
+  }
 
   await prisma.pursuit.create({
     data: {
       title: title.trim(),
       type: type as PursuitType,
+      customType:
+        type === "OTHER" && typeof customType === "string"
+          ? customType.trim()
+          : null,
       ownerId: session.user.id,
     },
   });

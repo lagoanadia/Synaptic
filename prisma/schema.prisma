@@ -91,6 +91,7 @@ model Pursuit {
   id            String        @id @default(cuid())
   title         String
   type          PursuitType
+  customType    String?
   status        PursuitStatus @default(ACTIVE)
   artifactUrl   String?
   lastTouchedAt DateTime      @default(now())

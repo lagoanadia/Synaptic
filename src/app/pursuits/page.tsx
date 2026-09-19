@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { createPursuit } from "./actions";
+import { TypeSelect } from "./TypeSelect";
 
 const TYPE_LABEL: Record<string, string> = {
   PROJECT: "Project",
@@ -10,6 +11,11 @@ const TYPE_LABEL: Record<string, string> = {
   SKILL: "Skill",
   OTHER: "Other",
 };
+
+function typeLabel(p: { type: string; customType: string | null }) {
+  if (p.type === "OTHER" && p.customType) return p.customType;
+  return TYPE_LABEL[p.type];
+}
 
 function timeAgo(date: Date) {
   const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
@@ -56,17 +62,7 @@ export default async function PursuitsPage() {
           required
           className="flex-1 rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-transparent"
         />
-        <select
-          name="type"
-          defaultValue="PROJECT"
-          className="rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-transparent"
-        >
-          <option value="PROJECT">Project</option>
-          <option value="BOOK">Book</option>
-          <option value="LANGUAGE">Language</option>
-          <option value="SKILL">Skill</option>
-          <option value="OTHER">Other</option>
-        </select>
+        <TypeSelect />
         <button
           type="submit"
           className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium whitespace-nowrap text-white hover:bg-zinc-700 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
@@ -89,7 +85,7 @@ export default async function PursuitsPage() {
                 }`}
               />
               <span className="font-mono text-xs tracking-wide text-zinc-500 uppercase">
-                {TYPE_LABEL[p.type]} · {p.status.toLowerCase()}
+                {typeLabel(p)} · {p.status.toLowerCase()}
               </span>
             </div>
             <div className="text-lg font-semibold">{p.title}</div>
