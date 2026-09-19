@@ -26,6 +26,40 @@ async function requireAccess(pursuitId: string) {
   return { session, pursuit };
 }
 
+export async function addMember(pursuitId: string, formData: FormData) {
+  const { session, pursuit } = await requireAccess(pursuitId);
+
+  // Only the owner can invite collaborators — not just any existing member.
+  if (pursuit.ownerId !== session.user.id) {
+    throw new Error("Only the owner can invite collaborators");
+  }
+
+  const email = formData.get("email");
+  if (typeof email !== "string" || email.trim() === "") {
+    throw new Error("Email is required");
+  }
+
+  const invitedUser = await prisma.user.findUnique({
+    where: { email: email.trim() },
+  });
+  if (!invitedUser) {
+    throw new Error(
+      "No Synaptic account found with that email — they need to sign in with GitHub at least once first",
+    );
+  }
+  if (invitedUser.id === session.user.id) {
+    throw new Error("You already own this pursuit");
+  }
+
+  await prisma.pursuitMember.upsert({
+    where: { pursuitId_userId: { pursuitId, userId: invitedUser.id } },
+    create: { pursuitId, userId: invitedUser.id, role: "EDITOR" },
+    update: {},
+  });
+
+  revalidatePath(`/pursuits/${pursuitId}`);
+}
+
 export async function addBrainDump(pursuitId: string, formData: FormData) {
   const { session } = await requireAccess(pursuitId);
 

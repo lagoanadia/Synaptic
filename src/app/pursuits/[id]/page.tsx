@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import {
   addAttachment,
   addBrainDump,
+  addMember,
   addPursuitTag,
   organizeDumps,
 } from "./actions";
@@ -44,6 +45,10 @@ export default async function PursuitPage({
     },
     include: {
       pursuitTags: true,
+      owner: { select: { id: true, name: true, email: true } },
+      members: {
+        include: { user: { select: { id: true, name: true, email: true } } },
+      },
       brainDumps: { orderBy: { createdAt: "desc" } },
       notes: {
         orderBy: { createdAt: "desc" },
@@ -118,6 +123,32 @@ export default async function PursuitPage({
               className="w-20 rounded-full border border-dashed border-zinc-300 bg-transparent px-2 py-0.5 font-mono text-[10px] uppercase focus:w-28 focus:outline-none dark:border-zinc-700"
             />
           </form>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 pt-1">
+          <span className="font-mono text-[10px] tracking-wide text-zinc-500 uppercase">
+            Shared with
+          </span>
+          <span className="text-xs text-zinc-700 dark:text-zinc-300">
+            {pursuit.owner.name ?? pursuit.owner.email} (owner)
+          </span>
+          {pursuit.members.map((m) => (
+            <span key={m.id} className="text-xs text-zinc-700 dark:text-zinc-300">
+              · {m.user.name ?? m.user.email} ({m.role.toLowerCase()})
+            </span>
+          ))}
+          {pursuit.owner.id === session.user.id && (
+            <form
+              action={addMember.bind(null, pursuit.id)}
+              className="flex items-center gap-1"
+            >
+              <input
+                type="email"
+                name="email"
+                placeholder="+ invite by email"
+                className="w-36 rounded-full border border-dashed border-zinc-300 bg-transparent px-2 py-0.5 text-xs focus:w-48 focus:outline-none dark:border-zinc-700"
+              />
+            </form>
+          )}
         </div>
       </div>
 
