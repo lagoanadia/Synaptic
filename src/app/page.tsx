@@ -23,6 +23,12 @@ export default async function Home() {
             Signed in as <strong>{session.user.name}</strong> (
             {session.user.email})
           </p>
+          <a
+            href="/pursuits"
+            className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
+          >
+            Go to your pursuits
+          </a>
           <form
             action={async () => {
               "use server";
