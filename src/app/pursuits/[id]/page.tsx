@@ -1,0 +1,282 @@
+import Link from "next/link";
+import { notFound, redirect } from "next/navigation";
+import { auth } from "@/auth";
+import { prisma } from "@/lib/prisma";
+import {
+  addAttachment,
+  addBrainDump,
+  addPursuitTag,
+  organizeDumps,
+} from "./actions";
+import { MergeControls } from "./MergeControls";
+
+const TYPE_LABEL: Record<string, string> = {
+  PROJECT: "Project",
+  BOOK: "Book",
+  LANGUAGE: "Language",
+  SKILL: "Skill",
+  OTHER: "Other",
+};
+
+export default async function PursuitPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ tab?: string }>;
+}) {
+  const { id } = await params;
+  const { tab: rawTab } = await searchParams;
+  const tab = rawTab === "organized" || rawTab === "files" ? rawTab : "dump";
+
+  const session = await auth();
+  if (!session?.user?.id) {
+    redirect("/");
+  }
+
+  const pursuit = await prisma.pursuit.findFirst({
+    where: {
+      id,
+      OR: [
+        { ownerId: session.user.id },
+        { members: { some: { userId: session.user.id } } },
+      ],
+    },
+    include: {
+      pursuitTags: true,
+      brainDumps: { orderBy: { createdAt: "desc" } },
+      notes: {
+        orderBy: { createdAt: "desc" },
+        include: { tags: true, sourceDumps: { select: { id: true } } },
+      },
+      attachments: { orderBy: { createdAt: "desc" } },
+    },
+  });
+
+  if (!pursuit) {
+    notFound();
+  }
+
+  const typeLabel =
+    pursuit.type === "OTHER" && pursuit.customType
+      ? pursuit.customType
+      : TYPE_LABEL[pursuit.type];
+  const unprocessedCount = pursuit.brainDumps.filter(
+    (d) => !d.processed,
+  ).length;
+
+  const tabClass = (name: string) =>
+    `pb-2.5 font-mono text-xs tracking-wide uppercase border-b-2 ${
+      tab === name
+        ? "border-blue-500 text-zinc-900 dark:text-zinc-50"
+        : "border-transparent text-zinc-500"
+    }`;
+
+  return (
+    <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-5 px-6 py-9">
+      <div className="flex items-center justify-between">
+        <Link
+          href="/pursuits"
+          className="font-mono text-xs tracking-wide text-zinc-900 uppercase hover:underline dark:text-zinc-50"
+        >
+          ← Exit
+        </Link>
+        <span className="font-mono text-xs tracking-wide text-zinc-500 uppercase">
+          Focus mode
+        </span>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <h1 className="text-2xl font-semibold">{pursuit.title}</h1>
+        <div className="flex items-center gap-2">
+          <span
+            className={`h-2 w-2 rounded-full ${
+              pursuit.status === "ACTIVE" ? "bg-blue-500" : "bg-zinc-400"
+            }`}
+          />
+          <span className="font-mono text-xs tracking-wide text-zinc-500 uppercase">
+            {typeLabel} · {pursuit.status.toLowerCase()}
+          </span>
+        </div>
+        <div className="flex flex-wrap items-center gap-1.5">
+          {pursuit.pursuitTags.map((t) => (
+            <span
+              key={t.id}
+              className="rounded-full border border-zinc-300 px-2 py-0.5 font-mono text-[10px] text-zinc-500 uppercase dark:border-zinc-700"
+            >
+              #{t.name}
+            </span>
+          ))}
+          <form
+            action={addPursuitTag.bind(null, pursuit.id)}
+            className="flex items-center gap-1"
+          >
+            <input
+              type="text"
+              name="name"
+              placeholder="+ tag"
+              className="w-20 rounded-full border border-dashed border-zinc-300 bg-transparent px-2 py-0.5 font-mono text-[10px] uppercase focus:w-28 focus:outline-none dark:border-zinc-700"
+            />
+          </form>
+        </div>
+      </div>
+
+      <div className="flex gap-7 border-b border-zinc-200 dark:border-zinc-800">
+        <Link href={`/pursuits/${pursuit.id}?tab=dump`} className={tabClass("dump")}>
+          Brain Dump
+        </Link>
+        <Link
+          href={`/pursuits/${pursuit.id}?tab=organized`}
+          className={tabClass("organized")}
+        >
+          Organized
+        </Link>
+        <Link href={`/pursuits/${pursuit.id}?tab=files`} className={tabClass("files")}>
+          Files
+        </Link>
+      </div>
+
+      {tab === "dump" && (
+        <div className="flex flex-col gap-4">
+          <form
+            action={addBrainDump.bind(null, pursuit.id)}
+            className="flex flex-col gap-2"
+          >
+            <textarea
+              name="content"
+              rows={3}
+              placeholder="Dump anything — a paragraph, a page, whatever's in your head…"
+              className="rounded-md border border-zinc-300 bg-white p-3 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+            />
+            <div className="flex gap-2">
+              <input
+                type="text"
+                name="imageUrl"
+                placeholder="Optional image URL"
+                className="flex-1 rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+              />
+              <button
+                type="submit"
+                className="rounded-md border border-zinc-900 px-4 py-2 text-sm font-medium whitespace-nowrap dark:border-zinc-50"
+              >
+                Add to dump
+              </button>
+            </div>
+          </form>
+
+          {unprocessedCount > 0 && (
+            <form action={organizeDumps.bind(null, pursuit.id)}>
+              <button
+                type="submit"
+                className="self-start rounded-md border border-blue-500 px-3 py-1.5 font-mono text-xs font-medium tracking-wide text-blue-500 uppercase hover:bg-blue-50 dark:hover:bg-blue-950"
+              >
+                ✦ Organize {unprocessedCount} new dumps →
+              </button>
+            </form>
+          )}
+
+          <div className="flex flex-col">
+            {pursuit.brainDumps.map((d) => (
+              <div
+                key={d.id}
+                className="flex items-start gap-3 border-b border-dashed border-zinc-200 py-3 last:border-0 dark:border-zinc-800"
+              >
+                <span
+                  className={`mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full ${
+                    d.processed ? "bg-zinc-300 dark:bg-zinc-700" : "bg-blue-500"
+                  }`}
+                />
+                <div className="flex flex-1 flex-col gap-1">
+                  <span className="font-mono text-[11px] text-zinc-500">
+                    {d.createdAt.toLocaleString()}
+                  </span>
+                  {d.content && <p className="text-sm">{d.content}</p>}
+                  {d.images.map((url) => (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      key={url}
+                      src={url}
+                      alt="Brain dump attachment"
+                      className="max-h-40 rounded-md border border-zinc-200 dark:border-zinc-800"
+                    />
+                  ))}
+                </div>
+                {d.processed && (
+                  <span className="font-mono text-[10px] whitespace-nowrap text-zinc-500">
+                    → in note
+                  </span>
+                )}
+              </div>
+            ))}
+            {pursuit.brainDumps.length === 0 && (
+              <p className="text-sm text-zinc-500">
+                Nothing dumped yet — start above.
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {tab === "organized" && (
+        <MergeControls
+          pursuitId={pursuit.id}
+          notes={pursuit.notes.map((n) => ({
+            id: n.id,
+            content: n.content,
+            createdAt: n.createdAt.toISOString(),
+            tags: n.tags,
+            sourceDumps: n.sourceDumps,
+          }))}
+        />
+      )}
+
+      {tab === "files" && (
+        <div className="flex flex-col gap-4">
+          <form
+            action={addAttachment.bind(null, pursuit.id)}
+            className="flex gap-2"
+          >
+            <input
+              type="text"
+              name="name"
+              placeholder="File name"
+              required
+              className="flex-1 rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+            />
+            <input
+              type="text"
+              name="url"
+              placeholder="URL"
+              required
+              className="flex-1 rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+            />
+            <button
+              type="submit"
+              className="rounded-md border border-zinc-900 px-4 py-2 text-sm font-medium whitespace-nowrap dark:border-zinc-50"
+            >
+              + Add
+            </button>
+          </form>
+          <div className="flex flex-col">
+            {pursuit.attachments.map((a) => (
+              <a
+                key={a.id}
+                href={a.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 border-b border-dashed border-zinc-200 py-3 last:border-0 hover:underline dark:border-zinc-800"
+              >
+                <span className="text-sm">{a.name}</span>
+              </a>
+            ))}
+            {pursuit.attachments.length === 0 && (
+              <p className="text-sm text-zinc-500">
+                No files yet — add a link above.
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
