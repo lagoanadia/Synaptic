@@ -1,0 +1,193 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ── Auth (NextAuth.js / Auth.js Prisma adapter shape) ──────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  createdAt     DateTime  @default(now())
+
+  accounts Account[]
+  sessions Session[]
+
+  ownedPursuits Pursuit[]
+  memberships   PursuitMember[]
+  pursuitTags   PursuitTag[]
+  brainDumps    BrainDump[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ── Core app models ─────────────────────────────────────────────────────
+
+enum PursuitType {
+  PROJECT
+  BOOK
+  LANGUAGE
+  SKILL
+  OTHER
+}
+
+enum PursuitStatus {
+  ACTIVE
+  PAUSED
+  DONE
+}
+
+enum MemberRole {
+  OWNER
+  EDITOR
+  VIEWER
+}
+
+model Pursuit {
+  id            String        @id @default(cuid())
+  title         String
+  type          PursuitType
+  status        PursuitStatus @default(ACTIVE)
+  artifactUrl   String?
+  lastTouchedAt DateTime      @default(now())
+  createdAt     DateTime      @default(now())
+
+  ownerId String
+  owner   User   @relation(fields: [ownerId], references: [id])
+
+  members     PursuitMember[]
+  pursuitTags PursuitTag[]
+  brainDumps  BrainDump[]
+  notes       Note[]
+  tags        Tag[]
+  attachments Attachment[]
+}
+
+// Who else (besides the owner) can see/edit a shared Pursuit, and at what level.
+model PursuitMember {
+  id        String     @id @default(cuid())
+  role      MemberRole @default(EDITOR)
+  invitedAt DateTime   @default(now())
+
+  pursuitId String
+  pursuit   Pursuit @relation(fields: [pursuitId], references: [id])
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@unique([pursuitId, userId])
+}
+
+// High-level labels on a Pursuit itself (e.g. #portfolio, #web-dev).
+// Global to the user, not scoped per-pursuit — see schema notes on why.
+model PursuitTag {
+  id   String @id @default(cuid())
+  name String
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  pursuits Pursuit[]
+
+  @@unique([userId, name])
+}
+
+// Raw, unstructured capture: text and/or images, zero required structure.
+model BrainDump {
+  id        String   @id @default(cuid())
+  content   String?
+  images    String[] @default([])
+  processed Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  pursuitId String
+  pursuit   Pursuit @relation(fields: [pursuitId], references: [id])
+
+  authorId String
+  author   User   @relation(fields: [authorId], references: [id])
+
+  notes Note[]
+}
+
+// AI-organized, structured writeup synthesized from one or more BrainDumps.
+model Note {
+  id        String   @id @default(cuid())
+  content   String
+  createdAt DateTime @default(now())
+
+  pursuitId String
+  pursuit   Pursuit @relation(fields: [pursuitId], references: [id])
+
+  sourceDumps BrainDump[]
+  tags        Tag[]
+}
+
+// Granular topic tags on Notes, scoped per-Pursuit (kept separate from
+// PursuitTag on purpose — see the conversation notes on why).
+model Tag {
+  id   String @id @default(cuid())
+  name String
+
+  pursuitId String
+  pursuit   Pursuit @relation(fields: [pursuitId], references: [id])
+
+  notes Note[]
+
+  @@unique([pursuitId, name])
+}
+
+// Loose reference files that just live in a Pursuit — no AI pipeline involved.
+model Attachment {
+  id        String   @id @default(cuid())
+  url       String
+  name      String
+  size      Int
+  createdAt DateTime @default(now())
+
+  pursuitId String
+  pursuit   Pursuit @relation(fields: [pursuitId], references: [id])
+}
