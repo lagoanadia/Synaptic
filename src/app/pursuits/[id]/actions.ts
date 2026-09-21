@@ -123,7 +123,10 @@ export async function organizeDumps(pursuitId: string) {
   }\n\nSynthesize the material above into one organized, structured note. Then suggest 1-3 short lowercase tags — reuse an existing tag if one genuinely fits, otherwise propose a new short one. Respond with ONLY a JSON object, no other text: {"content": "...", "tags": ["...", "..."]}`;
 
   const completion = await groq.chat.completions.create({
-    model: "llama-3.3-70b-versatile",
+    // Confirmed live in the Groq console as of this writing — the earlier
+    // "llama-3.3-70b-versatile" guess had been deprecated/renamed on Groq's
+    // side, which is what caused the 404 in production.
+    model: "openai/gpt-oss-120b",
     messages: [{ role: "user", content: prompt }],
     response_format: { type: "json_object" },
   });
