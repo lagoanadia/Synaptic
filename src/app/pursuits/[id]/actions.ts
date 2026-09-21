@@ -133,7 +133,7 @@ export async function organizeDumps(pursuitId: string) {
     throw new Error("AI did not return a usable response");
   }
 
-  let parsed: { content: string; tags: string[] };
+  let parsed: { content: unknown; tags: unknown };
   try {
     parsed = JSON.parse(text);
   } catch {
@@ -141,20 +141,39 @@ export async function organizeDumps(pursuitId: string) {
     parsed = { content: text, tags: [] };
   }
 
-  const tagRecords = await Promise.all(
-    (parsed.tags ?? []).map((name) =>
-      prisma.tag.upsert({
+  // The model's JSON isn't guaranteed to match our exact shape (missing
+  // fields, wrong types, duplicate tag names) — validate before using it.
+  const noteContent =
+    typeof parsed.content === "string" && parsed.content.trim() !== ""
+      ? parsed.content
+      : text;
+  const tagNames = Array.isArray(parsed.tags)
+    ? Array.from(
+        new Set(
+          parsed.tags.filter(
+            (t): t is string => typeof t === "string" && t.trim() !== "",
+          ),
+        ),
+      )
+    : [];
+
+  // Sequential, not Promise.all: two concurrent upserts on the same
+  // (pursuitId, name) unique key can race each other in Postgres.
+  const tagRecords = [];
+  for (const name of tagNames) {
+    tagRecords.push(
+      await prisma.tag.upsert({
         where: { pursuitId_name: { pursuitId, name } },
         create: { pursuitId, name },
         update: {},
       }),
-    ),
-  );
+    );
+  }
 
   await prisma.note.create({
     data: {
       pursuitId,
-      content: parsed.content,
+      content: noteContent,
       sourceDumps: { connect: dumps.map((d) => ({ id: d.id })) },
       tags: { connect: tagRecords.map((t) => ({ id: t.id })) },
     },
