@@ -2,14 +2,10 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import {
-  addAttachment,
-  addBrainDump,
-  addMember,
-  addPursuitTag,
-  organizeDumps,
-} from "./actions";
+import { addAttachment, addBrainDump, organizeDumps } from "./actions";
 import { MergeControls } from "./MergeControls";
+import { TagForm } from "./TagForm";
+import { MemberForm } from "./MemberForm";
 
 const TYPE_LABEL: Record<string, string> = {
   PROJECT: "Project",
@@ -112,17 +108,7 @@ export default async function PursuitPage({
               #{t.name}
             </span>
           ))}
-          <form
-            action={addPursuitTag.bind(null, pursuit.id)}
-            className="flex items-center gap-1"
-          >
-            <input
-              type="text"
-              name="name"
-              placeholder="+ tag"
-              className="w-20 rounded-full border border-dashed border-zinc-300 bg-transparent px-2 py-0.5 font-mono text-[10px] uppercase focus:w-28 focus:outline-none dark:border-zinc-700"
-            />
-          </form>
+          <TagForm pursuitId={pursuit.id} />
         </div>
         <div className="flex flex-wrap items-center gap-2 pt-1">
           <span className="font-mono text-[10px] tracking-wide text-zinc-500 uppercase">
@@ -137,17 +123,7 @@ export default async function PursuitPage({
             </span>
           ))}
           {pursuit.owner.id === session.user.id && (
-            <form
-              action={addMember.bind(null, pursuit.id)}
-              className="flex items-center gap-1"
-            >
-              <input
-                type="email"
-                name="email"
-                placeholder="+ invite by email"
-                className="w-36 rounded-full border border-dashed border-zinc-300 bg-transparent px-2 py-0.5 text-xs focus:w-48 focus:outline-none dark:border-zinc-700"
-              />
-            </form>
+            <MemberForm pursuitId={pursuit.id} />
           )}
         </div>
       </div>

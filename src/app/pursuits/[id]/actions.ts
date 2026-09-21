@@ -25,29 +25,42 @@ async function requireAccess(pursuitId: string) {
   return { session, pursuit };
 }
 
-export async function addMember(pursuitId: string, formData: FormData) {
+export type FormState = { error: string | null };
+
+// These two take (pursuitId, prevState, formData) instead of just
+// (pursuitId, formData) so they can be bound to a pursuitId and still fit
+// useActionState's (state, formData) => state shape on the client — see
+// TagForm.tsx / MemberForm.tsx. They return a friendly error instead of
+// throwing, so expected validation failures (empty field, unknown email)
+// show inline instead of crashing to the generic error page.
+export async function addMember(
+  pursuitId: string,
+  _prevState: FormState,
+  formData: FormData,
+): Promise<FormState> {
   const { session, pursuit } = await requireAccess(pursuitId);
 
   // Only the owner can invite collaborators — not just any existing member.
   if (pursuit.ownerId !== session.user.id) {
-    throw new Error("Only the owner can invite collaborators");
+    return { error: "Only the owner can invite collaborators" };
   }
 
   const email = formData.get("email");
   if (typeof email !== "string" || email.trim() === "") {
-    throw new Error("Email is required");
+    return { error: "Email is required" };
   }
 
   const invitedUser = await prisma.user.findUnique({
     where: { email: email.trim() },
   });
   if (!invitedUser) {
-    throw new Error(
-      "No Synaptic account found with that email — they need to sign in with GitHub at least once first",
-    );
+    return {
+      error:
+        "No Synaptic account found with that email — they need to sign in with GitHub at least once first",
+    };
   }
   if (invitedUser.id === session.user.id) {
-    throw new Error("You already own this pursuit");
+    return { error: "That's your own account — you already own this pursuit" };
   }
 
   await prisma.pursuitMember.upsert({
@@ -57,6 +70,7 @@ export async function addMember(pursuitId: string, formData: FormData) {
   });
 
   revalidatePath(`/pursuits/${pursuitId}`);
+  return { error: null };
 }
 
 export async function addBrainDump(pursuitId: string, formData: FormData) {
@@ -253,12 +267,16 @@ export async function addAttachment(pursuitId: string, formData: FormData) {
   revalidatePath(`/pursuits/${pursuitId}`);
 }
 
-export async function addPursuitTag(pursuitId: string, formData: FormData) {
+export async function addPursuitTag(
+  pursuitId: string,
+  _prevState: FormState,
+  formData: FormData,
+): Promise<FormState> {
   const { session } = await requireAccess(pursuitId);
 
   const name = formData.get("name");
   if (typeof name !== "string" || name.trim() === "") {
-    throw new Error("Tag name is required");
+    return { error: "Tag name is required" };
   }
 
   const tag = await prisma.pursuitTag.upsert({
@@ -273,4 +291,5 @@ export async function addPursuitTag(pursuitId: string, formData: FormData) {
   });
 
   revalidatePath(`/pursuits/${pursuitId}`);
+  return { error: null };
 }
