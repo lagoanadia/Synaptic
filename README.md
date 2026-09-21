@@ -46,8 +46,16 @@ Full schema: [`prisma/schema.prisma`](./prisma/schema.prisma).
 git clone https://github.com/lagoanadia/Synaptic.git
 cd Synaptic
 npm install
+```
 
-npx prisma dev -d        # starts a local Postgres, prints a connection string
+**Database — pick one:**
+
+- **Quick local option**: `npx prisma dev -d` starts a local Postgres and prints a connection string. Simple, but it only exists on *that one computer* — it won't survive a restart of that machine, and it's not reachable from any other device. Fine for a single quick session.
+- **Recommended**: `npx create-db` provisions a free, always-on hosted Postgres in one command and prints a real connection string — no "is it running right now" question, works the same from any machine. Do this if you'll ever touch the project from more than one computer.
+
+Either way, apply the schema:
+
+```bash
 npx prisma migrate deploy
 ```
 
