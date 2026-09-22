@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { put } from "@vercel/blob";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
@@ -27,7 +26,7 @@ async function requireAccess(pursuitId: string) {
   return { session, pursuit };
 }
 
-export type FormState = { error: string | null };
+export type FormState = { error: string | null; success?: boolean };
 
 // These two take (pursuitId, prevState, formData) instead of just
 // (pursuitId, formData) so they can be bound to a pursuitId and still fit
@@ -83,30 +82,24 @@ export async function addBrainDump(
   const { session } = await requireAccess(pursuitId);
 
   const content = formData.get("content");
-  const imageFile = formData.get("image");
-
   const text = typeof content === "string" ? content.trim() : "";
-  const hasImage = imageFile instanceof File && imageFile.size > 0;
 
-  if (!text && !hasImage) {
-    return { error: "Add some text or an image" };
+  if (!text) {
+    return { error: "Write something first" };
   }
 
-  const images: string[] = [];
-  if (hasImage && imageFile instanceof File) {
-    const blob = await put(
-      `dumps/${pursuitId}/${crypto.randomUUID()}-${imageFile.name}`,
-      imageFile,
-      { access: "public" },
-    );
-    images.push(blob.url);
-  }
+  // Images were already uploaded (via uploadImage, as each one was picked)
+  // and are embedded as `![image](url)` markers inside `text` itself — so
+  // there's no separate file to handle here, just the finished content.
+  const images = Array.from(text.matchAll(/!\[image\]\(([^)]+)\)/g)).map(
+    (m) => m[1],
+  );
 
   await prisma.brainDump.create({
     data: {
       pursuitId,
       authorId: session.user.id,
-      content: text || null,
+      content: text,
       images,
     },
   });
@@ -117,7 +110,33 @@ export async function addBrainDump(
   });
 
   revalidatePath(`/pursuits/${pursuitId}`);
-  redirect(`/pursuits/${pursuitId}?tab=dump`);
+  // No redirect() here — combined with useActionState this crashed the
+  // page (minified React error #441). Navigation happens client-side in
+  // NewDumpForm once it sees `success: true`.
+  return { error: null, success: true };
+}
+
+// Called directly (not through useActionState) as soon as a picture is
+// picked in the composer, so its URL can be inserted into the textarea at
+// the cursor right away — the upload itself doesn't wait for "Save".
+export async function uploadImage(
+  pursuitId: string,
+  formData: FormData,
+): Promise<{ url: string } | { error: string }> {
+  await requireAccess(pursuitId);
+
+  const file = formData.get("image");
+  if (!(file instanceof File) || file.size === 0) {
+    return { error: "No image provided" };
+  }
+
+  const blob = await put(
+    `dumps/${pursuitId}/${crypto.randomUUID()}-${file.name}`,
+    file,
+    { access: "public" },
+  );
+
+  return { url: blob.url };
 }
 
 export async function organizeDumps(pursuitId: string) {

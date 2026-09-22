@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { autoTitle } from "@/lib/text";
+import { autoTitle, parseContent } from "@/lib/text";
 
 export default async function DumpPage({
   params,
@@ -63,20 +63,29 @@ export default async function DumpPage({
       </div>
 
       {dump.content && (
-        <p className="flex-1 text-base leading-relaxed whitespace-pre-wrap">
-          {dump.content}
-        </p>
+        <div className="flex flex-1 flex-col gap-4">
+          {parseContent(dump.content).map((segment, i) =>
+            segment.type === "text" ? (
+              segment.value.trim() !== "" && (
+                <p
+                  key={i}
+                  className="text-base leading-relaxed whitespace-pre-wrap"
+                >
+                  {segment.value}
+                </p>
+              )
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                key={i}
+                src={segment.url}
+                alt="Brain dump attachment"
+                className="max-w-full rounded-md border border-zinc-200 dark:border-zinc-800"
+              />
+            ),
+          )}
+        </div>
       )}
-
-      {dump.images.map((url) => (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          key={url}
-          src={url}
-          alt="Brain dump attachment"
-          className="max-w-full rounded-md border border-zinc-200 dark:border-zinc-800"
-        />
-      ))}
     </div>
   );
 }
