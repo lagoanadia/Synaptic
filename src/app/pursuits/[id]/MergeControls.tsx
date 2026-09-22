@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { mergeNotes } from "./actions";
+import { deleteNote, mergeNotes } from "./actions";
 
 type NoteForDisplay = {
   id: string;
@@ -61,10 +61,28 @@ export function MergeControls({
                 />
                 select to merge
               </label>
-              <span className="font-mono text-xs text-zinc-500">
-                {new Date(n.createdAt).toLocaleDateString()} · from{" "}
-                {n.sourceDumps.length} dumps
-              </span>
+              <div className="flex items-center gap-3">
+                <span className="font-mono text-xs text-zinc-500">
+                  {new Date(n.createdAt).toLocaleDateString()} · from{" "}
+                  {n.sourceDumps.length} dumps
+                </span>
+                <button
+                  type="button"
+                  disabled={isPending}
+                  onClick={() => {
+                    if (!window.confirm("Delete this note? This can't be undone.")) {
+                      return;
+                    }
+                    startTransition(async () => {
+                      await deleteNote(pursuitId, n.id);
+                      setSelected((cur) => cur.filter((x) => x !== n.id));
+                    });
+                  }}
+                  className="font-mono text-xs text-zinc-400 uppercase hover:text-red-500 disabled:opacity-50"
+                >
+                  Delete
+                </button>
+              </div>
             </div>
             <p className="text-sm leading-relaxed whitespace-pre-line">
               {n.content}

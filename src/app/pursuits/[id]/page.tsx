@@ -2,10 +2,11 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { addAttachment, organizeDumps } from "./actions";
+import { addAttachment, deleteBrainDump, organizeDumps } from "./actions";
 import { MergeControls } from "./MergeControls";
 import { TagForm } from "./TagForm";
 import { MemberForm } from "./MemberForm";
+import { DeleteButton } from "./DeleteButton";
 import { autoTitle } from "@/lib/text";
 
 const TYPE_LABEL: Record<string, string> = {
@@ -166,29 +167,42 @@ export default async function PursuitPage({
 
           <div className="flex flex-col">
             {pursuit.brainDumps.map((d) => (
-              <Link
+              <div
                 key={d.id}
-                href={`/pursuits/${pursuit.id}/dump/${d.id}`}
                 className="-mx-2 flex items-center gap-3 rounded-md px-2 py-2.5 hover:bg-zinc-100 dark:hover:bg-zinc-900"
               >
-                <span
-                  className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${
-                    d.processed ? "bg-zinc-300 dark:bg-zinc-700" : "bg-blue-500"
-                  }`}
-                />
-                {d.images.length > 0 && <span>🖼</span>}
-                <span className="flex-1 truncate text-sm">
-                  {autoTitle(d.content)}
-                </span>
-                <span className="font-mono text-[10px] whitespace-nowrap text-zinc-500">
-                  {d.createdAt.toLocaleDateString()}
-                </span>
-                {d.processed && (
-                  <span className="font-mono text-[10px] whitespace-nowrap text-zinc-500">
-                    → in note
+                <Link
+                  href={`/pursuits/${pursuit.id}/dump/${d.id}`}
+                  className="flex flex-1 items-center gap-3 overflow-hidden"
+                >
+                  <span
+                    className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${
+                      d.processed
+                        ? "bg-zinc-300 dark:bg-zinc-700"
+                        : "bg-blue-500"
+                    }`}
+                  />
+                  {d.images.length > 0 && <span>🖼</span>}
+                  <span className="flex-1 truncate text-sm">
+                    {autoTitle(d.content)}
                   </span>
-                )}
-              </Link>
+                  <span className="font-mono text-[10px] whitespace-nowrap text-zinc-500">
+                    {d.createdAt.toLocaleDateString()}
+                  </span>
+                  {d.processed && (
+                    <span className="font-mono text-[10px] whitespace-nowrap text-zinc-500">
+                      → in note
+                    </span>
+                  )}
+                </Link>
+                <DeleteButton
+                  action={deleteBrainDump.bind(null, pursuit.id, d.id)}
+                  confirmMessage="Delete this page? This can't be undone."
+                  className="px-1 text-zinc-400 hover:text-red-500"
+                >
+                  ×
+                </DeleteButton>
+              </div>
             ))}
             {pursuit.brainDumps.length === 0 && (
               <p className="text-sm text-zinc-500">

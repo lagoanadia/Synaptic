@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { put } from "@vercel/blob";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { groq } from "@/lib/groq";
@@ -116,27 +115,10 @@ export async function addBrainDump(
   return { error: null, success: true };
 }
 
-// Called directly (not through useActionState) as soon as a picture is
-// picked in the composer, so its URL can be inserted into the textarea at
-// the cursor right away — the upload itself doesn't wait for "Save".
-export async function uploadImage(
-  pursuitId: string,
-  formData: FormData,
-): Promise<{ url: string } | { error: string }> {
+export async function deleteBrainDump(pursuitId: string, dumpId: string) {
   await requireAccess(pursuitId);
-
-  const file = formData.get("image");
-  if (!(file instanceof File) || file.size === 0) {
-    return { error: "No image provided" };
-  }
-
-  const blob = await put(
-    `dumps/${pursuitId}/${crypto.randomUUID()}-${file.name}`,
-    file,
-    { access: "public" },
-  );
-
-  return { url: blob.url };
+  await prisma.brainDump.deleteMany({ where: { id: dumpId, pursuitId } });
+  revalidatePath(`/pursuits/${pursuitId}`);
 }
 
 export async function organizeDumps(pursuitId: string) {
@@ -280,6 +262,12 @@ export async function mergeNotes(pursuitId: string, noteIds: string[]) {
 
   await prisma.note.deleteMany({ where: { id: { in: noteIds } } });
 
+  revalidatePath(`/pursuits/${pursuitId}`);
+}
+
+export async function deleteNote(pursuitId: string, noteId: string) {
+  await requireAccess(pursuitId);
+  await prisma.note.deleteMany({ where: { id: noteId, pursuitId } });
   revalidatePath(`/pursuits/${pursuitId}`);
 }
 

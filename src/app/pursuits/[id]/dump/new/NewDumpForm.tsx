@@ -2,7 +2,8 @@
 
 import { useActionState, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { addBrainDump, uploadImage, type FormState } from "../../actions";
+import { upload } from "@vercel/blob/client";
+import { addBrainDump, type FormState } from "../../actions";
 
 const initialState: FormState = { error: null };
 
@@ -38,14 +39,17 @@ export function NewDumpForm({ pursuitId }: { pursuitId: string }) {
     setUploadError(null);
     setIsUploading(true);
     try {
-      const fd = new FormData();
-      fd.set("image", file);
-      const result = await uploadImage(pursuitId, fd);
-      if ("error" in result) {
-        setUploadError(result.error);
-        return;
-      }
-      insertAtCursor(`![image](${result.url})`);
+      // Uploaded directly from the browser to Blob storage (not through a
+      // Server Action) — a Server Action's request body is capped at 1MB,
+      // which a normal phone photo blows past, and it was failing silently.
+      const blob = await upload(`dumps/${pursuitId}/${file.name}`, file, {
+        access: "public",
+        handleUploadUrl: "/api/blob-upload",
+        clientPayload: pursuitId,
+      });
+      insertAtCursor(`![image](${blob.url})`);
+    } catch {
+      setUploadError("Couldn't upload that image — try again");
     } finally {
       setIsUploading(false);
     }

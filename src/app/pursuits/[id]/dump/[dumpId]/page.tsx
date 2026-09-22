@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { autoTitle, parseContent } from "@/lib/text";
+import { DeleteDumpButton } from "./DeleteDumpButton";
 
 export default async function DumpPage({
   params,
@@ -36,12 +37,15 @@ export default async function DumpPage({
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-6 py-9">
-      <Link
-        href={`/pursuits/${id}?tab=dump`}
-        className="font-mono text-xs tracking-wide text-zinc-500 uppercase hover:underline"
-      >
-        ← {dump.pursuit.title}
-      </Link>
+      <div className="flex items-center justify-between">
+        <Link
+          href={`/pursuits/${id}?tab=dump`}
+          className="font-mono text-xs tracking-wide text-zinc-500 uppercase hover:underline"
+        >
+          ← {dump.pursuit.title}
+        </Link>
+        <DeleteDumpButton pursuitId={id} dumpId={dumpId} />
+      </div>
 
       <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-semibold text-balance">
