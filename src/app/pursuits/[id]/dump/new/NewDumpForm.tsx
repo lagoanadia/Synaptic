@@ -3,11 +3,12 @@
 import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { upload } from "@vercel/blob/client";
-import { addBrainDump, type FormState } from "../../actions";
+import { addBrainDump, updateBrainDump, type FormState } from "../../actions";
+import { parseContent, type ContentSegment } from "@/lib/text";
 
 const initialState: FormState = { error: null };
 
-type Block = { type: "text"; value: string } | { type: "image"; url: string };
+type Block = ContentSegment;
 
 // Content is still saved as plain text with `![image](url)` markers (see
 // src/lib/text.ts's parseContent) — that part hasn't changed. What changed
@@ -22,19 +23,42 @@ function serialize(blocks: Block[]): string {
     .join("");
 }
 
+// The last block is always assumed to be text (that's what lets an image
+// be inserted "at the end" and typing continue) — parseContent doesn't
+// guarantee that for arbitrary saved content, so pad it if needed.
+function blocksFromContent(content: string): Block[] {
+  const segments = parseContent(content);
+  if (segments.length === 0) return [{ type: "text", value: "" }];
+  const last = segments[segments.length - 1];
+  return last.type === "text" ? segments : [...segments, { type: "text", value: "" }];
+}
+
 function autoResize(el: HTMLTextAreaElement) {
   el.style.height = "auto";
   el.style.height = `${el.scrollHeight}px`;
 }
 
-export function NewDumpForm({ pursuitId }: { pursuitId: string }) {
+export function NewDumpForm({
+  pursuitId,
+  dumpId,
+  initialContent,
+}: {
+  pursuitId: string;
+  dumpId?: string;
+  initialContent?: string;
+}) {
   const router = useRouter();
+  const isEditing = dumpId !== undefined;
   const [state, formAction, isPending] = useActionState(
-    addBrainDump.bind(null, pursuitId),
+    isEditing
+      ? updateBrainDump.bind(null, pursuitId, dumpId)
+      : addBrainDump.bind(null, pursuitId),
     initialState,
   );
 
-  const [blocks, setBlocks] = useState<Block[]>([{ type: "text", value: "" }]);
+  const [blocks, setBlocks] = useState<Block[]>(() =>
+    initialContent ? blocksFromContent(initialContent) : [{ type: "text", value: "" }],
+  );
   const [activeIndex, setActiveIndex] = useState(0);
   const textareaRefs = useRef<Record<number, HTMLTextAreaElement | null>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -48,9 +72,13 @@ export function NewDumpForm({ pursuitId }: { pursuitId: string }) {
   // the action reports success.
   useEffect(() => {
     if (state.success) {
-      router.push(`/pursuits/${pursuitId}?tab=dump`);
+      router.push(
+        isEditing
+          ? `/pursuits/${pursuitId}/dump/${dumpId}`
+          : `/pursuits/${pursuitId}?tab=dump`,
+      );
     }
-  }, [state.success, router, pursuitId]);
+  }, [state.success, router, pursuitId, isEditing, dumpId]);
 
   // New text blocks (e.g. the "after" half created when an image is
   // inserted) start with no rendered height until the browser has laid
@@ -159,7 +187,9 @@ export function NewDumpForm({ pursuitId }: { pursuitId: string }) {
               }}
               onFocus={() => setActiveIndex(i)}
               autoFocus={i === 0}
-              placeholder={blocks.length === 1 ? "Start writing…" : undefined}
+              placeholder={
+                blocks.length === 1 && !isEditing ? "Start writing…" : undefined
+              }
               disabled={isPending}
               rows={1}
               className={`resize-none overflow-hidden border-none bg-transparent p-0 text-lg leading-relaxed outline-none disabled:opacity-50 ${
@@ -209,7 +239,7 @@ export function NewDumpForm({ pursuitId }: { pursuitId: string }) {
           disabled={isPending || isUploading}
           className="rounded-md bg-ink px-4 py-2 text-sm font-medium whitespace-nowrap text-white hover:opacity-90 disabled:opacity-50"
         >
-          {isPending ? "Saving…" : "Save"}
+          {isPending ? "Saving…" : isEditing ? "Save changes" : "Save"}
         </button>
       </div>
       {(state.error || uploadError) && (

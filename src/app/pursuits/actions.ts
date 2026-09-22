@@ -39,3 +39,34 @@ export async function createPursuit(formData: FormData) {
 
   revalidatePath("/pursuits");
 }
+
+export async function deletePursuit(pursuitId: string) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    throw new Error("Not signed in");
+  }
+
+  const pursuit = await prisma.pursuit.findUnique({
+    where: { id: pursuitId },
+  });
+  if (!pursuit) {
+    throw new Error("Pursuit not found");
+  }
+  if (pursuit.ownerId !== session.user.id) {
+    throw new Error("Only the owner can delete this pursuit");
+  }
+
+  // Notes reference BrainDumps and Tags through join tables, so clear them
+  // first — deleting the Pursuit itself would otherwise fail on the
+  // straightforward one-to-many foreign keys below.
+  await prisma.$transaction([
+    prisma.note.deleteMany({ where: { pursuitId } }),
+    prisma.brainDump.deleteMany({ where: { pursuitId } }),
+    prisma.tag.deleteMany({ where: { pursuitId } }),
+    prisma.attachment.deleteMany({ where: { pursuitId } }),
+    prisma.pursuitMember.deleteMany({ where: { pursuitId } }),
+    prisma.pursuit.delete({ where: { id: pursuitId } }),
+  ]);
+
+  revalidatePath("/pursuits");
+}

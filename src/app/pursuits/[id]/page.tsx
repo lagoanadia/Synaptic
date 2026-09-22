@@ -2,11 +2,16 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { addAttachment, deleteBrainDump, organizeDumps } from "./actions";
+import {
+  addAttachment,
+  deleteBrainDump,
+  organizeDumps,
+  removePursuitTag,
+} from "./actions";
 import { MergeControls } from "./MergeControls";
 import { TagForm } from "./TagForm";
 import { MemberForm } from "./MemberForm";
-import { DeleteButton } from "./DeleteButton";
+import { DeleteButton } from "../DeleteButton";
 import { autoTitle } from "@/lib/text";
 
 const TYPE_LABEL: Record<string, string> = {
@@ -103,9 +108,15 @@ export default async function PursuitPage({
           {pursuit.pursuitTags.map((t) => (
             <span
               key={t.id}
-              className="rounded bg-chip px-2 py-0.5 text-xs text-ink-muted"
+              className="flex items-center gap-1 rounded bg-chip px-2 py-0.5 text-xs text-ink-muted"
             >
               {t.name}
+              <DeleteButton
+                action={removePursuitTag.bind(null, pursuit.id, t.id)}
+                className="text-ink-faint hover:text-red-500"
+              >
+                ×
+              </DeleteButton>
             </span>
           ))}
           <TagForm pursuitId={pursuit.id} />

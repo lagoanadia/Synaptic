@@ -44,7 +44,15 @@ export default async function DumpPage({
         >
           ← {dump.pursuit.title}
         </Link>
-        <DeleteDumpButton pursuitId={id} dumpId={dumpId} />
+        <div className="flex items-center gap-4">
+          <Link
+            href={`/pursuits/${id}/dump/${dumpId}/edit`}
+            className="text-sm text-ink-muted hover:underline"
+          >
+            Edit
+          </Link>
+          <DeleteDumpButton pursuitId={id} dumpId={dumpId} />
+        </div>
       </div>
 
       <div className="flex flex-col gap-2">

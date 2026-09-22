@@ -1,8 +1,9 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { createPursuit } from "./actions";
+import { createPursuit, deletePursuit } from "./actions";
 import { TypeSelect } from "./TypeSelect";
+import { DeleteButton } from "./DeleteButton";
 
 const TYPE_LABEL: Record<string, string> = {
   PROJECT: "Project",
@@ -73,38 +74,48 @@ export default async function PursuitsPage() {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {pursuits.map((p) => (
-          <a
+          <div
             key={p.id}
-            href={`/pursuits/${p.id}`}
             className="flex flex-col gap-3 rounded-lg border border-dashed border-border-subtle bg-white p-6 hover:border-solid hover:border-ink"
           >
-            <div className="flex items-center gap-2">
-              <span
-                className={`h-2 w-2 rounded-full ${
-                  p.status === "ACTIVE" ? "bg-accent" : "bg-ink-faint"
-                }`}
-              />
-              <span className="text-sm text-ink-muted">
-                {typeLabel(p)} · {p.status.toLowerCase()}
-              </span>
-            </div>
-            <div className="text-lg font-semibold">{p.title}</div>
-            {p.pursuitTags.length > 0 && (
-              <div className="flex flex-wrap gap-1.5">
-                {p.pursuitTags.map((t) => (
-                  <span
-                    key={t.id}
-                    className="rounded bg-chip px-2 py-0.5 text-xs text-ink-muted"
-                  >
-                    {t.name}
-                  </span>
-                ))}
+            <a href={`/pursuits/${p.id}`} className="flex flex-1 flex-col gap-3">
+              <div className="flex items-center gap-2">
+                <span
+                  className={`h-2 w-2 rounded-full ${
+                    p.status === "ACTIVE" ? "bg-accent" : "bg-ink-faint"
+                  }`}
+                />
+                <span className="text-sm text-ink-muted">
+                  {typeLabel(p)} · {p.status.toLowerCase()}
+                </span>
               </div>
+              <div className="text-lg font-semibold">{p.title}</div>
+              {p.pursuitTags.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {p.pursuitTags.map((t) => (
+                    <span
+                      key={t.id}
+                      className="rounded bg-chip px-2 py-0.5 text-xs text-ink-muted"
+                    >
+                      {t.name}
+                    </span>
+                  ))}
+                </div>
+              )}
+              <div className="text-xs text-ink-faint">
+                last touched {timeAgo(p.lastTouchedAt)}
+              </div>
+            </a>
+            {p.ownerId === session.user.id && (
+              <DeleteButton
+                action={deletePursuit.bind(null, p.id)}
+                confirmMessage={`Delete "${p.title}"? This deletes everything inside it and can't be undone.`}
+                className="self-start text-xs text-ink-faint hover:text-red-500"
+              >
+                Delete
+              </DeleteButton>
             )}
-            <div className="text-xs text-ink-faint">
-              last touched {timeAgo(p.lastTouchedAt)}
-            </div>
-          </a>
+          </div>
         ))}
         {pursuits.length === 0 && (
           <p className="text-sm text-ink-muted">

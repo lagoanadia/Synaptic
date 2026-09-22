@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { DeleteButton } from "../../DeleteButton";
+import { DeleteButton } from "../../../DeleteButton";
 import { deleteBrainDump } from "../../actions";
 
 export function DeleteDumpButton({

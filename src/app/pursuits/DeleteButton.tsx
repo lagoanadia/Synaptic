@@ -4,7 +4,9 @@ import { useTransition, type ReactNode } from "react";
 
 // Wraps any bound server action (a 0-arg async function, e.g.
 // deleteBrainDump.bind(null, pursuitId, dumpId)) in a confirm dialog before
-// running it, so a delete never fires from a stray click.
+// running it, so a delete never fires from a stray click. confirmMessage is
+// optional — omit it for a low-stakes, easily-reversible action (like
+// unlinking a tag) that doesn't need one.
 export function DeleteButton({
   action,
   confirmMessage,
@@ -13,7 +15,7 @@ export function DeleteButton({
   children,
 }: {
   action: () => Promise<void>;
-  confirmMessage: string;
+  confirmMessage?: string;
   onSuccess?: () => void;
   className?: string;
   children: ReactNode;
@@ -25,7 +27,7 @@ export function DeleteButton({
       type="button"
       disabled={isPending}
       onClick={() => {
-        if (!window.confirm(confirmMessage)) return;
+        if (confirmMessage && !window.confirm(confirmMessage)) return;
         startTransition(async () => {
           await action();
           onSuccess?.();

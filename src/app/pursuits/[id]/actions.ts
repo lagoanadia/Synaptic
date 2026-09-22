@@ -115,6 +115,49 @@ export async function addBrainDump(
   return { error: null, success: true };
 }
 
+export async function updateBrainDump(
+  pursuitId: string,
+  dumpId: string,
+  _prevState: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  await requireAccess(pursuitId);
+
+  const dump = await prisma.brainDump.findFirst({
+    where: { id: dumpId, pursuitId },
+  });
+  if (!dump) {
+    return { error: "Page not found" };
+  }
+
+  const content = formData.get("content");
+  const text = typeof content === "string" ? content.trim() : "";
+  if (!text) {
+    return { error: "Write something first" };
+  }
+
+  const images = Array.from(text.matchAll(/!\[image\]\(([^)]+)\)/g)).map(
+    (m) => m[1],
+  );
+
+  // Rewriting a dump makes whatever note it was folded into stale, so it
+  // goes back to processed:false — the same "needs organizing" state a
+  // brand new dump starts in — and reappears in the Organize count.
+  await prisma.brainDump.update({
+    where: { id: dumpId },
+    data: { content: text, images, processed: false },
+  });
+
+  await prisma.pursuit.update({
+    where: { id: pursuitId },
+    data: { lastTouchedAt: new Date() },
+  });
+
+  revalidatePath(`/pursuits/${pursuitId}`);
+  revalidatePath(`/pursuits/${pursuitId}/dump/${dumpId}`);
+  return { error: null, success: true };
+}
+
 export async function deleteBrainDump(pursuitId: string, dumpId: string) {
   await requireAccess(pursuitId);
   await prisma.brainDump.deleteMany({ where: { id: dumpId, pursuitId } });
@@ -340,4 +383,18 @@ export async function addPursuitTag(
 
   revalidatePath(`/pursuits/${pursuitId}`);
   return { error: null };
+}
+
+export async function removePursuitTag(pursuitId: string, tagId: string) {
+  await requireAccess(pursuitId);
+
+  // Only disconnects the tag from this pursuit — PursuitTag is scoped to
+  // the user and may be attached to other pursuits, so the tag itself
+  // isn't deleted.
+  await prisma.pursuit.update({
+    where: { id: pursuitId },
+    data: { pursuitTags: { disconnect: { id: tagId } } },
+  });
+
+  revalidatePath(`/pursuits/${pursuitId}`);
 }
