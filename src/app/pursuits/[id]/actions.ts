@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { put } from "@vercel/blob";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { groq } from "@/lib/groq";
@@ -73,17 +74,31 @@ export async function addMember(
   return { error: null };
 }
 
-export async function addBrainDump(pursuitId: string, formData: FormData) {
+export async function addBrainDump(
+  pursuitId: string,
+  _prevState: FormState,
+  formData: FormData,
+): Promise<FormState> {
   const { session } = await requireAccess(pursuitId);
 
   const content = formData.get("content");
-  const imageUrl = formData.get("imageUrl");
+  const imageFile = formData.get("image");
 
   const text = typeof content === "string" ? content.trim() : "";
-  const image = typeof imageUrl === "string" ? imageUrl.trim() : "";
+  const hasImage = imageFile instanceof File && imageFile.size > 0;
 
-  if (!text && !image) {
-    throw new Error("Add some text or an image URL");
+  if (!text && !hasImage) {
+    return { error: "Add some text or an image" };
+  }
+
+  const images: string[] = [];
+  if (hasImage && imageFile instanceof File) {
+    const blob = await put(
+      `dumps/${pursuitId}/${crypto.randomUUID()}-${imageFile.name}`,
+      imageFile,
+      { access: "public" },
+    );
+    images.push(blob.url);
   }
 
   await prisma.brainDump.create({
@@ -91,7 +106,7 @@ export async function addBrainDump(pursuitId: string, formData: FormData) {
       pursuitId,
       authorId: session.user.id,
       content: text || null,
-      images: image ? [image] : [],
+      images,
     },
   });
 
@@ -101,6 +116,7 @@ export async function addBrainDump(pursuitId: string, formData: FormData) {
   });
 
   revalidatePath(`/pursuits/${pursuitId}`);
+  return { error: null };
 }
 
 export async function organizeDumps(pursuitId: string) {

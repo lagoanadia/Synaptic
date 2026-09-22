@@ -2,10 +2,12 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { addAttachment, addBrainDump, organizeDumps } from "./actions";
+import { addAttachment, organizeDumps } from "./actions";
 import { MergeControls } from "./MergeControls";
 import { TagForm } from "./TagForm";
 import { MemberForm } from "./MemberForm";
+import { DumpForm } from "./DumpForm";
+import { autoTitle } from "@/lib/text";
 
 const TYPE_LABEL: Record<string, string> = {
   PROJECT: "Project",
@@ -145,31 +147,7 @@ export default async function PursuitPage({
 
       {tab === "dump" && (
         <div className="flex flex-col gap-4">
-          <form
-            action={addBrainDump.bind(null, pursuit.id)}
-            className="flex flex-col gap-2"
-          >
-            <textarea
-              name="content"
-              rows={3}
-              placeholder="Dump anything — a paragraph, a page, whatever's in your head…"
-              className="rounded-md border border-zinc-300 bg-white p-3 text-sm dark:border-zinc-700 dark:bg-zinc-900"
-            />
-            <div className="flex gap-2">
-              <input
-                type="text"
-                name="imageUrl"
-                placeholder="Optional image URL"
-                className="flex-1 rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
-              />
-              <button
-                type="submit"
-                className="rounded-md border border-zinc-900 px-4 py-2 text-sm font-medium whitespace-nowrap dark:border-zinc-50"
-              >
-                Add to dump
-              </button>
-            </div>
-          </form>
+          <DumpForm pursuitId={pursuit.id} />
 
           {unprocessedCount > 0 && (
             <form action={organizeDumps.bind(null, pursuit.id)}>
@@ -184,36 +162,29 @@ export default async function PursuitPage({
 
           <div className="flex flex-col">
             {pursuit.brainDumps.map((d) => (
-              <div
+              <Link
                 key={d.id}
-                className="flex items-start gap-3 border-b border-dashed border-zinc-200 py-3 last:border-0 dark:border-zinc-800"
+                href={`/pursuits/${pursuit.id}/dump/${d.id}`}
+                className="-mx-2 flex items-center gap-3 rounded-md px-2 py-2.5 hover:bg-zinc-100 dark:hover:bg-zinc-900"
               >
                 <span
-                  className={`mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full ${
+                  className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${
                     d.processed ? "bg-zinc-300 dark:bg-zinc-700" : "bg-blue-500"
                   }`}
                 />
-                <div className="flex flex-1 flex-col gap-1">
-                  <span className="font-mono text-[11px] text-zinc-500">
-                    {d.createdAt.toLocaleString()}
-                  </span>
-                  {d.content && <p className="text-sm">{d.content}</p>}
-                  {d.images.map((url) => (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      key={url}
-                      src={url}
-                      alt="Brain dump attachment"
-                      className="max-h-40 rounded-md border border-zinc-200 dark:border-zinc-800"
-                    />
-                  ))}
-                </div>
+                {d.images.length > 0 && <span>🖼</span>}
+                <span className="flex-1 truncate text-sm">
+                  {autoTitle(d.content)}
+                </span>
+                <span className="font-mono text-[10px] whitespace-nowrap text-zinc-500">
+                  {d.createdAt.toLocaleDateString()}
+                </span>
                 {d.processed && (
                   <span className="font-mono text-[10px] whitespace-nowrap text-zinc-500">
                     → in note
                   </span>
                 )}
-              </div>
+              </Link>
             ))}
             {pursuit.brainDumps.length === 0 && (
               <p className="text-sm text-zinc-500">
