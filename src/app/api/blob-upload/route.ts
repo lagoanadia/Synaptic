@@ -15,11 +15,6 @@ export async function POST(request: Request): Promise<NextResponse> {
     const jsonResponse = await handleUpload({
       body,
       request,
-      // Connecting the Blob store to the project namespaced its env vars
-      // under the store's own name instead of the plain BLOB_READ_WRITE_TOKEN
-      // the SDK looks for by default (same thing that happened with the
-      // Postgres connection) — point it at the real variable explicitly.
-      token: process.env.BLOB_READ_WRITE_TOKEN_READ_WRITE_TOKEN,
       onBeforeGenerateToken: async (_pathname, clientPayload) => {
         const session = await auth();
         if (!session?.user?.id) {
