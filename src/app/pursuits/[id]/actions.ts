@@ -267,7 +267,31 @@ export async function mergeNotes(pursuitId: string, noteIds: string[]) {
 
 export async function deleteNote(pursuitId: string, noteId: string) {
   await requireAccess(pursuitId);
+
+  const note = await prisma.note.findFirst({
+    where: { id: noteId, pursuitId },
+    select: { sourceDumps: { select: { id: true } } },
+  });
+
   await prisma.note.deleteMany({ where: { id: noteId, pursuitId } });
+
+  // A dump only counts as "organized" while some note still references it
+  // — deleting its one note left it processed:true forever with nothing
+  // pointing to it, so it could never be picked up by Organize again.
+  // (A dump could in principle still be referenced by another note, so
+  // check rather than assume.)
+  for (const dump of note?.sourceDumps ?? []) {
+    const stillReferenced = await prisma.note.findFirst({
+      where: { sourceDumps: { some: { id: dump.id } } },
+    });
+    if (!stillReferenced) {
+      await prisma.brainDump.update({
+        where: { id: dump.id },
+        data: { processed: false },
+      });
+    }
+  }
+
   revalidatePath(`/pursuits/${pursuitId}`);
 }
 
