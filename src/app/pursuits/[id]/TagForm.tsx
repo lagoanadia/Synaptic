@@ -18,13 +18,9 @@ export function TagForm({ pursuitId }: { pursuitId: string }) {
         name="name"
         placeholder="+ tag"
         disabled={isPending}
-        className="w-20 rounded-full border border-dashed border-zinc-300 bg-transparent px-2 py-0.5 font-mono text-[10px] uppercase focus:w-28 focus:outline-none disabled:opacity-50 dark:border-zinc-700"
+        className="w-20 rounded border border-dashed border-border-subtle bg-transparent px-2 py-0.5 text-xs focus:w-28 focus:outline-none disabled:opacity-50"
       />
-      {state.error && (
-        <span className="font-mono text-[10px] text-red-500">
-          {state.error}
-        </span>
-      )}
+      {state.error && <span className="text-xs text-red-500">{state.error}</span>}
     </form>
   );
 }

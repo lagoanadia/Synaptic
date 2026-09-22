@@ -21,7 +21,7 @@ export function TypeSelect() {
         name="type"
         value={type}
         onChange={(e) => setType(e.target.value)}
-        className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+        className="rounded-md border border-border-subtle bg-white px-3 py-2 text-sm text-ink"
       >
         {OPTIONS.map((o) => (
           <option key={o.value} value={o.value}>
@@ -35,7 +35,7 @@ export function TypeSelect() {
           name="customType"
           placeholder="Name your own type"
           required
-          className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+          className="rounded-md border border-border-subtle bg-white px-3 py-2 text-sm text-ink"
         />
       )}
     </div>

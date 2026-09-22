@@ -35,7 +35,7 @@ export default async function NewDumpPage({
     <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-6 py-9">
       <Link
         href={`/pursuits/${id}?tab=dump`}
-        className="font-mono text-xs tracking-wide text-zinc-500 uppercase hover:underline"
+        className="text-sm text-ink-muted hover:underline"
       >
         ← {pursuit.title}
       </Link>

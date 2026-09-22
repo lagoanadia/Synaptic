@@ -18,7 +18,7 @@ export function MemberForm({ pursuitId }: { pursuitId: string }) {
         name="email"
         placeholder="+ invite by email"
         disabled={isPending}
-        className="w-36 rounded-full border border-dashed border-zinc-300 bg-transparent px-2 py-0.5 text-xs focus:w-48 focus:outline-none disabled:opacity-50 dark:border-zinc-700"
+        className="w-36 rounded border border-dashed border-border-subtle bg-transparent px-2 py-0.5 text-xs focus:w-48 focus:outline-none disabled:opacity-50"
       />
       {state.error && (
         <span className="max-w-xs text-xs text-red-500">{state.error}</span>

@@ -49,7 +49,7 @@ export default async function PursuitsPage() {
     <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-6 py-12">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Pursuits</h1>
-        <a href="/" className="text-sm text-zinc-500 hover:underline">
+        <a href="/" className="text-sm text-ink-muted hover:underline">
           {session.user.name}
         </a>
       </div>
@@ -60,12 +60,12 @@ export default async function PursuitsPage() {
           name="title"
           placeholder="New pursuit title"
           required
-          className="flex-1 rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-transparent"
+          className="flex-1 rounded-md border border-border-subtle px-3 py-2 text-sm"
         />
         <TypeSelect />
         <button
           type="submit"
-          className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium whitespace-nowrap text-white hover:bg-zinc-700 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
+          className="rounded-md bg-ink px-4 py-2 text-sm font-medium whitespace-nowrap text-white hover:opacity-90"
         >
           + New
         </button>
@@ -76,15 +76,15 @@ export default async function PursuitsPage() {
           <a
             key={p.id}
             href={`/pursuits/${p.id}`}
-            className="flex flex-col gap-3 rounded-lg border border-dashed border-zinc-300 bg-white p-6 hover:border-solid hover:border-zinc-900 dark:border-zinc-700 dark:bg-transparent dark:hover:border-zinc-50"
+            className="flex flex-col gap-3 rounded-lg border border-dashed border-border-subtle bg-white p-6 hover:border-solid hover:border-ink"
           >
             <div className="flex items-center gap-2">
               <span
                 className={`h-2 w-2 rounded-full ${
-                  p.status === "ACTIVE" ? "bg-blue-500" : "bg-zinc-400"
+                  p.status === "ACTIVE" ? "bg-accent" : "bg-ink-faint"
                 }`}
               />
-              <span className="font-mono text-xs tracking-wide text-zinc-500 uppercase">
+              <span className="text-sm text-ink-muted">
                 {typeLabel(p)} · {p.status.toLowerCase()}
               </span>
             </div>
@@ -94,20 +94,20 @@ export default async function PursuitsPage() {
                 {p.pursuitTags.map((t) => (
                   <span
                     key={t.id}
-                    className="rounded-full border border-zinc-300 px-2 py-0.5 font-mono text-[10px] text-zinc-500 uppercase dark:border-zinc-700"
+                    className="rounded bg-chip px-2 py-0.5 text-xs text-ink-muted"
                   >
-                    #{t.name}
+                    {t.name}
                   </span>
                 ))}
               </div>
             )}
-            <div className="font-mono text-xs text-zinc-500">
+            <div className="text-xs text-ink-faint">
               last touched {timeAgo(p.lastTouchedAt)}
             </div>
           </a>
         ))}
         {pursuits.length === 0 && (
-          <p className="text-sm text-zinc-500">
+          <p className="text-sm text-ink-muted">
             No pursuits yet — create your first one above.
           </p>
         )}

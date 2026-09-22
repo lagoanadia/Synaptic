@@ -40,7 +40,7 @@ export default async function DumpPage({
       <div className="flex items-center justify-between">
         <Link
           href={`/pursuits/${id}?tab=dump`}
-          className="font-mono text-xs tracking-wide text-zinc-500 uppercase hover:underline"
+          className="text-sm text-ink-muted hover:underline"
         >
           ← {dump.pursuit.title}
         </Link>
@@ -54,12 +54,10 @@ export default async function DumpPage({
         <div className="flex items-center gap-2">
           <span
             className={`h-1.5 w-1.5 rounded-full ${
-              dump.processed
-                ? "bg-zinc-300 dark:bg-zinc-700"
-                : "bg-blue-500"
+              dump.processed ? "bg-ink-faint" : "bg-accent"
             }`}
           />
-          <span className="font-mono text-xs text-zinc-500">
+          <span className="text-xs text-ink-faint">
             {dump.createdAt.toLocaleString()}
             {dump.processed && " · folded into a note"}
           </span>
@@ -84,7 +82,7 @@ export default async function DumpPage({
                 key={i}
                 src={segment.url}
                 alt="Brain dump attachment"
-                className="max-w-full rounded-md border border-zinc-200 dark:border-zinc-800"
+                className="max-w-full rounded-md border border-border-subtle"
               />
             ),
           )}
