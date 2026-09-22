@@ -6,7 +6,6 @@ import { addAttachment, organizeDumps } from "./actions";
 import { MergeControls } from "./MergeControls";
 import { TagForm } from "./TagForm";
 import { MemberForm } from "./MemberForm";
-import { DumpForm } from "./DumpForm";
 import { autoTitle } from "@/lib/text";
 
 const TYPE_LABEL: Record<string, string> = {
@@ -147,7 +146,12 @@ export default async function PursuitPage({
 
       {tab === "dump" && (
         <div className="flex flex-col gap-4">
-          <DumpForm pursuitId={pursuit.id} />
+          <Link
+            href={`/pursuits/${pursuit.id}/dump/new`}
+            className="self-start rounded-md border border-dashed border-zinc-300 px-4 py-2 text-sm text-zinc-500 hover:border-solid hover:border-zinc-900 hover:text-zinc-900 dark:border-zinc-700 dark:hover:border-zinc-50 dark:hover:text-zinc-50"
+          >
+            + New page
+          </Link>
 
           {unprocessedCount > 0 && (
             <form action={organizeDumps.bind(null, pursuit.id)}>
