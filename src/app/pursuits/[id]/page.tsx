@@ -8,6 +8,7 @@ import { DumpControls } from "./DumpControls";
 import { PursuitMeta } from "./PursuitMeta";
 import { TagForm } from "./TagForm";
 import { MemberForm } from "./MemberForm";
+import { MemberRow } from "./MemberRow";
 import { DeleteButton } from "../DeleteButton";
 
 export default async function PursuitPage({
@@ -111,11 +112,21 @@ export default async function PursuitPage({
           <span className="text-xs text-ink-muted">
             {pursuit.owner.name ?? pursuit.owner.email} (owner)
           </span>
-          {pursuit.members.map((m) => (
-            <span key={m.id} className="text-xs text-ink-muted">
-              · {m.user.name ?? m.user.email} ({m.role.toLowerCase()})
-            </span>
-          ))}
+          {pursuit.members.map((m) =>
+            pursuit.owner.id === session.user.id ? (
+              <MemberRow
+                key={m.id}
+                pursuitId={pursuit.id}
+                memberId={m.id}
+                name={m.user.name ?? m.user.email}
+                role={m.role}
+              />
+            ) : (
+              <span key={m.id} className="text-xs text-ink-muted">
+                · {m.user.name ?? m.user.email} ({m.role.toLowerCase()})
+              </span>
+            ),
+          )}
           {pursuit.owner.id === session.user.id && (
             <MemberForm pursuitId={pursuit.id} />
           )}

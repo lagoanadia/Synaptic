@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { groq } from "@/lib/groq";
-import { PursuitType, PursuitStatus } from "@/generated/prisma/client";
+import { PursuitType, PursuitStatus, MemberRole } from "@/generated/prisma/client";
 
 async function requireAccess(pursuitId: string) {
   const session = await auth();
@@ -51,6 +51,9 @@ export async function addMember(
     return { error: "Email is required" };
   }
 
+  const role = formData.get("role");
+  const memberRole: MemberRole = role === "VIEWER" ? "VIEWER" : "EDITOR";
+
   const invitedUser = await prisma.user.findUnique({
     where: { email: email.trim() },
   });
@@ -66,12 +69,46 @@ export async function addMember(
 
   await prisma.pursuitMember.upsert({
     where: { pursuitId_userId: { pursuitId, userId: invitedUser.id } },
-    create: { pursuitId, userId: invitedUser.id, role: "EDITOR" },
-    update: {},
+    create: { pursuitId, userId: invitedUser.id, role: memberRole },
+    update: { role: memberRole },
   });
 
   revalidatePath(`/pursuits/${pursuitId}`);
   return { error: null };
+}
+
+export async function removeMember(pursuitId: string, memberId: string) {
+  const { session, pursuit } = await requireAccess(pursuitId);
+  if (pursuit.ownerId !== session.user.id) {
+    throw new Error("Only the owner can remove collaborators");
+  }
+
+  await prisma.pursuitMember.deleteMany({
+    where: { id: memberId, pursuitId },
+  });
+
+  revalidatePath(`/pursuits/${pursuitId}`);
+}
+
+export async function updateMemberRole(
+  pursuitId: string,
+  memberId: string,
+  role: string,
+) {
+  const { session, pursuit } = await requireAccess(pursuitId);
+  if (pursuit.ownerId !== session.user.id) {
+    throw new Error("Only the owner can change a collaborator's role");
+  }
+  if (role !== "EDITOR" && role !== "VIEWER") {
+    throw new Error("Invalid role");
+  }
+
+  await prisma.pursuitMember.updateMany({
+    where: { id: memberId, pursuitId },
+    data: { role },
+  });
+
+  revalidatePath(`/pursuits/${pursuitId}`);
 }
 
 export async function addBrainDump(
