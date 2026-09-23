@@ -5,7 +5,11 @@ export default async function Home() {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-white p-8">
-      <h1 className="text-2xl font-semibold text-ink">Synaptic</h1>
+      <div className="flex items-center gap-3">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo.png" alt="Synaptic logo" className="h-10 w-10 rounded-lg" />
+        <h1 className="text-2xl font-semibold text-ink">Synaptic</h1>
+      </div>
 
       {session?.user ? (
         <div className="flex flex-col items-center gap-4 text-center">
