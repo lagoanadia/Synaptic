@@ -67,7 +67,7 @@ export default async function DumpPage({
             }`}
           />
           <span className="text-xs text-ink-faint">
-            {dump.createdAt.toLocaleString()}
+            {dump.createdAt.toLocaleString("en-US")}
             {dump.processed && " · folded into a note"}
           </span>
         </div>

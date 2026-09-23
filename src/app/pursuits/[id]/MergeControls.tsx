@@ -68,7 +68,7 @@ export function MergeControls({
                 </label>
                 <div className="flex items-center gap-3">
                   <span className="text-xs text-ink-muted">
-                    {new Date(n.createdAt).toLocaleDateString()} · from{" "}
+                    {new Date(n.createdAt).toLocaleDateString("en-US")} · from{" "}
                     {n.sourceDumps.length} dumps
                   </span>
                   {editingId === n.id ? (

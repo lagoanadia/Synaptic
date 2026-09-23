@@ -88,7 +88,7 @@ export function DumpControls({
               {d.images.length > 0 && <span>🖼</span>}
               <span className="flex-1 truncate text-sm">{autoTitle(d.content)}</span>
               <span className="text-xs whitespace-nowrap text-ink-faint">
-                {new Date(d.createdAt).toLocaleDateString()}
+                {new Date(d.createdAt).toLocaleDateString("en-US")}
               </span>
               {d.processed && (
                 <span className="text-xs whitespace-nowrap text-ink-faint">
