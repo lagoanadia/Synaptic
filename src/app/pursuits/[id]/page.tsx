@@ -9,6 +9,7 @@ import { PursuitMeta } from "./PursuitMeta";
 import { TagForm } from "./TagForm";
 import { MemberForm } from "./MemberForm";
 import { MemberRow } from "./MemberRow";
+import { LeaveButton } from "./LeaveButton";
 import { DeleteButton } from "../DeleteButton";
 
 export default async function PursuitPage({
@@ -77,7 +78,12 @@ export default async function PursuitPage({
         >
           ← Exit
         </Link>
-        <span className="text-xs text-ink-faint">Focus mode</span>
+        <div className="flex items-center gap-4">
+          {pursuit.owner.id !== session.user.id && (
+            <LeaveButton pursuitId={pursuit.id} />
+          )}
+          <span className="text-xs text-ink-faint">Focus mode</span>
+        </div>
       </div>
 
       <div className="flex flex-col gap-2">

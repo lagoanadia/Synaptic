@@ -77,6 +77,19 @@ export async function addMember(
   return { error: null };
 }
 
+export async function leavePursuit(pursuitId: string) {
+  const { session, pursuit } = await requireAccess(pursuitId);
+  if (pursuit.ownerId === session.user.id) {
+    throw new Error("Owners can't leave their own pursuit — delete it instead");
+  }
+
+  await prisma.pursuitMember.deleteMany({
+    where: { pursuitId, userId: session.user.id },
+  });
+
+  revalidatePath("/pursuits");
+}
+
 export async function removeMember(pursuitId: string, memberId: string) {
   const { session, pursuit } = await requireAccess(pursuitId);
   if (pursuit.ownerId !== session.user.id) {

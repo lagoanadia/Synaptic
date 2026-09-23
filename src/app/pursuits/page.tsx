@@ -128,10 +128,19 @@ export default async function PursuitsPage() {
   // Sections are free-typed and stored per user (see Section in the
   // schema) — grouped here from whichever pursuits already carry one,
   // rather than from a fixed preset list. Anything without a section
-  // falls into its own row at the end instead of being hidden.
+  // falls into its own row at the end instead of being hidden. A pursuit
+  // someone else owns and shared with you carries THEIR section, not
+  // yours — showing it under their private category name would be
+  // confusing, so anything not owned by the viewer goes in its own
+  // "Shared with me" row instead, regardless of its actual sectionId.
   const grouped = new Map<string, PursuitForDisplay[]>();
   const unsectioned: PursuitForDisplay[] = [];
+  const shared: PursuitForDisplay[] = [];
   for (const p of pursuits) {
+    if (p.ownerId !== session.user.id) {
+      shared.push(p);
+      continue;
+    }
     const name = p.section?.name;
     if (!name) {
       unsectioned.push(p);
@@ -207,6 +216,9 @@ export default async function PursuitsPage() {
         {sectionRows.map(([name, rowPursuits]) => (
           <PursuitRow key={name} label={name} pursuits={rowPursuits} session={session} />
         ))}
+        {shared.length > 0 && (
+          <PursuitRow label="Shared with me" pursuits={shared} session={session} />
+        )}
         {unsectioned.length > 0 && (
           <PursuitRow label="No section" pursuits={unsectioned} session={session} />
         )}
