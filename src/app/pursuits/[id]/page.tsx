@@ -5,17 +5,10 @@ import { prisma } from "@/lib/prisma";
 import { addAttachment, removePursuitTag } from "./actions";
 import { MergeControls } from "./MergeControls";
 import { DumpControls } from "./DumpControls";
+import { PursuitMeta } from "./PursuitMeta";
 import { TagForm } from "./TagForm";
 import { MemberForm } from "./MemberForm";
 import { DeleteButton } from "../DeleteButton";
-
-const TYPE_LABEL: Record<string, string> = {
-  PROJECT: "Project",
-  BOOK: "Book",
-  LANGUAGE: "Language",
-  SKILL: "Skill",
-  OTHER: "Other",
-};
 
 export default async function PursuitPage({
   params,
@@ -60,11 +53,6 @@ export default async function PursuitPage({
     notFound();
   }
 
-  const typeLabel =
-    pursuit.type === "OTHER" && pursuit.customType
-      ? pursuit.customType
-      : TYPE_LABEL[pursuit.type];
-
   const tabClass = (name: string) =>
     `pb-2 text-sm font-semibold border-b-2 ${
       tab === name
@@ -86,16 +74,12 @@ export default async function PursuitPage({
 
       <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-semibold">{pursuit.title}</h1>
-        <div className="flex items-center gap-2">
-          <span
-            className={`h-2 w-2 rounded-full ${
-              pursuit.status === "ACTIVE" ? "bg-accent" : "bg-ink-faint"
-            }`}
-          />
-          <span className="text-sm text-ink-muted">
-            {typeLabel} · {pursuit.status.toLowerCase()}
-          </span>
-        </div>
+        <PursuitMeta
+          pursuitId={pursuit.id}
+          type={pursuit.type}
+          customType={pursuit.customType}
+          status={pursuit.status}
+        />
         <div className="flex flex-wrap items-center gap-1.5">
           {pursuit.pursuitTags.map((t) => (
             <span

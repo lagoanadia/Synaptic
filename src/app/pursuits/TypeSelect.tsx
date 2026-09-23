@@ -12,8 +12,16 @@ const OPTIONS = [
 
 // Client Component because it needs local state to show/hide the custom
 // label input — the rest of the page around it stays a Server Component.
-export function TypeSelect() {
-  const [type, setType] = useState("PROJECT");
+// Used both when creating a pursuit (no defaults) and when editing one's
+// type afterward (defaultType/defaultCustomType prefill it).
+export function TypeSelect({
+  defaultType = "PROJECT",
+  defaultCustomType = "",
+}: {
+  defaultType?: string;
+  defaultCustomType?: string;
+}) {
+  const [type, setType] = useState(defaultType);
 
   return (
     <div className="flex gap-2">
@@ -33,6 +41,7 @@ export function TypeSelect() {
         <input
           type="text"
           name="customType"
+          defaultValue={defaultCustomType}
           placeholder="Name your own type"
           required
           className="rounded-md border border-border-subtle bg-white px-3 py-2 text-sm text-ink"
