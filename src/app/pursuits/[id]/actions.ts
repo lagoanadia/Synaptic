@@ -220,17 +220,12 @@ export async function organizeDumps(pursuitId: string, dumpIds?: string[]) {
     select: { name: true },
   });
 
-  // Groq's hosted models here are text-only, so an image is referenced by
-  // URL rather than actually shown to the model — the model can't see the
-  // picture, only that one was attached and where it lives.
-  const rawMaterial = dumps
-    .map((dump) => {
-      const parts = [];
-      if (dump.content) parts.push(dump.content);
-      for (const url of dump.images) parts.push(`[attached image: ${url}]`);
-      return parts.join("\n");
-    })
-    .join("\n---\n");
+  // dump.content already has any images inlined as `![image](url)` markers
+  // (that's how the composer saves them) — no need to also list them
+  // separately, that would just duplicate the same URL for the model.
+  // Groq's hosted models here are text-only, so the model can't actually
+  // see the picture, only that one is referenced and where it lives.
+  const rawMaterial = dumps.map((dump) => dump.content ?? "").join("\n---\n");
 
   const prompt = `${rawMaterial}\n---\nExisting tags for this pursuit: ${
     existingTags.map((t) => t.name).join(", ") || "(none yet)"
@@ -247,6 +242,9 @@ instead of formatting):
 - "1. " (etc.) at the start of a line for a numbered list
 - "a. " (etc.) at the start of a line for a lettered list
 - "**text**" for bold — no other inline styling
+- "![image](url)" to keep a referenced image, exactly as it appears in the
+  material above, verbatim and on its own line — never describe the image
+  in words and never write its bare url as plain text
 Plain paragraphs need no marker. Keep it to one blank line between blocks.
 
 Then suggest 1-3 short lowercase tags — reuse an existing tag if one
