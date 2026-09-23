@@ -183,6 +183,71 @@ export function NewDumpForm({
     applyInlineMark(index, marker);
   }
 
+  // Pressing Enter on a "1. ", "- " or "a. " line continues the list on
+  // the next line with the number/letter already advanced, instead of
+  // making you type it yourself — the plain-text equivalent of watching
+  // the list count itself up as you write. Enter on an EMPTY list line
+  // ends the list instead (strips that line's marker) rather than adding
+  // yet another empty item, matching how e.g. Obsidian or Bear behave.
+  function handleListContinuation(
+    e: React.KeyboardEvent<HTMLTextAreaElement>,
+    index: number,
+  ) {
+    if (e.key !== "Enter" || e.shiftKey || e.ctrlKey || e.metaKey || e.altKey) {
+      return;
+    }
+    const textarea = textareaRefs.current[index];
+    const block = blocks[index];
+    if (!textarea || !block || block.type !== "text") return;
+
+    const cursor = textarea.selectionStart;
+    const value = block.value;
+    const lineStart = value.lastIndexOf("\n", cursor - 1) + 1;
+    const currentLine = value.slice(lineStart, cursor);
+
+    let nextMarker: string | null = null;
+    let itemIsEmpty = false;
+
+    const numbered = /^(\d+)\.\s(.*)$/.exec(currentLine);
+    const lettered = /^([a-zA-Z])\.\s(.*)$/.exec(currentLine);
+    const bullet = /^-\s(.*)$/.exec(currentLine);
+
+    if (numbered) {
+      itemIsEmpty = numbered[2].trim() === "";
+      nextMarker = `${Number(numbered[1]) + 1}. `;
+    } else if (bullet) {
+      itemIsEmpty = bullet[1].trim() === "";
+      nextMarker = "- ";
+    } else if (lettered) {
+      itemIsEmpty = lettered[2].trim() === "";
+      nextMarker = `${String.fromCharCode(lettered[1].charCodeAt(0) + 1)}. `;
+    }
+
+    if (nextMarker === null) return; // Not on a list line — let Enter behave normally.
+    e.preventDefault();
+
+    if (itemIsEmpty) {
+      const newValue = value.slice(0, lineStart) + value.slice(cursor);
+      updateTextBlock(index, newValue);
+      requestAnimationFrame(() => {
+        textarea.focus();
+        textarea.setSelectionRange(lineStart, lineStart);
+        autoResize(textarea);
+      });
+      return;
+    }
+
+    const insertion = `\n${nextMarker}`;
+    const newValue = value.slice(0, cursor) + insertion + value.slice(cursor);
+    updateTextBlock(index, newValue);
+    requestAnimationFrame(() => {
+      textarea.focus();
+      const pos = cursor + insertion.length;
+      textarea.setSelectionRange(pos, pos);
+      autoResize(textarea);
+    });
+  }
+
   function removeImageBlock(index: number) {
     setBlocks((prev) => {
       const next = [...prev];
@@ -219,7 +284,10 @@ export function NewDumpForm({
                 autoResize(e.target);
               }}
               onFocus={() => setActiveIndex(i)}
-              onKeyDown={(e) => handleFormatShortcut(e, i)}
+              onKeyDown={(e) => {
+                handleFormatShortcut(e, i);
+                handleListContinuation(e, i);
+              }}
               autoFocus={i === 0}
               placeholder={
                 blocks.length === 1 && !isEditing ? "Start writing…" : undefined
