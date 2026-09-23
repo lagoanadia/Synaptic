@@ -333,6 +333,25 @@ export function NewDumpForm({
         >
           {isUploading ? "Uploading…" : "🖼 Insert image"}
         </button>
+        <details className="relative">
+          <summary
+            title="Formatting shortcuts"
+            className="flex h-5 w-5 cursor-pointer list-none items-center justify-center rounded-full border border-border-subtle text-xs text-ink-faint hover:text-ink [&::-webkit-details-marker]:hidden"
+          >
+            ?
+          </summary>
+          <div className="absolute bottom-full left-0 z-10 mb-2 w-60 rounded-md border border-border-subtle bg-white p-3 text-xs text-ink-muted shadow-sm">
+            <ul className="flex flex-col gap-1">
+              <li><code>#</code> heading</li>
+              <li><code>!</code> callout</li>
+              <li><code>-</code> bullet list</li>
+              <li><code>1.</code> numbered list</li>
+              <li><code>a.</code> lettered list</li>
+              <li><code>**bold**</code> · <code>*italic*</code> · <code>__underline__</code></li>
+              <li>Ctrl/Cmd + B / I / U on a selection</li>
+            </ul>
+          </div>
+        </details>
         <div className="flex-1" />
         <button
           type="submit"
