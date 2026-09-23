@@ -1,8 +1,20 @@
+const LEADING_HEADING = /^#{1,3}\s+(.+)$/;
+const LEADING_MARKER = /^(?:!|-|\d+\.|[a-zA-Z]\.)\s+/;
+
 // Notion-style auto-title: the first few words of the content, so a raw
-// capture reads as a page title instead of a wall of text in a list.
+// capture reads as a page title instead of a wall of text in a list. If the
+// content opens with a `#` heading, that line names the whole note — use it
+// as-is (minus the `#`) instead of letting the title bleed into whatever
+// paragraph follows on the next line.
 export function autoTitle(content: string | null, maxWords = 8): string {
   if (!content || content.trim() === "") return "Untitled";
-  const words = content.trim().split(/\s+/);
+  const trimmed = content.trim();
+  const firstLine = trimmed.split("\n")[0].trim();
+
+  const heading = LEADING_HEADING.exec(firstLine);
+  const source = heading ? heading[1] : trimmed.replace(LEADING_MARKER, "");
+
+  const words = source.trim().split(/\s+/);
   const title = words.slice(0, maxWords).join(" ");
   return words.length > maxWords ? `${title}…` : title;
 }
