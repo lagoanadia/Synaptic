@@ -164,11 +164,49 @@ export async function deleteBrainDump(pursuitId: string, dumpId: string) {
   revalidatePath(`/pursuits/${pursuitId}`);
 }
 
-export async function organizeDumps(pursuitId: string) {
+// Finalizing skips the AI entirely — for a dump that's already written the
+// way you want it, this just promotes it straight into a Note as-is,
+// instead of asking Groq to rewrite something that doesn't need it.
+export async function finalizeBrainDump(pursuitId: string, dumpId: string) {
+  await requireAccess(pursuitId);
+
+  const dump = await prisma.brainDump.findFirst({
+    where: { id: dumpId, pursuitId, processed: false },
+  });
+  if (!dump) {
+    throw new Error("Page not found or already organized");
+  }
+
+  await prisma.note.create({
+    data: {
+      pursuitId,
+      content: dump.content ?? "",
+      sourceDumps: { connect: { id: dump.id } },
+    },
+  });
+
+  await prisma.brainDump.update({
+    where: { id: dumpId },
+    data: { processed: true },
+  });
+
+  await prisma.pursuit.update({
+    where: { id: pursuitId },
+    data: { lastTouchedAt: new Date() },
+  });
+
+  revalidatePath(`/pursuits/${pursuitId}`);
+}
+
+export async function organizeDumps(pursuitId: string, dumpIds?: string[]) {
   await requireAccess(pursuitId);
 
   const dumps = await prisma.brainDump.findMany({
-    where: { pursuitId, processed: false },
+    where: {
+      pursuitId,
+      processed: false,
+      ...(dumpIds && dumpIds.length > 0 ? { id: { in: dumpIds } } : {}),
+    },
     orderBy: { createdAt: "asc" },
   });
 

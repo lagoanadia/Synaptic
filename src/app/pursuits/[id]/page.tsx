@@ -2,17 +2,12 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import {
-  addAttachment,
-  deleteBrainDump,
-  organizeDumps,
-  removePursuitTag,
-} from "./actions";
+import { addAttachment, removePursuitTag } from "./actions";
 import { MergeControls } from "./MergeControls";
+import { DumpControls } from "./DumpControls";
 import { TagForm } from "./TagForm";
 import { MemberForm } from "./MemberForm";
 import { DeleteButton } from "../DeleteButton";
-import { autoTitle } from "@/lib/text";
 
 const TYPE_LABEL: Record<string, string> = {
   PROJECT: "Project",
@@ -69,9 +64,6 @@ export default async function PursuitPage({
     pursuit.type === "OTHER" && pursuit.customType
       ? pursuit.customType
       : TYPE_LABEL[pursuit.type];
-  const unprocessedCount = pursuit.brainDumps.filter(
-    (d) => !d.processed,
-  ).length;
 
   const tabClass = (name: string) =>
     `pb-2 text-sm font-semibold border-b-2 ${
@@ -153,69 +145,16 @@ export default async function PursuitPage({
       </div>
 
       {tab === "dump" && (
-        <div className="flex flex-col gap-4">
-          <Link
-            href={`/pursuits/${pursuit.id}/dump/new`}
-            className="self-start rounded-md border border-dashed border-border-subtle px-4 py-2 text-sm text-ink-muted hover:border-solid hover:border-ink hover:text-ink"
-          >
-            + New page
-          </Link>
-
-          {unprocessedCount > 0 && (
-            <form action={organizeDumps.bind(null, pursuit.id)}>
-              <button
-                type="submit"
-                className="self-start rounded-md border border-accent px-3 py-1.5 text-xs font-semibold text-accent hover:bg-accent-soft"
-              >
-                ✦ Organize {unprocessedCount} new dumps →
-              </button>
-            </form>
-          )}
-
-          <div className="flex flex-col">
-            {pursuit.brainDumps.map((d) => (
-              <div
-                key={d.id}
-                className="-mx-2 flex items-center gap-3 rounded-md px-2 py-2.5 hover:bg-chip"
-              >
-                <Link
-                  href={`/pursuits/${pursuit.id}/dump/${d.id}`}
-                  className="flex flex-1 items-center gap-3 overflow-hidden"
-                >
-                  <span
-                    className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${
-                      d.processed ? "bg-ink-faint" : "bg-accent"
-                    }`}
-                  />
-                  {d.images.length > 0 && <span>🖼</span>}
-                  <span className="flex-1 truncate text-sm">
-                    {autoTitle(d.content)}
-                  </span>
-                  <span className="text-xs whitespace-nowrap text-ink-faint">
-                    {d.createdAt.toLocaleDateString()}
-                  </span>
-                  {d.processed && (
-                    <span className="text-xs whitespace-nowrap text-ink-faint">
-                      → in note
-                    </span>
-                  )}
-                </Link>
-                <DeleteButton
-                  action={deleteBrainDump.bind(null, pursuit.id, d.id)}
-                  confirmMessage="Delete this page? This can't be undone."
-                  className="px-1 text-ink-faint hover:text-red-500"
-                >
-                  ×
-                </DeleteButton>
-              </div>
-            ))}
-            {pursuit.brainDumps.length === 0 && (
-              <p className="text-sm text-ink-muted">
-                Nothing dumped yet — start above.
-              </p>
-            )}
-          </div>
-        </div>
+        <DumpControls
+          pursuitId={pursuit.id}
+          dumps={pursuit.brainDumps.map((d) => ({
+            id: d.id,
+            content: d.content,
+            images: d.images,
+            processed: d.processed,
+            createdAt: d.createdAt.toISOString(),
+          }))}
+        />
       )}
 
       {tab === "organized" && (
