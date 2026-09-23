@@ -67,7 +67,7 @@ export default async function DumpPage({
             }`}
           />
           <span className="text-xs text-ink-faint">
-            {dump.createdAt.toLocaleString("en-US")}
+            {dump.createdAt.toLocaleString("en-US", { timeZone: "UTC" })}
             {dump.processed && " · folded into a note"}
           </span>
         </div>
