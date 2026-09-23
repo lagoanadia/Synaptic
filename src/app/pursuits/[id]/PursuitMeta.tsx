@@ -21,11 +21,15 @@ export function PursuitMeta({
   type,
   customType,
   status,
+  sectionName,
+  availableSections,
 }: {
   pursuitId: string;
   type: string;
   customType: string | null;
   status: string;
+  sectionName: string | null;
+  availableSections: string[];
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -46,6 +50,7 @@ export function PursuitMeta({
         />
         <span className="text-sm text-ink-muted hover:text-ink hover:underline">
           {typeLabel} · {status.toLowerCase()}
+          {sectionName && ` · ${sectionName}`}
         </span>
       </button>
     );
@@ -59,7 +64,7 @@ export function PursuitMeta({
           setIsEditing(false);
         });
       }}
-      className="flex items-center gap-2"
+      className="flex flex-wrap items-center gap-2"
     >
       <TypeSelect defaultType={type} defaultCustomType={customType ?? ""} />
       <select
@@ -73,6 +78,19 @@ export function PursuitMeta({
           </option>
         ))}
       </select>
+      <input
+        type="text"
+        name="section"
+        list="pursuit-sections"
+        defaultValue={sectionName ?? ""}
+        placeholder="Section (optional)"
+        className="rounded-md border border-border-subtle bg-white px-3 py-2 text-sm text-ink"
+      />
+      <datalist id="pursuit-sections">
+        {availableSections.map((s) => (
+          <option key={s} value={s} />
+        ))}
+      </datalist>
       <button
         type="submit"
         disabled={isPending}

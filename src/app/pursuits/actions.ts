@@ -14,6 +14,7 @@ export async function createPursuit(formData: FormData) {
   const title = formData.get("title");
   const type = formData.get("type");
   const customType = formData.get("customType");
+  const sectionName = formData.get("section");
 
   if (typeof title !== "string" || title.trim() === "") {
     throw new Error("Title is required");
@@ -25,6 +26,18 @@ export async function createPursuit(formData: FormData) {
     throw new Error("Custom type name is required");
   }
 
+  // Sections are free-typed and stored per user, same as PursuitTag — no
+  // fixed preset list, reuse an existing one by name or create it here.
+  let sectionId: string | null = null;
+  if (typeof sectionName === "string" && sectionName.trim() !== "") {
+    const section = await prisma.section.upsert({
+      where: { userId_name: { userId: session.user.id, name: sectionName.trim() } },
+      create: { userId: session.user.id, name: sectionName.trim() },
+      update: {},
+    });
+    sectionId = section.id;
+  }
+
   await prisma.pursuit.create({
     data: {
       title: title.trim(),
@@ -34,6 +47,7 @@ export async function createPursuit(formData: FormData) {
           ? customType.trim()
           : null,
       ownerId: session.user.id,
+      sectionId,
     },
   });
 

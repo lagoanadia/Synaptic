@@ -26,28 +26,35 @@ export default async function PursuitPage({
     redirect("/");
   }
 
-  const pursuit = await prisma.pursuit.findFirst({
-    where: {
-      id,
-      OR: [
-        { ownerId: session.user.id },
-        { members: { some: { userId: session.user.id } } },
-      ],
-    },
-    include: {
-      pursuitTags: true,
-      owner: { select: { id: true, name: true, email: true } },
-      members: {
-        include: { user: { select: { id: true, name: true, email: true } } },
+  const [pursuit, sections] = await Promise.all([
+    prisma.pursuit.findFirst({
+      where: {
+        id,
+        OR: [
+          { ownerId: session.user.id },
+          { members: { some: { userId: session.user.id } } },
+        ],
       },
-      brainDumps: { orderBy: { createdAt: "desc" } },
-      notes: {
-        orderBy: { createdAt: "desc" },
-        include: { tags: true, sourceDumps: { select: { id: true } } },
+      include: {
+        pursuitTags: true,
+        section: true,
+        owner: { select: { id: true, name: true, email: true } },
+        members: {
+          include: { user: { select: { id: true, name: true, email: true } } },
+        },
+        brainDumps: { orderBy: { createdAt: "desc" } },
+        notes: {
+          orderBy: { createdAt: "desc" },
+          include: { tags: true, sourceDumps: { select: { id: true } } },
+        },
+        attachments: { orderBy: { createdAt: "desc" } },
       },
-      attachments: { orderBy: { createdAt: "desc" } },
-    },
-  });
+    }),
+    prisma.section.findMany({
+      where: { userId: session.user.id },
+      orderBy: { name: "asc" },
+    }),
+  ]);
 
   if (!pursuit) {
     notFound();
@@ -79,6 +86,8 @@ export default async function PursuitPage({
           type={pursuit.type}
           customType={pursuit.customType}
           status={pursuit.status}
+          sectionName={pursuit.section?.name ?? null}
+          availableSections={sections.map((s) => s.name)}
         />
         <div className="flex flex-wrap items-center gap-1.5">
           {pursuit.pursuitTags.map((t) => (

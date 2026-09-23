@@ -476,11 +476,12 @@ export async function removePursuitTag(pursuitId: string, tagId: string) {
 }
 
 export async function updatePursuitMeta(pursuitId: string, formData: FormData) {
-  await requireAccess(pursuitId);
+  const { session } = await requireAccess(pursuitId);
 
   const type = formData.get("type");
   const customType = formData.get("customType");
   const status = formData.get("status");
+  const sectionName = formData.get("section");
 
   if (typeof type !== "string" || !(type in PursuitType)) {
     throw new Error("Invalid pursuit type");
@@ -495,6 +496,19 @@ export async function updatePursuitMeta(pursuitId: string, formData: FormData) {
     throw new Error("Invalid status");
   }
 
+  // Sections are free-typed and stored per user, same as PursuitTag — no
+  // fixed preset list, reuse an existing one by name or create it here. An
+  // empty value clears the pursuit's section instead of leaving it as-is.
+  let sectionId: string | null = null;
+  if (typeof sectionName === "string" && sectionName.trim() !== "") {
+    const section = await prisma.section.upsert({
+      where: { userId_name: { userId: session.user.id, name: sectionName.trim() } },
+      create: { userId: session.user.id, name: sectionName.trim() },
+      update: {},
+    });
+    sectionId = section.id;
+  }
+
   await prisma.pursuit.update({
     where: { id: pursuitId },
     data: {
@@ -504,6 +518,7 @@ export async function updatePursuitMeta(pursuitId: string, formData: FormData) {
           ? customType.trim()
           : null,
       status: status as PursuitStatus,
+      sectionId,
     },
   });
 

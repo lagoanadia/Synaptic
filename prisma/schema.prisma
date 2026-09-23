@@ -26,6 +26,7 @@ model User {
   ownedPursuits Pursuit[]
   memberships   PursuitMember[]
   pursuitTags   PursuitTag[]
+  sections      Section[]
   brainDumps    BrainDump[]
 }
 
@@ -100,6 +101,9 @@ model Pursuit {
   ownerId String
   owner   User   @relation(fields: [ownerId], references: [id])
 
+  sectionId String?
+  section   Section? @relation(fields: [sectionId], references: [id])
+
   members     PursuitMember[]
   pursuitTags PursuitTag[]
   brainDumps  BrainDump[]
@@ -121,6 +125,23 @@ model PursuitMember {
   user   User   @relation(fields: [userId], references: [id])
 
   @@unique([pursuitId, userId])
+}
+
+// A user-created grouping for the Pursuits list ("Projects", "Trabajo"…),
+// shown as a horizontally-scrollable row. Unlike PursuitTag (many tags per
+// Pursuit), a Pursuit sits in at most one Section at a time — it's a bucket,
+// not a label. Global to the user and free-typed, same as PursuitTag, so
+// there's no fixed preset list to pick from.
+model Section {
+  id   String @id @default(cuid())
+  name String
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  pursuits Pursuit[]
+
+  @@unique([userId, name])
 }
 
 // High-level labels on a Pursuit itself (e.g. #portfolio, #web-dev).
