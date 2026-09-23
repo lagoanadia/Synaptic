@@ -150,6 +150,39 @@ export function NewDumpForm({
     });
   }
 
+  // Ctrl/Cmd+B, +I, +U wrap the selection (or, with nothing selected, drop
+  // the cursor between an empty pair) in the matching shortcut marker —
+  // ** for bold, * for italic, __ for underline — the same ones
+  // RichContent renders back into real formatting.
+  function applyInlineMark(index: number, marker: string) {
+    const textarea = textareaRefs.current[index];
+    const block = blocks[index];
+    if (!textarea || !block || block.type !== "text") return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selected = block.value.slice(start, end);
+    const before = block.value.slice(0, start);
+    const after = block.value.slice(end);
+
+    updateTextBlock(index, `${before}${marker}${selected}${marker}${after}`);
+
+    requestAnimationFrame(() => {
+      textarea.focus();
+      const newStart = start + marker.length;
+      textarea.setSelectionRange(newStart, newStart + selected.length);
+      autoResize(textarea);
+    });
+  }
+
+  function handleFormatShortcut(e: React.KeyboardEvent<HTMLTextAreaElement>, index: number) {
+    if (!(e.ctrlKey || e.metaKey)) return;
+    const marker = { b: "**", i: "*", u: "__" }[e.key.toLowerCase()];
+    if (!marker) return;
+    e.preventDefault();
+    applyInlineMark(index, marker);
+  }
+
   function removeImageBlock(index: number) {
     setBlocks((prev) => {
       const next = [...prev];
@@ -186,15 +219,14 @@ export function NewDumpForm({
                 autoResize(e.target);
               }}
               onFocus={() => setActiveIndex(i)}
+              onKeyDown={(e) => handleFormatShortcut(e, i)}
               autoFocus={i === 0}
               placeholder={
                 blocks.length === 1 && !isEditing ? "Start writing…" : undefined
               }
               disabled={isPending}
               rows={1}
-              className={`resize-none overflow-hidden border-none bg-transparent p-0 text-lg leading-relaxed outline-none disabled:opacity-50 ${
-                i === blocks.length - 1 ? "flex-1" : ""
-              }`}
+              className="resize-none overflow-hidden border-none bg-transparent p-0 text-lg leading-relaxed outline-none disabled:opacity-50"
               style={i === 0 && blocks.length === 1 ? { minHeight: "55vh" } : undefined}
             />
           ) : (

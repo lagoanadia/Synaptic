@@ -195,7 +195,24 @@ export async function organizeDumps(pursuitId: string) {
 
   const prompt = `${rawMaterial}\n---\nExisting tags for this pursuit: ${
     existingTags.map((t) => t.name).join(", ") || "(none yet)"
-  }\n\nSynthesize the material above into one organized, structured note. Then suggest 1-3 short lowercase tags — reuse an existing tag if one genuinely fits, otherwise propose a new short one. Respond with ONLY a JSON object, no other text: {"content": "...", "tags": ["...", "..."]}`;
+  }\n\nSynthesize the material above into one organized, structured note.
+
+Format the note's content using ONLY this exact set of shortcuts — nothing
+else, since the app only knows how to render these (anything else, like
+####, tables, or code fences, would show up as literal stray characters
+instead of formatting):
+- "# " at the start of a line for a heading (also "## " and "### " for
+  smaller headings — never more than three #s)
+- "! " at the start of a line for a callout / key takeaway
+- "- " at the start of a line for a bullet list
+- "1. " (etc.) at the start of a line for a numbered list
+- "a. " (etc.) at the start of a line for a lettered list
+- "**text**" for bold — no other inline styling
+Plain paragraphs need no marker. Keep it to one blank line between blocks.
+
+Then suggest 1-3 short lowercase tags — reuse an existing tag if one
+genuinely fits, otherwise propose a new short one. Respond with ONLY a
+JSON object, no other text: {"content": "...", "tags": ["...", "..."]}`;
 
   const completion = await groq.chat.completions.create({
     // Confirmed live in the Groq console as of this writing — the earlier
@@ -304,6 +321,26 @@ export async function mergeNotes(pursuitId: string, noteIds: string[]) {
   });
 
   await prisma.note.deleteMany({ where: { id: { in: noteIds } } });
+
+  revalidatePath(`/pursuits/${pursuitId}`);
+}
+
+export async function updateNote(
+  pursuitId: string,
+  noteId: string,
+  content: string,
+) {
+  await requireAccess(pursuitId);
+
+  const text = content.trim();
+  if (!text) {
+    throw new Error("Note can't be empty");
+  }
+
+  await prisma.note.updateMany({
+    where: { id: noteId, pursuitId },
+    data: { content: text },
+  });
 
   revalidatePath(`/pursuits/${pursuitId}`);
 }

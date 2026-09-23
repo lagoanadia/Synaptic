@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { deleteNote, mergeNotes } from "./actions";
+import { deleteNote, mergeNotes, updateNote } from "./actions";
+import { RichContent } from "./RichContent";
 
 type NoteForDisplay = {
   id: string;
@@ -22,6 +23,8 @@ export function MergeControls({
 }) {
   const [selected, setSelected] = useState<string[]>([]);
   const [isPending, startTransition] = useTransition();
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [draft, setDraft] = useState("");
 
   function toggle(id: string) {
     setSelected((cur) =>
@@ -68,6 +71,41 @@ export function MergeControls({
                     {new Date(n.createdAt).toLocaleDateString()} · from{" "}
                     {n.sourceDumps.length} dumps
                   </span>
+                  {editingId === n.id ? (
+                    <>
+                      <button
+                        type="button"
+                        disabled={isPending}
+                        onClick={() =>
+                          startTransition(async () => {
+                            await updateNote(pursuitId, n.id, draft);
+                            setEditingId(null);
+                          })
+                        }
+                        className="text-xs font-semibold text-accent disabled:opacity-50"
+                      >
+                        Save
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditingId(null)}
+                        className="text-xs text-ink-faint hover:text-ink"
+                      >
+                        Cancel
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingId(n.id);
+                        setDraft(n.content);
+                      }}
+                      className="text-xs text-ink-faint hover:text-ink"
+                    >
+                      Edit
+                    </button>
+                  )}
                   <button
                     type="button"
                     disabled={isPending}
@@ -88,9 +126,19 @@ export function MergeControls({
                   </button>
                 </div>
               </div>
-              <p className="text-sm leading-relaxed whitespace-pre-line">
-                {n.content}
-              </p>
+              {editingId === n.id ? (
+                <textarea
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  rows={6}
+                  className="w-full resize-y rounded border border-border-subtle bg-white p-2 text-sm leading-relaxed outline-none"
+                />
+              ) : (
+                <RichContent
+                  content={n.content}
+                  paragraphClassName="text-sm leading-relaxed whitespace-pre-line"
+                />
+              )}
               {n.tags.length > 0 && (
                 <div className="flex flex-wrap gap-1.5">
                   {n.tags.map((t) => (
