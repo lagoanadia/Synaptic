@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { createPursuit, deletePursuit } from "./actions";
+import { createPursuit, deletePursuit, deleteSection } from "./actions";
 import { TypeSelect } from "./TypeSelect";
 import { DeleteButton } from "./DeleteButton";
 
@@ -181,6 +181,27 @@ export default async function PursuitsPage() {
           + New
         </button>
       </form>
+
+      {sections.length > 0 && (
+        <div className="-mt-4 flex flex-wrap items-center gap-1.5">
+          <span className="text-xs text-ink-faint">Your sections</span>
+          {sections.map((s) => (
+            <span
+              key={s.id}
+              className="flex items-center gap-1 rounded bg-chip px-2 py-0.5 text-xs text-ink-muted"
+            >
+              {s.name}
+              <DeleteButton
+                action={deleteSection.bind(null, s.id)}
+                confirmMessage={`Delete section "${s.name}"? Pursuits in it become unsectioned — this can't be undone.`}
+                className="text-ink-faint hover:text-red-500"
+              >
+                ×
+              </DeleteButton>
+            </span>
+          ))}
+        </div>
+      )}
 
       <div className="flex flex-col gap-8">
         {sectionRows.map(([name, rowPursuits]) => (

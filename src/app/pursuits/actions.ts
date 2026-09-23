@@ -54,6 +54,23 @@ export async function createPursuit(formData: FormData) {
   revalidatePath("/pursuits");
 }
 
+export async function deleteSection(sectionId: string) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    throw new Error("Not signed in");
+  }
+
+  // Deletes only this user's own section (deleteMany rather than delete so
+  // a mismatched userId is silently a no-op instead of a Prisma error).
+  // Any pursuit in it falls back to sectionId: null automatically — see
+  // the ON DELETE SET NULL on Pursuit.sectionId in the schema.
+  await prisma.section.deleteMany({
+    where: { id: sectionId, userId: session.user.id },
+  });
+
+  revalidatePath("/pursuits");
+}
+
 export async function deletePursuit(pursuitId: string) {
   const session = await auth();
   if (!session?.user?.id) {
