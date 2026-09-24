@@ -7,7 +7,7 @@ import { groq } from "@/lib/groq";
 import type { ChatCompletionContentPartImage } from "groq-sdk/resources/chat/completions";
 import { PursuitType, PursuitStatus, MemberRole } from "@/generated/prisma/client";
 import { upsertSection } from "@/lib/sections";
-import { HEADLINE_OPTIONS } from "@/lib/search";
+import { HEADLINE_OPTIONS, buildOrTsQuery } from "@/lib/search";
 import { parseOrganizeResponse } from "@/lib/organize";
 import {
   DAILY_ORGANIZE_LIMIT,
@@ -692,4 +692,96 @@ export async function searchPursuit(
       snippet: n.snippet,
     })),
   };
+}
+
+const ASK_CONTEXT_LIMIT = 6;
+
+// "Ask your Pursuit" — retrieval-augmented generation, starting from the
+// simplest possible retrieval step: full-text search (lib/search.ts's
+// buildOrTsQuery) instead of embeddings/pgvector. It finds pursuit content
+// that shares WORDS with the question, ranked by how many/how well they
+// match (ts_rank) — good enough for a personal pursuit's dump/note volume,
+// and it's infrastructure this app already has from Phase 1. Embeddings
+// would find content that shares MEANING even with zero shared words
+// (e.g. asking "how do plants make energy" would still surface a dump
+// that only ever says "photosynthesis"), at the cost of an embeddings API
+// call per dump/note and a pgvector column to maintain — worth it once
+// full-text search demonstrably misses relevant content for how you
+// actually phrase questions, not before.
+export async function askPursuit(
+  pursuitId: string,
+  question: string,
+): Promise<{ error: string | null; answer?: string }> {
+  const { session } = await requireAccess(pursuitId);
+  const unlimited = hasUnlimitedOrganize(session.user.email);
+
+  const q = question.trim();
+  if (!q) return { error: "Escribe una pregunta primero" };
+
+  if (!unlimited) {
+    const usedToday = await getOrganizeUsageToday(session.user.id);
+    if (usedToday >= DAILY_ORGANIZE_LIMIT) {
+      return {
+        error: `Has alcanzado el límite de ${DAILY_ORGANIZE_LIMIT} usos de IA por hoy (Organize + Ask comparten el mismo límite). Prueba de nuevo mañana.`,
+      };
+    }
+  }
+
+  const tsQuery = buildOrTsQuery(q);
+  if (!tsQuery) return { error: "Escribe una pregunta primero" };
+
+  const [dumpMatches, noteMatches] = await Promise.all([
+    prisma.$queryRaw<{ content: string | null; rank: number }[]>`
+      SELECT content, ts_rank("searchVector", to_tsquery('simple', ${tsQuery})) AS rank
+      FROM "BrainDump"
+      WHERE "pursuitId" = ${pursuitId}
+        AND "searchVector" @@ to_tsquery('simple', ${tsQuery})
+      ORDER BY rank DESC
+      LIMIT ${ASK_CONTEXT_LIMIT}
+    `,
+    prisma.$queryRaw<{ content: string; rank: number }[]>`
+      SELECT content, ts_rank("searchVector", to_tsquery('simple', ${tsQuery})) AS rank
+      FROM "Note"
+      WHERE "pursuitId" = ${pursuitId}
+        AND "searchVector" @@ to_tsquery('simple', ${tsQuery})
+      ORDER BY rank DESC
+      LIMIT ${ASK_CONTEXT_LIMIT}
+    `,
+  ]);
+
+  const contextPieces = [...dumpMatches, ...noteMatches]
+    .sort((a, b) => b.rank - a.rank)
+    .slice(0, ASK_CONTEXT_LIMIT)
+    .map((m) => m.content ?? "")
+    .filter((c) => c.trim() !== "");
+
+  const context =
+    contextPieces.length > 0
+      ? contextPieces.map((c, i) => `[${i + 1}]\n${c}`).join("\n\n")
+      : "(No matching content found in this pursuit.)";
+
+  const prompt = `Context from this pursuit's brain dumps and organized notes:\n\n${context}\n\n---\n\nQuestion: ${q}\n\nAnswer using ONLY the context above — never use outside knowledge, even if you know the answer. If the context doesn't contain the answer, say plainly that this pursuit's notes don't cover it. Answer in the same language as the question, in plain prose (no markdown formatting), and keep it short.`;
+
+  let completion;
+  try {
+    completion = await groq.chat.completions.create({
+      model: TEXT_MODEL,
+      messages: [{ role: "user", content: prompt }],
+    });
+  } catch {
+    return {
+      error: "No se pudo conectar con la IA ahora mismo. Inténtalo de nuevo en unos minutos.",
+    };
+  }
+
+  const answer = completion.choices[0]?.message?.content;
+  if (!answer) {
+    return { error: "AI did not return a usable response" };
+  }
+
+  if (!unlimited) {
+    await incrementOrganizeUsage(session.user.id);
+  }
+
+  return { error: null, answer };
 }

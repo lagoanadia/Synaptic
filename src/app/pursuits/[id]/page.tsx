@@ -11,6 +11,7 @@ import { MemberForm } from "./MemberForm";
 import { MemberRow } from "./MemberRow";
 import { LeaveButton } from "./LeaveButton";
 import { SearchBar } from "./SearchBar";
+import { AskPursuit } from "./AskPursuit";
 import { DeleteButton } from "../DeleteButton";
 
 export default async function PursuitPage({
@@ -22,7 +23,8 @@ export default async function PursuitPage({
 }) {
   const { id } = await params;
   const { tab: rawTab } = await searchParams;
-  const tab = rawTab === "organized" || rawTab === "files" ? rawTab : "dump";
+  const tab =
+    rawTab === "organized" || rawTab === "files" || rawTab === "ask" ? rawTab : "dump";
 
   const session = await auth();
   if (!session?.user?.id) {
@@ -161,6 +163,9 @@ export default async function PursuitPage({
         <Link href={`/pursuits/${pursuit.id}?tab=files`} className={tabClass("files")}>
           Files
         </Link>
+        <Link href={`/pursuits/${pursuit.id}?tab=ask`} className={tabClass("ask")}>
+          Ask
+        </Link>
       </div>
 
       {tab === "dump" && (
@@ -188,6 +193,8 @@ export default async function PursuitPage({
           }))}
         />
       )}
+
+      {tab === "ask" && <AskPursuit pursuitId={pursuit.id} />}
 
       {tab === "files" && (
         <div className="flex flex-col gap-4">

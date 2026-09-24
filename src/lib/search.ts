@@ -12,6 +12,25 @@ export const HEADLINE_OPTIONS = `StartSel=${HL_START}, StopSel=${HL_END}, MaxFra
 
 export type HighlightSegment = { text: string; highlighted: boolean };
 
+// Builds a Postgres to_tsquery string that matches ANY of the input's
+// words (OR), not all of them like plainto_tsquery does (AND). That's
+// fine for the search bar's short keyword queries, but a full natural-
+// language question ("Ask your Pursuit") rarely has every single word
+// land together in one dump — requiring a strict AND match would almost
+// always return nothing. ts_rank still scores a document with MORE
+// matching words higher, so OR + ranking behaves like "best overlap"
+// instead of an all-or-nothing filter.
+//
+// Only word-like tokens are extracted (Postgres's tsquery syntax uses
+// &, |, !, (), : as operators) — pulling those out instead of handing
+// the raw question straight to to_tsquery sidesteps ever having to
+// escape that syntax ourselves.
+export function buildOrTsQuery(text: string): string | null {
+  const words = text.match(/[\p{L}\p{N}]+/gu) ?? [];
+  if (words.length === 0) return null;
+  return words.map((w) => w.toLowerCase()).join(" | ");
+}
+
 // Postgres's ts_headline() marks matches by wrapping them in whatever
 // StartSel/StopSel strings we give it — normally people use it to build
 // HTML directly (StartSel="<mark>"). We don't: content is free-typed by
