@@ -9,8 +9,22 @@ const ALLOWED_CONTENT_TYPES: Record<UploadPayload["kind"], string[]> = {
   image: ["image/png", "image/jpeg", "image/gif", "image/webp"],
   // Whatever MediaRecorder actually produces varies by browser (Chrome/
   // Firefox: webm; Safari: mp4) — Groq's Whisper endpoint accepts all of
-  // these anyway, so there's no need to pin it down to one.
-  audio: ["audio/webm", "audio/mp4", "audio/ogg", "audio/mpeg", "audio/wav"],
+  // these anyway, so there's no need to pin it down to one. video/webm is
+  // deliberately included here too: Vercel Blob's own content-type check
+  // sniffs the actual file bytes rather than trusting whatever the client
+  // declares, and a WebM container recorded from an audio-only stream
+  // (this upload flow only ever calls getUserMedia({ audio: true })) still
+  // gets sniffed as "video/webm" — WebM's container format doesn't
+  // distinguish "audio-only" from "video" the way MP4 does. It's audio in
+  // every case that reaches this route; the label is just misleading.
+  audio: [
+    "audio/webm",
+    "video/webm",
+    "audio/mp4",
+    "audio/ogg",
+    "audio/mpeg",
+    "audio/wav",
+  ],
 };
 
 // Brain Dump images (and now voice note recordings) upload straight from
