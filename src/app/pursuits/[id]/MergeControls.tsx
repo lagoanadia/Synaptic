@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { deleteNote, mergeNotes, updateNote } from "./actions";
+import { deleteNote, generateFlashcards, mergeNotes, updateNote } from "./actions";
 import { RichContent } from "./RichContent";
 
 type NoteForDisplay = {
@@ -25,6 +25,10 @@ export function MergeControls({
   const [isPending, startTransition] = useTransition();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
+  const [flashcardMessage, setFlashcardMessage] = useState<{
+    noteId: string;
+    text: string;
+  } | null>(null);
 
   function toggle(id: string) {
     setSelected((cur) =>
@@ -110,6 +114,22 @@ export function MergeControls({
                   <button
                     type="button"
                     disabled={isPending}
+                    onClick={() =>
+                      startTransition(async () => {
+                        const result = await generateFlashcards(pursuitId, n.id);
+                        setFlashcardMessage({
+                          noteId: n.id,
+                          text: result.error ?? `${result.count} flashcards generated →`,
+                        });
+                      })
+                    }
+                    className="text-xs text-ink-faint hover:text-ink disabled:opacity-50"
+                  >
+                    Generate flashcards
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isPending}
                     onClick={() => {
                       if (
                         !window.confirm("Delete this note? This can't be undone.")
@@ -127,6 +147,9 @@ export function MergeControls({
                   </button>
                 </div>
               </div>
+              {flashcardMessage?.noteId === n.id && (
+                <p className="text-xs text-ink-faint">{flashcardMessage.text}</p>
+              )}
               {editingId === n.id ? (
                 <textarea
                   value={draft}

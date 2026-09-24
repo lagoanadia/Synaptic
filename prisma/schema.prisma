@@ -111,6 +111,7 @@ model Pursuit {
   notes       Note[]
   tags        Tag[]
   attachments Attachment[]
+  flashcards  Flashcard[]
 }
 
 // Who else (besides the owner) can see/edit a shared Pursuit, and at what level.
@@ -199,6 +200,7 @@ model Note {
 
   sourceDumps BrainDump[]
   tags        Tag[]
+  flashcards  Flashcard[]
 
   @@index([searchVector], type: Gin)
 }
@@ -230,6 +232,33 @@ model OrganizeUsage {
   user   User   @relation(fields: [userId], references: [id])
 
   @@unique([userId, date])
+}
+
+// A generated question/answer pair with its own SM-2 spaced-repetition
+// state (see lib/sm2.ts for the algorithm) — interval/easeFactor/
+// repetitions are the three numbers SM-2 needs to remember between
+// reviews, and dueDate is just interval days added to the last review
+// (or creation, before the first one).
+model Flashcard {
+  id          String   @id @default(cuid())
+  question    String
+  answer      String
+  createdAt   DateTime @default(now())
+  interval    Int      @default(0)
+  easeFactor  Float    @default(2.5)
+  repetitions Int      @default(0)
+  dueDate     DateTime @default(now())
+
+  pursuitId String
+  pursuit   Pursuit @relation(fields: [pursuitId], references: [id])
+
+  // A flashcard outlives the note it was generated from — deleting or
+  // re-organizing the note shouldn't delete cards you're already
+  // reviewing, so this just goes null instead of cascading.
+  noteId String?
+  note   Note?   @relation(fields: [noteId], references: [id], onDelete: SetNull)
+
+  @@index([pursuitId, dueDate])
 }
 
 // Loose reference files that just live in a Pursuit — no AI pipeline involved.

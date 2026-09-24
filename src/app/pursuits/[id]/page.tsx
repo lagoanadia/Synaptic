@@ -13,6 +13,7 @@ import { LeaveButton } from "./LeaveButton";
 import { SearchBar } from "./SearchBar";
 import { AskPursuit } from "./AskPursuit";
 import { PursuitTitle } from "./PursuitTitle";
+import { FlashcardReview } from "./FlashcardReview";
 import { DeleteButton } from "../DeleteButton";
 
 export default async function PursuitPage({
@@ -25,14 +26,16 @@ export default async function PursuitPage({
   const { id } = await params;
   const { tab: rawTab } = await searchParams;
   const tab =
-    rawTab === "organized" || rawTab === "files" || rawTab === "ask" ? rawTab : "dump";
+    rawTab === "organized" || rawTab === "files" || rawTab === "ask" || rawTab === "cards"
+      ? rawTab
+      : "dump";
 
   const session = await auth();
   if (!session?.user?.id) {
     redirect("/");
   }
 
-  const [pursuit, sections] = await Promise.all([
+  const [pursuit, sections, dueFlashcards, upcomingFlashcardCount] = await Promise.all([
     prisma.pursuit.findFirst({
       where: {
         id,
@@ -59,6 +62,13 @@ export default async function PursuitPage({
     prisma.section.findMany({
       where: { userId: session.user.id },
       orderBy: { name: "asc" },
+    }),
+    prisma.flashcard.findMany({
+      where: { pursuitId: id, dueDate: { lte: new Date() } },
+      orderBy: { dueDate: "asc" },
+    }),
+    prisma.flashcard.count({
+      where: { pursuitId: id, dueDate: { gt: new Date() } },
     }),
   ]);
 
@@ -167,6 +177,9 @@ export default async function PursuitPage({
         <Link href={`/pursuits/${pursuit.id}?tab=ask`} className={tabClass("ask")}>
           Ask
         </Link>
+        <Link href={`/pursuits/${pursuit.id}?tab=cards`} className={tabClass("cards")}>
+          Cards
+        </Link>
       </div>
 
       {tab === "dump" && (
@@ -196,6 +209,18 @@ export default async function PursuitPage({
       )}
 
       {tab === "ask" && <AskPursuit pursuitId={pursuit.id} />}
+
+      {tab === "cards" && (
+        <FlashcardReview
+          pursuitId={pursuit.id}
+          dueCards={dueFlashcards.map((c) => ({
+            id: c.id,
+            question: c.question,
+            answer: c.answer,
+          }))}
+          upcomingCount={upcomingFlashcardCount}
+        />
+      )}
 
       {tab === "files" && (
         <div className="flex flex-col gap-4">

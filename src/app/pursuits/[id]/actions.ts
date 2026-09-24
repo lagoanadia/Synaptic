@@ -9,6 +9,8 @@ import { PursuitType, PursuitStatus, MemberRole } from "@/generated/prisma/clien
 import { upsertSection } from "@/lib/sections";
 import { HEADLINE_OPTIONS, buildOrTsQuery } from "@/lib/search";
 import { parseOrganizeResponse } from "@/lib/organize";
+import { parseFlashcardsResponse } from "@/lib/flashcards";
+import { computeNextReview, dueDateAfter } from "@/lib/sm2";
 import {
   DAILY_ORGANIZE_LIMIT,
   getOrganizeUsageToday,
@@ -870,4 +872,110 @@ export async function transcribeAudio(
   }
 
   return { error: null, text: transcription.text };
+}
+
+// Generates flashcards from one organized note. Shares the daily AI
+// quota like every other Groq-calling action here.
+export async function generateFlashcards(
+  pursuitId: string,
+  noteId: string,
+): Promise<{ error: string | null; count?: number }> {
+  const { session } = await requireAccess(pursuitId);
+  const unlimited = hasUnlimitedOrganize(session.user.email);
+
+  if (!unlimited) {
+    const usedToday = await getOrganizeUsageToday(session.user.id);
+    if (usedToday >= DAILY_ORGANIZE_LIMIT) {
+      return {
+        error: `You've hit the limit of ${DAILY_ORGANIZE_LIMIT} AI uses for today. Try again tomorrow.`,
+      };
+    }
+  }
+
+  const note = await prisma.note.findFirst({ where: { id: noteId, pursuitId } });
+  if (!note) {
+    return { error: "Note not found" };
+  }
+
+  const prompt = `${note.content}\n\n---\n\nGenerate 5-10 flashcards (question + answer pairs) that test recall of the key facts and concepts in the note above. Each question should be short and specific — no "explain everything about X" questions. Each answer should be short too — a fact, a definition, a term — not a paragraph. Write them in the same language as the note. Respond with ONLY a JSON object, no other text: {"cards": [{"question": "...", "answer": "..."}, ...]}`;
+
+  let completion;
+  try {
+    completion = await groq.chat.completions.create({
+      model: TEXT_MODEL,
+      messages: [{ role: "user", content: prompt }],
+      response_format: { type: "json_object" },
+    });
+  } catch {
+    return {
+      error: "Couldn't reach the AI right now. Try again in a few minutes.",
+    };
+  }
+
+  const text = completion.choices[0]?.message?.content;
+  if (!text) {
+    return { error: "AI did not return a usable response" };
+  }
+
+  const cards = parseFlashcardsResponse(text);
+  if (cards.length === 0) {
+    return { error: "Couldn't generate flashcards from this note" };
+  }
+
+  await prisma.flashcard.createMany({
+    data: cards.map((c) => ({
+      pursuitId,
+      noteId,
+      question: c.question,
+      answer: c.answer,
+    })),
+  });
+
+  if (!unlimited) {
+    await incrementOrganizeUsage(session.user.id);
+  }
+
+  revalidatePath(`/pursuits/${pursuitId}`);
+  return { error: null, count: cards.length };
+}
+
+// Applies one SM-2 review (see lib/sm2.ts) and reschedules the card.
+// quality is a 0-5 self-rating of how well the card was recalled just
+// now, same scale as SuperMemo/Anki use.
+export async function reviewFlashcard(
+  pursuitId: string,
+  flashcardId: string,
+  quality: number,
+) {
+  await requireAccess(pursuitId);
+
+  const card = await prisma.flashcard.findFirst({
+    where: { id: flashcardId, pursuitId },
+  });
+  if (!card) {
+    throw new Error("Flashcard not found");
+  }
+
+  const next = computeNextReview(
+    { interval: card.interval, easeFactor: card.easeFactor, repetitions: card.repetitions },
+    quality,
+  );
+
+  await prisma.flashcard.update({
+    where: { id: flashcardId },
+    data: {
+      interval: next.interval,
+      easeFactor: next.easeFactor,
+      repetitions: next.repetitions,
+      dueDate: dueDateAfter(next.interval),
+    },
+  });
+
+  revalidatePath(`/pursuits/${pursuitId}`);
+}
+
+export async function deleteFlashcard(pursuitId: string, flashcardId: string) {
+  await requireAccess(pursuitId);
+  await prisma.flashcard.deleteMany({ where: { id: flashcardId, pursuitId } });
+  revalidatePath(`/pursuits/${pursuitId}`);
 }
