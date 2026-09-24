@@ -177,11 +177,7 @@ export function NewDumpForm({
     });
   }
 
-  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = ""; // allow picking the same file again later
-    if (!file) return;
-
+  async function uploadImageFile(file: File) {
     setUploadError(null);
     setIsUploading(true);
     try {
@@ -199,6 +195,39 @@ export function NewDumpForm({
     } finally {
       setIsUploading(false);
     }
+  }
+
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow picking the same file again later
+    if (!file) return;
+    await uploadImageFile(file);
+  }
+
+  // A screenshot copied to the clipboard (e.g. a Snipping Tool / Cmd+Shift+4
+  // capture) arrives as a pasted image, not text — Chrome/Firefox/Safari all
+  // expose it the same way through clipboardData.items. Falls through to the
+  // textarea's normal paste behavior for anything that isn't an image, so
+  // pasting text still works exactly as before.
+  async function handlePaste(e: React.ClipboardEvent<HTMLTextAreaElement>) {
+    const imageItem = Array.from(e.clipboardData.items).find(
+      (item) => item.kind === "file" && item.type.startsWith("image/"),
+    );
+    if (!imageItem) return;
+
+    const file = imageItem.getAsFile();
+    if (!file) return;
+
+    e.preventDefault();
+    // Clipboard images have no filename (blank string) — give them one so
+    // the Blob path (`dumps/${pursuitId}/${file.name}`) isn't left empty.
+    // blob-upload's addRandomSuffix already keeps concurrent pastes from
+    // colliding, so this name doesn't need to be unique itself.
+    const extension = imageItem.type.split("/")[1] || "png";
+    const named = new File([file], file.name || `pasted-image.${extension}`, {
+      type: file.type,
+    });
+    await uploadImageFile(named);
   }
 
   async function startRecording() {
@@ -572,6 +601,7 @@ export function NewDumpForm({
                 handleFormatShortcut(e, i);
                 handleListContinuation(e, i);
               }}
+              onPaste={handlePaste}
               autoFocus={i === 0}
               placeholder={
                 blocks.length === 1 && !isEditing ? "Start writing…" : undefined
