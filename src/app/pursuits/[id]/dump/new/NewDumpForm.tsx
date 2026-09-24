@@ -33,9 +33,17 @@ function blocksFromContent(content: string): Block[] {
   return last.type === "text" ? segments : [...segments, { type: "text", value: "" }];
 }
 
+// Resetting height to "auto" before re-measuring makes the textarea briefly
+// collapse to one line, which shifts the caret's position on the page for a
+// moment — long enough that the browser "helpfully" scrolls to keep it in
+// view, snapping the page to wherever you're typing even if you'd
+// deliberately scrolled elsewhere. Saving and restoring the scroll position
+// around the resize cancels that out.
 function autoResize(el: HTMLTextAreaElement) {
+  const scrollY = window.scrollY;
   el.style.height = "auto";
   el.style.height = `${el.scrollHeight}px`;
+  window.scrollTo(0, scrollY);
 }
 
 export function NewDumpForm({
@@ -62,6 +70,9 @@ export function NewDumpForm({
   const [activeIndex, setActiveIndex] = useState(0);
   const textareaRefs = useRef<Record<number, HTMLTextAreaElement | null>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [tablePickerOpen, setTablePickerOpen] = useState(false);
+  const tableRowsRef = useRef<HTMLInputElement>(null);
+  const tableColsRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
@@ -150,6 +161,43 @@ export function NewDumpForm({
     });
   }
 
+  // Drops a ready-made "| | | |" skeleton (rows × cols, all cells empty) at
+  // the cursor — not a clickable cell-by-cell grid like Google Docs (this
+  // is still a plain <textarea>, not a rich editor), but it saves typing
+  // out every pipe by hand. The first row renders as the table's header.
+  function insertTableAtActiveBlock(rows: number, cols: number) {
+    setBlocks((prev) => {
+      const index = activeIndex;
+      const block = prev[index];
+      if (!block || block.type !== "text") return prev;
+
+      const textarea = textareaRefs.current[index];
+      const cursor = textarea ? textarea.selectionStart : block.value.length;
+      const before = block.value.slice(0, cursor);
+      const after = block.value.slice(cursor);
+
+      const row = "|" + " |".repeat(cols);
+      const tableText = Array(rows).fill(row).join("\n");
+      const leading = before.length > 0 && !before.endsWith("\n") ? "\n" : "";
+      const trailing = after.length > 0 && !after.startsWith("\n") ? "\n" : "";
+      const insertion = `${leading}${tableText}${trailing}`;
+
+      const next = [...prev];
+      next[index] = { type: "text", value: before + insertion + after };
+
+      // Lands the caret right inside the first cell so typing can start
+      // immediately instead of clicking to find it.
+      const cellPos = before.length + leading.length + 2;
+      requestAnimationFrame(() => {
+        textarea?.focus();
+        textarea?.setSelectionRange(cellPos, cellPos);
+        if (textarea) autoResize(textarea);
+      });
+
+      return next;
+    });
+  }
+
   // Ctrl/Cmd+B, +I, +U wrap the selection (or, with nothing selected, drop
   // the cursor between an empty pair) in the matching shortcut marker —
   // ** for bold, * for italic, __ for underline — the same ones
@@ -167,8 +215,10 @@ export function NewDumpForm({
 
     updateTextBlock(index, `${before}${marker}${selected}${marker}${after}`);
 
+    // No textarea.focus() here — it's already focused (that's how Ctrl/Cmd+B
+    // fired), and re-focusing an already-focused element can still trigger
+    // the browser's scroll-into-view, undoing the fix in autoResize above.
     requestAnimationFrame(() => {
-      textarea.focus();
       const newStart = start + marker.length;
       textarea.setSelectionRange(newStart, newStart + selected.length);
       autoResize(textarea);
@@ -183,12 +233,18 @@ export function NewDumpForm({
     applyInlineMark(index, marker);
   }
 
-  // Pressing Enter on a "1. ", "- " or "a. " line continues the list on
-  // the next line with the number/letter already advanced, instead of
-  // making you type it yourself — the plain-text equivalent of watching
-  // the list count itself up as you write. Enter on an EMPTY list line
-  // ends the list instead (strips that line's marker) rather than adding
-  // yet another empty item, matching how e.g. Obsidian or Bear behave.
+  // Pressing Enter on a "1. ", "- ", "a. " or "| ... |" line continues the
+  // list/table on the next line with the number/letter/row already primed,
+  // instead of making you type it yourself — the plain-text equivalent of
+  // watching the list count itself up (or the table grow a row) as you
+  // write. Enter on an EMPTY item ends the list/table instead (strips that
+  // line's marker) rather than adding yet another empty one, matching how
+  // e.g. Obsidian or Bear behave.
+  //
+  // No textarea.focus() in here, on purpose: the textarea calling this is
+  // already focused (that's how Enter reached it), and re-focusing an
+  // already-focused element can still trigger the browser's
+  // scroll-into-view, undoing the fix in autoResize below.
   function handleListContinuation(
     e: React.KeyboardEvent<HTMLTextAreaElement>,
     index: number,
@@ -211,6 +267,7 @@ export function NewDumpForm({
     const numbered = /^(\d+)\.\s(.*)$/.exec(currentLine);
     const lettered = /^([a-zA-Z])\.\s(.*)$/.exec(currentLine);
     const bullet = /^-\s(.*)$/.exec(currentLine);
+    const table = /^\|(.+)\|$/.exec(currentLine);
 
     if (numbered) {
       itemIsEmpty = numbered[2].trim() === "";
@@ -221,16 +278,18 @@ export function NewDumpForm({
     } else if (lettered) {
       itemIsEmpty = lettered[2].trim() === "";
       nextMarker = `${String.fromCharCode(lettered[1].charCodeAt(0) + 1)}. `;
+    } else if (table) {
+      itemIsEmpty = table[1].replace(/\|/g, "").trim() === "";
+      nextMarker = "| ";
     }
 
-    if (nextMarker === null) return; // Not on a list line — let Enter behave normally.
+    if (nextMarker === null) return; // Not on a list/table line — let Enter behave normally.
     e.preventDefault();
 
     if (itemIsEmpty) {
       const newValue = value.slice(0, lineStart) + value.slice(cursor);
       updateTextBlock(index, newValue);
       requestAnimationFrame(() => {
-        textarea.focus();
         textarea.setSelectionRange(lineStart, lineStart);
         autoResize(textarea);
       });
@@ -241,7 +300,6 @@ export function NewDumpForm({
     const newValue = value.slice(0, cursor) + insertion + value.slice(cursor);
     updateTextBlock(index, newValue);
     requestAnimationFrame(() => {
-      textarea.focus();
       const pos = cursor + insertion.length;
       textarea.setSelectionRange(pos, pos);
       autoResize(textarea);
@@ -333,6 +391,54 @@ export function NewDumpForm({
         >
           {isUploading ? "Uploading…" : "🖼 Insert image"}
         </button>
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setTablePickerOpen((open) => !open)}
+            disabled={isPending}
+            className="rounded-md border border-border-subtle px-3 py-1.5 text-xs text-ink-muted disabled:opacity-50"
+          >
+            ⊞ Insert table
+          </button>
+          {tablePickerOpen && (
+            <div className="absolute bottom-full left-0 z-10 mb-2 flex items-center gap-2 rounded-md border border-border-subtle bg-white p-3 text-xs text-ink-muted shadow-sm">
+              <label className="flex items-center gap-1">
+                Rows
+                <input
+                  ref={tableRowsRef}
+                  type="number"
+                  min={1}
+                  max={20}
+                  defaultValue={3}
+                  className="w-12 rounded border border-border-subtle px-1 py-0.5 text-ink"
+                />
+              </label>
+              <label className="flex items-center gap-1">
+                Cols
+                <input
+                  ref={tableColsRef}
+                  type="number"
+                  min={1}
+                  max={10}
+                  defaultValue={3}
+                  className="w-12 rounded border border-border-subtle px-1 py-0.5 text-ink"
+                />
+              </label>
+              <button
+                type="button"
+                onClick={() => {
+                  const rows = Math.max(1, Math.min(20, Number(tableRowsRef.current?.value) || 3));
+                  const cols = Math.max(1, Math.min(10, Number(tableColsRef.current?.value) || 3));
+                  insertTableAtActiveBlock(rows, cols);
+                  setTablePickerOpen(false);
+                }}
+                className="rounded-md bg-ink px-2 py-1 font-medium text-white hover:opacity-90"
+              >
+                Insert
+              </button>
+            </div>
+          )}
+        </div>
         <details className="relative">
           <summary
             title="Formatting shortcuts"
@@ -347,6 +453,7 @@ export function NewDumpForm({
               <li><code>-</code> bullet list</li>
               <li><code>1.</code> numbered list</li>
               <li><code>a.</code> lettered list</li>
+              <li><code>| a | b |</code> table row</li>
               <li><code>**bold**</code> · <code>*italic*</code> · <code>__underline__</code></li>
               <li>Ctrl/Cmd + B / I / U on a selection</li>
             </ul>

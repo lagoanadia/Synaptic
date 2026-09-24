@@ -284,8 +284,8 @@ export async function organizeDumps(pursuitId: string, dumpIds?: string[]) {
 
 Format the note's content using ONLY this exact set of shortcuts — nothing
 else, since the app only knows how to render these (anything else, like
-####, tables, or code fences, would show up as literal stray characters
-instead of formatting):
+####, or code fences, would show up as literal stray characters instead of
+formatting):
 - "# " at the start of a line for a heading (also "## " and "### " for
   smaller headings — never more than three #s)
 - "! " at the start of a line for a callout / key takeaway
@@ -293,6 +293,11 @@ instead of formatting):
 - "1. " (etc.) at the start of a line for a numbered list
 - "a. " (etc.) at the start of a line for a lettered list
 - "**text**" for bold — no other inline styling
+- "| cell | cell | cell |" for a table row — the first row is the header;
+  every row needs the same number of cells, and consecutive rows with no
+  blank line between them form one table. Only use this for genuinely
+  tabular data (comparisons, options with several attributes each) — don't
+  force a table where a bullet list reads better.
 - "![image](url)" to keep a referenced image, exactly as it appears in the
   material above, verbatim and on its own line — never describe the image
   in words and never write its bare url as plain text

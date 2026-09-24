@@ -1,4 +1,4 @@
-const LEADING_HEADING = /^#{1,3}\s+(.+)$/;
+const LEADING_HEADING = /^#{1,3}\s*(.+)$/;
 const LEADING_MARKER = /^(?:!|-|\d+\.|[a-zA-Z]\.)\s+/;
 
 // Notion-style auto-title: the first few words of the content, so a raw
@@ -58,7 +58,8 @@ export type NoteBlock =
   | { type: "numberedList"; items: InlineNode[][] }
   | { type: "letteredList"; items: InlineNode[][] }
   | { type: "paragraph"; inline: InlineNode[] }
-  | { type: "image"; url: string };
+  | { type: "image"; url: string }
+  | { type: "table"; header: InlineNode[][]; rows: InlineNode[][][] };
 
 // `**bold**`, `__underline__`, `*italic*` — matches what Ctrl/Cmd+B, +U
 // and +I wrap a selection in inside the composer (NewDumpForm). The
@@ -92,11 +93,24 @@ function parseInline(line: string): InlineNode[] {
 // that range, but a heading with more (or a line someone typed by hand)
 // still becomes a heading instead of leaking literal "####" text; the
 // level is clamped to 3 wherever it's used below.
-const HEADING = /^(#+)\s+(.*)$/;
+// The space after the #s is optional — "#02 Licencias" and "#Title" both
+// count as headings, not just "# Title", since typing straight into the
+// next word (no space) is a very easy habit to fall into and shouldn't
+// silently produce a literal "#02 Licencias" paragraph instead.
+const HEADING = /^(#+)\s*(.*)$/;
 const CALLOUT = /^!\s+(.*)$/;
 const BULLET = /^-\s+(.*)$/;
 const NUMBERED = /^\d+\.\s+(.*)$/;
 const LETTERED = /^[a-z]\.\s+(.*)$/i;
+// A table row is typed as `| cell | cell | cell |` — leading and trailing
+// pipes required, so a line that just happens to contain a "|" mid-sentence
+// isn't mistaken for a table.
+const TABLE_ROW = /^\|(.+)\|$/;
+
+function splitTableRow(line: string): InlineNode[][] {
+  const inner = TABLE_ROW.exec(line)![1];
+  return inner.split("|").map((cell) => parseInline(cell.trim()));
+}
 
 // Splits a plain-text run into paragraph/heading/callout/list blocks using
 // a small set of Notion-style shortcuts: `#`/`##`/`###` for headings, `!`
@@ -158,12 +172,31 @@ function parseTextBlocks(text: string): NoteBlock[] {
       continue;
     }
 
+    if (TABLE_ROW.test(trimmed)) {
+      const tableRows: InlineNode[][][] = [];
+      while (i < lines.length && TABLE_ROW.test(lines[i].trim())) {
+        tableRows.push(splitTableRow(lines[i].trim()));
+        i++;
+      }
+      const [header, ...rows] = tableRows;
+      blocks.push({ type: "table", header, rows });
+      continue;
+    }
+
     // A plain paragraph: fold in every following line up to the next blank
     // line or shortcut, so a wrapped sentence stays one paragraph block.
     const paraLines: string[] = [];
     while (i < lines.length) {
       const t = lines[i].trim();
-      if (t === "" || HEADING.test(t) || CALLOUT.test(t) || BULLET.test(t) || NUMBERED.test(t) || LETTERED.test(t)) {
+      if (
+        t === "" ||
+        HEADING.test(t) ||
+        CALLOUT.test(t) ||
+        BULLET.test(t) ||
+        NUMBERED.test(t) ||
+        LETTERED.test(t) ||
+        TABLE_ROW.test(t)
+      ) {
         break;
       }
       paraLines.push(lines[i]);

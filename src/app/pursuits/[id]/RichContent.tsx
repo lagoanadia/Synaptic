@@ -115,6 +115,38 @@ export function RichContent({
                 <Inline nodes={block.inline} />
               </p>
             );
+          case "table":
+            return (
+              <div key={i} className="overflow-x-auto">
+                <table className="w-full border-collapse text-sm leading-relaxed">
+                  <thead>
+                    <tr>
+                      {block.header.map((cell, j) => (
+                        <th
+                          key={j}
+                          className="border border-border-subtle bg-chip px-3 py-1.5 text-left font-semibold"
+                        >
+                          <Inline nodes={cell} />
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  {block.rows.length > 0 && (
+                    <tbody>
+                      {block.rows.map((row, j) => (
+                        <tr key={j}>
+                          {row.map((cell, k) => (
+                            <td key={k} className="border border-border-subtle px-3 py-1.5 align-top">
+                              <Inline nodes={cell} />
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  )}
+                </table>
+              </div>
+            );
         }
       })}
     </div>
