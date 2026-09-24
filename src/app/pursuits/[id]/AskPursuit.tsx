@@ -43,8 +43,8 @@ export function AskPursuit({ pursuitId }: { pursuitId: string }) {
         ))}
         {turns.length === 0 && (
           <p className="text-sm text-ink-muted">
-            Pregunta algo sobre este pursuit — la respuesta se basa solo en tus brain
-            dumps y notas organizadas.
+            Ask something about this pursuit — the answer is based only on your brain
+            dumps and organized notes.
           </p>
         )}
       </div>

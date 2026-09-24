@@ -12,6 +12,7 @@ import { MemberRow } from "./MemberRow";
 import { LeaveButton } from "./LeaveButton";
 import { SearchBar } from "./SearchBar";
 import { AskPursuit } from "./AskPursuit";
+import { PursuitTitle } from "./PursuitTitle";
 import { DeleteButton } from "../DeleteButton";
 
 export default async function PursuitPage({
@@ -96,7 +97,7 @@ export default async function PursuitPage({
       </div>
 
       <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold">{pursuit.title}</h1>
+        <PursuitTitle pursuitId={pursuit.id} title={pursuit.title} />
         <PursuitMeta
           pursuitId={pursuit.id}
           type={pursuit.type}

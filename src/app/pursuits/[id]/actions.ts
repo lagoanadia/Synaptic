@@ -285,7 +285,7 @@ export async function organizeDumps(
     const usedToday = await getOrganizeUsageToday(session.user.id);
     if (usedToday >= DAILY_ORGANIZE_LIMIT) {
       return {
-        error: `Has alcanzado el límite de ${DAILY_ORGANIZE_LIMIT} organizaciones con IA por hoy. Prueba de nuevo mañana.`,
+        error: `You've hit the limit of ${DAILY_ORGANIZE_LIMIT} AI organizes for today. Try again tomorrow.`,
       };
     }
   }
@@ -386,7 +386,7 @@ JSON object, no other text: {"content": "...", "tags": ["...", "..."]}`;
     // used up the user's daily quota (incrementOrganizeUsage runs further
     // down, only once we know the call actually succeeded).
     return {
-      error: "No se pudo conectar con la IA ahora mismo. Inténtalo de nuevo en unos minutos.",
+      error: "Couldn't reach the AI right now. Try again in a few minutes.",
     };
   }
 
@@ -589,6 +589,23 @@ export async function removePursuitTag(pursuitId: string, tagId: string) {
   revalidatePath(`/pursuits/${pursuitId}`);
 }
 
+export async function renamePursuit(pursuitId: string, title: string) {
+  await requireAccess(pursuitId);
+
+  const trimmed = title.trim();
+  if (!trimmed) {
+    throw new Error("Title can't be empty");
+  }
+
+  await prisma.pursuit.update({
+    where: { id: pursuitId },
+    data: { title: trimmed },
+  });
+
+  revalidatePath(`/pursuits/${pursuitId}`);
+  revalidatePath("/pursuits");
+}
+
 export async function updatePursuitMeta(pursuitId: string, formData: FormData) {
   const { session } = await requireAccess(pursuitId);
 
@@ -716,19 +733,19 @@ export async function askPursuit(
   const unlimited = hasUnlimitedOrganize(session.user.email);
 
   const q = question.trim();
-  if (!q) return { error: "Escribe una pregunta primero" };
+  if (!q) return { error: "Write a question first" };
 
   if (!unlimited) {
     const usedToday = await getOrganizeUsageToday(session.user.id);
     if (usedToday >= DAILY_ORGANIZE_LIMIT) {
       return {
-        error: `Has alcanzado el límite de ${DAILY_ORGANIZE_LIMIT} usos de IA por hoy (Organize + Ask comparten el mismo límite). Prueba de nuevo mañana.`,
+        error: `You've hit the limit of ${DAILY_ORGANIZE_LIMIT} AI uses for today (Organize and Ask share the same limit). Try again tomorrow.`,
       };
     }
   }
 
   const tsQuery = buildOrTsQuery(q);
-  if (!tsQuery) return { error: "Escribe una pregunta primero" };
+  if (!tsQuery) return { error: "Write a question first" };
 
   const [dumpMatches, noteMatches] = await Promise.all([
     prisma.$queryRaw<{ content: string | null; rank: number }[]>`
@@ -770,7 +787,7 @@ export async function askPursuit(
     });
   } catch {
     return {
-      error: "No se pudo conectar con la IA ahora mismo. Inténtalo de nuevo en unos minutos.",
+      error: "Couldn't reach the AI right now. Try again in a few minutes.",
     };
   }
 
