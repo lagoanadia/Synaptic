@@ -3,11 +3,22 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 
-// Brain Dump images upload straight from the browser to Blob storage
-// instead of going through a Server Action — Next.js caps a Server
-// Action's request body at 1MB, which a phone photo blows past easily.
-// This route only hands out a short-lived upload token; the file itself
-// never passes through our server.
+type UploadPayload = { pursuitId: string; kind: "image" | "audio" };
+
+const ALLOWED_CONTENT_TYPES: Record<UploadPayload["kind"], string[]> = {
+  image: ["image/png", "image/jpeg", "image/gif", "image/webp"],
+  // Whatever MediaRecorder actually produces varies by browser (Chrome/
+  // Firefox: webm; Safari: mp4) — Groq's Whisper endpoint accepts all of
+  // these anyway, so there's no need to pin it down to one.
+  audio: ["audio/webm", "audio/mp4", "audio/ogg", "audio/mpeg", "audio/wav"],
+};
+
+// Brain Dump images (and now voice note recordings) upload straight from
+// the browser to Blob storage instead of going through a Server Action —
+// Next.js caps a Server Action's request body at 1MB, which a phone photo
+// or a voice recording both blow past easily. This route only hands out a
+// short-lived upload token; the file itself never passes through our
+// server.
 export async function POST(request: Request): Promise<NextResponse> {
   const body = (await request.json()) as HandleUploadBody;
 
@@ -21,9 +32,12 @@ export async function POST(request: Request): Promise<NextResponse> {
           throw new Error("Not signed in");
         }
 
-        const pursuitId = clientPayload;
-        if (!pursuitId) {
-          throw new Error("Missing pursuit");
+        if (!clientPayload) {
+          throw new Error("Missing upload details");
+        }
+        const { pursuitId, kind }: UploadPayload = JSON.parse(clientPayload);
+        if (!pursuitId || (kind !== "image" && kind !== "audio")) {
+          throw new Error("Missing upload details");
         }
 
         const pursuit = await prisma.pursuit.findFirst({
@@ -40,12 +54,7 @@ export async function POST(request: Request): Promise<NextResponse> {
         }
 
         return {
-          allowedContentTypes: [
-            "image/png",
-            "image/jpeg",
-            "image/gif",
-            "image/webp",
-          ],
+          allowedContentTypes: ALLOWED_CONTENT_TYPES[kind],
           addRandomSuffix: true,
         };
       },

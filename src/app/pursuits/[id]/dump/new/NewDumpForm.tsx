@@ -3,7 +3,7 @@
 import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { upload } from "@vercel/blob/client";
-import { addBrainDump, updateBrainDump, type FormState } from "../../actions";
+import { addBrainDump, transcribeAudio, updateBrainDump, type FormState } from "../../actions";
 import { parseContent, type ContentSegment } from "@/lib/text";
 
 const initialState: FormState = { error: null };
@@ -76,6 +76,12 @@ export function NewDumpForm({
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [draftToOffer, setDraftToOffer] = useState<string | null>(null);
+  const [recordingSeconds, setRecordingSeconds] = useState<number | null>(null);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [recordError, setRecordError] = useState<string | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const content = useMemo(() => serialize(blocks), [blocks]);
 
@@ -153,6 +159,16 @@ export function NewDumpForm({
     });
   }, [blocks.length]);
 
+  // Leaving mid-recording (navigating away, closing the tab) shouldn't
+  // leave the microphone silently "on" — stop the timer and release the
+  // mic/stream on unmount if a recording was still in progress.
+  useEffect(() => {
+    return () => {
+      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+      mediaRecorderRef.current?.stream.getTracks().forEach((track) => track.stop());
+    };
+  }, []);
+
   function updateTextBlock(index: number, value: string) {
     setBlocks((prev) => {
       const next = [...prev];
@@ -175,13 +191,93 @@ export function NewDumpForm({
       const blob = await upload(`dumps/${pursuitId}/${file.name}`, file, {
         access: "public",
         handleUploadUrl: "/api/blob-upload",
-        clientPayload: pursuitId,
+        clientPayload: JSON.stringify({ pursuitId, kind: "image" }),
       });
       insertImageAtActiveBlock(blob.url);
     } catch {
       setUploadError("Couldn't upload that image — try again");
     } finally {
       setIsUploading(false);
+    }
+  }
+
+  async function startRecording() {
+    setRecordError(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // Not every browser supports every codec (Chrome/Firefox default to
+      // webm, Safari to mp4) — ask for whichever this one actually
+      // records, instead of hardcoding one and failing on the others.
+      const mimeType = ["audio/webm", "audio/mp4", "audio/ogg"].find((t) =>
+        MediaRecorder.isTypeSupported(t),
+      );
+      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+      audioChunksRef.current = [];
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data);
+      };
+      recorder.onstop = () => {
+        stream.getTracks().forEach((track) => track.stop());
+      };
+
+      mediaRecorderRef.current = recorder;
+      recorder.start();
+      setRecordingSeconds(0);
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingSeconds((s) => (s ?? 0) + 1);
+      }, 1000);
+    } catch {
+      setRecordError("Couldn't access the microphone — check your browser's permission for this site");
+    }
+  }
+
+  async function stopRecording() {
+    const recorder = mediaRecorderRef.current;
+    if (!recorder) return;
+
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
+    setRecordingSeconds(null);
+
+    // MediaRecorder's onstop fires once everything's flushed into
+    // audioChunksRef — waiting for it here (via a Promise) is simpler
+    // than threading the upload logic through the event handler itself.
+    const stopped = new Promise<void>((resolve) => {
+      recorder.addEventListener("stop", () => resolve(), { once: true });
+    });
+    recorder.stop();
+    await stopped;
+    mediaRecorderRef.current = null;
+
+    const audioBlob = new Blob(audioChunksRef.current, { type: recorder.mimeType });
+    if (audioBlob.size === 0) return;
+
+    setIsTranscribing(true);
+    try {
+      const extension = recorder.mimeType.includes("mp4")
+        ? "mp4"
+        : recorder.mimeType.includes("ogg")
+          ? "ogg"
+          : "webm";
+      const blob = await upload(`dumps/${pursuitId}/voice-note.${extension}`, audioBlob, {
+        access: "public",
+        handleUploadUrl: "/api/blob-upload",
+        clientPayload: JSON.stringify({ pursuitId, kind: "audio" }),
+      });
+
+      const result = await transcribeAudio(pursuitId, blob.url);
+      if (result.error) {
+        setRecordError(result.error);
+        return;
+      }
+      insertTextAtActiveBlock(result.text ?? "");
+    } catch {
+      setRecordError("Couldn't process that recording — try again");
+    } finally {
+      setIsTranscribing(false);
     }
   }
 
@@ -210,6 +306,38 @@ export function NewDumpForm({
         el?.focus();
         el?.setSelectionRange(0, 0);
       });
+      return next;
+    });
+  }
+
+  // Drops a transcribed voice note in at the cursor, same idea as an
+  // inserted image or table — it lands in the current draft as plain
+  // text you can still edit before saving, rather than being submitted
+  // on its own.
+  function insertTextAtActiveBlock(text: string) {
+    setBlocks((prev) => {
+      const index = activeIndex;
+      const block = prev[index];
+      if (!block || block.type !== "text") return prev;
+
+      const textarea = textareaRefs.current[index];
+      const cursor = textarea ? textarea.selectionStart : block.value.length;
+      const before = block.value.slice(0, cursor);
+      const after = block.value.slice(cursor);
+      const leading = before.length > 0 && !before.endsWith("\n") ? "\n" : "";
+      const trailing = after.length > 0 && !after.startsWith("\n") ? "\n" : "";
+      const insertion = `${leading}${text}${trailing}`;
+
+      const next = [...prev];
+      next[index] = { type: "text", value: before + insertion + after };
+
+      const pos = before.length + insertion.length;
+      requestAnimationFrame(() => {
+        textarea?.focus();
+        textarea?.setSelectionRange(pos, pos);
+        if (textarea) autoResize(textarea);
+      });
+
       return next;
     });
   }
@@ -475,6 +603,22 @@ export function NewDumpForm({
         >
           {isUploading ? "Uploading…" : "🖼 Insert image"}
         </button>
+        <button
+          type="button"
+          onClick={recordingSeconds !== null ? stopRecording : startRecording}
+          disabled={isPending || isTranscribing}
+          className={`rounded-md border px-3 py-1.5 text-xs disabled:opacity-50 ${
+            recordingSeconds !== null
+              ? "border-red-300 bg-red-50 text-red-600"
+              : "border-border-subtle text-ink-muted"
+          }`}
+        >
+          {isTranscribing
+            ? "Transcribing…"
+            : recordingSeconds !== null
+              ? `⏹ Stop (${recordingSeconds}s)`
+              : "🎙 Record voice note"}
+        </button>
         <div className="relative">
           <button
             type="button"
@@ -552,8 +696,10 @@ export function NewDumpForm({
           {isPending ? "Saving…" : isEditing ? "Save changes" : "Save"}
         </button>
       </div>
-      {(state.error || uploadError) && (
-        <span className="text-xs text-red-500">{state.error ?? uploadError}</span>
+      {(state.error || uploadError || recordError) && (
+        <span className="text-xs text-red-500">
+          {state.error ?? uploadError ?? recordError}
+        </span>
       )}
     </form>
   );

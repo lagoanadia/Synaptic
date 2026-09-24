@@ -824,3 +824,50 @@ export async function askPursuit(
 
   return { error: null, answer };
 }
+
+const WHISPER_MODEL = "whisper-large-v3-turbo";
+
+// Voice notes: the composer already uploaded the recording to Blob
+// storage (same client-side upload as images, for the same reason —
+// Server Actions cap request bodies at 1MB, easily blown past by
+// audio). This only has to hand Groq the URL, not the bytes themselves.
+// Shares the same daily AI quota as Organize/Ask — transcription is
+// another Groq call this app is trying to keep bounded per user per day.
+export async function transcribeAudio(
+  pursuitId: string,
+  audioUrl: string,
+): Promise<{ error: string | null; text?: string }> {
+  const { session } = await requireAccess(pursuitId);
+  const unlimited = hasUnlimitedOrganize(session.user.email);
+
+  if (!unlimited) {
+    const usedToday = await getOrganizeUsageToday(session.user.id);
+    if (usedToday >= DAILY_ORGANIZE_LIMIT) {
+      return {
+        error: `You've hit the limit of ${DAILY_ORGANIZE_LIMIT} AI uses for today (Organize, Ask and voice notes share the same limit). Try again tomorrow.`,
+      };
+    }
+  }
+
+  let transcription;
+  try {
+    transcription = await groq.audio.transcriptions.create({
+      model: WHISPER_MODEL,
+      url: audioUrl,
+    });
+  } catch {
+    return {
+      error: "Couldn't reach the AI right now. Try again in a few minutes.",
+    };
+  }
+
+  if (!transcription.text.trim()) {
+    return { error: "Didn't catch any speech in that recording" };
+  }
+
+  if (!unlimited) {
+    await incrementOrganizeUsage(session.user.id);
+  }
+
+  return { error: null, text: transcription.text };
+}
