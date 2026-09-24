@@ -167,6 +167,13 @@ model BrainDump {
   processed Boolean  @default(false)
   createdAt DateTime @default(now())
 
+  // Postgres-generated column (see the hand-written migration): recomputed
+  // automatically by the database whenever `content` changes, so full-text
+  // search never has to re-tokenize the text at query time. Prisma doesn't
+  // model tsvector natively, hence Unsupported — it's read only through
+  // $queryRaw in lib/search.ts, never through the normal Client API.
+  searchVector Unsupported("tsvector")?
+
   pursuitId String
   pursuit   Pursuit @relation(fields: [pursuitId], references: [id])
 
@@ -174,6 +181,8 @@ model BrainDump {
   author   User   @relation(fields: [authorId], references: [id])
 
   notes Note[]
+
+  @@index([searchVector], type: Gin)
 }
 
 // AI-organized, structured writeup synthesized from one or more BrainDumps.
@@ -182,11 +191,15 @@ model Note {
   content   String
   createdAt DateTime @default(now())
 
+  searchVector Unsupported("tsvector")?
+
   pursuitId String
   pursuit   Pursuit @relation(fields: [pursuitId], references: [id])
 
   sourceDumps BrainDump[]
   tags        Tag[]
+
+  @@index([searchVector], type: Gin)
 }
 
 // Granular topic tags on Notes, scoped per-Pursuit (kept separate from

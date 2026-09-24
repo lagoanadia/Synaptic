@@ -10,6 +10,7 @@ import { TagForm } from "./TagForm";
 import { MemberForm } from "./MemberForm";
 import { MemberRow } from "./MemberRow";
 import { LeaveButton } from "./LeaveButton";
+import { SearchBar } from "./SearchBar";
 import { DeleteButton } from "../DeleteButton";
 
 export default async function PursuitPage({
@@ -138,6 +139,8 @@ export default async function PursuitPage({
           )}
         </div>
       </div>
+
+      <SearchBar pursuitId={pursuit.id} />
 
       <div className="flex gap-7 border-b border-border-subtle">
         <Link href={`/pursuits/${pursuit.id}?tab=dump`} className={tabClass("dump")}>

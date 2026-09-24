@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { groq } from "@/lib/groq";
 import { PursuitType, PursuitStatus, MemberRole } from "@/generated/prisma/client";
 import { upsertSection } from "@/lib/sections";
+import { HEADLINE_OPTIONS } from "@/lib/search";
 
 async function requireAccess(pursuitId: string) {
   const session = await auth();
@@ -574,4 +575,62 @@ export async function updatePursuitMeta(pursuitId: string, formData: FormData) {
 
   revalidatePath(`/pursuits/${pursuitId}`);
   revalidatePath("/pursuits");
+}
+
+export type SearchHit = { id: string; createdAt: string; snippet: string };
+export type SearchResults = { dumps: SearchHit[]; notes: SearchHit[] };
+
+// Full-text search across this pursuit's brain dumps and organized notes.
+// requireAccess() is the same owner-or-member check every other action
+// here uses — a search action is still an action, and search results
+// would otherwise leak content from pursuits you don't have access to.
+export async function searchPursuit(
+  pursuitId: string,
+  query: string,
+): Promise<SearchResults> {
+  await requireAccess(pursuitId);
+
+  const q = query.trim();
+  if (!q) return { dumps: [], notes: [] };
+
+  // $queryRaw's tagged template parameterizes every ${...} value (q,
+  // pursuitId, the options string) the same way Prisma's normal query
+  // builder does — this is not string concatenation, so it's not
+  // SQL-injectable despite being raw SQL text.
+  const dumps = await prisma.$queryRaw<
+    { id: string; createdAt: Date; snippet: string }[]
+  >`
+    SELECT id, "createdAt",
+      ts_headline('simple', coalesce(content, ''), plainto_tsquery('simple', ${q}), ${HEADLINE_OPTIONS}) AS snippet
+    FROM "BrainDump"
+    WHERE "pursuitId" = ${pursuitId}
+      AND "searchVector" @@ plainto_tsquery('simple', ${q})
+    ORDER BY ts_rank("searchVector", plainto_tsquery('simple', ${q})) DESC
+    LIMIT 15
+  `;
+
+  const notes = await prisma.$queryRaw<
+    { id: string; createdAt: Date; snippet: string }[]
+  >`
+    SELECT id, "createdAt",
+      ts_headline('simple', content, plainto_tsquery('simple', ${q}), ${HEADLINE_OPTIONS}) AS snippet
+    FROM "Note"
+    WHERE "pursuitId" = ${pursuitId}
+      AND "searchVector" @@ plainto_tsquery('simple', ${q})
+    ORDER BY ts_rank("searchVector", plainto_tsquery('simple', ${q})) DESC
+    LIMIT 15
+  `;
+
+  return {
+    dumps: dumps.map((d) => ({
+      id: d.id,
+      createdAt: d.createdAt.toISOString(),
+      snippet: d.snippet,
+    })),
+    notes: notes.map((n) => ({
+      id: n.id,
+      createdAt: n.createdAt.toISOString(),
+      snippet: n.snippet,
+    })),
+  };
 }

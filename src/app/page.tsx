@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { auth, signIn, signOut } from "@/auth";
 
 export default async function Home() {
@@ -25,12 +26,12 @@ export default async function Home() {
             Signed in as <strong>{session.user.name}</strong> (
             {session.user.email})
           </p>
-          <a
+          <Link
             href="/pursuits"
             className="rounded-md bg-ink px-4 py-2 text-sm font-medium text-white hover:opacity-90"
           >
             Go to your pursuits
-          </a>
+          </Link>
           <form
             action={async () => {
               "use server";

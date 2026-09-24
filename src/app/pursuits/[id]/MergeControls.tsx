@@ -53,7 +53,8 @@ export function MergeControls({
         {notes.map((n) => (
           <div
             key={n.id}
-            className="flex gap-3 rounded-md bg-callout p-4"
+            id={n.id}
+            className="flex scroll-mt-6 gap-3 rounded-md bg-callout p-4"
           >
             <span className="text-ink-faint">▤</span>
             <div className="flex flex-1 flex-col gap-2">
