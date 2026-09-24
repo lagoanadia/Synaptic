@@ -75,21 +75,74 @@ export function NewDumpForm({
   const tableColsRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [draftToOffer, setDraftToOffer] = useState<string | null>(null);
 
   const content = useMemo(() => serialize(blocks), [blocks]);
+
+  // Nothing here is saved to the server until "Save" is clicked — losing
+  // the tab, hitting the browser back button, or a crash before then
+  // used to lose everything typed. This mirrors the in-progress content
+  // into localStorage as a safety net, and offers to restore it if this
+  // form gets opened again (same pursuit, same dump-or-"new" slot) while
+  // an unsaved draft is still sitting there.
+  const draftKey = `synaptic-draft-${pursuitId}-${dumpId ?? "new"}`;
+
+  // Only ever OFFERS the draft — never silently swaps it in, since that
+  // could clobber what's already correctly loaded (e.g. editing a dump:
+  // initialContent is the real saved version, and a stale draft
+  // shouldn't just replace it without asking).
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(draftKey);
+      if (saved && saved.trim() !== "" && saved !== (initialContent ?? "")) {
+        // One-time sync from an external system (localStorage) on mount —
+        // there's no way to read it during render without risking a
+        // server/client hydration mismatch (localStorage doesn't exist on
+        // the server), so it has to happen here instead.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setDraftToOffer(saved);
+      }
+    } catch {
+      // localStorage unavailable (private browsing, blocked storage) —
+      // no draft recovery this time, not fatal.
+    }
+    // Runs once on mount only — checking again after every keystroke
+    // would just re-offer the draft this effect's sibling below is busy
+    // writing.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    try {
+      if (content.trim() === "") {
+        localStorage.removeItem(draftKey);
+      } else {
+        localStorage.setItem(draftKey, content);
+      }
+    } catch {
+      // Storage full/blocked — the draft safety net just doesn't apply
+      // this time, saving still works normally.
+    }
+  }, [content, draftKey]);
 
   // redirect() inside the server action + useActionState crashed the page
   // (minified React error #441), so navigation happens here instead, once
   // the action reports success.
   useEffect(() => {
     if (state.success) {
+      try {
+        localStorage.removeItem(draftKey);
+      } catch {
+        // Not fatal — worst case, a stale draft gets offered next time
+        // and is discarded then.
+      }
       router.push(
         isEditing
           ? `/pursuits/${pursuitId}/dump/${dumpId}`
           : `/pursuits/${pursuitId}?tab=dump`,
       );
     }
-  }, [state.success, router, pursuitId, isEditing, dumpId]);
+  }, [state.success, router, pursuitId, isEditing, dumpId, draftKey]);
 
   // New text blocks (e.g. the "after" half created when an image is
   // inserted) start with no rendered height until the browser has laid
@@ -328,6 +381,37 @@ export function NewDumpForm({
   return (
     <form action={formAction} className="flex flex-1 flex-col gap-4">
       <input type="hidden" name="content" value={content} />
+      {draftToOffer && (
+        <div className="flex items-center justify-between rounded-md border border-accent bg-accent-soft px-3 py-2 text-xs text-ink">
+          <span>You have an unsaved draft from earlier.</span>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                setBlocks(blocksFromContent(draftToOffer));
+                setDraftToOffer(null);
+              }}
+              className="font-semibold text-accent"
+            >
+              Restore
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                try {
+                  localStorage.removeItem(draftKey);
+                } catch {
+                  // Not fatal — the offer just gets dismissed either way.
+                }
+                setDraftToOffer(null);
+              }}
+              className="text-ink-faint hover:text-ink"
+            >
+              Discard
+            </button>
+          </div>
+        </div>
+      )}
       <div className="flex flex-1 flex-col gap-3">
         {blocks.map((block, i) =>
           block.type === "text" ? (

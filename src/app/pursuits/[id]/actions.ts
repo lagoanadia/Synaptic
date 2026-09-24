@@ -260,13 +260,15 @@ export async function finalizeBrainDump(pursuitId: string, dumpId: string) {
 }
 
 const TEXT_MODEL = "openai/gpt-oss-120b";
-// Groq's docs (console.groq.com/docs/models) are the source of truth for
-// which model this should be — that page and the API itself are both
-// unreachable from this dev sandbox's network, so this couldn't be
-// verified with a live test call before shipping. If Organize starts
-// failing on dumps with images, check that page for the current
-// vision-capable model name and swap it in here.
-const VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct";
+// meta-llama/llama-4-scout-17b-16e-instruct (the previous value here) was
+// confirmed 404 model_not_found in Groq's own request logs on 2026-09-24
+// — Groq had dropped it from the free tier. This replacement is a
+// best-effort pick from web research, still NOT verified with a live
+// call (console.groq.com/docs/models and the API itself are both
+// unreachable from this dev sandbox's network) — if it 404s too, check
+// that docs page directly (or the Playground's model list with an image
+// attached) for whatever's current, and swap it in here again.
+const VISION_MODEL = "qwen/qwen3.8-27b";
 const MAX_VISION_IMAGES = 5;
 
 // Returns { error } instead of throwing — DumpControls calls this from a
@@ -360,13 +362,7 @@ JSON object, no other text: {"content": "...", "tags": ["...", "..."]}`;
   let completion;
   try {
     completion = await groq.chat.completions.create({
-      // Confirmed live in the Groq console as of this writing — the earlier
-      // "llama-3.3-70b-versatile" guess had been deprecated/renamed on
-      // Groq's side, which is what caused the 404 in production. Only
-      // switches to the (pricier, slower) vision model when a selected
-      // dump actually has an image — plain-text dumps keep using the
-      // regular text model, unchanged.
-      model: hasImages ? VISION_MODEL : TEXT_MODEL,
+      model: VISION_MODEL,
       messages: [
         {
           role: "user",
@@ -386,12 +382,34 @@ JSON object, no other text: {"content": "...", "tags": ["...", "..."]}`;
       response_format: { type: "json_object" },
     });
   } catch {
-    // Groq down, its own rate limit, network blip, etc. — none of this
-    // used up the user's daily quota (incrementOrganizeUsage runs further
-    // down, only once we know the call actually succeeded).
-    return {
-      error: "Couldn't reach the AI right now. Try again in a few minutes.",
-    };
+    if (hasImages) {
+      // The vision model itself is the thing most likely to break here —
+      // Groq can rename/retire it at any point (as just happened), and
+      // this dev sandbox has no way to verify it live before shipping.
+      // Rather than fail Organize entirely over that, fall back to the
+      // text model on the same prompt (still describing where each image
+      // sits via the "![image](url)" markers already in the text) — the
+      // note comes out without the model actually having looked at the
+      // pictures this once, but Organize still works.
+      try {
+        completion = await groq.chat.completions.create({
+          model: TEXT_MODEL,
+          messages: [{ role: "user", content: prompt }],
+          response_format: { type: "json_object" },
+        });
+      } catch {
+        return {
+          error: "Couldn't reach the AI right now. Try again in a few minutes.",
+        };
+      }
+    } else {
+      // Groq down, its own rate limit, network blip, etc. — none of this
+      // used up the user's daily quota (incrementOrganizeUsage runs
+      // further down, only once we know a call actually succeeded).
+      return {
+        error: "Couldn't reach the AI right now. Try again in a few minutes.",
+      };
+    }
   }
 
   const text = completion.choices[0]?.message?.content;
