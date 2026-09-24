@@ -14,6 +14,7 @@ import { SearchBar } from "./SearchBar";
 import { AskPursuit } from "./AskPursuit";
 import { PursuitTitle } from "./PursuitTitle";
 import { FlashcardReview } from "./FlashcardReview";
+import { Timeline } from "./Timeline";
 import { DeleteButton } from "../DeleteButton";
 
 export default async function PursuitPage({
@@ -26,7 +27,11 @@ export default async function PursuitPage({
   const { id } = await params;
   const { tab: rawTab } = await searchParams;
   const tab =
-    rawTab === "organized" || rawTab === "files" || rawTab === "ask" || rawTab === "cards"
+    rawTab === "organized" ||
+    rawTab === "files" ||
+    rawTab === "ask" ||
+    rawTab === "cards" ||
+    rawTab === "timeline"
       ? rawTab
       : "dump";
 
@@ -180,6 +185,9 @@ export default async function PursuitPage({
         <Link href={`/pursuits/${pursuit.id}?tab=cards`} className={tabClass("cards")}>
           Cards
         </Link>
+        <Link href={`/pursuits/${pursuit.id}?tab=timeline`} className={tabClass("timeline")}>
+          Timeline
+        </Link>
       </div>
 
       {tab === "dump" && (
@@ -219,6 +227,22 @@ export default async function PursuitPage({
             answer: c.answer,
           }))}
           upcomingCount={upcomingFlashcardCount}
+        />
+      )}
+
+      {tab === "timeline" && (
+        <Timeline
+          pursuitId={pursuit.id}
+          dumps={pursuit.brainDumps.map((d) => ({
+            id: d.id,
+            createdAt: d.createdAt,
+            content: d.content,
+          }))}
+          notes={pursuit.notes.map((n) => ({
+            id: n.id,
+            createdAt: n.createdAt,
+            content: n.content,
+          }))}
         />
       )}
 
