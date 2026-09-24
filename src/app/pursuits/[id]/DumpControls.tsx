@@ -27,6 +27,7 @@ export function DumpControls({
   const unprocessed = dumps.filter((d) => !d.processed);
   const [selected, setSelected] = useState<string[]>(() => unprocessed.map((d) => d.id));
   const [isPending, startTransition] = useTransition();
+  const [organizeError, setOrganizeError] = useState<string | null>(null);
 
   // A dump that got organized (or deleted) since this state was last set
   // shouldn't still count toward the selection — its checkbox is gone too.
@@ -50,16 +51,22 @@ export function DumpControls({
       </Link>
 
       {effectiveSelected.length > 0 && (
-        <button
-          type="button"
-          disabled={isPending}
-          onClick={() =>
-            startTransition(() => organizeDumps(pursuitId, effectiveSelected))
-          }
-          className="self-start rounded-md border border-accent px-3 py-1.5 text-xs font-semibold text-accent hover:bg-accent-soft disabled:opacity-50"
-        >
-          ✦ Organize {effectiveSelected.length} selected →
-        </button>
+        <div className="flex flex-col gap-1.5">
+          <button
+            type="button"
+            disabled={isPending}
+            onClick={() =>
+              startTransition(async () => {
+                const result = await organizeDumps(pursuitId, effectiveSelected);
+                setOrganizeError(result.error);
+              })
+            }
+            className="self-start rounded-md border border-accent px-3 py-1.5 text-xs font-semibold text-accent hover:bg-accent-soft disabled:opacity-50"
+          >
+            ✦ Organize {effectiveSelected.length} selected →
+          </button>
+          {organizeError && <p className="text-xs text-red-500">{organizeError}</p>}
+        </div>
       )}
 
       <div className="flex flex-col">

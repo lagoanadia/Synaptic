@@ -8,6 +8,11 @@ import { PursuitType, PursuitStatus, MemberRole } from "@/generated/prisma/clien
 import { upsertSection } from "@/lib/sections";
 import { HEADLINE_OPTIONS } from "@/lib/search";
 import { parseOrganizeResponse } from "@/lib/organize";
+import {
+  DAILY_ORGANIZE_LIMIT,
+  getOrganizeUsageToday,
+  incrementOrganizeUsage,
+} from "@/lib/organizeLimit";
 
 async function requireAccess(pursuitId: string) {
   const session = await auth();
@@ -252,8 +257,23 @@ export async function finalizeBrainDump(pursuitId: string, dumpId: string) {
   revalidatePath(`/pursuits/${pursuitId}`);
 }
 
-export async function organizeDumps(pursuitId: string, dumpIds?: string[]) {
-  await requireAccess(pursuitId);
+// Returns { error } instead of throwing — DumpControls calls this from a
+// plain onClick/startTransition, not a <form>, so an uncaught throw here
+// would bubble up to Next's generic error boundary (the same crash we've
+// hit before from other bugs) instead of showing a message next to the
+// button.
+export async function organizeDumps(
+  pursuitId: string,
+  dumpIds?: string[],
+): Promise<{ error: string | null }> {
+  const { session } = await requireAccess(pursuitId);
+
+  const usedToday = await getOrganizeUsageToday(session.user.id);
+  if (usedToday >= DAILY_ORGANIZE_LIMIT) {
+    return {
+      error: `Has alcanzado el límite de ${DAILY_ORGANIZE_LIMIT} organizaciones con IA por hoy. Prueba de nuevo mañana.`,
+    };
+  }
 
   const dumps = await prisma.brainDump.findMany({
     where: {
@@ -265,7 +285,7 @@ export async function organizeDumps(pursuitId: string, dumpIds?: string[]) {
   });
 
   if (dumps.length === 0) {
-    throw new Error("No new dumps to organize");
+    return { error: "No new dumps to organize" };
   }
 
   const existingTags = await prisma.tag.findMany({
@@ -309,19 +329,31 @@ Then suggest 1-3 short lowercase tags — reuse an existing tag if one
 genuinely fits, otherwise propose a new short one. Respond with ONLY a
 JSON object, no other text: {"content": "...", "tags": ["...", "..."]}`;
 
-  const completion = await groq.chat.completions.create({
-    // Confirmed live in the Groq console as of this writing — the earlier
-    // "llama-3.3-70b-versatile" guess had been deprecated/renamed on Groq's
-    // side, which is what caused the 404 in production.
-    model: "openai/gpt-oss-120b",
-    messages: [{ role: "user", content: prompt }],
-    response_format: { type: "json_object" },
-  });
+  let completion;
+  try {
+    completion = await groq.chat.completions.create({
+      // Confirmed live in the Groq console as of this writing — the earlier
+      // "llama-3.3-70b-versatile" guess had been deprecated/renamed on
+      // Groq's side, which is what caused the 404 in production.
+      model: "openai/gpt-oss-120b",
+      messages: [{ role: "user", content: prompt }],
+      response_format: { type: "json_object" },
+    });
+  } catch {
+    // Groq down, its own rate limit, network blip, etc. — none of this
+    // used up the user's daily quota (incrementOrganizeUsage runs further
+    // down, only once we know the call actually succeeded).
+    return {
+      error: "No se pudo conectar con la IA ahora mismo. Inténtalo de nuevo en unos minutos.",
+    };
+  }
 
   const text = completion.choices[0]?.message?.content;
   if (!text) {
-    throw new Error("AI did not return a usable response");
+    return { error: "AI did not return a usable response" };
   }
+
+  await incrementOrganizeUsage(session.user.id);
 
   // Extracted to lib/organize.ts as a pure function — see its tests for
   // the broken-response cases this handles (invalid JSON, missing
@@ -361,6 +393,7 @@ JSON object, no other text: {"content": "...", "tags": ["...", "..."]}`;
   });
 
   revalidatePath(`/pursuits/${pursuitId}`);
+  return { error: null };
 }
 
 export async function mergeNotes(pursuitId: string, noteIds: string[]) {

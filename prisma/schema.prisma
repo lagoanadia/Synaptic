@@ -28,6 +28,7 @@ model User {
   pursuitTags   PursuitTag[]
   sections      Section[]
   brainDumps    BrainDump[]
+  organizeUsage OrganizeUsage[]
 }
 
 model Account {
@@ -214,6 +215,21 @@ model Tag {
   notes Note[]
 
   @@unique([pursuitId, name])
+}
+
+// One row per (user, UTC day) — tracks how many times Organize has
+// actually called the AI that day, to cap Groq usage per user without
+// any external rate-limiting service. See lib/organizeLimit.ts for the
+// check-then-increment logic that reads/writes this.
+model OrganizeUsage {
+  id    String   @id @default(cuid())
+  date  DateTime
+  count Int      @default(0)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@unique([userId, date])
 }
 
 // Loose reference files that just live in a Pursuit — no AI pipeline involved.
