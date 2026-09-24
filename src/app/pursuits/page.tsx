@@ -1,22 +1,10 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { createPursuit, deletePursuit, deleteSection } from "./actions";
+import { createPursuit, deleteSection, reorderSection } from "./actions";
 import { TypeSelect } from "./TypeSelect";
 import { DeleteButton } from "./DeleteButton";
-
-const TYPE_LABEL: Record<string, string> = {
-  PROJECT: "Project",
-  BOOK: "Book",
-  LANGUAGE: "Language",
-  SKILL: "Skill",
-  OTHER: "Other",
-};
-
-function typeLabel(p: { type: string; customType: string | null }) {
-  if (p.type === "OTHER" && p.customType) return p.customType;
-  return TYPE_LABEL[p.type];
-}
+import { PursuitsBoard, type PursuitForDisplay } from "./PursuitsBoard";
 
 function timeAgo(date: Date) {
   const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
@@ -27,79 +15,6 @@ function timeAgo(date: Date) {
   if (hours > 0) return `${hours}h ago`;
   if (minutes > 0) return `${minutes}m ago`;
   return "just now";
-}
-
-type PursuitForDisplay = {
-  id: string;
-  title: string;
-  type: string;
-  customType: string | null;
-  status: string;
-  lastTouchedAt: Date;
-  ownerId: string;
-  pursuitTags: { id: string; name: string }[];
-};
-
-function PursuitRow({
-  label,
-  pursuits,
-  session,
-}: {
-  label: string;
-  pursuits: PursuitForDisplay[];
-  session: { user: { id: string } };
-}) {
-  return (
-    <div className="flex flex-col gap-3">
-      <span className="text-sm text-ink-muted">{label}</span>
-      <div className="flex gap-4 overflow-x-auto pb-2">
-        {pursuits.map((p) => (
-          <div
-            key={p.id}
-            className="flex w-56 flex-shrink-0 flex-col gap-3 rounded-lg border border-dashed border-border-subtle bg-white p-5 hover:border-solid hover:border-ink"
-          >
-            <a href={`/pursuits/${p.id}`} className="flex flex-1 flex-col gap-3">
-              <div className="flex items-center gap-2">
-                <span
-                  className={`h-2 w-2 flex-shrink-0 rounded-full ${
-                    p.status === "ACTIVE" ? "bg-accent" : "bg-ink-faint"
-                  }`}
-                />
-                <span className="truncate text-xs text-ink-muted">
-                  {typeLabel(p)} · {p.status.toLowerCase()}
-                </span>
-              </div>
-              <div className="text-base font-semibold">{p.title}</div>
-              {p.pursuitTags.length > 0 && (
-                <div className="flex flex-wrap gap-1.5">
-                  {p.pursuitTags.map((t) => (
-                    <span
-                      key={t.id}
-                      className="rounded bg-chip px-2 py-0.5 text-xs text-ink-muted"
-                    >
-                      {t.name}
-                    </span>
-                  ))}
-                </div>
-              )}
-              <div className="text-xs text-ink-faint">
-                last touched {timeAgo(p.lastTouchedAt)}
-              </div>
-            </a>
-            {p.ownerId === session.user.id && (
-              <DeleteButton
-                action={deletePursuit.bind(null, p.id)}
-                confirmMessage={`Delete "${p.title}"? This deletes everything inside it and can't be undone.`}
-                className="self-start text-xs text-ink-faint hover:text-red-500"
-              >
-                Delete
-              </DeleteButton>
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
 }
 
 export default async function PursuitsPage() {
@@ -121,7 +36,7 @@ export default async function PursuitsPage() {
     }),
     prisma.section.findMany({
       where: { userId: session.user.id },
-      orderBy: { name: "asc" },
+      orderBy: { order: "asc" },
     }),
   ]);
 
@@ -137,21 +52,33 @@ export default async function PursuitsPage() {
   const unsectioned: PursuitForDisplay[] = [];
   const shared: PursuitForDisplay[] = [];
   for (const p of pursuits) {
+    const display: PursuitForDisplay = {
+      id: p.id,
+      title: p.title,
+      type: p.type,
+      customType: p.customType,
+      status: p.status,
+      timeAgoLabel: timeAgo(p.lastTouchedAt),
+      ownerId: p.ownerId,
+      pursuitTags: p.pursuitTags,
+    };
     if (p.ownerId !== session.user.id) {
-      shared.push(p);
+      shared.push(display);
       continue;
     }
     const name = p.section?.name;
     if (!name) {
-      unsectioned.push(p);
+      unsectioned.push(display);
       continue;
     }
     if (!grouped.has(name)) grouped.set(name, []);
-    grouped.get(name)!.push(p);
+    grouped.get(name)!.push(display);
   }
-  const sectionRows = Array.from(grouped.entries()).sort((a, b) =>
-    a[0].localeCompare(b[0]),
-  );
+  // Rows follow each section's stored `order` (see reorderSection) instead
+  // of alphabetical, so dragging — well, clicking ↑/↓ — actually sticks.
+  const sectionRows: [string, PursuitForDisplay[]][] = sections
+    .filter((s) => grouped.has(s.name))
+    .map((s) => [s.name, grouped.get(s.name)!]);
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-6 py-12">
@@ -194,11 +121,31 @@ export default async function PursuitsPage() {
       {sections.length > 0 && (
         <div className="-mt-4 flex flex-wrap items-center gap-1.5">
           <span className="text-xs text-ink-faint">Your sections</span>
-          {sections.map((s) => (
+          {sections.map((s, i) => (
             <span
               key={s.id}
               className="flex items-center gap-1 rounded bg-chip px-2 py-0.5 text-xs text-ink-muted"
             >
+              <form action={reorderSection.bind(null, s.id, "up")}>
+                <button
+                  type="submit"
+                  disabled={i === 0}
+                  title="Move row up"
+                  className="text-ink-faint hover:text-ink disabled:opacity-30"
+                >
+                  ↑
+                </button>
+              </form>
+              <form action={reorderSection.bind(null, s.id, "down")}>
+                <button
+                  type="submit"
+                  disabled={i === sections.length - 1}
+                  title="Move row down"
+                  className="text-ink-faint hover:text-ink disabled:opacity-30"
+                >
+                  ↓
+                </button>
+              </form>
               {s.name}
               <DeleteButton
                 action={deleteSection.bind(null, s.id)}
@@ -212,22 +159,13 @@ export default async function PursuitsPage() {
         </div>
       )}
 
-      <div className="flex flex-col gap-8">
-        {sectionRows.map(([name, rowPursuits]) => (
-          <PursuitRow key={name} label={name} pursuits={rowPursuits} session={session} />
-        ))}
-        {shared.length > 0 && (
-          <PursuitRow label="Shared with me" pursuits={shared} session={session} />
-        )}
-        {unsectioned.length > 0 && (
-          <PursuitRow label="No section" pursuits={unsectioned} session={session} />
-        )}
-        {pursuits.length === 0 && (
-          <p className="text-sm text-ink-muted">
-            No pursuits yet — create your first one above.
-          </p>
-        )}
-      </div>
+      <PursuitsBoard
+        sectionRows={sectionRows}
+        shared={shared}
+        unsectioned={unsectioned}
+        sectionNames={sections.map((s) => s.name)}
+        viewerId={session.user.id}
+      />
     </div>
   );
 }

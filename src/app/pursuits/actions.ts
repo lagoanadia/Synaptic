@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { PursuitType } from "@/generated/prisma/client";
+import { upsertSection } from "@/lib/sections";
 
 export async function createPursuit(formData: FormData) {
   const session = await auth();
@@ -30,11 +31,7 @@ export async function createPursuit(formData: FormData) {
   // fixed preset list, reuse an existing one by name or create it here.
   let sectionId: string | null = null;
   if (typeof sectionName === "string" && sectionName.trim() !== "") {
-    const section = await prisma.section.upsert({
-      where: { userId_name: { userId: session.user.id, name: sectionName.trim() } },
-      create: { userId: session.user.id, name: sectionName.trim() },
-      update: {},
-    });
+    const section = await upsertSection(session.user.id, sectionName);
     sectionId = section.id;
   }
 
@@ -98,6 +95,55 @@ export async function deletePursuit(pursuitId: string) {
     prisma.pursuitMember.deleteMany({ where: { pursuitId } }),
     prisma.pursuit.delete({ where: { id: pursuitId } }),
   ]);
+
+  revalidatePath("/pursuits");
+}
+
+// Moves a section's row up or down among the user's other sections by
+// swapping its `order` with whichever neighbor sits on that side.
+export async function reorderSection(sectionId: string, direction: "up" | "down") {
+  const session = await auth();
+  if (!session?.user?.id) {
+    throw new Error("Not signed in");
+  }
+
+  const sections = await prisma.section.findMany({
+    where: { userId: session.user.id },
+    orderBy: { order: "asc" },
+  });
+  const index = sections.findIndex((s) => s.id === sectionId);
+  if (index === -1) return;
+
+  const swapIndex = direction === "up" ? index - 1 : index + 1;
+  if (swapIndex < 0 || swapIndex >= sections.length) return;
+
+  const current = sections[index];
+  const neighbor = sections[swapIndex];
+
+  await prisma.$transaction([
+    prisma.section.update({ where: { id: current.id }, data: { order: neighbor.order } }),
+    prisma.section.update({ where: { id: neighbor.id }, data: { order: current.order } }),
+  ]);
+
+  revalidatePath("/pursuits");
+}
+
+// Bulk-assigns a (possibly new) section to several of the user's own
+// pursuits at once — for cleaning up after a deleted section scattered
+// pursuits back into "No section", without re-typing the name on each one.
+export async function assignSection(pursuitIds: string[], sectionName: string) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    throw new Error("Not signed in");
+  }
+  if (pursuitIds.length === 0 || sectionName.trim() === "") return;
+
+  const section = await upsertSection(session.user.id, sectionName);
+
+  await prisma.pursuit.updateMany({
+    where: { id: { in: pursuitIds }, ownerId: session.user.id },
+    data: { sectionId: section.id },
+  });
 
   revalidatePath("/pursuits");
 }

@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { groq } from "@/lib/groq";
 import { PursuitType, PursuitStatus, MemberRole } from "@/generated/prisma/client";
+import { upsertSection } from "@/lib/sections";
 
 async function requireAccess(pursuitId: string) {
   const session = await auth();
@@ -549,11 +550,7 @@ export async function updatePursuitMeta(pursuitId: string, formData: FormData) {
   // empty value clears the pursuit's section instead of leaving it as-is.
   let sectionId: string | null = null;
   if (typeof sectionName === "string" && sectionName.trim() !== "") {
-    const section = await prisma.section.upsert({
-      where: { userId_name: { userId: session.user.id, name: sectionName.trim() } },
-      create: { userId: session.user.id, name: sectionName.trim() },
-      update: {},
-    });
+    const section = await upsertSection(session.user.id, sectionName);
     sectionId = section.id;
   }
 

@@ -133,8 +133,9 @@ model PursuitMember {
 // not a label. Global to the user and free-typed, same as PursuitTag, so
 // there's no fixed preset list to pick from.
 model Section {
-  id   String @id @default(cuid())
-  name String
+  id    String @id @default(cuid())
+  name  String
+  order Int    @default(0)
 
   userId String
   user   User   @relation(fields: [userId], references: [id])
