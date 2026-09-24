@@ -252,14 +252,20 @@ export function NewDumpForm({
     await stopped;
     mediaRecorderRef.current = null;
 
-    const audioBlob = new Blob(audioChunksRef.current, { type: recorder.mimeType });
+    // Safari on iOS reports mimeType as something like
+    // "audio/mp4;codecs=mp4a.40.2" — the codec suffix would make the
+    // Blob's declared type fail an exact match against the plain
+    // "audio/mp4" in blob-upload's allowed-content-types list, so it gets
+    // stripped before the type is used for anything.
+    const mimeType = recorder.mimeType.split(";")[0].trim();
+    const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
     if (audioBlob.size === 0) return;
 
     setIsTranscribing(true);
     try {
-      const extension = recorder.mimeType.includes("mp4")
+      const extension = mimeType.includes("mp4")
         ? "mp4"
-        : recorder.mimeType.includes("ogg")
+        : mimeType.includes("ogg")
           ? "ogg"
           : "webm";
       const blob = await upload(`dumps/${pursuitId}/voice-note.${extension}`, audioBlob, {
