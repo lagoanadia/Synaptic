@@ -7,6 +7,7 @@ import { groq } from "@/lib/groq";
 import { PursuitType, PursuitStatus, MemberRole } from "@/generated/prisma/client";
 import { upsertSection } from "@/lib/sections";
 import { HEADLINE_OPTIONS } from "@/lib/search";
+import { parseOrganizeResponse } from "@/lib/organize";
 
 async function requireAccess(pursuitId: string) {
   const session = await auth();
@@ -322,29 +323,10 @@ JSON object, no other text: {"content": "...", "tags": ["...", "..."]}`;
     throw new Error("AI did not return a usable response");
   }
 
-  let parsed: { content: unknown; tags: unknown };
-  try {
-    parsed = JSON.parse(text);
-  } catch {
-    // Fall back to treating the whole response as the note, no tags.
-    parsed = { content: text, tags: [] };
-  }
-
-  // The model's JSON isn't guaranteed to match our exact shape (missing
-  // fields, wrong types, duplicate tag names) — validate before using it.
-  const noteContent =
-    typeof parsed.content === "string" && parsed.content.trim() !== ""
-      ? parsed.content
-      : text;
-  const tagNames = Array.isArray(parsed.tags)
-    ? Array.from(
-        new Set(
-          parsed.tags.filter(
-            (t): t is string => typeof t === "string" && t.trim() !== "",
-          ),
-        ),
-      )
-    : [];
+  // Extracted to lib/organize.ts as a pure function — see its tests for
+  // the broken-response cases this handles (invalid JSON, missing
+  // fields, prose wrapped around the JSON).
+  const { content: noteContent, tags: tagNames } = parseOrganizeResponse(text);
 
   // Sequential, not Promise.all: two concurrent upserts on the same
   // (pursuitId, name) unique key can race each other in Postgres.
