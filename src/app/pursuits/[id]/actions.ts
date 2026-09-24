@@ -349,6 +349,10 @@ formatting):
   in words and never write its bare url as plain text
 Plain paragraphs need no marker. Keep it to one blank line between blocks.
 
+Write the note in the same language as the material above (if it's
+mixed, use whichever language dominates) — never translate it, even
+though these instructions are in English.
+
 Then suggest 1-3 short lowercase tags — reuse an existing tag if one
 genuinely fits, otherwise propose a new short one. Respond with ONLY a
 JSON object, no other text: {"content": "...", "tags": ["...", "..."]}`;
