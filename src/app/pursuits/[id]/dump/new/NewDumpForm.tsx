@@ -280,8 +280,12 @@ export function NewDumpForm({
         return;
       }
       insertTextAtActiveBlock(result.text ?? "");
-    } catch {
-      setRecordError("Couldn't process that recording — try again");
+    } catch (err) {
+      // Surfacing the real error text (not just a generic message) since
+      // there's no way to remote-debug a phone from here — whatever this
+      // says is the actual clue to what's failing.
+      const detail = err instanceof Error ? err.message : String(err);
+      setRecordError(`Couldn't process that recording — ${detail}`);
     } finally {
       setIsTranscribing(false);
     }
