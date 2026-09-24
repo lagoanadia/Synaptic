@@ -5,6 +5,22 @@ import { prisma } from "@/lib/prisma";
 // so there's no need for anything fancier than a number in code.
 export const DAILY_ORGANIZE_LIMIT = 15;
 
+// Comma-separated emails exempt from the daily limit — set via env var
+// (Vercel → Settings → Environment Variables → redeploy) rather than a
+// database flag, so exempting an account needs no migration or code
+// change, just config. Meant for the app's own owner/tester, not a
+// general per-user override mechanism.
+const UNLIMITED_EMAILS = new Set(
+  (process.env.ORGANIZE_UNLIMITED_EMAILS ?? "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean),
+);
+
+export function hasUnlimitedOrganize(email: string | null | undefined): boolean {
+  return !!email && UNLIMITED_EMAILS.has(email.toLowerCase());
+}
+
 // Truncates to UTC midnight so "today" means the same instant for every
 // user regardless of their own timezone, and matches how dates are
 // already pinned to UTC elsewhere in this app (see the DumpControls /

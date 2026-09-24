@@ -11,6 +11,7 @@ import { parseOrganizeResponse } from "@/lib/organize";
 import {
   DAILY_ORGANIZE_LIMIT,
   getOrganizeUsageToday,
+  hasUnlimitedOrganize,
   incrementOrganizeUsage,
 } from "@/lib/organizeLimit";
 
@@ -267,12 +268,15 @@ export async function organizeDumps(
   dumpIds?: string[],
 ): Promise<{ error: string | null }> {
   const { session } = await requireAccess(pursuitId);
+  const unlimited = hasUnlimitedOrganize(session.user.email);
 
-  const usedToday = await getOrganizeUsageToday(session.user.id);
-  if (usedToday >= DAILY_ORGANIZE_LIMIT) {
-    return {
-      error: `Has alcanzado el límite de ${DAILY_ORGANIZE_LIMIT} organizaciones con IA por hoy. Prueba de nuevo mañana.`,
-    };
+  if (!unlimited) {
+    const usedToday = await getOrganizeUsageToday(session.user.id);
+    if (usedToday >= DAILY_ORGANIZE_LIMIT) {
+      return {
+        error: `Has alcanzado el límite de ${DAILY_ORGANIZE_LIMIT} organizaciones con IA por hoy. Prueba de nuevo mañana.`,
+      };
+    }
   }
 
   const dumps = await prisma.brainDump.findMany({
@@ -353,7 +357,9 @@ JSON object, no other text: {"content": "...", "tags": ["...", "..."]}`;
     return { error: "AI did not return a usable response" };
   }
 
-  await incrementOrganizeUsage(session.user.id);
+  if (!unlimited) {
+    await incrementOrganizeUsage(session.user.id);
+  }
 
   // Extracted to lib/organize.ts as a pure function — see its tests for
   // the broken-response cases this handles (invalid JSON, missing
