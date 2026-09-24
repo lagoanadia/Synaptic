@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { groq } from "@/lib/groq";
+import type { ChatCompletionContentPartImage } from "groq-sdk/resources/chat/completions";
 import { PursuitType, PursuitStatus, MemberRole } from "@/generated/prisma/client";
 import { upsertSection } from "@/lib/sections";
 import { HEADLINE_OPTIONS } from "@/lib/search";
@@ -258,6 +259,16 @@ export async function finalizeBrainDump(pursuitId: string, dumpId: string) {
   revalidatePath(`/pursuits/${pursuitId}`);
 }
 
+const TEXT_MODEL = "openai/gpt-oss-120b";
+// Groq's docs (console.groq.com/docs/models) are the source of truth for
+// which model this should be — that page and the API itself are both
+// unreachable from this dev sandbox's network, so this couldn't be
+// verified with a live test call before shipping. If Organize starts
+// failing on dumps with images, check that page for the current
+// vision-capable model name and swap it in here.
+const VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct";
+const MAX_VISION_IMAGES = 5;
+
 // Returns { error } instead of throwing — DumpControls calls this from a
 // plain onClick/startTransition, not a <form>, so an uncaught throw here
 // would bubble up to Next's generic error boundary (the same crash we've
@@ -299,13 +310,22 @@ export async function organizeDumps(
 
   // dump.content already has any images inlined as `![image](url)` markers
   // (that's how the composer saves them) — no need to also list them
-  // separately, that would just duplicate the same URL for the model.
-  // Groq's hosted models here are text-only, so the model can't actually
-  // see the picture, only that one is referenced and where it lives.
+  // separately in the prompt text, that would just duplicate the same URL.
   const rawMaterial = dumps.map((dump) => dump.content ?? "").join("\n---\n");
+
+  // Groq caps these vision models at 5 images per request — taking them in
+  // the same chronological order as the dumps themselves (oldest first)
+  // rather than, say, the largest ones, since there's no way to know which
+  // pictures matter most without asking the model in the first place.
+  const imageUrls = dumps.flatMap((dump) => dump.images).slice(0, MAX_VISION_IMAGES);
+  const hasImages = imageUrls.length > 0;
 
   const prompt = `${rawMaterial}\n---\nExisting tags for this pursuit: ${
     existingTags.map((t) => t.name).join(", ") || "(none yet)"
+  }${
+    hasImages
+      ? `\n\n${imageUrls.length} image(s) referenced above are attached below for you to actually look at — use what's in them, don't just guess from the surrounding text.`
+      : ""
   }\n\nSynthesize the material above into one organized, structured note.
 
 Format the note's content using ONLY this exact set of shortcuts — nothing
@@ -338,9 +358,27 @@ JSON object, no other text: {"content": "...", "tags": ["...", "..."]}`;
     completion = await groq.chat.completions.create({
       // Confirmed live in the Groq console as of this writing — the earlier
       // "llama-3.3-70b-versatile" guess had been deprecated/renamed on
-      // Groq's side, which is what caused the 404 in production.
-      model: "openai/gpt-oss-120b",
-      messages: [{ role: "user", content: prompt }],
+      // Groq's side, which is what caused the 404 in production. Only
+      // switches to the (pricier, slower) vision model when a selected
+      // dump actually has an image — plain-text dumps keep using the
+      // regular text model, unchanged.
+      model: hasImages ? VISION_MODEL : TEXT_MODEL,
+      messages: [
+        {
+          role: "user",
+          content: hasImages
+            ? [
+                { type: "text", text: prompt },
+                ...imageUrls.map(
+                  (url): ChatCompletionContentPartImage => ({
+                    type: "image_url",
+                    image_url: { url },
+                  }),
+                ),
+              ]
+            : prompt,
+        },
+      ],
       response_format: { type: "json_object" },
     });
   } catch {
