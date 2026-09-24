@@ -80,6 +80,12 @@ export default async function PursuitPage({
           ← Exit
         </Link>
         <div className="flex items-center gap-4">
+          <a
+            href={`/api/pursuits/${pursuit.id}/export`}
+            className="text-sm text-ink-muted hover:underline"
+          >
+            ↓ Export
+          </a>
           {pursuit.owner.id !== session.user.id && (
             <LeaveButton pursuitId={pursuit.id} />
           )}
