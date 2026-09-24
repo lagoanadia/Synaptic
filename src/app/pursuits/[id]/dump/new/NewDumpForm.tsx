@@ -252,22 +252,26 @@ export function NewDumpForm({
     await stopped;
     mediaRecorderRef.current = null;
 
-    // Safari on iOS reports mimeType as something like
-    // "audio/mp4;codecs=mp4a.40.2" — the codec suffix would make the
-    // Blob's declared type fail an exact match against the plain
-    // "audio/mp4" in blob-upload's allowed-content-types list, so it gets
-    // stripped before the type is used for anything.
-    const mimeType = recorder.mimeType.split(";")[0].trim();
+    // recorder.mimeType can't be trusted as-is: Safari on iOS appends a
+    // codec suffix ("audio/mp4;codecs=mp4a.40.2"), and some browsers
+    // report a WebM recording's container type as "video/webm" even
+    // though this stream is audio-only (getUserMedia was only ever asked
+    // for { audio: true }) — WebM's container doesn't cleanly distinguish
+    // "this is an audio-only file" the way MP4 does. Normalizing to a
+    // plain audio/* type based on the container keyword, rather than
+    // trusting the browser's own label, is what actually matches
+    // blob-upload's allowed-content-types list.
+    const rawType = recorder.mimeType.split(";")[0].trim();
+    const [mimeType, extension] = rawType.includes("mp4")
+      ? ["audio/mp4", "mp4"]
+      : rawType.includes("ogg")
+        ? ["audio/ogg", "ogg"]
+        : ["audio/webm", "webm"];
     const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
     if (audioBlob.size === 0) return;
 
     setIsTranscribing(true);
     try {
-      const extension = mimeType.includes("mp4")
-        ? "mp4"
-        : mimeType.includes("ogg")
-          ? "ogg"
-          : "webm";
       const blob = await upload(`dumps/${pursuitId}/voice-note.${extension}`, audioBlob, {
         access: "public",
         handleUploadUrl: "/api/blob-upload",
