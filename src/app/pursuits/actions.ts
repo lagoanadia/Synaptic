@@ -84,10 +84,13 @@ export async function deletePursuit(pursuitId: string) {
     throw new Error("Only the owner can delete this pursuit");
   }
 
-  // Notes reference BrainDumps and Tags through join tables, so clear them
-  // first — deleting the Pursuit itself would otherwise fail on the
-  // straightforward one-to-many foreign keys below.
+  // Notes reference BrainDumps and Tags through join tables, and Flashcards
+  // reference Notes, so clear them first — deleting the Pursuit itself
+  // would otherwise fail on the straightforward one-to-many foreign keys
+  // below (this is exactly what broke once Flashcard shipped without this
+  // list being updated to match).
   await prisma.$transaction([
+    prisma.flashcard.deleteMany({ where: { pursuitId } }),
     prisma.note.deleteMany({ where: { pursuitId } }),
     prisma.brainDump.deleteMany({ where: { pursuitId } }),
     prisma.tag.deleteMany({ where: { pursuitId } }),
