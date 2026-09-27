@@ -46,6 +46,12 @@ const CARD_BG_SOFT = [
   "bg-linear-to-br from-crimson-soft to-flame-soft",
   "bg-linear-to-br from-forest-soft to-cobalt-soft",
 ];
+// Each row starts its color cycle at a different point in CARD_BG instead
+// of always starting at index 0 — otherwise every section's first card
+// would be the same color. 3 is coprime with CARD_BG's length (10), so
+// consecutive rows land on a different start color for 10 rows straight
+// before the pattern repeats.
+const ROW_COLOR_STEP = 3;
 
 function typeLabel(p: { type: string; customType: string | null }) {
   if (p.type === "OTHER" && p.customType) return p.customType;
@@ -157,6 +163,7 @@ function PursuitCard({
 function PursuitRow({
   label,
   pursuits,
+  rowIndex,
   viewerId,
   selectMode,
   selected,
@@ -164,11 +171,13 @@ function PursuitRow({
 }: {
   label: string;
   pursuits: PursuitForDisplay[];
+  rowIndex: number;
   viewerId: string;
   selectMode: boolean;
   selected: Set<string>;
   onToggle: (id: string) => void;
 }) {
+  const startIndex = rowIndex * ROW_COLOR_STEP;
   return (
     <div className="flex flex-col gap-3">
       <span className="text-sm text-ink-muted">{label}</span>
@@ -177,7 +186,7 @@ function PursuitRow({
           <PursuitCard
             key={p.id}
             p={p}
-            colorIndex={i}
+            colorIndex={startIndex + i}
             viewerId={viewerId}
             selectMode={selectMode}
             selected={selected.has(p.id)}
@@ -286,11 +295,12 @@ export function PursuitsBoard({
         </div>
       )}
 
-      {sectionRows.map(([name, rowPursuits]) => (
+      {sectionRows.map(([name, rowPursuits], i) => (
         <PursuitRow
           key={name}
           label={name}
           pursuits={rowPursuits}
+          rowIndex={i}
           viewerId={viewerId}
           selectMode={selectMode}
           selected={selected}
@@ -301,6 +311,7 @@ export function PursuitsBoard({
         <PursuitRow
           label="Shared with me"
           pursuits={shared}
+          rowIndex={sectionRows.length}
           viewerId={viewerId}
           selectMode={selectMode}
           selected={selected}
@@ -311,6 +322,7 @@ export function PursuitsBoard({
         <PursuitRow
           label="No section"
           pursuits={unsectioned}
+          rowIndex={sectionRows.length + (shared.length > 0 ? 1 : 0)}
           viewerId={viewerId}
           selectMode={selectMode}
           selected={selected}
