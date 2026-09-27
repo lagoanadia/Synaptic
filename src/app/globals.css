@@ -1,25 +1,26 @@
 @import "tailwindcss";
 
-/* Synaptic's palette follows Notion's own: warm off-black text on white,
-   a single blue accent, and soft tinted chips instead of bordered pills —
-   see the approved design canvas for the reference mockup. */
+/* Synaptic's app palette now matches the marketing landing page's own
+   (Plus Jakarta Sans, near-black ink on a warm cream page background,
+   white cards) instead of the old Notion-style off-black-on-white —
+   see src/app/landing for the reference. */
 :root {
-  --background: #ffffff;
-  --foreground: #37352f;
+  --background: #f2f1ee;
+  --foreground: #0d0d0d;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --color-ink: #37352f;
-  --color-ink-muted: #787774;
-  --color-ink-faint: #9b9a97;
-  --color-border-subtle: #ebebea;
+  --color-ink: #0d0d0d;
+  --color-ink-muted: #6b6b6b;
+  --color-ink-faint: #9a9a9a;
+  --color-border-subtle: rgba(13, 13, 13, 0.08);
   --color-accent: #2383e2;
-  --color-accent-soft: #e7f3ff;
+  --color-accent-soft: #eaf3fd;
   --color-chip: #f1f1ef;
   --color-callout: #f7f6f3;
-  --font-sans: var(--font-work-sans);
+  --font-sans: var(--font-app);
 }
 
 body {

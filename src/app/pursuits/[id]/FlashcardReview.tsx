@@ -54,7 +54,7 @@ export function FlashcardReview({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-3 rounded-lg border border-border-subtle bg-white p-6">
+      <div className="flex flex-col gap-3 rounded-2xl bg-white p-6 shadow-[0_1px_2px_rgba(13,13,13,0.06)]">
         <span className="text-xs text-ink-faint">
           {queue.length} card{queue.length === 1 ? "" : "s"} left today
         </span>
@@ -79,7 +79,7 @@ export function FlashcardReview({
               type="button"
               disabled={isPending}
               onClick={() => rate(r.quality)}
-              className={`flex-1 rounded-md border px-3 py-2 text-sm font-medium disabled:opacity-50 ${r.className}`}
+              className={`flex-1 rounded-full border px-3 py-2.5 text-sm font-semibold transition-transform hover:-translate-y-0.5 disabled:opacity-50 disabled:hover:translate-y-0 ${r.className}`}
             >
               {r.label}
             </button>

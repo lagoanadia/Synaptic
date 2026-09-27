@@ -84,10 +84,10 @@ export function SearchBar({ pursuitId }: { pursuitId: string }) {
         value={query}
         onChange={(e) => handleChange(e.target.value)}
         placeholder="Search this pursuit…"
-        className="w-full rounded-md border border-border-subtle bg-white px-3 py-2 text-sm"
+        className="w-full rounded-xl border border-border-subtle bg-white px-3.5 py-2.5 text-sm"
       />
       {hasQuery && (
-        <div className="absolute top-full left-0 z-10 mt-1 flex w-full flex-col gap-3 rounded-md border border-border-subtle bg-white p-3 shadow-sm">
+        <div className="absolute top-full left-0 z-10 mt-2 flex w-full flex-col gap-3 rounded-2xl bg-white p-3 shadow-[0_8px_24px_rgba(13,13,13,0.08),0_2px_6px_rgba(13,13,13,0.06)]">
           {isSearching && <p className="text-xs text-ink-faint">Searching…</p>}
           {!isSearching && results && !hasResults && (
             <p className="text-xs text-ink-faint">No matches in this pursuit.</p>

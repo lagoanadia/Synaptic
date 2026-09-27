@@ -29,7 +29,7 @@ export function TypeSelect({
         name="type"
         value={type}
         onChange={(e) => setType(e.target.value)}
-        className="rounded-md border border-border-subtle bg-white px-3 py-2 text-sm text-ink"
+        className="rounded-xl border border-border-subtle bg-white px-3.5 py-2.5 text-sm text-ink"
       >
         {OPTIONS.map((o) => (
           <option key={o.value} value={o.value}>
@@ -44,7 +44,7 @@ export function TypeSelect({
           defaultValue={defaultCustomType}
           placeholder="Name your own type"
           required
-          className="rounded-md border border-border-subtle bg-white px-3 py-2 text-sm text-ink"
+          className="rounded-xl border border-border-subtle bg-white px-3.5 py-2.5 text-sm text-ink"
         />
       )}
     </div>

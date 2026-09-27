@@ -74,10 +74,8 @@ function PursuitCard({
 
   return (
     <div
-      className={`flex w-56 flex-shrink-0 flex-col gap-3 rounded-lg border p-5 ${
-        selected
-          ? "border-solid border-accent bg-accent-soft"
-          : "border-dashed border-border-subtle bg-white hover:border-solid hover:border-ink"
+      className={`flex w-56 flex-shrink-0 flex-col gap-3 rounded-2xl p-5 shadow-[0_1px_2px_rgba(13,13,13,0.06)] transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-[0_8px_24px_rgba(13,13,13,0.08),0_2px_6px_rgba(13,13,13,0.06)] ${
+        selected ? "bg-accent-soft ring-2 ring-accent" : "bg-white"
       }`}
     >
       <div className="flex flex-1 items-start gap-2">

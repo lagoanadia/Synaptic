@@ -98,7 +98,7 @@ export default async function PursuitsPage() {
           name="title"
           placeholder="New pursuit title"
           required
-          className="flex-1 rounded-md border border-border-subtle px-3 py-2 text-sm"
+          className="flex-1 rounded-xl border border-border-subtle bg-white px-3.5 py-2.5 text-sm"
         />
         <TypeSelect />
         <input
@@ -106,7 +106,7 @@ export default async function PursuitsPage() {
           name="section"
           list="pursuit-sections"
           placeholder="Section (optional)"
-          className="rounded-md border border-border-subtle px-3 py-2 text-sm"
+          className="rounded-xl border border-border-subtle bg-white px-3.5 py-2.5 text-sm"
         />
         <datalist id="pursuit-sections">
           {sections.map((s) => (
@@ -115,7 +115,7 @@ export default async function PursuitsPage() {
         </datalist>
         <button
           type="submit"
-          className="rounded-md bg-ink px-4 py-2 text-sm font-medium whitespace-nowrap text-white hover:opacity-90"
+          className="rounded-full bg-ink px-5 py-2.5 text-sm font-semibold whitespace-nowrap text-white transition-transform hover:-translate-y-0.5 hover:shadow-lg"
         >
           + New
         </button>

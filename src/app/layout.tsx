@@ -1,11 +1,12 @@
 import type { Metadata, Viewport } from "next";
-import { Work_Sans } from "next/font/google";
+import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { RegisterServiceWorker } from "./RegisterServiceWorker";
 
-const workSans = Work_Sans({
-  variable: "--font-work-sans",
+const appFont = Plus_Jakarta_Sans({
+  variable: "--font-app",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
 });
 
 export const metadata: Metadata = {
@@ -30,7 +31,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${workSans.variable} h-full antialiased`}>
+    <html lang="en" className={`${appFont.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
         <RegisterServiceWorker />
         {children}

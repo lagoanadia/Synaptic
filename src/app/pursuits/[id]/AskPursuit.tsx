@@ -35,8 +35,10 @@ export function AskPursuit({ pursuitId }: { pursuitId: string }) {
       <div className="flex flex-col gap-4">
         {turns.map((turn, i) => (
           <div key={i} className="flex flex-col gap-2">
-            <p className="self-end rounded-md bg-chip px-3 py-2 text-sm">{turn.question}</p>
-            <p className="rounded-md bg-callout px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap">
+            <p className="self-end rounded-2xl bg-accent px-4 py-2.5 text-sm text-white">
+              {turn.question}
+            </p>
+            <p className="rounded-2xl bg-white px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap shadow-[0_1px_2px_rgba(13,13,13,0.06)]">
               {turn.answer}
             </p>
           </div>
@@ -62,13 +64,13 @@ export function AskPursuit({ pursuitId }: { pursuitId: string }) {
           }}
           placeholder="Ask this pursuit…"
           disabled={isPending}
-          className="flex-1 rounded-md border border-border-subtle bg-white px-3 py-2 text-sm disabled:opacity-50"
+          className="flex-1 rounded-xl border border-border-subtle bg-white px-3.5 py-2.5 text-sm disabled:opacity-50"
         />
         <button
           type="button"
           onClick={handleAsk}
           disabled={isPending || question.trim() === ""}
-          className="rounded-md bg-ink px-4 py-2 text-sm font-medium whitespace-nowrap text-white hover:opacity-90 disabled:opacity-50"
+          className="rounded-full bg-ink px-5 py-2.5 text-sm font-semibold whitespace-nowrap text-white transition-transform hover:-translate-y-0.5 disabled:opacity-50 disabled:hover:translate-y-0"
         >
           {isPending ? "Thinking…" : "Ask"}
         </button>

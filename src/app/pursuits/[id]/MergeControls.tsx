@@ -48,7 +48,7 @@ export function MergeControls({
               setSelected([]);
             })
           }
-          className="self-start rounded-md border border-accent px-3 py-1.5 text-xs font-semibold text-accent hover:bg-accent-soft disabled:opacity-50"
+          className="self-start rounded-full border border-accent px-3.5 py-1.5 text-xs font-semibold text-accent transition-colors hover:bg-accent-soft disabled:opacity-50"
         >
           {isPending ? "Merging…" : `Merge ${selected.length} notes →`}
         </button>
@@ -58,7 +58,7 @@ export function MergeControls({
           <div
             key={n.id}
             id={n.id}
-            className="flex scroll-mt-6 gap-3 rounded-md bg-callout p-4"
+            className="flex scroll-mt-6 gap-3 rounded-2xl bg-white p-5 shadow-[0_1px_2px_rgba(13,13,13,0.06)] transition-shadow hover:shadow-[0_8px_24px_rgba(13,13,13,0.08),0_2px_6px_rgba(13,13,13,0.06)]"
           >
             <span className="text-ink-faint">▤</span>
             <div className="flex flex-1 flex-col gap-2">
@@ -168,7 +168,7 @@ export function MergeControls({
                   {n.tags.map((t) => (
                     <span
                       key={t.id}
-                      className="rounded bg-chip px-2 py-0.5 text-xs text-ink-muted"
+                      className="rounded-full bg-chip px-2.5 py-0.5 text-xs text-ink-muted"
                     >
                       {t.name}
                     </span>

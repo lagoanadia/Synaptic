@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { LandingNav } from "./landing/LandingNav";
 import { Landing } from "./landing/Landing";
-import { plusJakarta } from "./landing/font";
 
 export default async function Home() {
   const session = await auth();
@@ -11,9 +10,9 @@ export default async function Home() {
   }
 
   return (
-    <div className={`${plusJakarta.className} bg-[#f2f1ee]`}>
+    <>
       <LandingNav />
       <Landing />
-    </div>
+    </>
   );
 }
