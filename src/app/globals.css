@@ -26,3 +26,15 @@ body {
   background: var(--background);
   color: var(--foreground);
 }
+
+/* Landing page's hero cards — a slow constant bob, referenced via
+   Tailwind's animate-[float_...] arbitrary value in HeroCards.tsx. */
+@keyframes float {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 0 -8px;
+  }
+}
