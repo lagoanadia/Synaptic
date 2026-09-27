@@ -21,17 +21,27 @@
   --color-chip: #f1f1ef;
   --color-callout: #f7f6f3;
   /* The card color set, pulled directly from nadia-lagoa.vercel.app's own
-     "Things I've built" project cards (Synaptic/Larder/Kook) instead of an
-     invented palette — so Synaptic's cards use the exact 3 colors from that
-     section, not a lookalike. Each card is filled at full saturation like
-     the source cards, with white text on top (soft variants keep dark ink
-     text since they're pale washes, same as before). */
+     "Things I've built" section: all 10 project cards there reduce to 6
+     solid anchor colors (Synaptic/Larder/Kook/Proyecto X/Twitter
+     Replica/Profile Upload Demo) — the remaining 4 cards there are just
+     two-color gradients built from pairs of these same 6 anchors, so
+     Synaptic's 10-color cycle mirrors that: 6 solids + 4 gradients, not
+     10 independently-invented hues. Each card is filled at full
+     saturation like the source cards, with white text on top (soft
+     variants keep dark ink text since they're pale washes, same as
+     before). */
   --color-flame: #ff4a1c;
   --color-flame-soft: #ffe8e0;
   --color-crimson: #e23b3b;
   --color-crimson-soft: #f1e6e3;
   --color-cobalt: #1f4fd8;
   --color-cobalt-soft: #e5e7ed;
+  --color-gold: #f2c94c;
+  --color-gold-soft: #f2efe4;
+  --color-rose: #f7c6d0;
+  --color-rose-soft: #f2eeec;
+  --color-forest: #0f3d2e;
+  --color-forest-soft: #e4e6e2;
   --font-sans: var(--font-app);
 }
 

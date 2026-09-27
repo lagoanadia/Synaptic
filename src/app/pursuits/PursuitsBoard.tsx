@@ -12,14 +12,40 @@ const TYPE_LABEL: Record<string, string> = {
   OTHER: "Other",
 };
 
-// The exact 3 colors from nadia-lagoa.vercel.app's own "Things I've built"
-// project cards (Synaptic/Larder/Kook), not an invented palette. Assigned by
-// a card's position within its own section/row (cycling through the 3),
-// not by pursuit type — so two PROJECT pursuits in the same row get
-// different colors. Full saturation while active, softened once
-// paused/done, same identity color either way.
-const CARD_BG = ["bg-flame", "bg-crimson", "bg-cobalt"];
-const CARD_BG_SOFT = ["bg-flame-soft", "bg-crimson-soft", "bg-cobalt-soft"];
+// All 10 colors from nadia-lagoa.vercel.app's own "Things I've built"
+// section, in the same order as its 10 project cards (Synaptic, Larder,
+// Kook, Proyecto X, Twitter Replica, Profile Upload Demo, MultiGames,
+// TicTacToe Java, Calculator Java, Lightbulbs) — the last 4 of which are
+// two-color gradients there, built from pairs of the first 6 solid hues,
+// reproduced the same way here rather than invented as flat colors.
+// Assigned by a card's position within its own section/row (cycling
+// through the 10), not by pursuit type — so two PROJECT pursuits in the
+// same row get different colors. Full saturation while active, softened
+// once paused/done, same identity color either way.
+const CARD_BG = [
+  "bg-flame",
+  "bg-crimson",
+  "bg-cobalt",
+  "bg-gold",
+  "bg-rose",
+  "bg-forest",
+  "bg-linear-to-br from-flame to-crimson",
+  "bg-linear-to-br from-cobalt to-rose",
+  "bg-linear-to-br from-crimson to-flame",
+  "bg-linear-to-br from-forest to-cobalt",
+];
+const CARD_BG_SOFT = [
+  "bg-flame-soft",
+  "bg-crimson-soft",
+  "bg-cobalt-soft",
+  "bg-gold-soft",
+  "bg-rose-soft",
+  "bg-forest-soft",
+  "bg-linear-to-br from-flame-soft to-crimson-soft",
+  "bg-linear-to-br from-cobalt-soft to-rose-soft",
+  "bg-linear-to-br from-crimson-soft to-flame-soft",
+  "bg-linear-to-br from-forest-soft to-cobalt-soft",
+];
 
 function typeLabel(p: { type: string; customType: string | null }) {
   if (p.type === "OTHER" && p.customType) return p.customType;
