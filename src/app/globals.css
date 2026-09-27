@@ -20,6 +20,13 @@
   --color-accent-soft: #eaf3fd;
   --color-chip: #f1f1ef;
   --color-callout: #f7f6f3;
+  /* The other two hero/feature colors, so the app can reuse the same
+     code (blue = capture/organize, yellow = cards, rust = ask) instead
+     of leaving it a landing-only decoration. */
+  --color-yellow: #ebda3c;
+  --color-yellow-soft: #fdf8dd;
+  --color-rust: #b5502e;
+  --color-rust-soft: #fdefe0;
   --font-sans: var(--font-app);
 }
 

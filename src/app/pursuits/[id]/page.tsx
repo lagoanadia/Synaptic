@@ -81,10 +81,17 @@ export default async function PursuitPage({
     notFound();
   }
 
+  // Each tab's active underline picks up the same color the landing page
+  // already uses for that feature (Cards → yellow, Ask → rust, everything
+  // else → blue) instead of one flat accent for all six tabs.
+  const TAB_ACCENT: Record<string, string> = {
+    cards: "border-yellow",
+    ask: "border-rust",
+  };
   const tabClass = (name: string) =>
     `pb-2 text-sm font-semibold border-b-2 ${
       tab === name
-        ? "border-accent text-ink"
+        ? `${TAB_ACCENT[name] ?? "border-accent"} text-ink`
         : "border-transparent text-ink-faint"
     }`;
 

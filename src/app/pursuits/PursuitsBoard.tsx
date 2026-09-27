@@ -12,6 +12,18 @@ const TYPE_LABEL: Record<string, string> = {
   OTHER: "Other",
 };
 
+// Reuses the landing page's own color code (blue/yellow/rust) instead of
+// leaving it a marketing-only decoration — Book/Language get the "Ask"
+// and "Cards" colors since reading and repetition-based learning are the
+// closest fit to those two features.
+const TYPE_DOT: Record<string, string> = {
+  PROJECT: "bg-accent",
+  BOOK: "bg-rust",
+  LANGUAGE: "bg-yellow",
+  SKILL: "bg-accent",
+  OTHER: "bg-ink-faint",
+};
+
 function typeLabel(p: { type: string; customType: string | null }) {
   if (p.type === "OTHER" && p.customType) return p.customType;
   return TYPE_LABEL[p.type];
@@ -48,7 +60,7 @@ function PursuitCard({
       <div className="flex items-center gap-2">
         <span
           className={`h-2 w-2 flex-shrink-0 rounded-full ${
-            p.status === "ACTIVE" ? "bg-accent" : "bg-ink-faint"
+            p.status === "ACTIVE" ? TYPE_DOT[p.type] : "bg-ink-faint"
           }`}
         />
         <span className="truncate text-xs text-ink-muted">

@@ -35,7 +35,7 @@ export function AskPursuit({ pursuitId }: { pursuitId: string }) {
       <div className="flex flex-col gap-4">
         {turns.map((turn, i) => (
           <div key={i} className="flex flex-col gap-2">
-            <p className="self-end rounded-2xl bg-accent px-4 py-2.5 text-sm text-white">
+            <p className="self-end rounded-2xl bg-rust px-4 py-2.5 text-sm text-white">
               {turn.question}
             </p>
             <p className="rounded-2xl bg-white px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap shadow-[0_1px_2px_rgba(13,13,13,0.06)]">
@@ -70,7 +70,7 @@ export function AskPursuit({ pursuitId }: { pursuitId: string }) {
           type="button"
           onClick={handleAsk}
           disabled={isPending || question.trim() === ""}
-          className="rounded-full bg-ink px-5 py-2.5 text-sm font-semibold whitespace-nowrap text-white transition-transform hover:-translate-y-0.5 disabled:opacity-50 disabled:hover:translate-y-0"
+          className="rounded-full bg-rust px-5 py-2.5 text-sm font-semibold whitespace-nowrap text-white transition-transform hover:-translate-y-0.5 disabled:opacity-50 disabled:hover:translate-y-0"
         >
           {isPending ? "Thinking…" : "Ask"}
         </button>
