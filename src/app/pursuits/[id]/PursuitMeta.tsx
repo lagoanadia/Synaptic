@@ -14,15 +14,17 @@ const TYPE_LABEL: Record<string, string> = {
 
 const STATUS_OPTIONS = ["ACTIVE", "PAUSED", "DONE"];
 
-// Same code as the Pursuits dashboard cards (see PursuitsBoard.tsx),
-// pulled from nadia-lagoa.vercel.app's own palette.
-const TYPE_DOT: Record<string, string> = {
-  PROJECT: "bg-flame",
-  BOOK: "bg-rose",
-  LANGUAGE: "bg-gold",
-  SKILL: "bg-sage",
-  OTHER: "bg-sky",
-};
+// Same 3-color set as the Pursuits dashboard cards (see PursuitsBoard.tsx),
+// pulled from nadia-lagoa.vercel.app's own project cards. This dot is a
+// single identity marker rather than a full card, so — unlike the board,
+// which colors by position within a section — it just cycles the 3
+// colors by type so a given type always shows the same dot here.
+const TYPE_ORDER = ["PROJECT", "BOOK", "LANGUAGE", "SKILL", "OTHER"];
+const TYPE_DOT_COLORS = ["bg-flame", "bg-crimson", "bg-cobalt"];
+function typeDot(type: string) {
+  const i = TYPE_ORDER.indexOf(type);
+  return TYPE_DOT_COLORS[(i < 0 ? 0 : i) % TYPE_DOT_COLORS.length];
+}
 
 // Type and status were only ever set at creation — this makes that same
 // dot + label line double as an inline editor, toggled by clicking it.
@@ -55,7 +57,7 @@ export function PursuitMeta({
       >
         <span
           className={`h-2 w-2 rounded-full ${
-            status === "ACTIVE" ? TYPE_DOT[type] : "bg-ink-faint"
+            status === "ACTIVE" ? typeDot(type) : "bg-ink-faint"
           }`}
         />
         <span className="text-sm text-ink-muted hover:text-ink hover:underline">

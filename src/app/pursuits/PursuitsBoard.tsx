@@ -12,28 +12,14 @@ const TYPE_LABEL: Record<string, string> = {
   OTHER: "Other",
 };
 
-// Pulled from nadia-lagoa.vercel.app's own palette (its code window's
-// traffic-light dots + syntax colors, plus its one vivid accent) instead
-// of the landing page's blue/yellow/rust, so Synaptic's cards read as
-// the same person's design system. The whole card is filled with this
-// color (not just a status dot) — softened once the pursuit isn't
-// active, same identity color either way. Every one of these is light
-// enough that dark (ink) text stays readable on top, verified against
-// WCAG contrast ratios rather than assumed.
-const TYPE_BG: Record<string, string> = {
-  PROJECT: "bg-flame",
-  BOOK: "bg-rose",
-  LANGUAGE: "bg-gold",
-  SKILL: "bg-sage",
-  OTHER: "bg-sky",
-};
-const TYPE_BG_SOFT: Record<string, string> = {
-  PROJECT: "bg-flame-soft",
-  BOOK: "bg-rose-soft",
-  LANGUAGE: "bg-gold-soft",
-  SKILL: "bg-sage-soft",
-  OTHER: "bg-sky-soft",
-};
+// The exact 3 colors from nadia-lagoa.vercel.app's own "Things I've built"
+// project cards (Synaptic/Larder/Kook), not an invented palette. Assigned by
+// a card's position within its own section/row (cycling through the 3),
+// not by pursuit type — so two PROJECT pursuits in the same row get
+// different colors. Full saturation while active, softened once
+// paused/done, same identity color either way.
+const CARD_BG = ["bg-flame", "bg-crimson", "bg-cobalt"];
+const CARD_BG_SOFT = ["bg-flame-soft", "bg-crimson-soft", "bg-cobalt-soft"];
 
 function typeLabel(p: { type: string; customType: string | null }) {
   if (p.type === "OTHER" && p.customType) return p.customType;
@@ -53,12 +39,14 @@ export type PursuitForDisplay = {
 
 function PursuitCard({
   p,
+  colorIndex,
   viewerId,
   selectMode,
   selected,
   onToggle,
 }: {
   p: PursuitForDisplay;
+  colorIndex: number;
   viewerId: string;
   selectMode: boolean;
   selected: boolean;
@@ -66,36 +54,43 @@ function PursuitCard({
 }) {
   const canSelect = selectMode && p.ownerId === viewerId;
 
+  // Full-saturation cards (active, unselected) carry white text like the
+  // source project cards do; softened/selected cards are pale washes, so
+  // they keep the app's usual dark ink text.
+  const vivid = !selected && p.status === "ACTIVE";
+
   const cardBody = (
     <div className="flex flex-1 flex-col gap-3">
-      <span className="truncate text-xs font-medium text-ink/80">
+      <span className={`truncate text-xs font-medium ${vivid ? "text-white/80" : "text-ink/80"}`}>
         {typeLabel(p)} · {p.status.toLowerCase()}
       </span>
-      <div className="text-base font-semibold text-ink">{p.title}</div>
+      <div className={`text-base font-semibold ${vivid ? "text-white" : "text-ink"}`}>{p.title}</div>
       {p.pursuitTags.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {p.pursuitTags.map((t) => (
             <span
               key={t.id}
-              className="rounded-full bg-black/10 px-2 py-0.5 text-xs text-ink"
+              className={`rounded-full px-2 py-0.5 text-xs ${vivid ? "bg-white/20 text-white" : "bg-black/10 text-ink"}`}
             >
               {t.name}
             </span>
           ))}
         </div>
       )}
-      <div className="text-xs text-ink/70">last touched {p.timeAgoLabel}</div>
+      <div className={`text-xs ${vivid ? "text-white/70" : "text-ink/70"}`}>
+        last touched {p.timeAgoLabel}
+      </div>
     </div>
   );
 
-  // The whole card is filled with the pursuit's type color — full
-  // strength while active, softened once paused/done — instead of just
-  // a status dot, matching the landing hero's solid-colored cards.
+  // The whole card is filled with a color from the 3-color set, picked by
+  // this card's position within its own section — full strength while
+  // active, softened once paused/done — instead of just a status dot.
   const bg = selected
     ? "bg-accent-soft ring-2 ring-accent"
     : p.status === "ACTIVE"
-      ? TYPE_BG[p.type]
-      : TYPE_BG_SOFT[p.type];
+      ? CARD_BG[colorIndex % CARD_BG.length]
+      : CARD_BG_SOFT[colorIndex % CARD_BG_SOFT.length];
 
   return (
     <div
@@ -124,7 +119,7 @@ function PursuitCard({
         <DeleteButton
           action={deletePursuit.bind(null, p.id)}
           confirmMessage={`Delete "${p.title}"? This deletes everything inside it and can't be undone.`}
-          className="self-start text-xs text-ink/70 hover:text-red-600"
+          className={`self-start text-xs ${vivid ? "text-white/70 hover:text-white" : "text-ink/70 hover:text-red-600"}`}
         >
           Delete
         </DeleteButton>
@@ -152,10 +147,11 @@ function PursuitRow({
     <div className="flex flex-col gap-3">
       <span className="text-sm text-ink-muted">{label}</span>
       <div className="flex gap-4 overflow-x-auto pb-2">
-        {pursuits.map((p) => (
+        {pursuits.map((p, i) => (
           <PursuitCard
             key={p.id}
             p={p}
+            colorIndex={i}
             viewerId={viewerId}
             selectMode={selectMode}
             selected={selected.has(p.id)}

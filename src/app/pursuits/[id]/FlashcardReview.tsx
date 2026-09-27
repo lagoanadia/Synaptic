@@ -11,7 +11,7 @@ type CardForDisplay = { id: string; question: string; answer: string };
 const RATINGS = [
   { label: "Again", quality: 1, className: "border-red-300 bg-red-50 text-red-600" },
   { label: "Hard", quality: 3, className: "border-border-subtle text-ink-muted" },
-  { label: "Good", quality: 4, className: "border-gold bg-gold-soft text-ink" },
+  { label: "Good", quality: 4, className: "border-cobalt bg-cobalt-soft text-ink" },
   { label: "Easy", quality: 5, className: "border-border-subtle text-ink-muted" },
 ] as const;
 
@@ -54,8 +54,8 @@ export function FlashcardReview({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-3 rounded-2xl border-t-4 border-gold bg-white p-6 shadow-[0_1px_2px_rgba(13,13,13,0.06)]">
-        <span className="self-start rounded-full bg-gold-soft px-2.5 py-1 text-xs font-semibold text-ink">
+      <div className="flex flex-col gap-3 rounded-2xl border-t-4 border-cobalt bg-white p-6 shadow-[0_1px_2px_rgba(13,13,13,0.06)]">
+        <span className="self-start rounded-full bg-cobalt-soft px-2.5 py-1 text-xs font-semibold text-ink">
           {queue.length} card{queue.length === 1 ? "" : "s"} left today
         </span>
         <p className="text-lg font-semibold">{current.question}</p>

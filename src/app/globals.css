@@ -20,20 +20,18 @@
   --color-accent-soft: #eaf3fd;
   --color-chip: #f1f1ef;
   --color-callout: #f7f6f3;
-  /* The card/feature color code, pulled from nadia-lagoa.vercel.app's
-     own palette (its code-window's traffic-light dots + syntax colors,
-     plus its one vivid accent) instead of an arbitrary new set — so
-     Synaptic's cards read as the same person's design system. */
+  /* The card color set, pulled directly from nadia-lagoa.vercel.app's own
+     "Things I've built" project cards (Synaptic/Larder/Kook) instead of an
+     invented palette — so Synaptic's cards use the exact 3 colors from that
+     section, not a lookalike. Each card is filled at full saturation like
+     the source cards, with white text on top (soft variants keep dark ink
+     text since they're pale washes, same as before). */
   --color-flame: #ff4a1c;
   --color-flame-soft: #ffe8e0;
-  --color-rose: #c98f86;
-  --color-rose-soft: #f8ece9;
-  --color-gold: #d8c793;
-  --color-gold-soft: #faf6ea;
-  --color-sage: #8fbb8f;
-  --color-sage-soft: #eef5ee;
-  --color-sky: #9ab8de;
-  --color-sky-soft: #edf3fa;
+  --color-crimson: #e23b3b;
+  --color-crimson-soft: #f1e6e3;
+  --color-cobalt: #1f4fd8;
+  --color-cobalt-soft: #e5e7ed;
   --font-sans: var(--font-app);
 }
 
