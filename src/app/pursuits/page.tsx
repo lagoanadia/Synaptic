@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
@@ -6,6 +5,7 @@ import { createPursuit, deleteSection, reorderSection } from "./actions";
 import { TypeSelect } from "./TypeSelect";
 import { DeleteButton } from "./DeleteButton";
 import { PursuitsBoard, type PursuitForDisplay } from "./PursuitsBoard";
+import { ProfileMenu } from "../ProfileMenu";
 
 function timeAgo(date: Date) {
   const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
@@ -85,9 +85,11 @@ export default async function PursuitsPage() {
     <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-6 py-12">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Pursuits</h1>
-        <Link href="/" className="text-sm text-ink-muted hover:underline">
-          {session.user.name}
-        </Link>
+        <ProfileMenu
+          name={session.user.name}
+          email={session.user.email}
+          image={session.user.image}
+        />
       </div>
 
       <form action={createPursuit} className="flex flex-wrap gap-2">
