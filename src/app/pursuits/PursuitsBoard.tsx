@@ -15,13 +15,24 @@ const TYPE_LABEL: Record<string, string> = {
 // Pulled from nadia-lagoa.vercel.app's own palette (its code window's
 // traffic-light dots + syntax colors, plus its one vivid accent) instead
 // of the landing page's blue/yellow/rust, so Synaptic's cards read as
-// the same person's design system.
-const TYPE_DOT: Record<string, string> = {
+// the same person's design system. The whole card is filled with this
+// color (not just a status dot) — softened once the pursuit isn't
+// active, same identity color either way. Every one of these is light
+// enough that dark (ink) text stays readable on top, verified against
+// WCAG contrast ratios rather than assumed.
+const TYPE_BG: Record<string, string> = {
   PROJECT: "bg-flame",
   BOOK: "bg-rose",
   LANGUAGE: "bg-gold",
   SKILL: "bg-sage",
   OTHER: "bg-sky",
+};
+const TYPE_BG_SOFT: Record<string, string> = {
+  PROJECT: "bg-flame-soft",
+  BOOK: "bg-rose-soft",
+  LANGUAGE: "bg-gold-soft",
+  SKILL: "bg-sage-soft",
+  OTHER: "bg-sky-soft",
 };
 
 function typeLabel(p: { type: string; customType: string | null }) {
@@ -57,38 +68,38 @@ function PursuitCard({
 
   const cardBody = (
     <div className="flex flex-1 flex-col gap-3">
-      <div className="flex items-center gap-2">
-        <span
-          className={`h-2 w-2 flex-shrink-0 rounded-full ${
-            p.status === "ACTIVE" ? TYPE_DOT[p.type] : "bg-ink-faint"
-          }`}
-        />
-        <span className="truncate text-xs text-ink-muted">
-          {typeLabel(p)} · {p.status.toLowerCase()}
-        </span>
-      </div>
-      <div className="text-base font-semibold">{p.title}</div>
+      <span className="truncate text-xs font-medium text-ink/80">
+        {typeLabel(p)} · {p.status.toLowerCase()}
+      </span>
+      <div className="text-base font-semibold text-ink">{p.title}</div>
       {p.pursuitTags.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {p.pursuitTags.map((t) => (
             <span
               key={t.id}
-              className="rounded bg-chip px-2 py-0.5 text-xs text-ink-muted"
+              className="rounded-full bg-black/10 px-2 py-0.5 text-xs text-ink"
             >
               {t.name}
             </span>
           ))}
         </div>
       )}
-      <div className="text-xs text-ink-faint">last touched {p.timeAgoLabel}</div>
+      <div className="text-xs text-ink/70">last touched {p.timeAgoLabel}</div>
     </div>
   );
 
+  // The whole card is filled with the pursuit's type color — full
+  // strength while active, softened once paused/done — instead of just
+  // a status dot, matching the landing hero's solid-colored cards.
+  const bg = selected
+    ? "bg-accent-soft ring-2 ring-accent"
+    : p.status === "ACTIVE"
+      ? TYPE_BG[p.type]
+      : TYPE_BG_SOFT[p.type];
+
   return (
     <div
-      className={`flex w-56 flex-shrink-0 flex-col gap-3 rounded-2xl p-5 shadow-[0_1px_2px_rgba(13,13,13,0.06)] transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-[0_8px_24px_rgba(13,13,13,0.08),0_2px_6px_rgba(13,13,13,0.06)] ${
-        selected ? "bg-accent-soft ring-2 ring-accent" : "bg-white"
-      }`}
+      className={`flex w-56 flex-shrink-0 flex-col gap-3 rounded-2xl p-5 shadow-[0_1px_2px_rgba(13,13,13,0.06)] transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-[0_8px_24px_rgba(13,13,13,0.08),0_2px_6px_rgba(13,13,13,0.06)] ${bg}`}
     >
       <div className="flex flex-1 items-start gap-2">
         {canSelect && (
@@ -113,7 +124,7 @@ function PursuitCard({
         <DeleteButton
           action={deletePursuit.bind(null, p.id)}
           confirmMessage={`Delete "${p.title}"? This deletes everything inside it and can't be undone.`}
-          className="self-start text-xs text-ink-faint hover:text-red-500"
+          className="self-start text-xs text-ink/70 hover:text-red-600"
         >
           Delete
         </DeleteButton>
