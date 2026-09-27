@@ -1,22 +1,6 @@
 import { HeroCards } from "./HeroCards";
 import { Reveal } from "./Reveal";
-import { signInWithGithub } from "./actions";
-
-function CtaButton({
-  children,
-  className,
-}: {
-  children: string;
-  className: string;
-}) {
-  return (
-    <form action={signInWithGithub}>
-      <button type="submit" className={className}>
-        {children}
-      </button>
-    </form>
-  );
-}
+import { AuthMenu } from "./AuthMenu";
 
 const tileBase =
   "rounded-[20px] p-7 transition-transform duration-300 ease-[cubic-bezier(.22,.61,.36,1)] hover:-translate-y-1.5 hover:shadow-[0_24px_48px_-12px_rgba(13,13,13,0.22),0_8px_16px_rgba(13,13,13,0.08)]";
@@ -47,9 +31,9 @@ export function Landing() {
         </Reveal>
         <Reveal delayMs={180}>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-6">
-            <CtaButton className="rounded-full bg-[#0d0d0d] px-7 py-3.5 text-[0.95rem] font-semibold text-white transition-transform hover:-translate-y-1 hover:shadow-[0_24px_48px_-12px_rgba(13,13,13,0.22),0_8px_16px_rgba(13,13,13,0.08)]">
+            <AuthMenu triggerClassName="rounded-full bg-[#0d0d0d] px-7 py-3.5 text-[0.95rem] font-semibold text-white transition-transform hover:-translate-y-1 hover:shadow-[0_24px_48px_-12px_rgba(13,13,13,0.22),0_8px_16px_rgba(13,13,13,0.08)]">
               Join for free
-            </CtaButton>
+            </AuthMenu>
             <a href="#features" className="font-semibold transition-colors hover:text-[#2383e2]">
               Read more →
             </a>
@@ -155,9 +139,13 @@ export function Landing() {
                   </li>
                 ))}
               </ul>
-              <CtaButton className="block w-full rounded-full border-[1.5px] border-[#0d0d0d] py-3.5 text-center text-sm font-semibold transition-colors hover:bg-[#0d0d0d] hover:text-white">
+              <AuthMenu
+                block
+                align="center"
+                triggerClassName="block w-full rounded-full border-[1.5px] border-[#0d0d0d] py-3.5 text-center text-sm font-semibold transition-colors hover:bg-[#0d0d0d] hover:text-white"
+              >
                 Start free
-              </CtaButton>
+              </AuthMenu>
             </div>
           </Reveal>
 
@@ -178,9 +166,13 @@ export function Landing() {
                   </li>
                 ))}
               </ul>
-              <CtaButton className="block w-full rounded-full bg-[#2383e2] py-3.5 text-center text-sm font-semibold transition-transform hover:-translate-y-1 hover:shadow-[0_16px_32px_rgba(35,131,226,0.35)]">
+              <AuthMenu
+                block
+                align="center"
+                triggerClassName="block w-full rounded-full bg-[#2383e2] py-3.5 text-center text-sm font-semibold transition-transform hover:-translate-y-1 hover:shadow-[0_16px_32px_rgba(35,131,226,0.35)]"
+              >
                 Go Pro
-              </CtaButton>
+              </AuthMenu>
             </div>
           </Reveal>
 
@@ -217,9 +209,12 @@ export function Landing() {
               Start your first pursuit today.
             </h2>
             <p className="my-2.5 mb-5 opacity-90">Free forever plan. No credit card.</p>
-            <CtaButton className="rounded-full bg-white px-7 py-3.5 text-[0.95rem] font-semibold text-[#2383e2] transition-transform hover:-translate-y-1 hover:shadow-[0_24px_48px_-12px_rgba(13,13,13,0.22),0_8px_16px_rgba(13,13,13,0.08)]">
+            <AuthMenu
+              align="left"
+              triggerClassName="rounded-full bg-white px-7 py-3.5 text-[0.95rem] font-semibold text-[#2383e2] transition-transform hover:-translate-y-1 hover:shadow-[0_24px_48px_-12px_rgba(13,13,13,0.22),0_8px_16px_rgba(13,13,13,0.08)]"
+            >
               Join for free
-            </CtaButton>
+            </AuthMenu>
           </div>
           <div className="relative h-[150px] w-[220px] shrink-0">
             <div className="absolute left-0 top-0 w-[170px] -rotate-6 rounded-2xl bg-[#ebda3c] p-[18px] shadow-[0_8px_24px_rgba(13,13,13,0.08),0_2px_6px_rgba(13,13,13,0.06)]">

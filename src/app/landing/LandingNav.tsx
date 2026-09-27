@@ -1,17 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { signInWithGithub } from "./actions";
-
-function GetStartedButton({ className }: { className: string }) {
-  return (
-    <form action={signInWithGithub}>
-      <button type="submit" className={className}>
-        Get started
-      </button>
-    </form>
-  );
-}
+import { AuthMenu } from "./AuthMenu";
 
 export function LandingNav() {
   const [open, setOpen] = useState(false);
@@ -47,7 +37,12 @@ export function LandingNav() {
         </nav>
 
         <div className="hidden items-center gap-4 sm:flex">
-          <GetStartedButton className="rounded-full bg-[#0d0d0d] px-5 py-2.5 text-sm font-semibold text-white transition-transform hover:-translate-y-0.5 hover:shadow-lg" />
+          <AuthMenu
+            align="right"
+            triggerClassName="rounded-full bg-[#0d0d0d] px-5 py-2.5 text-sm font-semibold text-white transition-transform hover:-translate-y-0.5 hover:shadow-lg"
+          >
+            Get started
+          </AuthMenu>
         </div>
 
         <button
@@ -81,7 +76,13 @@ export function LandingNav() {
             {label}
           </a>
         ))}
-        <GetStartedButton className="mt-2 w-full rounded-full bg-[#0d0d0d] px-5 py-2.5 text-center text-sm font-semibold text-white" />
+        <AuthMenu
+          block
+          align="center"
+          triggerClassName="mt-2 w-full rounded-full bg-[#0d0d0d] px-5 py-2.5 text-center text-sm font-semibold text-white"
+        >
+          Get started
+        </AuthMenu>
       </div>
     </header>
   );
