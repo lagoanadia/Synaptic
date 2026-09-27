@@ -12,16 +12,16 @@ const TYPE_LABEL: Record<string, string> = {
   OTHER: "Other",
 };
 
-// Reuses the landing page's own color code (blue/yellow/rust) instead of
-// leaving it a marketing-only decoration — Book/Language get the "Ask"
-// and "Cards" colors since reading and repetition-based learning are the
-// closest fit to those two features.
+// Pulled from nadia-lagoa.vercel.app's own palette (its code window's
+// traffic-light dots + syntax colors, plus its one vivid accent) instead
+// of the landing page's blue/yellow/rust, so Synaptic's cards read as
+// the same person's design system.
 const TYPE_DOT: Record<string, string> = {
-  PROJECT: "bg-accent",
-  BOOK: "bg-rust",
-  LANGUAGE: "bg-yellow",
-  SKILL: "bg-accent",
-  OTHER: "bg-ink-faint",
+  PROJECT: "bg-flame",
+  BOOK: "bg-rose",
+  LANGUAGE: "bg-gold",
+  SKILL: "bg-sage",
+  OTHER: "bg-sky",
 };
 
 function typeLabel(p: { type: string; customType: string | null }) {

@@ -15,13 +15,13 @@ const TYPE_LABEL: Record<string, string> = {
 const STATUS_OPTIONS = ["ACTIVE", "PAUSED", "DONE"];
 
 // Same code as the Pursuits dashboard cards (see PursuitsBoard.tsx),
-// itself reused from the landing page's blue/yellow/rust.
+// pulled from nadia-lagoa.vercel.app's own palette.
 const TYPE_DOT: Record<string, string> = {
-  PROJECT: "bg-accent",
-  BOOK: "bg-rust",
-  LANGUAGE: "bg-yellow",
-  SKILL: "bg-accent",
-  OTHER: "bg-ink-faint",
+  PROJECT: "bg-flame",
+  BOOK: "bg-rose",
+  LANGUAGE: "bg-gold",
+  SKILL: "bg-sage",
+  OTHER: "bg-sky",
 };
 
 // Type and status were only ever set at creation — this makes that same

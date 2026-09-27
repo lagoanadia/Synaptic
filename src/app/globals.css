@@ -20,13 +20,19 @@
   --color-accent-soft: #eaf3fd;
   --color-chip: #f1f1ef;
   --color-callout: #f7f6f3;
-  /* The other two hero/feature colors, so the app can reuse the same
-     code (blue = capture/organize, yellow = cards, rust = ask) instead
-     of leaving it a landing-only decoration. */
-  --color-yellow: #ebda3c;
-  --color-yellow-soft: #fdf8dd;
-  --color-rust: #b5502e;
-  --color-rust-soft: #fdefe0;
+  /* The card/feature color code, pulled from nadia-lagoa.vercel.app's
+     own palette (its code-window's traffic-light dots + syntax colors,
+     plus its one vivid accent) instead of an arbitrary new set — so
+     Synaptic's cards read as the same person's design system. */
+  --color-flame: #ff4a1c;
+  --color-rose: #c98f86;
+  --color-rose-soft: #f8ece9;
+  --color-gold: #d8c793;
+  --color-gold-soft: #faf6ea;
+  --color-sage: #8fbb8f;
+  --color-sage-soft: #eef5ee;
+  --color-sky: #9ab8de;
+  --color-sky-soft: #edf3fa;
   --font-sans: var(--font-app);
 }
 

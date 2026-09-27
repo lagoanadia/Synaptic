@@ -81,12 +81,12 @@ export default async function PursuitPage({
     notFound();
   }
 
-  // Each tab's active underline picks up the same color the landing page
-  // already uses for that feature (Cards → yellow, Ask → rust, everything
-  // else → blue) instead of one flat accent for all six tabs.
+  // Each tab's active underline picks up a color from nadia-lagoa.vercel.app's
+  // own palette (Cards → gold, Ask → flame, everything else → blue) instead
+  // of one flat accent for all six tabs.
   const TAB_ACCENT: Record<string, string> = {
-    cards: "border-yellow",
-    ask: "border-rust",
+    cards: "border-gold",
+    ask: "border-flame",
   };
   const tabClass = (name: string) =>
     `pb-2 text-sm font-semibold border-b-2 ${
