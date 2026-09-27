@@ -12,6 +12,37 @@ export const HEADLINE_OPTIONS = `StartSel=${HL_START}, StopSel=${HL_END}, MaxFra
 
 export type HighlightSegment = { text: string; highlighted: boolean };
 
+// Both the stored searchVector and this query use the 'simple' text search
+// config (see the add_search_vectors migration), never 'english' or
+// 'spanish' — pursuit content mixes both languages, and either language's
+// stemming/stopword rules would mangle the other's words. But 'simple'
+// keeps EVERY token, including function words ("is", "a", "el", "qué"...),
+// as a real lexeme. For a natural-language question that's a problem
+// buildOrTsQuery's OR-matching makes worse, not better: a document that
+// only shares "is"/"a"/"la" with the question ranks right alongside one
+// that shares the actual topic word, so a vaguely-phrased question's
+// results get drowned in noise unless you happen to reuse the exact
+// content words from the note. Filtering this small stopword list out
+// before building the query is what actually gets "best overlap" to mean
+// overlap on meaningful words.
+const STOPWORDS = new Set([
+  // English
+  "a", "an", "and", "are", "as", "at", "be", "by", "can", "could", "did",
+  "do", "does", "for", "from", "had", "has", "have", "he", "how", "i", "in",
+  "is", "it", "its", "my", "of", "on", "our", "she", "should", "that", "the",
+  "their", "these", "they", "this", "those", "to", "was", "we", "were",
+  "what", "when", "where", "which", "who", "why", "will", "with", "would",
+  "you", "your",
+  // Spanish
+  "al", "algo", "como", "con", "cual", "cuales", "cuando", "cómo", "cuál",
+  "cuáles", "cuándo", "de", "del", "donde", "dónde", "el", "ella", "en",
+  "es", "esa", "esas", "ese", "eso", "esos", "esta", "estas", "este",
+  "esto", "estos", "está", "están", "estar", "ser", "la", "las", "le", "les",
+  "lo", "los", "mi", "mis", "nos", "o", "para", "por", "porque", "qué",
+  "que", "quien", "quienes", "quién", "quiénes", "se", "su", "sus", "tu",
+  "tus", "un", "una", "unas", "unos", "y",
+]);
+
 // Builds a Postgres to_tsquery string that matches ANY of the input's
 // words (OR), not all of them like plainto_tsquery does (AND). That's
 // fine for the search bar's short keyword queries, but a full natural-
@@ -24,11 +55,16 @@ export type HighlightSegment = { text: string; highlighted: boolean };
 // Only word-like tokens are extracted (Postgres's tsquery syntax uses
 // &, |, !, (), : as operators) — pulling those out instead of handing
 // the raw question straight to to_tsquery sidesteps ever having to
-// escape that syntax ourselves.
+// escape that syntax ourselves. Stopwords are then dropped so ranking
+// reflects overlap on content words, not "is"/"a"/"la" noise — unless
+// the input turns out to be nothing BUT stopwords, in which case we fall
+// back to matching them anyway rather than returning no query at all.
 export function buildOrTsQuery(text: string): string | null {
   const words = text.match(/[\p{L}\p{N}]+/gu) ?? [];
   if (words.length === 0) return null;
-  return words.map((w) => w.toLowerCase()).join(" | ");
+  const lowered = words.map((w) => w.toLowerCase());
+  const meaningful = lowered.filter((w) => !STOPWORDS.has(w));
+  return (meaningful.length > 0 ? meaningful : lowered).join(" | ");
 }
 
 // Postgres's ts_headline() marks matches by wrapping them in whatever

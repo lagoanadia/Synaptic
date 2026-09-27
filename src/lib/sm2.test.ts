@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { computeNextReview, dueDateAfter, DEFAULT_SM2_STATE, MIN_EASE_FACTOR } from "./sm2";
+import {
+  computeNextReview,
+  dueDateAfter,
+  DEFAULT_SM2_STATE,
+  MIN_EASE_FACTOR,
+  MAX_INTERVAL_DAYS,
+} from "./sm2";
 
 describe("computeNextReview", () => {
   it("gives a 1-day interval on the very first success", () => {
@@ -49,6 +55,16 @@ describe("computeNextReview", () => {
       state = computeNextReview(state, 0);
     }
     expect(state.easeFactor).toBeGreaterThanOrEqual(MIN_EASE_FACTOR);
+  });
+
+  it("never lets the interval grow past the cap, even after many easy reviews", () => {
+    let state = DEFAULT_SM2_STATE;
+    for (let i = 0; i < 50; i++) {
+      state = computeNextReview(state, 5);
+    }
+    expect(state.interval).toBeLessThanOrEqual(MAX_INTERVAL_DAYS);
+    // dueDateAfter must still produce a real, storable Date at the cap.
+    expect(Number.isNaN(dueDateAfter(state.interval).getTime())).toBe(false);
   });
 });
 

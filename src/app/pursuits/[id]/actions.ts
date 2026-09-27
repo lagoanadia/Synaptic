@@ -801,7 +801,7 @@ export async function askPursuit(
       ? contextPieces.map((c, i) => `[${i + 1}]\n${c}`).join("\n\n")
       : "(No matching content found in this pursuit.)";
 
-  const prompt = `Context from this pursuit's brain dumps and organized notes:\n\n${context}\n\n---\n\nQuestion: ${q}\n\nAnswer using ONLY the context above — never use outside knowledge, even if you know the answer. If the context doesn't contain the answer, say plainly that this pursuit's notes don't cover it. Answer in the same language as the question, in plain prose (no markdown formatting), and keep it short.`;
+  const prompt = `Context from this pursuit's brain dumps and organized notes (this may be written in a different language than the question below — that's normal, ignore it for the purpose of picking a reply language):\n\n${context}\n\n---\n\nQuestion: ${q}\n\nAnswer using ONLY the context above — never use outside knowledge, even if you know the answer. If the context doesn't contain the answer, say plainly that this pursuit's notes don't cover it. IMPORTANT: reply in the same language as the Question above, never the language of the context — even if every word of the context is in a different language, translate the substance and answer in the Question's language. Plain prose (no markdown formatting), and keep it short.`;
 
   let completion;
   try {

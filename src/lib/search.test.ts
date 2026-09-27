@@ -14,7 +14,7 @@ describe("buildOrTsQuery", () => {
 
   it("strips punctuation and tsquery operator characters", () => {
     expect(buildOrTsQuery("¿cómo funciona? (la luz) & el agua!")).toBe(
-      "cómo | funciona | la | luz | el | agua",
+      "funciona | luz | agua",
     );
   });
 
@@ -22,6 +22,17 @@ describe("buildOrTsQuery", () => {
     expect(buildOrTsQuery("")).toBeNull();
     expect(buildOrTsQuery("   ")).toBeNull();
     expect(buildOrTsQuery("???")).toBeNull();
+  });
+
+  it("drops stopwords so ranking isn't drowned out by them", () => {
+    expect(buildOrTsQuery("what is a stack")).toBe("stack");
+    expect(buildOrTsQuery("¿cómo funciona la fotosíntesis?")).toBe(
+      "funciona | fotosíntesis",
+    );
+  });
+
+  it("falls back to matching stopwords if that's all there is", () => {
+    expect(buildOrTsQuery("what is it")).toBe("what | is | it");
   });
 });
 
