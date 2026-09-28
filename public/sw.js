@@ -11,15 +11,14 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(self.clients.claim());
 });
 
-// GET-only on purpose — calling fetch(event.request) again for a POST
-// (a Server Action, e.g. picking a Classroom course or submitting any
-// form) can fail with "Failed to fetch" because the request body is a
-// single-use stream that's already been consumed by the time this
-// handler re-issues it. Not calling respondWith() at all lets the
-// browser handle those natively with zero risk, which is what "passes
-// straight through, unchanged" actually requires for anything with a
-// body.
-self.addEventListener("fetch", (event) => {
-  if (event.request.method !== "GET") return;
-  event.respondWith(fetch(event.request));
-});
+// Registered but never calls respondWith() — a real no-op, not just a
+// GET-only one. Re-issuing event.request through fetch() can fail with
+// "Failed to fetch" in more cases than just POST bodies: a top-level page
+// load's Request has mode: "navigate", and passing that same Request
+// object into fetch() again is invalid and throws in Chrome. Not calling
+// respondWith() at all sidesteps every version of this — the browser
+// handles the request exactly as if this listener didn't exist, which is
+// what "passes straight through, unchanged" actually means. The listener
+// stays registered since some installability checks look for one to
+// exist at all, even doing nothing.
+self.addEventListener("fetch", () => {});
