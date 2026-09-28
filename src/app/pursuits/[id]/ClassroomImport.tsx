@@ -7,6 +7,7 @@ import {
   listClassroomCourses,
   listClassroomFiles,
   setClassroomCourse,
+  debugRawClassroomData,
 } from "./actions";
 import type { ClassroomCourse, ClassroomFile } from "@/lib/googleClassroom";
 
@@ -42,6 +43,7 @@ export function ClassroomImport({
   const [imported, setImported] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [debugData, setDebugData] = useState<string | null>(null);
 
   useEffect(() => {
     if (!connected) return;
@@ -126,6 +128,28 @@ export function ClassroomImport({
             </option>
           ))}
         </select>
+      )}
+
+      {selectedCourse && (
+        <button
+          type="button"
+          onClick={() => {
+            startTransition(async () => {
+              setDebugData(await debugRawClassroomData(selectedCourse));
+            });
+          }}
+          className="self-start text-xs text-ink-faint underline"
+        >
+          🐛 Debug: show raw Classroom data
+        </button>
+      )}
+      {debugData && (
+        <textarea
+          readOnly
+          value={debugData}
+          className="h-64 w-full rounded-md border border-border-subtle bg-chip p-2 font-mono text-[10px]"
+          onClick={(e) => e.currentTarget.select()}
+        />
       )}
 
       {files !== null && (
