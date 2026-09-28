@@ -166,13 +166,12 @@ export function Landing() {
                   </li>
                 ))}
               </ul>
-              <AuthMenu
-                block
-                align="center"
-                triggerClassName="block w-full rounded-full bg-[#2383e2] py-3.5 text-center text-sm font-semibold transition-transform hover:-translate-y-1 hover:shadow-[0_16px_32px_rgba(35,131,226,0.35)]"
+              <a
+                href="/billing"
+                className="block w-full rounded-full bg-[#2383e2] py-3.5 text-center text-sm font-semibold transition-transform hover:-translate-y-1 hover:shadow-[0_16px_32px_rgba(35,131,226,0.35)]"
               >
                 Go Pro
-              </AuthMenu>
+              </a>
             </div>
           </Reveal>
 
@@ -191,10 +190,10 @@ export function Landing() {
                 ))}
               </ul>
               <a
-                href="mailto:lagoanadia@gmail.com"
+                href="/billing"
                 className="block w-full rounded-full border-[1.5px] border-[#0d0d0d] py-3.5 text-center text-sm font-semibold transition-colors hover:bg-[#0d0d0d] hover:text-white"
               >
-                Contact us
+                Go Team
               </a>
             </div>
           </Reveal>

@@ -14,9 +14,10 @@ import { computeNextReview, dueDateAfter } from "@/lib/sm2";
 import {
   DAILY_ORGANIZE_LIMIT,
   getOrganizeUsageToday,
-  hasUnlimitedOrganize,
+  hasUnlimitedAccess,
   incrementOrganizeUsage,
 } from "@/lib/organizeLimit";
+import { FREE_MONTHLY_FLASHCARD_LIMIT, getFlashcardsThisMonth } from "@/lib/flashcardLimit";
 
 async function requireAccess(pursuitId: string) {
   const session = await auth();
@@ -77,6 +78,26 @@ export async function addMember(
   }
   if (invitedUser.id === session.user.id) {
     return { error: "That's your own account — you already own this pursuit" };
+  }
+
+  const existingMember = await prisma.pursuitMember.findUnique({
+    where: { pursuitId_userId: { pursuitId, userId: invitedUser.id } },
+  });
+  // Free plan caps sharing at 1 collaborator per pursuit — Pro/Team get
+  // unlimited. Only checked for a genuinely NEW collaborator, so changing
+  // an existing one's role never gets blocked by a cap they're already
+  // inside of.
+  if (!existingMember) {
+    const owner = await prisma.user.findUniqueOrThrow({ where: { id: session.user.id } });
+    if (owner.plan === "FREE") {
+      const memberCount = await prisma.pursuitMember.count({ where: { pursuitId } });
+      if (memberCount >= 1) {
+        return {
+          error:
+            "Free plan pursuits can only be shared with 1 collaborator — upgrade to Pro for unlimited sharing.",
+        };
+      }
+    }
   }
 
   await prisma.pursuitMember.upsert({
@@ -283,7 +304,7 @@ export async function organizeDumps(
   dumpIds?: string[],
 ): Promise<{ error: string | null }> {
   const { session } = await requireAccess(pursuitId);
-  const unlimited = hasUnlimitedOrganize(session.user.email);
+  const unlimited = await hasUnlimitedAccess(session.user.id, session.user.email);
 
   if (!unlimited) {
     const usedToday = await getOrganizeUsageToday(session.user.id);
@@ -754,7 +775,7 @@ export async function askPursuit(
   question: string,
 ): Promise<{ error: string | null; answer?: string }> {
   const { session } = await requireAccess(pursuitId);
-  const unlimited = hasUnlimitedOrganize(session.user.email);
+  const unlimited = await hasUnlimitedAccess(session.user.id, session.user.email);
 
   const q = question.trim();
   if (!q) return { error: "Write a question first" };
@@ -840,7 +861,7 @@ export async function transcribeAudio(
   audioUrl: string,
 ): Promise<{ error: string | null; text?: string }> {
   const { session } = await requireAccess(pursuitId);
-  const unlimited = hasUnlimitedOrganize(session.user.email);
+  const unlimited = await hasUnlimitedAccess(session.user.id, session.user.email);
 
   if (!unlimited) {
     const usedToday = await getOrganizeUsageToday(session.user.id);
@@ -881,13 +902,26 @@ export async function generateFlashcards(
   noteId: string,
 ): Promise<{ error: string | null; count?: number }> {
   const { session } = await requireAccess(pursuitId);
-  const unlimited = hasUnlimitedOrganize(session.user.email);
+  const unlimited = await hasUnlimitedAccess(session.user.id, session.user.email);
 
   if (!unlimited) {
     const usedToday = await getOrganizeUsageToday(session.user.id);
     if (usedToday >= DAILY_ORGANIZE_LIMIT) {
       return {
         error: `You've hit the limit of ${DAILY_ORGANIZE_LIMIT} AI uses for today. Try again tomorrow.`,
+      };
+    }
+  }
+
+  // Counted across pursuits the caller owns, same soft-cap spirit as
+  // OrganizeUsage above — generating into a pursuit someone else shared
+  // with you counts against their cap in this simplified version, not a
+  // gap worth its own "who generated this card" column yet.
+  if (!unlimited) {
+    const generatedThisMonth = await getFlashcardsThisMonth(session.user.id);
+    if (generatedThisMonth >= FREE_MONTHLY_FLASHCARD_LIMIT) {
+      return {
+        error: `You've hit the Free plan's limit of ${FREE_MONTHLY_FLASHCARD_LIMIT} flashcards this month. Upgrade to Pro for unlimited flashcards.`,
       };
     }
   }

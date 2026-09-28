@@ -20,6 +20,15 @@ model User {
   image         String?
   createdAt     DateTime  @default(now())
 
+  // Billing — set from the Stripe webhook (src/app/api/webhooks/stripe),
+  // never written directly from a page or action, so this always reflects
+  // what Stripe itself thinks the subscription state is rather than
+  // something the app guessed right after a checkout redirect.
+  plan                   Plan      @default(FREE)
+  stripeCustomerId       String?   @unique
+  stripeSubscriptionId   String?   @unique
+  stripeCurrentPeriodEnd DateTime?
+
   accounts Account[]
   sessions Session[]
 
@@ -29,6 +38,12 @@ model User {
   sections      Section[]
   brainDumps    BrainDump[]
   organizeUsage OrganizeUsage[]
+}
+
+enum Plan {
+  FREE
+  PRO
+  TEAM
 }
 
 model Account {

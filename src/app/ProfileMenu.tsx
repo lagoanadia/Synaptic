@@ -77,6 +77,13 @@ export function ProfileMenu({
               {email && <p className="truncate text-xs text-[#6b6b6b]">{email}</p>}
             </div>
             <div className="my-1 h-px bg-black/5" />
+            <a
+              href="/billing"
+              className="block w-full rounded-lg px-3.5 py-2.5 text-left text-sm font-medium text-[#0d0d0d] transition-colors hover:bg-[#f2f1ee]"
+            >
+              Billing
+            </a>
+            <div className="my-1 h-px bg-black/5" />
             <form action={signOutAction}>
               <button
                 type="submit"

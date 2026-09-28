@@ -17,8 +17,21 @@ const UNLIMITED_EMAILS = new Set(
     .filter(Boolean),
 );
 
-export function hasUnlimitedOrganize(email: string | null | undefined): boolean {
+function hasUnlimitedOrganize(email: string | null | undefined): boolean {
   return !!email && UNLIMITED_EMAILS.has(email.toLowerCase());
+}
+
+// The real gate now: the env-var allowlist above (this app's own
+// owner/tester) OR an actual paid plan (Pro/Team both get unlimited
+// Organize/Ask/voice — there's no feature difference between them yet,
+// only Team's as-yet-unbuilt collaboration extras).
+export async function hasUnlimitedAccess(
+  userId: string,
+  email: string | null | undefined,
+): Promise<boolean> {
+  if (hasUnlimitedOrganize(email)) return true;
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { plan: true } });
+  return user?.plan !== "FREE";
 }
 
 // Truncates to UTC midnight so "today" means the same instant for every
