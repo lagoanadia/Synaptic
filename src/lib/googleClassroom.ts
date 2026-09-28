@@ -134,15 +134,19 @@ export async function listCourses(accessToken: string): Promise<ClassroomCourse[
 
 export type ClassroomFile = { title: string; url: string };
 
-type DriveFileMaterial = {
+// A Material is a oneOf on Classroom's side (driveFile, link, youtubeVideo,
+// form) — only driveFile and link carry anything we can point an
+// Attachment at.
+type Material = {
   driveFile?: { driveFile?: { title?: string; alternateLink?: string } };
+  link?: { url?: string; title?: string };
 };
 
 // Each courseWork/courseWorkMaterials item is a whole assignment or post —
 // the actual attachments (Drive files, links, etc.) live nested one level
 // down, in its own `materials` array.
 type CourseWorkItem = {
-  materials?: DriveFileMaterial[];
+  materials?: Material[];
 };
 
 // Materials live on two different endpoints depending on whether a
@@ -164,10 +168,10 @@ async function listMaterials(
 }
 
 // Any Drive-backed attachment (PDF, PowerPoint, Word doc, spreadsheet...)
-// — not just PDFs, since teachers post slides and worksheets in whatever
-// format just as often as a PDF. Links and YouTube videos are skipped
-// (no driveFile.driveFile on those), which is the right call anyway since
-// this feeds "import as an attachment pointing at a Drive URL".
+// or plain link a teacher attached — not just PDFs, since teachers post
+// slides and worksheets in whatever format just as often as a PDF. Only
+// YouTube videos and Forms are skipped, since those aren't "a file" to
+// import as an Attachment pointing at a URL.
 export async function listCourseFiles(
   accessToken: string,
   courseId: string,
@@ -192,8 +196,17 @@ export async function listCourseFiles(
   for (const item of items) {
     for (const material of item.materials ?? []) {
       const drive = material.driveFile?.driveFile;
-      if (!drive?.title || !drive.alternateLink) continue;
-      files.push({ title: drive.title, url: drive.alternateLink });
+      if (drive?.alternateLink) {
+        // Classroom doesn't always back-fill the title for a file it
+        // didn't create itself (e.g. a teacher's own upload attached from
+        // Drive) — fall back rather than silently dropping the file.
+        files.push({ title: drive.title || "Untitled file", url: drive.alternateLink });
+        continue;
+      }
+      const link = material.link;
+      if (link?.url) {
+        files.push({ title: link.title || link.url, url: link.url });
+      }
     }
   }
   return files;
