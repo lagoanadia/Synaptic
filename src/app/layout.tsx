@@ -22,6 +22,11 @@ export const metadata: Metadata = {
     title: "Synaptic",
     statusBarStyle: "default",
   },
+  // Proves ownership of the site to Google Search Console — needed for
+  // the OAuth consent screen verification (Classroom/Drive scopes).
+  verification: {
+    google: "wC_i-wp8y2j39HS53RmzInvrdEpUv1bMbvQ4i0mz4XI",
+  },
 };
 
 // themeColor used to live on `metadata` — Next.js 14 split it out into
