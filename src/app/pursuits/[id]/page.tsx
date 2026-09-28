@@ -18,6 +18,7 @@ import { Timeline } from "./Timeline";
 import { DeleteButton } from "../DeleteButton";
 import { ClassroomImport } from "./ClassroomImport";
 import { AttachmentList } from "./AttachmentList";
+import { UpcomingDeadlines } from "./UpcomingDeadlines";
 
 const CLASSROOM_ERROR_COPY: Record<string, string> = {
   denied: "Google Classroom connection canceled.",
@@ -191,6 +192,8 @@ export default async function PursuitPage({
 
       <SearchBar pursuitId={pursuit.id} />
 
+      <UpcomingDeadlines pursuitId={pursuit.id} hasCourse={!!pursuit.classroomCourseId} />
+
       <div className="flex gap-7 border-b border-border-subtle">
         <Link href={`/pursuits/${pursuit.id}?tab=dump`} className={tabClass("dump")}>
           Brain Dump
@@ -283,7 +286,11 @@ export default async function PursuitPage({
               {CLASSROOM_ERROR_COPY[classroomError] ?? "Something went wrong. Try again."}
             </p>
           )}
-          <ClassroomImport pursuitId={pursuit.id} connected={!!classroomConnection} />
+          <ClassroomImport
+            pursuitId={pursuit.id}
+            connected={!!classroomConnection}
+            linkedCourseId={pursuit.classroomCourseId}
+          />
           <form
             action={addAttachment.bind(null, pursuit.id)}
             className="flex gap-2"

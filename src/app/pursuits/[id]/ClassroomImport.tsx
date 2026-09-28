@@ -6,6 +6,7 @@ import {
   importClassroomFile,
   listClassroomCourses,
   listClassroomFiles,
+  setClassroomCourse,
 } from "./actions";
 import type { ClassroomCourse, ClassroomFile } from "@/lib/googleClassroom";
 
@@ -26,12 +27,17 @@ function ConnectButton({ pursuitId }: { pursuitId: string }) {
 export function ClassroomImport({
   pursuitId,
   connected,
+  linkedCourseId,
 }: {
   pursuitId: string;
   connected: boolean;
+  linkedCourseId?: string | null;
 }) {
   const [courses, setCourses] = useState<ClassroomCourse[] | null>(null);
-  const [selectedCourse, setSelectedCourse] = useState("");
+  // Pre-selects the course this Pursuit was already linked to (if any),
+  // so reopening the Files tab doesn't make you pick the same course
+  // again every time.
+  const [selectedCourse, setSelectedCourse] = useState(linkedCourseId ?? "");
   const [files, setFiles] = useState<ClassroomFile[] | null>(null);
   const [imported, setImported] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
@@ -41,22 +47,39 @@ export function ClassroomImport({
     if (!connected) return;
     startTransition(async () => {
       const result = await listClassroomCourses();
-      if (result.error) setError(result.error);
-      else setCourses(result.courses ?? []);
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+      setCourses(result.courses ?? []);
+      // Already linked to a course from a previous visit — load its files
+      // right away instead of waiting for the dropdown to be touched.
+      if (linkedCourseId) {
+        const filesResult = await listClassroomFiles(linkedCourseId);
+        if (filesResult.error) setError(filesResult.error);
+        else setFiles(filesResult.files ?? []);
+      }
     });
+    // Only ever runs once on mount (and if `connected` flips true) —
+    // linkedCourseId is read once here on purpose, not tracked as a
+    // dependency, since pickCourse below is what changes it afterwards.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [connected]);
 
   if (!connected) {
     return <ConnectButton pursuitId={pursuitId} />;
   }
 
-  function pickCourse(courseId: string) {
+  function pickCourse(courseId: string, courseName: string) {
     setSelectedCourse(courseId);
     setFiles(null);
     setError(null);
     if (!courseId) return;
     startTransition(async () => {
-      const result = await listClassroomFiles(courseId);
+      const [result] = await Promise.all([
+        listClassroomFiles(courseId),
+        setClassroomCourse(pursuitId, courseId, courseName),
+      ]);
       if (result.error) setError(result.error);
       else setFiles(result.files ?? []);
     });
@@ -89,7 +112,11 @@ export function ClassroomImport({
       ) : (
         <select
           value={selectedCourse}
-          onChange={(e) => pickCourse(e.target.value)}
+          onChange={(e) => {
+            const courseId = e.target.value;
+            const courseName = courses.find((c) => c.id === courseId)?.name ?? "";
+            pickCourse(courseId, courseName);
+          }}
           className="rounded-md border border-border-subtle bg-white px-3 py-2 text-sm"
         >
           <option value="">Pick a course…</option>

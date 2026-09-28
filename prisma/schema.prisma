@@ -135,6 +135,15 @@ model Pursuit {
   sectionId String?
   section   Section? @relation(fields: [sectionId], references: [id])
 
+  // Which Google Classroom course (if any) this Pursuit is linked to, set
+  // by picking a course in the Files tab's Classroom import — lets the
+  // upcoming-deadlines widget know which course's courseWork to read
+  // without asking the user to pick it again every visit. courseName is
+  // cached alongside the id purely so the UI has something to show before
+  // the Classroom API round trip resolves.
+  classroomCourseId   String?
+  classroomCourseName String?
+
   members     PursuitMember[]
   pursuitTags PursuitTag[]
   brainDumps  BrainDump[]

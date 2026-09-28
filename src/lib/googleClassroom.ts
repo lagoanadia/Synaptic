@@ -211,3 +211,48 @@ export async function listCourseFiles(
   }
   return files;
 }
+
+export type ClassroomDeadline = { id: string; title: string; dueAt: Date; url: string };
+
+type CourseWorkRaw = {
+  id: string;
+  title?: string;
+  alternateLink?: string;
+  dueDate?: { year: number; month: number; day: number };
+  dueTime?: { hours?: number; minutes?: number };
+};
+
+// Only courseWork (assignments) carries a due date — courseWorkMaterials
+// never does — so this hits just that one endpoint, filtered to published
+// work a student would actually see. dueDate/dueTime have no timezone of
+// their own; treating them as server-local time can be off by a few hours
+// from the student's actual local time, which is fine for a "this is
+// roughly when it's due" widget but not for anything more precise.
+export async function listCourseDeadlines(
+  accessToken: string,
+  courseId: string,
+): Promise<ClassroomDeadline[]> {
+  const res = await fetch(
+    `https://classroom.googleapis.com/v1/courses/${courseId}/courseWork?pageSize=100&courseWorkStates=PUBLISHED`,
+    { headers: { Authorization: `Bearer ${accessToken}` } },
+  );
+  if (!res.ok) throw new Error(`Classroom courseWork.list failed: ${await res.text()}`);
+  const data = await res.json();
+  const items: CourseWorkRaw[] = data.courseWork ?? [];
+
+  const deadlines: ClassroomDeadline[] = [];
+  for (const item of items) {
+    if (!item.dueDate || !item.title || !item.alternateLink) continue;
+    const { year, month, day } = item.dueDate;
+    const hours = item.dueTime?.hours ?? 23;
+    const minutes = item.dueTime?.minutes ?? 59;
+    deadlines.push({
+      id: item.id,
+      title: item.title,
+      dueAt: new Date(year, month - 1, day, hours, minutes),
+      url: item.alternateLink,
+    });
+  }
+  deadlines.sort((a, b) => a.dueAt.getTime() - b.dueAt.getTime());
+  return deadlines;
+}

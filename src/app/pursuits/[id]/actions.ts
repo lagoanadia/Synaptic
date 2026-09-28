@@ -22,8 +22,10 @@ import {
   getValidAccessToken,
   listCourses,
   listCourseFiles,
+  listCourseDeadlines,
   type ClassroomCourse,
   type ClassroomFile,
+  type ClassroomDeadline,
 } from "@/lib/googleClassroom";
 
 async function requireAccess(pursuitId: string) {
@@ -653,6 +655,42 @@ export async function listClassroomFiles(
     return { error: null, files: await listCourseFiles(accessToken, courseId) };
   } catch {
     return { error: "Couldn't load files for that course." };
+  }
+}
+
+// Remembers which course this Pursuit is about, so the upcoming-deadlines
+// widget (and reopening the Files tab later) doesn't need the course
+// re-picked every visit. courseName is denormalized here purely for
+// display before/without a fresh Classroom API round trip.
+export async function setClassroomCourse(
+  pursuitId: string,
+  courseId: string,
+  courseName: string,
+) {
+  await requireAccess(pursuitId);
+  await prisma.pursuit.update({
+    where: { id: pursuitId },
+    data: { classroomCourseId: courseId, classroomCourseName: courseName },
+  });
+  revalidatePath(`/pursuits/${pursuitId}`);
+}
+
+export async function listPursuitDeadlines(
+  pursuitId: string,
+): Promise<{ error: string | null; deadlines?: ClassroomDeadline[] }> {
+  const { session, pursuit } = await requireAccess(pursuitId);
+  if (!pursuit.classroomCourseId) return { error: null, deadlines: [] };
+
+  const accessToken = await getValidAccessToken(session.user.id);
+  if (!accessToken) return { error: "Not connected to Google Classroom" };
+
+  try {
+    return {
+      error: null,
+      deadlines: await listCourseDeadlines(accessToken, pursuit.classroomCourseId),
+    };
+  } catch {
+    return { error: "Couldn't load deadlines for that course." };
   }
 }
 
