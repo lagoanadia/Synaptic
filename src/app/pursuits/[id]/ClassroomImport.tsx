@@ -73,7 +73,7 @@ export function ClassroomImport({
     <div className="flex flex-col gap-3 rounded-xl border border-border-subtle bg-white p-4">
       <div className="flex items-center justify-between">
         <span className="text-sm font-semibold">Google Classroom</span>
-        <form action={disconnectClassroom}>
+        <form action={disconnectClassroom.bind(null, pursuitId)}>
           <button type="submit" className="text-xs text-ink-faint hover:text-red-500">
             Disconnect
           </button>

@@ -97,15 +97,24 @@ export async function getValidAccessToken(userId: string): Promise<string | null
     return connection.accessToken;
   }
 
-  const refreshed = await refreshAccessToken(connection.refreshToken);
-  await prisma.googleClassroomConnection.update({
-    where: { userId },
-    data: {
-      accessToken: refreshed.access_token,
-      expiresAt: new Date(Date.now() + refreshed.expires_in * 1000),
-    },
-  });
-  return refreshed.access_token;
+  try {
+    const refreshed = await refreshAccessToken(connection.refreshToken);
+    await prisma.googleClassroomConnection.update({
+      where: { userId },
+      data: {
+        accessToken: refreshed.access_token,
+        expiresAt: new Date(Date.now() + refreshed.expires_in * 1000),
+      },
+    });
+    return refreshed.access_token;
+  } catch {
+    // Refresh token rejected (revoked at myaccount.google.com/permissions,
+    // or invalidated by re-consenting after a scope change) — drop the
+    // dead connection so callers see "not connected" and can prompt to
+    // reconnect, instead of this throwing all the way up to a page crash.
+    await prisma.googleClassroomConnection.deleteMany({ where: { userId } });
+    return null;
+  }
 }
 
 export type ClassroomCourse = { id: string; name: string };
@@ -129,6 +138,13 @@ type DriveFileMaterial = {
   driveFile?: { driveFile?: { title?: string; alternateLink?: string } };
 };
 
+// Each courseWork/courseWorkMaterials item is a whole assignment or post —
+// the actual attachments (Drive files, links, etc.) live nested one level
+// down, in its own `materials` array.
+type CourseWorkItem = {
+  materials?: DriveFileMaterial[];
+};
+
 // Materials live on two different endpoints depending on whether a
 // teacher posted them as an assignment (courseWork) or a plain resource
 // (courseWorkMaterials) — a PDF of lecture slides is usually the latter,
@@ -137,7 +153,7 @@ async function listMaterials(
   accessToken: string,
   courseId: string,
   kind: "courseWork" | "courseWorkMaterials",
-): Promise<DriveFileMaterial[]> {
+): Promise<CourseWorkItem[]> {
   const res = await fetch(
     `https://classroom.googleapis.com/v1/courses/${courseId}/${kind}?pageSize=100`,
     { headers: { Authorization: `Bearer ${accessToken}` } },
@@ -172,10 +188,12 @@ export async function listCoursePdfs(
 
   const files: ClassroomFile[] = [];
   for (const item of items) {
-    const drive = item.driveFile?.driveFile;
-    if (!drive?.title || !drive.alternateLink) continue;
-    if (!drive.title.toLowerCase().endsWith(".pdf")) continue;
-    files.push({ title: drive.title, url: drive.alternateLink });
+    for (const material of item.materials ?? []) {
+      const drive = material.driveFile?.driveFile;
+      if (!drive?.title || !drive.alternateLink) continue;
+      if (!drive.title.toLowerCase().endsWith(".pdf")) continue;
+      files.push({ title: drive.title, url: drive.alternateLink });
+    }
   }
   return files;
 }

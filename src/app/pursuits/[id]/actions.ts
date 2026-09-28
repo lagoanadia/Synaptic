@@ -609,10 +609,11 @@ export async function isClassroomConnected(): Promise<boolean> {
   return !!connection;
 }
 
-export async function disconnectClassroom() {
+export async function disconnectClassroom(pursuitId: string) {
   const session = await auth();
   if (!session?.user?.id) throw new Error("Not signed in");
   await prisma.googleClassroomConnection.deleteMany({ where: { userId: session.user.id } });
+  revalidatePath(`/pursuits/${pursuitId}`);
 }
 
 export async function listClassroomCourses(): Promise<
