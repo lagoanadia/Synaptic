@@ -619,6 +619,17 @@ export async function isClassroomConnected(): Promise<boolean> {
   return !!connection;
 }
 
+// Per-Pursuit opt-in — off by default so a Book/Project/whatever Pursuit
+// never shows the Classroom box, only one you deliberately turn it on
+// for. Turning it off again does NOT disconnect the account-wide Google
+// Classroom connection or forget the linked course — it just hides the
+// section, so turning it back on later picks up right where it left off.
+export async function setClassroomEnabled(pursuitId: string, enabled: boolean) {
+  await requireAccess(pursuitId);
+  await prisma.pursuit.update({ where: { id: pursuitId }, data: { classroomEnabled: enabled } });
+  revalidatePath(`/pursuits/${pursuitId}`);
+}
+
 export async function disconnectClassroom(pursuitId: string) {
   const session = await auth();
   if (!session?.user?.id) throw new Error("Not signed in");

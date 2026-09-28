@@ -175,6 +175,11 @@ model Pursuit {
   // the Classroom API round trip resolves.
   classroomCourseId   String?
   classroomCourseName String?
+  // Opt-in per Pursuit, off by default — Classroom only makes sense for
+  // a school subject, not a book/project/language pursuit, and type is
+  // free-typed text (not a fixed enum), so this can't be inferred from
+  // it reliably. Toggled from the Files tab.
+  classroomEnabled    Boolean @default(false)
 
   members     PursuitMember[]
   pursuitTags PursuitTag[]

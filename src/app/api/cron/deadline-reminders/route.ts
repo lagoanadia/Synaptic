@@ -17,7 +17,7 @@ export async function GET(request: Request) {
   }
 
   const pursuits = await prisma.pursuit.findMany({
-    where: { classroomCourseId: { not: null } },
+    where: { classroomCourseId: { not: null }, classroomEnabled: true },
     select: {
       id: true,
       title: true,

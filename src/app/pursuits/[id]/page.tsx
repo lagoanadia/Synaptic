@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { addAttachment, removePursuitTag } from "./actions";
+import { addAttachment, removePursuitTag, setClassroomEnabled } from "./actions";
 import { MergeControls } from "./MergeControls";
 import { DumpControls } from "./DumpControls";
 import { PursuitMeta } from "./PursuitMeta";
@@ -192,7 +192,10 @@ export default async function PursuitPage({
 
       <SearchBar pursuitId={pursuit.id} />
 
-      <UpcomingDeadlines pursuitId={pursuit.id} hasCourse={!!pursuit.classroomCourseId} />
+      <UpcomingDeadlines
+        pursuitId={pursuit.id}
+        hasCourse={pursuit.classroomEnabled && !!pursuit.classroomCourseId}
+      />
 
       <div className="flex gap-7 border-b border-border-subtle">
         <Link href={`/pursuits/${pursuit.id}?tab=dump`} className={tabClass("dump")}>
@@ -286,11 +289,32 @@ export default async function PursuitPage({
               {CLASSROOM_ERROR_COPY[classroomError] ?? "Something went wrong. Try again."}
             </p>
           )}
-          <ClassroomImport
-            pursuitId={pursuit.id}
-            connected={!!classroomConnection}
-            linkedCourseId={pursuit.classroomCourseId}
-          />
+          {pursuit.classroomEnabled ? (
+            <div className="flex flex-col gap-1.5">
+              <ClassroomImport
+                pursuitId={pursuit.id}
+                connected={!!classroomConnection}
+                linkedCourseId={pursuit.classroomCourseId}
+              />
+              <form action={setClassroomEnabled.bind(null, pursuit.id, false)}>
+                <button
+                  type="submit"
+                  className="self-start text-xs text-ink-faint hover:text-red-500"
+                >
+                  Turn off Google Classroom for this Pursuit
+                </button>
+              </form>
+            </div>
+          ) : (
+            <form action={setClassroomEnabled.bind(null, pursuit.id, true)}>
+              <button
+                type="submit"
+                className="self-start rounded-full border border-border-subtle bg-white px-4 py-2 text-sm text-ink-muted transition-colors hover:border-ink hover:text-ink"
+              >
+                + This is a school subject — enable Google Classroom
+              </button>
+            </form>
+          )}
           <form
             action={addAttachment.bind(null, pursuit.id)}
             className="flex gap-2"
