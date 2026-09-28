@@ -138,3 +138,49 @@ export async function assignSection(pursuitIds: string[], sectionName: string) {
 
   revalidatePath("/pursuits");
 }
+
+export type PushSubscriptionInput = {
+  endpoint: string;
+  keys: { p256dh: string; auth: string };
+};
+
+// One row per browser push endpoint, not per user — upsert on endpoint so
+// re-subscribing (e.g. after clearing site data) doesn't create a
+// duplicate row for the same browser.
+export async function subscribeToPush(subscription: PushSubscriptionInput) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Not signed in");
+
+  await prisma.pushSubscription.upsert({
+    where: { endpoint: subscription.endpoint },
+    create: {
+      endpoint: subscription.endpoint,
+      p256dh: subscription.keys.p256dh,
+      auth: subscription.keys.auth,
+      userId: session.user.id,
+    },
+    update: {
+      p256dh: subscription.keys.p256dh,
+      auth: subscription.keys.auth,
+      userId: session.user.id,
+    },
+  });
+}
+
+export async function unsubscribeFromPush(endpoint: string) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Not signed in");
+  // deleteMany, not delete, scoped to userId so this can't be used to
+  // drop another user's subscription by passing their endpoint.
+  await prisma.pushSubscription.deleteMany({ where: { endpoint, userId: session.user.id } });
+}
+
+export async function hasPushSubscription(endpoint: string): Promise<boolean> {
+  const session = await auth();
+  if (!session?.user?.id) return false;
+  const sub = await prisma.pushSubscription.findFirst({
+    where: { endpoint, userId: session.user.id },
+    select: { id: true },
+  });
+  return !!sub;
+}

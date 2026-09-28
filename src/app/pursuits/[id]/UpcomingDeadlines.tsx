@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { listPursuitDeadlines } from "./actions";
+import { NotificationToggle } from "./NotificationToggle";
 import type { ClassroomDeadline } from "@/lib/googleClassroom";
 
 // Sits above the tabs, not inside Files — a deadline is time-sensitive
@@ -33,14 +34,21 @@ export function UpcomingDeadlines({
     };
   }, [pursuitId, hasCourse]);
 
-  // Silent by default: no course linked, still loading, the fetch failed
-  // (an expired connection here is a "try again later" case, not worth a
-  // banner for a passive glance-only widget), or genuinely nothing due.
-  if (!hasCourse || !deadlines || now === null || deadlines.length === 0) return null;
+  // Silent by default: no course linked at all — nothing to remind about,
+  // so no point offering the reminders toggle either. Once a course is
+  // linked, the box stays (even with zero deadlines right now) so the
+  // toggle has somewhere to live.
+  if (!hasCourse || !deadlines || now === null) return null;
 
   return (
     <div className="flex flex-col gap-1.5 rounded-xl border border-border-subtle bg-white p-3">
-      <span className="text-xs font-semibold text-ink-faint">Upcoming from Classroom</span>
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-semibold text-ink-faint">Upcoming from Classroom</span>
+        <NotificationToggle />
+      </div>
+      {deadlines.length === 0 && (
+        <p className="text-xs text-ink-muted">Nothing due soon.</p>
+      )}
       {deadlines.slice(0, 3).map((d) => {
         const overdue = d.dueAt.getTime() < now;
         return (
