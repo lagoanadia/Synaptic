@@ -17,6 +17,7 @@ import { FlashcardReview } from "./FlashcardReview";
 import { Timeline } from "./Timeline";
 import { DeleteButton } from "../DeleteButton";
 import { ClassroomImport } from "./ClassroomImport";
+import { AttachmentList } from "./AttachmentList";
 
 const CLASSROOM_ERROR_COPY: Record<string, string> = {
   denied: "Google Classroom connection canceled.",
@@ -308,24 +309,13 @@ export default async function PursuitPage({
               + Add
             </button>
           </form>
-          <div className="flex flex-col">
-            {pursuit.attachments.map((a) => (
-              <a
-                key={a.id}
-                href={a.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-3 border-b border-dashed border-border-subtle py-3 last:border-0 hover:underline"
-              >
-                <span className="text-sm">{a.name}</span>
-              </a>
-            ))}
-            {pursuit.attachments.length === 0 && (
-              <p className="text-sm text-ink-muted">
-                No files yet — add a link above.
-              </p>
-            )}
-          </div>
+          <AttachmentList
+            attachments={pursuit.attachments.map((a) => ({
+              id: a.id,
+              name: a.name,
+              url: a.url,
+            }))}
+          />
         </div>
       )}
     </div>
