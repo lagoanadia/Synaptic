@@ -11,14 +11,8 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(self.clients.claim());
 });
 
-// Registered but never calls respondWith() — a real no-op, not just a
-// GET-only one. Re-issuing event.request through fetch() can fail with
-// "Failed to fetch" in more cases than just POST bodies: a top-level page
-// load's Request has mode: "navigate", and passing that same Request
-// object into fetch() again is invalid and throws in Chrome. Not calling
-// respondWith() at all sidesteps every version of this — the browser
-// handles the request exactly as if this listener didn't exist, which is
-// what "passes straight through, unchanged" actually means. The listener
-// stays registered since some installability checks look for one to
-// exist at all, even doing nothing.
-self.addEventListener("fetch", () => {});
+// No fetch listener at all — modern installability criteria (Chrome
+// dropped the "must handle fetch" requirement years ago) don't need one,
+// and Chrome's own DevTools flags an empty/no-op handler as pure
+// overhead on every navigation for zero benefit. Every request already
+// goes straight to the network untouched by simply not being intercepted.

@@ -10,6 +10,12 @@ import { prisma } from "@/lib/prisma";
 const CLASSROOM_SCOPES = [
   "https://www.googleapis.com/auth/classroom.courses.readonly",
   "https://www.googleapis.com/auth/classroom.coursework.me.readonly",
+  // courseWorkMaterials is a distinct resource from courseWork (a plain
+  // resource a teacher posts vs. a gradeable assignment) with its own
+  // scope — without this, courseWorkMaterials.list 403s even though
+  // courseWork.list succeeds on the scope above, which is exactly what
+  // was failing "load files" for every course.
+  "https://www.googleapis.com/auth/classroom.courseworkmaterials.readonly",
 ];
 
 function redirectUri(baseUrl: string) {
@@ -148,13 +154,24 @@ export async function listCoursePdfs(
   accessToken: string,
   courseId: string,
 ): Promise<ClassroomFile[]> {
-  const [work, materials] = await Promise.all([
+  // allSettled, not all — courseWork and courseWorkMaterials are scoped
+  // separately, so one missing/expired scope shouldn't blank out results
+  // that the other endpoint could still provide.
+  const [work, materials] = await Promise.allSettled([
     listMaterials(accessToken, courseId, "courseWork"),
     listMaterials(accessToken, courseId, "courseWorkMaterials"),
   ]);
+  if (work.status === "rejected" && materials.status === "rejected") {
+    throw work.reason;
+  }
+
+  const items = [
+    ...(work.status === "fulfilled" ? work.value : []),
+    ...(materials.status === "fulfilled" ? materials.value : []),
+  ];
 
   const files: ClassroomFile[] = [];
-  for (const item of [...work, ...materials]) {
+  for (const item of items) {
     const drive = item.driveFile?.driveFile;
     if (!drive?.title || !drive.alternateLink) continue;
     if (!drive.title.toLowerCase().endsWith(".pdf")) continue;
