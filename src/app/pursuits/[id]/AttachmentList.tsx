@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { removeAttachment } from "./actions";
+import { DeleteButton } from "../DeleteButton";
 
 type Attachment = { id: string; name: string; url: string };
 
@@ -25,7 +27,13 @@ function toEmbedUrl(url: string): string | null {
   return null;
 }
 
-export function AttachmentList({ attachments }: { attachments: Attachment[] }) {
+export function AttachmentList({
+  pursuitId,
+  attachments,
+}: {
+  pursuitId: string;
+  attachments: Attachment[];
+}) {
   const [openId, setOpenId] = useState<string | null>(null);
 
   if (attachments.length === 0) {
@@ -39,33 +47,41 @@ export function AttachmentList({ attachments }: { attachments: Attachment[] }) {
       {attachments.map((a) => {
         const embedUrl = toEmbedUrl(a.url);
 
-        if (!embedUrl) {
-          return (
-            <a
-              key={a.id}
-              href={a.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-3 border-b border-dashed border-border-subtle py-3 last:border-0 hover:underline"
-            >
-              <span className="text-sm">{a.name}</span>
-            </a>
-          );
-        }
-
         return (
           <div key={a.id} className="border-b border-dashed border-border-subtle last:border-0">
-            <button
-              type="button"
-              onClick={() => setOpenId(openId === a.id ? null : a.id)}
-              className="flex w-full items-center justify-between gap-3 py-3 text-left text-sm hover:underline"
-            >
-              <span>{a.name}</span>
-              <span className="shrink-0 text-xs text-ink-faint">
-                {openId === a.id ? "Hide" : "Preview"}
-              </span>
-            </button>
-            {openId === a.id && (
+            <div className="flex items-center gap-3 py-3">
+              {embedUrl ? (
+                <button
+                  type="button"
+                  onClick={() => setOpenId(openId === a.id ? null : a.id)}
+                  className="flex-1 truncate text-left text-sm hover:underline"
+                >
+                  {a.name}
+                </button>
+              ) : (
+                <a
+                  href={a.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 truncate text-sm hover:underline"
+                >
+                  {a.name}
+                </a>
+              )}
+              {embedUrl && (
+                <span className="shrink-0 text-xs text-ink-faint">
+                  {openId === a.id ? "Hide" : "Preview"}
+                </span>
+              )}
+              <DeleteButton
+                action={removeAttachment.bind(null, pursuitId, a.id)}
+                confirmMessage={`Remove "${a.name}"?`}
+                className="shrink-0 text-ink-faint hover:text-red-500"
+              >
+                ×
+              </DeleteButton>
+            </div>
+            {embedUrl && openId === a.id && (
               <div className="flex flex-col gap-1 pb-3">
                 <iframe
                   src={embedUrl}

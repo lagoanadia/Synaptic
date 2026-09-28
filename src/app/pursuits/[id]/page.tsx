@@ -310,6 +310,7 @@ export default async function PursuitPage({
             </button>
           </form>
           <AttachmentList
+            pursuitId={pursuit.id}
             attachments={pursuit.attachments.map((a) => ({
               id: a.id,
               name: a.name,

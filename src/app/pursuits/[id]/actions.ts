@@ -600,6 +600,14 @@ export async function addAttachment(pursuitId: string, formData: FormData) {
   revalidatePath(`/pursuits/${pursuitId}`);
 }
 
+export async function removeAttachment(pursuitId: string, attachmentId: string) {
+  await requireAccess(pursuitId);
+  // deleteMany, not delete, scoped to pursuitId so this can't be used to
+  // delete an attachment belonging to a different pursuit by guessing an id.
+  await prisma.attachment.deleteMany({ where: { id: attachmentId, pursuitId } });
+  revalidatePath(`/pursuits/${pursuitId}`);
+}
+
 export async function isClassroomConnected(): Promise<boolean> {
   const session = await auth();
   if (!session?.user?.id) return false;
