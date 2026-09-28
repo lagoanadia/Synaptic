@@ -25,8 +25,9 @@ export function Landing() {
         </Reveal>
         <Reveal delayMs={90}>
           <p className="mx-auto mt-6 max-w-[560px] text-[1.05rem] leading-relaxed text-[#6b6b6b]">
-            Students organize their notes, generate flashcards, and ask questions — all with
-            AI, all in one place.
+            <strong className="text-[#0d0d0d]">Synaptic</strong> is an app for students:
+            capture notes as text, images, or voice, let AI organize them, generate
+            flashcards, and ask questions about your own material — all in one place.
           </p>
         </Reveal>
         <Reveal delayMs={180}>
