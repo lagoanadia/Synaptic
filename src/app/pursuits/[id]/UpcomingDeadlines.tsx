@@ -23,12 +23,24 @@ export function UpcomingDeadlines({
   useEffect(() => {
     if (!hasCourse) return;
     let cancelled = false;
-    listPursuitDeadlines(pursuitId).then((result) => {
-      if (!cancelled) {
-        setDeadlines(result.deadlines ?? []);
-        setNow(Date.now());
-      }
-    });
+    listPursuitDeadlines(pursuitId)
+      .then((result) => {
+        if (!cancelled) {
+          setDeadlines(result.deadlines ?? []);
+          setNow(Date.now());
+        }
+      })
+      // Defense in depth: listPursuitDeadlines itself never throws (it
+      // catches internally), but a network-level failure calling the
+      // action at all would otherwise reject here — swallow it the same
+      // way, rather than let this passive background fetch ever surface
+      // as a crash.
+      .catch(() => {
+        if (!cancelled) {
+          setDeadlines([]);
+          setNow(Date.now());
+        }
+      });
     return () => {
       cancelled = true;
     };

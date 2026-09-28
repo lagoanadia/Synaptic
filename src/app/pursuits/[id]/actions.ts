@@ -686,16 +686,23 @@ export async function setClassroomCourse(
   revalidatePath(`/pursuits/${pursuitId}`);
 }
 
+// Unlike every other Classroom action here, this one fires on its own on
+// every page load (see UpcomingDeadlines' effect) rather than from a
+// user's click — so it's wrapped in one try/catch around everything,
+// requireAccess included. A click-triggered action can afford to let an
+// unexpected throw crash to the error boundary since the user can just
+// retry; a passive background fetch can't, since there's nothing for
+// them to retry.
 export async function listPursuitDeadlines(
   pursuitId: string,
 ): Promise<{ error: string | null; deadlines?: ClassroomDeadline[] }> {
-  const { session, pursuit } = await requireAccess(pursuitId);
-  if (!pursuit.classroomCourseId) return { error: null, deadlines: [] };
-
-  const accessToken = await getValidAccessToken(session.user.id);
-  if (!accessToken) return { error: "Not connected to Google Classroom" };
-
   try {
+    const { session, pursuit } = await requireAccess(pursuitId);
+    if (!pursuit.classroomCourseId) return { error: null, deadlines: [] };
+
+    const accessToken = await getValidAccessToken(session.user.id);
+    if (!accessToken) return { error: "Not connected to Google Classroom" };
+
     return {
       error: null,
       deadlines: await listCourseDeadlines(accessToken, pursuit.classroomCourseId),
