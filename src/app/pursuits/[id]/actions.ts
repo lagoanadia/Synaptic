@@ -18,6 +18,13 @@ import {
   incrementOrganizeUsage,
 } from "@/lib/organizeLimit";
 import { FREE_MONTHLY_FLASHCARD_LIMIT, getFlashcardsThisMonth } from "@/lib/flashcardLimit";
+import {
+  getValidAccessToken,
+  listCourses,
+  listCoursePdfs,
+  type ClassroomCourse,
+  type ClassroomFile,
+} from "@/lib/googleClassroom";
 
 async function requireAccess(pursuitId: string) {
   const session = await auth();
@@ -590,6 +597,65 @@ export async function addAttachment(pursuitId: string, formData: FormData) {
     data: { pursuitId, name: name.trim(), url: url.trim(), size: 0 },
   });
 
+  revalidatePath(`/pursuits/${pursuitId}`);
+}
+
+export async function isClassroomConnected(): Promise<boolean> {
+  const session = await auth();
+  if (!session?.user?.id) return false;
+  const connection = await prisma.googleClassroomConnection.findUnique({
+    where: { userId: session.user.id },
+  });
+  return !!connection;
+}
+
+export async function disconnectClassroom() {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Not signed in");
+  await prisma.googleClassroomConnection.deleteMany({ where: { userId: session.user.id } });
+}
+
+export async function listClassroomCourses(): Promise<
+  { error: string | null; courses?: ClassroomCourse[] }
+> {
+  const session = await auth();
+  if (!session?.user?.id) return { error: "Not signed in" };
+
+  const accessToken = await getValidAccessToken(session.user.id);
+  if (!accessToken) return { error: "Not connected to Google Classroom" };
+
+  try {
+    return { error: null, courses: await listCourses(accessToken) };
+  } catch {
+    return { error: "Couldn't reach Google Classroom. Try reconnecting." };
+  }
+}
+
+export async function listClassroomPdfs(
+  courseId: string,
+): Promise<{ error: string | null; files?: ClassroomFile[] }> {
+  const session = await auth();
+  if (!session?.user?.id) return { error: "Not signed in" };
+
+  const accessToken = await getValidAccessToken(session.user.id);
+  if (!accessToken) return { error: "Not connected to Google Classroom" };
+
+  try {
+    return { error: null, files: await listCoursePdfs(accessToken, courseId) };
+  } catch {
+    return { error: "Couldn't load files for that course." };
+  }
+}
+
+// Imports a Classroom PDF the same way a manually-pasted link would be —
+// as a plain Attachment pointing at its Drive URL, not a downloaded copy.
+// Opening it later relies on the viewer's own Google session having
+// access, same as clicking the file inside Classroom itself would.
+export async function importClassroomFile(pursuitId: string, name: string, url: string) {
+  await requireAccess(pursuitId);
+  await prisma.attachment.create({
+    data: { pursuitId, name, url, size: 0 },
+  });
   revalidatePath(`/pursuits/${pursuitId}`);
 }
 

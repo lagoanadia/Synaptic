@@ -38,12 +38,32 @@ model User {
   sections      Section[]
   brainDumps    BrainDump[]
   organizeUsage OrganizeUsage[]
+
+  classroomConnection GoogleClassroomConnection?
 }
 
 enum Plan {
   FREE
   PRO
   TEAM
+}
+
+// A separate OAuth connection from the NextAuth Google sign-in Account
+// row on purpose — logging in with Google and connecting Classroom are
+// different consents (this one asks for Classroom/Drive read access,
+// which most sign-ins never need), and someone who signs in with GitHub
+// can still connect Classroom. accessToken is short-lived and refreshed
+// via refreshToken on demand (see lib/googleClassroom.ts) rather than on
+// a schedule, since it's only needed when the Files tab actually asks.
+model GoogleClassroomConnection {
+  id           String   @id @default(cuid())
+  accessToken  String
+  refreshToken String
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Account {

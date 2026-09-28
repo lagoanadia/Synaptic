@@ -16,16 +16,23 @@ import { PursuitTitle } from "./PursuitTitle";
 import { FlashcardReview } from "./FlashcardReview";
 import { Timeline } from "./Timeline";
 import { DeleteButton } from "../DeleteButton";
+import { ClassroomImport } from "./ClassroomImport";
+
+const CLASSROOM_ERROR_COPY: Record<string, string> = {
+  denied: "Google Classroom connection canceled.",
+  "connect-failed": "Couldn't connect to Google Classroom. Try again.",
+  "no-refresh-token": "Google didn't grant lasting access — disconnect any prior access at myaccount.google.com/permissions and try again.",
+};
 
 export default async function PursuitPage({
   params,
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<{ tab?: string; classroomConnected?: string; classroomError?: string }>;
 }) {
   const { id } = await params;
-  const { tab: rawTab } = await searchParams;
+  const { tab: rawTab, classroomConnected, classroomError } = await searchParams;
   const tab =
     rawTab === "organized" ||
     rawTab === "files" ||
@@ -40,7 +47,7 @@ export default async function PursuitPage({
     redirect("/");
   }
 
-  const [pursuit, sections, distinctTypes, dueFlashcards, upcomingFlashcardCount] =
+  const [pursuit, sections, distinctTypes, dueFlashcards, upcomingFlashcardCount, classroomConnection] =
     await Promise.all([
       prisma.pursuit.findFirst({
         where: {
@@ -80,6 +87,10 @@ export default async function PursuitPage({
       }),
       prisma.flashcard.count({
         where: { pursuitId: id, dueDate: { gt: new Date() } },
+      }),
+      prisma.googleClassroomConnection.findUnique({
+        where: { userId: session.user.id },
+        select: { id: true },
       }),
     ]);
 
@@ -261,6 +272,17 @@ export default async function PursuitPage({
 
       {tab === "files" && (
         <div className="flex flex-col gap-4">
+          {classroomConnected && (
+            <p className="rounded-xl bg-forest-soft px-4 py-3 text-sm text-ink">
+              Connected to Google Classroom.
+            </p>
+          )}
+          {classroomError && (
+            <p className="rounded-xl bg-crimson-soft px-4 py-3 text-sm text-ink">
+              {CLASSROOM_ERROR_COPY[classroomError] ?? "Something went wrong. Try again."}
+            </p>
+          )}
+          <ClassroomImport pursuitId={pursuit.id} connected={!!classroomConnection} />
           <form
             action={addAttachment.bind(null, pursuit.id)}
             className="flex gap-2"
