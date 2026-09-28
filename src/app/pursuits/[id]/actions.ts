@@ -669,34 +669,6 @@ export async function listClassroomFiles(
   }
 }
 
-// TEMPORARY — diagnosing why a specific attached file doesn't show up in
-// listCourseFiles's output. Returns the exact raw JSON Classroom sends
-// back, unprocessed, so it can be compared against what the parsing code
-// expects instead of guessing. Remove once the mismatch is found.
-export async function debugRawClassroomData(courseId: string): Promise<string> {
-  const session = await auth();
-  if (!session?.user?.id) return "Not signed in";
-  const accessToken = await getValidAccessToken(session.user.id);
-  if (!accessToken) return "Not connected to Google Classroom";
-
-  const [workRes, materialsRes] = await Promise.all([
-    fetch(`https://classroom.googleapis.com/v1/courses/${courseId}/courseWork?pageSize=100`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    }),
-    fetch(
-      `https://classroom.googleapis.com/v1/courses/${courseId}/courseWorkMaterials?pageSize=100`,
-      { headers: { Authorization: `Bearer ${accessToken}` } },
-    ),
-  ]);
-  const work = await workRes.text();
-  const materials = await materialsRes.text();
-  return JSON.stringify(
-    { courseWork: JSON.parse(work), courseWorkMaterials: JSON.parse(materials) },
-    null,
-    2,
-  );
-}
-
 // Remembers which course this Pursuit is about, so the upcoming-deadlines
 // widget (and reopening the Files tab later) doesn't need the course
 // re-picked every visit. courseName is denormalized here purely for

@@ -164,7 +164,14 @@ async function listMaterials(
   );
   if (!res.ok) throw new Error(`Classroom ${kind}.list failed: ${await res.text()}`);
   const data = await res.json();
-  return data[kind] ?? [];
+  // Classroom names the list-response field after the singular resource
+  // type, not the plural endpoint path: courseWorkMaterials.list returns
+  // { courseWorkMaterial: [...] } — no trailing "s" — while courseWork's
+  // own field is already an unpluralized mass noun, so it does match its
+  // path. Using `kind` as the key here silently returned [] for every
+  // courseWorkMaterials item that ever existed, since day one.
+  const responseKey = kind === "courseWorkMaterials" ? "courseWorkMaterial" : "courseWork";
+  return data[responseKey] ?? [];
 }
 
 // Any Drive-backed attachment (PDF, PowerPoint, Word doc, spreadsheet...)
