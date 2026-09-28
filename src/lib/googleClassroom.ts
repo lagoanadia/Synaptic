@@ -163,10 +163,12 @@ async function listMaterials(
   return data[kind] ?? [];
 }
 
-// Only PDFs, by filename — Classroom's own material metadata doesn't
-// include a MIME type without an extra Drive API call (and thus a third
-// OAuth scope), and a lecture PDF's filename reliably ends in .pdf.
-export async function listCoursePdfs(
+// Any Drive-backed attachment (PDF, PowerPoint, Word doc, spreadsheet...)
+// — not just PDFs, since teachers post slides and worksheets in whatever
+// format just as often as a PDF. Links and YouTube videos are skipped
+// (no driveFile.driveFile on those), which is the right call anyway since
+// this feeds "import as an attachment pointing at a Drive URL".
+export async function listCourseFiles(
   accessToken: string,
   courseId: string,
 ): Promise<ClassroomFile[]> {
@@ -191,7 +193,6 @@ export async function listCoursePdfs(
     for (const material of item.materials ?? []) {
       const drive = material.driveFile?.driveFile;
       if (!drive?.title || !drive.alternateLink) continue;
-      if (!drive.title.toLowerCase().endsWith(".pdf")) continue;
       files.push({ title: drive.title, url: drive.alternateLink });
     }
   }

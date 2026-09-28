@@ -5,7 +5,7 @@ import {
   disconnectClassroom,
   importClassroomFile,
   listClassroomCourses,
-  listClassroomPdfs,
+  listClassroomFiles,
 } from "./actions";
 import type { ClassroomCourse, ClassroomFile } from "@/lib/googleClassroom";
 
@@ -56,7 +56,7 @@ export function ClassroomImport({
     setError(null);
     if (!courseId) return;
     startTransition(async () => {
-      const result = await listClassroomPdfs(courseId);
+      const result = await listClassroomFiles(courseId);
       if (result.error) setError(result.error);
       else setFiles(result.files ?? []);
     });
@@ -104,7 +104,7 @@ export function ClassroomImport({
       {files !== null && (
         <div className="flex flex-col">
           {files.length === 0 ? (
-            <p className="text-xs text-ink-muted">No PDFs found in this course.</p>
+            <p className="text-xs text-ink-muted">No files found in this course.</p>
           ) : (
             files.map((f) => (
               <div

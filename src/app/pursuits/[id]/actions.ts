@@ -21,7 +21,7 @@ import { FREE_MONTHLY_FLASHCARD_LIMIT, getFlashcardsThisMonth } from "@/lib/flas
 import {
   getValidAccessToken,
   listCourses,
-  listCoursePdfs,
+  listCourseFiles,
   type ClassroomCourse,
   type ClassroomFile,
 } from "@/lib/googleClassroom";
@@ -632,7 +632,7 @@ export async function listClassroomCourses(): Promise<
   }
 }
 
-export async function listClassroomPdfs(
+export async function listClassroomFiles(
   courseId: string,
 ): Promise<{ error: string | null; files?: ClassroomFile[] }> {
   const session = await auth();
@@ -642,13 +642,13 @@ export async function listClassroomPdfs(
   if (!accessToken) return { error: "Not connected to Google Classroom" };
 
   try {
-    return { error: null, files: await listCoursePdfs(accessToken, courseId) };
+    return { error: null, files: await listCourseFiles(accessToken, courseId) };
   } catch {
     return { error: "Couldn't load files for that course." };
   }
 }
 
-// Imports a Classroom PDF the same way a manually-pasted link would be —
+// Imports a Classroom file the same way a manually-pasted link would be —
 // as a plain Attachment pointing at its Drive URL, not a downloaded copy.
 // Opening it later relies on the viewer's own Google session having
 // access, same as clicking the file inside Classroom itself would.
