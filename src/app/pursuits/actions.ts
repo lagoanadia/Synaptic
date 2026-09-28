@@ -3,7 +3,6 @@
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { PursuitType } from "@/generated/prisma/client";
 import { upsertSection } from "@/lib/sections";
 
 export async function createPursuit(formData: FormData) {
@@ -14,17 +13,10 @@ export async function createPursuit(formData: FormData) {
 
   const title = formData.get("title");
   const type = formData.get("type");
-  const customType = formData.get("customType");
   const sectionName = formData.get("section");
 
   if (typeof title !== "string" || title.trim() === "") {
     throw new Error("Title is required");
-  }
-  if (typeof type !== "string" || !(type in PursuitType)) {
-    throw new Error("Invalid pursuit type");
-  }
-  if (type === "OTHER" && (typeof customType !== "string" || customType.trim() === "")) {
-    throw new Error("Custom type name is required");
   }
 
   // Sections are free-typed and stored per user, same as PursuitTag — no
@@ -38,11 +30,7 @@ export async function createPursuit(formData: FormData) {
   await prisma.pursuit.create({
     data: {
       title: title.trim(),
-      type: type as PursuitType,
-      customType:
-        type === "OTHER" && typeof customType === "string"
-          ? customType.trim()
-          : null,
+      type: typeof type === "string" && type.trim() !== "" ? type.trim() : null,
       ownerId: session.user.id,
       sectionId,
     },

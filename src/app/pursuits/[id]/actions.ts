@@ -5,7 +5,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { groq } from "@/lib/groq";
 import type { ChatCompletionContentPartImage } from "groq-sdk/resources/chat/completions";
-import { PursuitType, PursuitStatus, MemberRole } from "@/generated/prisma/client";
+import { PursuitStatus, MemberRole } from "@/generated/prisma/client";
 import { upsertSection } from "@/lib/sections";
 import { HEADLINE_OPTIONS, buildOrTsQuery } from "@/lib/search";
 import { parseOrganizeResponse } from "@/lib/organize";
@@ -655,19 +655,9 @@ export async function updatePursuitMeta(pursuitId: string, formData: FormData) {
   const { session } = await requireAccess(pursuitId);
 
   const type = formData.get("type");
-  const customType = formData.get("customType");
   const status = formData.get("status");
   const sectionName = formData.get("section");
 
-  if (typeof type !== "string" || !(type in PursuitType)) {
-    throw new Error("Invalid pursuit type");
-  }
-  if (
-    type === "OTHER" &&
-    (typeof customType !== "string" || customType.trim() === "")
-  ) {
-    throw new Error("Custom type name is required");
-  }
   if (typeof status !== "string" || !(status in PursuitStatus)) {
     throw new Error("Invalid status");
   }
@@ -684,11 +674,7 @@ export async function updatePursuitMeta(pursuitId: string, formData: FormData) {
   await prisma.pursuit.update({
     where: { id: pursuitId },
     data: {
-      type: type as PursuitType,
-      customType:
-        type === "OTHER" && typeof customType === "string"
-          ? customType.trim()
-          : null,
+      type: typeof type === "string" && type.trim() !== "" ? type.trim() : null,
       status: status as PursuitStatus,
       sectionId,
     },

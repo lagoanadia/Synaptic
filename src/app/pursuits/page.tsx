@@ -52,12 +52,12 @@ export default async function PursuitsPage() {
   const grouped = new Map<string, PursuitForDisplay[]>();
   const unsectioned: PursuitForDisplay[] = [];
   const shared: PursuitForDisplay[] = [];
+  const typeOptions = new Set<string>();
   for (const p of pursuits) {
     const display: PursuitForDisplay = {
       id: p.id,
       title: p.title,
       type: p.type,
-      customType: p.customType,
       status: p.status,
       timeAgoLabel: timeAgo(p.lastTouchedAt),
       ownerId: p.ownerId,
@@ -67,6 +67,7 @@ export default async function PursuitsPage() {
       shared.push(display);
       continue;
     }
+    if (p.type) typeOptions.add(p.type);
     const name = p.section?.name;
     if (!name) {
       unsectioned.push(display);
@@ -100,7 +101,7 @@ export default async function PursuitsPage() {
           required
           className="flex-1 rounded-xl border border-border-subtle bg-white px-3.5 py-2.5 text-sm"
         />
-        <TypeSelect />
+        <TypeSelect options={Array.from(typeOptions)} />
         <input
           type="text"
           name="section"

@@ -4,14 +4,6 @@ import { useRef, useState, useTransition } from "react";
 import { assignSection, deletePursuit } from "./actions";
 import { DeleteButton } from "./DeleteButton";
 
-const TYPE_LABEL: Record<string, string> = {
-  PROJECT: "Project",
-  BOOK: "Book",
-  LANGUAGE: "Language",
-  SKILL: "Skill",
-  OTHER: "Other",
-};
-
 // All 10 colors from nadia-lagoa.vercel.app's own "Things I've built"
 // section, in the same order as its 10 project cards (Synaptic, Larder,
 // Kook, Proyecto X, Twitter Replica, Profile Upload Demo, MultiGames,
@@ -53,16 +45,10 @@ const CARD_BG_SOFT = [
 // before the pattern repeats.
 const ROW_COLOR_STEP = 3;
 
-function typeLabel(p: { type: string; customType: string | null }) {
-  if (p.type === "OTHER" && p.customType) return p.customType;
-  return TYPE_LABEL[p.type];
-}
-
 export type PursuitForDisplay = {
   id: string;
   title: string;
-  type: string;
-  customType: string | null;
+  type: string | null;
   status: string;
   timeAgoLabel: string;
   ownerId: string;
@@ -94,7 +80,8 @@ function PursuitCard({
   const cardBody = (
     <div className="flex flex-1 flex-col gap-3">
       <span className={`truncate text-xs font-medium ${vivid ? "text-white/80" : "text-ink/80"}`}>
-        {typeLabel(p)} · {p.status.toLowerCase()}
+        {p.type ? `${p.type} · ` : ""}
+        {p.status.toLowerCase()}
       </span>
       <div className={`text-base font-semibold ${vivid ? "text-white" : "text-ink"}`}>{p.title}</div>
       {p.pursuitTags.length > 0 && (

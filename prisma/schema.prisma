@@ -84,14 +84,6 @@ model VerificationToken {
 
 // ── Core app models ─────────────────────────────────────────────────────
 
-enum PursuitType {
-  PROJECT
-  BOOK
-  LANGUAGE
-  SKILL
-  OTHER
-}
-
 enum PursuitStatus {
   ACTIVE
   PAUSED
@@ -107,8 +99,11 @@ enum MemberRole {
 model Pursuit {
   id            String        @id @default(cuid())
   title         String
-  type          PursuitType
-  customType    String?
+  // Free-typed and optional, same as Section — a fixed Project/Book/
+  // Language/Skill/Other dropdown was one more required, rigid axis of
+  // categorization alongside Section and PursuitTag, which are both
+  // already free-typed and optional.
+  type          String?
   status        PursuitStatus @default(ACTIVE)
   artifactUrl   String?
   lastTouchedAt DateTime      @default(now())

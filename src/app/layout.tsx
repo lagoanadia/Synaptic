@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
+import Link from "next/link";
 import "./globals.css";
 import { RegisterServiceWorker } from "./RegisterServiceWorker";
 
@@ -45,7 +46,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           >
             Nadia
           </a>{" "}
-          · © {new Date().getFullYear()} Synaptic
+          · © {new Date().getFullYear()}{" "}
+          <Link href="/" className="hover:underline">
+            Synaptic
+          </Link>
         </footer>
       </body>
     </html>

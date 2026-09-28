@@ -40,42 +40,48 @@ export default async function PursuitPage({
     redirect("/");
   }
 
-  const [pursuit, sections, dueFlashcards, upcomingFlashcardCount] = await Promise.all([
-    prisma.pursuit.findFirst({
-      where: {
-        id,
-        OR: [
-          { ownerId: session.user.id },
-          { members: { some: { userId: session.user.id } } },
-        ],
-      },
-      include: {
-        pursuitTags: true,
-        section: true,
-        owner: { select: { id: true, name: true, email: true } },
-        members: {
-          include: { user: { select: { id: true, name: true, email: true } } },
+  const [pursuit, sections, distinctTypes, dueFlashcards, upcomingFlashcardCount] =
+    await Promise.all([
+      prisma.pursuit.findFirst({
+        where: {
+          id,
+          OR: [
+            { ownerId: session.user.id },
+            { members: { some: { userId: session.user.id } } },
+          ],
         },
-        brainDumps: { orderBy: { createdAt: "desc" } },
-        notes: {
-          orderBy: { createdAt: "desc" },
-          include: { tags: true, sourceDumps: { select: { id: true } } },
+        include: {
+          pursuitTags: true,
+          section: true,
+          owner: { select: { id: true, name: true, email: true } },
+          members: {
+            include: { user: { select: { id: true, name: true, email: true } } },
+          },
+          brainDumps: { orderBy: { createdAt: "desc" } },
+          notes: {
+            orderBy: { createdAt: "desc" },
+            include: { tags: true, sourceDumps: { select: { id: true } } },
+          },
+          attachments: { orderBy: { createdAt: "desc" } },
         },
-        attachments: { orderBy: { createdAt: "desc" } },
-      },
-    }),
-    prisma.section.findMany({
-      where: { userId: session.user.id },
-      orderBy: { name: "asc" },
-    }),
-    prisma.flashcard.findMany({
-      where: { pursuitId: id, dueDate: { lte: new Date() } },
-      orderBy: { dueDate: "asc" },
-    }),
-    prisma.flashcard.count({
-      where: { pursuitId: id, dueDate: { gt: new Date() } },
-    }),
-  ]);
+      }),
+      prisma.section.findMany({
+        where: { userId: session.user.id },
+        orderBy: { name: "asc" },
+      }),
+      prisma.pursuit.findMany({
+        where: { ownerId: session.user.id, type: { not: null } },
+        select: { type: true },
+        distinct: ["type"],
+      }),
+      prisma.flashcard.findMany({
+        where: { pursuitId: id, dueDate: { lte: new Date() } },
+        orderBy: { dueDate: "asc" },
+      }),
+      prisma.flashcard.count({
+        where: { pursuitId: id, dueDate: { gt: new Date() } },
+      }),
+    ]);
 
   if (!pursuit) {
     notFound();
@@ -123,9 +129,9 @@ export default async function PursuitPage({
         <PursuitMeta
           pursuitId={pursuit.id}
           type={pursuit.type}
-          customType={pursuit.customType}
           status={pursuit.status}
           sectionName={pursuit.section?.name ?? null}
+          availableTypes={distinctTypes.map((p) => p.type).filter((t) => t !== null)}
           availableSections={sections.map((s) => s.name)}
         />
         <div className="flex flex-wrap items-center gap-1.5">

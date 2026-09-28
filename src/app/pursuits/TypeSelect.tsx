@@ -1,52 +1,29 @@
-"use client";
-
-import { useState } from "react";
-
-const OPTIONS = [
-  { value: "PROJECT", label: "Project" },
-  { value: "BOOK", label: "Book" },
-  { value: "LANGUAGE", label: "Language" },
-  { value: "SKILL", label: "Skill" },
-  { value: "OTHER", label: "Other (custom)" },
-];
-
-// Client Component because it needs local state to show/hide the custom
-// label input — the rest of the page around it stays a Server Component.
-// Used both when creating a pursuit (no defaults) and when editing one's
-// type afterward (defaultType/defaultCustomType prefill it).
+// Free-typed and optional, same pattern as the Section input — no "use
+// client" needed since a plain text input + datalist needs no local
+// state, unlike the old fixed dropdown (which had to reveal a custom-name
+// field when "Other" was picked).
 export function TypeSelect({
-  defaultType = "PROJECT",
-  defaultCustomType = "",
+  options,
+  defaultValue = "",
 }: {
-  defaultType?: string;
-  defaultCustomType?: string;
+  options: string[];
+  defaultValue?: string;
 }) {
-  const [type, setType] = useState(defaultType);
-
   return (
-    <div className="flex gap-2">
-      <select
+    <>
+      <input
+        type="text"
         name="type"
-        value={type}
-        onChange={(e) => setType(e.target.value)}
+        list="pursuit-types"
+        defaultValue={defaultValue}
+        placeholder="Type (optional)"
         className="rounded-xl border border-border-subtle bg-white px-3.5 py-2.5 text-sm text-ink"
-      >
-        {OPTIONS.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
+      />
+      <datalist id="pursuit-types">
+        {options.map((o) => (
+          <option key={o} value={o} />
         ))}
-      </select>
-      {type === "OTHER" && (
-        <input
-          type="text"
-          name="customType"
-          defaultValue={defaultCustomType}
-          placeholder="Name your own type"
-          required
-          className="rounded-xl border border-border-subtle bg-white px-3.5 py-2.5 text-sm text-ink"
-        />
-      )}
-    </div>
+      </datalist>
+    </>
   );
 }

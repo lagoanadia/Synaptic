@@ -4,49 +4,27 @@ import { useState, useTransition } from "react";
 import { TypeSelect } from "../TypeSelect";
 import { updatePursuitMeta } from "./actions";
 
-const TYPE_LABEL: Record<string, string> = {
-  PROJECT: "Project",
-  BOOK: "Book",
-  LANGUAGE: "Language",
-  SKILL: "Skill",
-  OTHER: "Other",
-};
-
 const STATUS_OPTIONS = ["ACTIVE", "PAUSED", "DONE"];
-
-// Same 3-color set as the Pursuits dashboard cards (see PursuitsBoard.tsx),
-// pulled from nadia-lagoa.vercel.app's own project cards. This dot is a
-// single identity marker rather than a full card, so — unlike the board,
-// which colors by position within a section — it just cycles the 3
-// colors by type so a given type always shows the same dot here.
-const TYPE_ORDER = ["PROJECT", "BOOK", "LANGUAGE", "SKILL", "OTHER"];
-const TYPE_DOT_COLORS = ["bg-flame", "bg-crimson", "bg-cobalt"];
-function typeDot(type: string) {
-  const i = TYPE_ORDER.indexOf(type);
-  return TYPE_DOT_COLORS[(i < 0 ? 0 : i) % TYPE_DOT_COLORS.length];
-}
 
 // Type and status were only ever set at creation — this makes that same
 // dot + label line double as an inline editor, toggled by clicking it.
 export function PursuitMeta({
   pursuitId,
   type,
-  customType,
   status,
   sectionName,
+  availableTypes,
   availableSections,
 }: {
   pursuitId: string;
-  type: string;
-  customType: string | null;
+  type: string | null;
   status: string;
   sectionName: string | null;
+  availableTypes: string[];
   availableSections: string[];
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [isPending, startTransition] = useTransition();
-
-  const typeLabel = type === "OTHER" && customType ? customType : TYPE_LABEL[type];
 
   if (!isEditing) {
     return (
@@ -56,12 +34,11 @@ export function PursuitMeta({
         className="flex items-center gap-2"
       >
         <span
-          className={`h-2 w-2 rounded-full ${
-            status === "ACTIVE" ? typeDot(type) : "bg-ink-faint"
-          }`}
+          className={`h-2 w-2 rounded-full ${status === "ACTIVE" ? "bg-accent" : "bg-ink-faint"}`}
         />
         <span className="text-sm text-ink-muted hover:text-ink hover:underline">
-          {typeLabel} · {status.toLowerCase()}
+          {type && `${type} · `}
+          {status.toLowerCase()}
           {sectionName && ` · ${sectionName}`}
         </span>
       </button>
@@ -78,7 +55,7 @@ export function PursuitMeta({
       }}
       className="flex flex-wrap items-center gap-2"
     >
-      <TypeSelect defaultType={type} defaultCustomType={customType ?? ""} />
+      <TypeSelect options={availableTypes} defaultValue={type ?? ""} />
       <select
         name="status"
         defaultValue={status}
