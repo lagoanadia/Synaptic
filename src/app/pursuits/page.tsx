@@ -24,7 +24,7 @@ export default async function PursuitsPage() {
     redirect("/");
   }
 
-  const [pursuits, sections] = await Promise.all([
+  const [pursuits, sections, viewer] = await Promise.all([
     prisma.pursuit.findMany({
       where: {
         OR: [
@@ -38,6 +38,10 @@ export default async function PursuitsPage() {
     prisma.section.findMany({
       where: { userId: session.user.id },
       orderBy: { order: "asc" },
+    }),
+    prisma.user.findUniqueOrThrow({
+      where: { id: session.user.id },
+      select: { plan: true },
     }),
   ]);
 
@@ -85,11 +89,19 @@ export default async function PursuitsPage() {
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-6 py-12">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Pursuits</h1>
+        <div className="flex items-center gap-2.5">
+          <h1 className="text-2xl font-semibold">Pursuits</h1>
+          {viewer.plan !== "FREE" && (
+            <span className="rounded-full bg-accent-soft px-2.5 py-1 text-xs font-semibold text-accent">
+              {viewer.plan === "PRO" ? "Student Pro" : "Team"}
+            </span>
+          )}
+        </div>
         <ProfileMenu
           name={session.user.name}
           email={session.user.email}
           image={session.user.image}
+          plan={viewer.plan}
         />
       </div>
 

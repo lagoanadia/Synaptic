@@ -6,14 +6,22 @@ import { signOutAction } from "./actions";
 
 const MENU_WIDTH = 220;
 
+const PLAN_LABEL: Record<string, string> = {
+  FREE: "Free plan",
+  PRO: "Student Pro",
+  TEAM: "Team",
+};
+
 export function ProfileMenu({
   name,
   email,
   image,
+  plan,
 }: {
   name: string | null | undefined;
   email: string | null | undefined;
   image: string | null | undefined;
+  plan: string;
 }) {
   const [open, setOpen] = useState(false);
   const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
@@ -75,6 +83,9 @@ export function ProfileMenu({
             <div className="truncate px-3.5 py-2 text-sm">
               <p className="font-semibold text-[#0d0d0d]">{name ?? "Your account"}</p>
               {email && <p className="truncate text-xs text-[#6b6b6b]">{email}</p>}
+              <p className="mt-1 text-xs font-medium text-[#2383e2]">
+                {PLAN_LABEL[plan] ?? plan}
+              </p>
             </div>
             <div className="my-1 h-px bg-black/5" />
             <a
@@ -82,6 +93,12 @@ export function ProfileMenu({
               className="block w-full rounded-lg px-3.5 py-2.5 text-left text-sm font-medium text-[#0d0d0d] transition-colors hover:bg-[#f2f1ee]"
             >
               Billing
+            </a>
+            <a
+              href="/"
+              className="block w-full rounded-lg px-3.5 py-2.5 text-left text-sm font-medium text-[#0d0d0d] transition-colors hover:bg-[#f2f1ee]"
+            >
+              Landing page
             </a>
             <div className="my-1 h-px bg-black/5" />
             <form action={signOutAction}>
