@@ -10,17 +10,13 @@ export function LandingNav() {
     <header className="sticky top-0 z-50 border-b border-black/5 bg-[#f2f1ee]/85 px-5 py-5 backdrop-blur-md sm:px-8">
       <div className="mx-auto flex max-w-6xl items-center justify-between">
         <a href="#" className="flex items-center gap-2.5 font-bold text-[#0d0d0d]">
-          <svg width="26" height="26" viewBox="0 0 30 30">
-            <rect width="30" height="30" rx="9" fill="#2383e2" />
-            <path
-              d="M6 20 Q 11 20 12 15 Q 13 10 18 10 Q 22 10 23 13"
-              stroke="#fff"
-              strokeWidth="1.8"
-              fill="none"
-              strokeLinecap="round"
-            />
-            <circle cx="23" cy="13" r="1.6" fill="#fff" />
-          </svg>
+          <img
+            src="/logo-mark.png"
+            alt=""
+            width={26}
+            height={26}
+            className="rounded-[9px]"
+          />
           Synaptic
         </a>
 
