@@ -49,6 +49,14 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           · © {new Date().getFullYear()}{" "}
           <Link href="/" className="hover:underline">
             Synaptic
+          </Link>{" "}
+          ·{" "}
+          <Link href="/privacy" className="hover:underline">
+            Privacy
+          </Link>{" "}
+          ·{" "}
+          <Link href="/terms" className="hover:underline">
+            Terms
           </Link>
         </footer>
       </body>

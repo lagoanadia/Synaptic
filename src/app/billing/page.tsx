@@ -114,6 +114,18 @@ export default async function BillingPage({
           </form>
         </div>
       )}
+
+      <p className="text-center text-xs text-ink-faint">
+        Subscribing means you agree to the{" "}
+        <Link href="/terms" className="hover:underline">
+          Terms of Service
+        </Link>{" "}
+        and{" "}
+        <Link href="/privacy" className="hover:underline">
+          Privacy Policy
+        </Link>
+        .
+      </p>
     </div>
   );
 }
