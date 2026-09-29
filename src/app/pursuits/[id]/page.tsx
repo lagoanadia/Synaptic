@@ -237,6 +237,7 @@ export default async function PursuitPage({
       {tab === "organized" && (
         <MergeControls
           pursuitId={pursuit.id}
+          hasCourse={pursuit.classroomEnabled && !!pursuit.classroomCourseId}
           notes={pursuit.notes.map((n) => ({
             id: n.id,
             content: n.content,

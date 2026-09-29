@@ -9,13 +9,22 @@ import { prisma } from "@/lib/prisma";
 // consent to reading their Classroom/Drive data).
 const CLASSROOM_SCOPES = [
   "https://www.googleapis.com/auth/classroom.courses.readonly",
-  "https://www.googleapis.com/auth/classroom.coursework.me.readonly",
+  // Non-readonly (not .coursework.me.readonly) -- turning work in and
+  // attaching a Drive file to a submission both need write access to the
+  // student's own coursework, which the readonly scope can't grant. It
+  // still covers everything the readonly scope did (listing assignments,
+  // reading submission status).
+  "https://www.googleapis.com/auth/classroom.coursework.me",
   // courseWorkMaterials is a distinct resource from courseWork (a plain
   // resource a teacher posts vs. a gradeable assignment) with its own
   // scope — without this, courseWorkMaterials.list 403s even though
   // courseWork.list succeeds on the scope above, which is exactly what
   // was failing "load files" for every course.
   "https://www.googleapis.com/auth/classroom.courseworkmaterials.readonly",
+  // Per-file Drive access, not full Drive read/write -- only lets this
+  // app see/manage files IT creates (the PDF it uploads to turn work in),
+  // never the student's existing Drive contents.
+  "https://www.googleapis.com/auth/drive.file",
 ];
 
 function redirectUri(baseUrl: string) {
@@ -310,4 +319,94 @@ export async function listCourseDeadlines(
   }
   deadlines.sort((a, b) => a.dueAt.getTime() - b.dueAt.getTime());
   return deadlines;
+}
+
+// Drive's multipart upload: one request body with a JSON metadata part
+// (name/mimeType) followed by the file bytes, separated by a boundary
+// string — the "simple"/resumable upload types don't let you set the
+// filename in the same call, and a PDF turned in with no real name isn't
+// useful to a teacher grading it.
+export async function uploadPdfToDrive(
+  accessToken: string,
+  filename: string,
+  pdfBytes: Uint8Array,
+): Promise<string> {
+  const boundary = "synaptic-turn-in-boundary";
+  const metadata = JSON.stringify({ name: filename, mimeType: "application/pdf" });
+  const body = new Blob([
+    `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${metadata}\r\n`,
+    `--${boundary}\r\nContent-Type: application/pdf\r\n\r\n`,
+    new Uint8Array(pdfBytes),
+    `\r\n--${boundary}--`,
+  ]);
+
+  const res = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": `multipart/related; boundary=${boundary}`,
+    },
+    body,
+  });
+  if (!res.ok) throw new Error(`Drive files.create failed: ${await res.text()}`);
+  const data = await res.json();
+  return data.id;
+}
+
+// A student has at most one submission per courseWork item — Classroom
+// creates it automatically the moment the assignment is posted, so this
+// is just looking up its id, not creating anything.
+export async function getOwnSubmissionId(
+  accessToken: string,
+  courseId: string,
+  courseWorkId: string,
+): Promise<string | null> {
+  const res = await fetch(
+    `https://classroom.googleapis.com/v1/courses/${courseId}/courseWork/${courseWorkId}/studentSubmissions?userId=me`,
+    { headers: { Authorization: `Bearer ${accessToken}` } },
+  );
+  if (!res.ok) {
+    throw new Error(`Classroom studentSubmissions.list failed: ${await res.text()}`);
+  }
+  const data = await res.json();
+  return data.studentSubmissions?.[0]?.id ?? null;
+}
+
+export async function attachDriveFileToSubmission(
+  accessToken: string,
+  courseId: string,
+  courseWorkId: string,
+  submissionId: string,
+  driveFileId: string,
+): Promise<void> {
+  const res = await fetch(
+    `https://classroom.googleapis.com/v1/courses/${courseId}/courseWork/${courseWorkId}/studentSubmissions/${submissionId}:modifyAttachments`,
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ addAttachments: [{ driveFile: { id: driveFileId } }] }),
+    },
+  );
+  if (!res.ok) {
+    throw new Error(`Classroom modifyAttachments failed: ${await res.text()}`);
+  }
+}
+
+export async function turnInSubmission(
+  accessToken: string,
+  courseId: string,
+  courseWorkId: string,
+  submissionId: string,
+): Promise<void> {
+  const res = await fetch(
+    `https://classroom.googleapis.com/v1/courses/${courseId}/courseWork/${courseWorkId}/studentSubmissions/${submissionId}:turnIn`,
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    },
+  );
+  if (!res.ok) {
+    throw new Error(`Classroom turnIn failed: ${await res.text()}`);
+  }
 }

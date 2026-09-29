@@ -23,10 +23,16 @@ import {
   listCourses,
   listCourseFiles,
   listCourseDeadlines,
+  uploadPdfToDrive,
+  getOwnSubmissionId,
+  attachDriveFileToSubmission,
+  turnInSubmission,
   type ClassroomCourse,
   type ClassroomFile,
   type ClassroomDeadline,
 } from "@/lib/googleClassroom";
+import { renderNotePdf } from "@/lib/renderNotePdf";
+import { autoTitle } from "@/lib/text";
 
 async function requireAccess(pursuitId: string) {
   const session = await auth();
@@ -746,6 +752,89 @@ export async function listPursuitDeadlines(
     };
   } catch {
     return { error: "Couldn't load deadlines for that course." };
+  }
+}
+
+// Shared by turnInNoteToClassroom/turnInDumpToClassroom below: render the
+// content to a PDF, put it in the student's Drive, attach that Drive file
+// to their existing submission for this assignment, then turn it in.
+// Classroom auto-creates the submission the moment an assignment is
+// posted, so there's always exactly one to look up here.
+async function submitPdfToClassroom(
+  accessToken: string,
+  courseId: string,
+  courseWorkId: string,
+  title: string,
+  content: string,
+) {
+  const submissionId = await getOwnSubmissionId(accessToken, courseId, courseWorkId);
+  if (!submissionId) throw new Error("No submission found for that assignment.");
+
+  const pdfBytes = await renderNotePdf(title, content);
+  const driveFileId = await uploadPdfToDrive(accessToken, `${title}.pdf`, pdfBytes);
+  await attachDriveFileToSubmission(accessToken, courseId, courseWorkId, submissionId, driveFileId);
+  await turnInSubmission(accessToken, courseId, courseWorkId, submissionId);
+}
+
+export async function turnInNoteToClassroom(
+  pursuitId: string,
+  noteId: string,
+  courseWorkId: string,
+): Promise<{ error: string | null; success?: boolean }> {
+  try {
+    const { session, pursuit } = await requireAccess(pursuitId);
+    if (!pursuit.classroomCourseId) {
+      return { error: "This Pursuit isn't linked to a Google Classroom course." };
+    }
+    const note = await prisma.note.findFirst({ where: { id: noteId, pursuitId } });
+    if (!note) return { error: "Note not found." };
+
+    const accessToken = await getValidAccessToken(session.user.id);
+    if (!accessToken) {
+      return { error: "Not connected to Google Classroom — reconnect and try again." };
+    }
+
+    await submitPdfToClassroom(
+      accessToken,
+      pursuit.classroomCourseId,
+      courseWorkId,
+      autoTitle(note.content, 12),
+      note.content,
+    );
+    return { error: null, success: true };
+  } catch {
+    return { error: "Couldn't turn that in — try again." };
+  }
+}
+
+export async function turnInDumpToClassroom(
+  pursuitId: string,
+  dumpId: string,
+  courseWorkId: string,
+): Promise<{ error: string | null; success?: boolean }> {
+  try {
+    const { session, pursuit } = await requireAccess(pursuitId);
+    if (!pursuit.classroomCourseId) {
+      return { error: "This Pursuit isn't linked to a Google Classroom course." };
+    }
+    const dump = await prisma.brainDump.findFirst({ where: { id: dumpId, pursuitId } });
+    if (!dump?.content) return { error: "Page not found or empty." };
+
+    const accessToken = await getValidAccessToken(session.user.id);
+    if (!accessToken) {
+      return { error: "Not connected to Google Classroom — reconnect and try again." };
+    }
+
+    await submitPdfToClassroom(
+      accessToken,
+      pursuit.classroomCourseId,
+      courseWorkId,
+      autoTitle(dump.content, 12),
+      dump.content,
+    );
+    return { error: null, success: true };
+  } catch {
+    return { error: "Couldn't turn that in — try again." };
   }
 }
 

@@ -4,6 +4,8 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { autoTitle } from "@/lib/text";
 import { RichContent } from "../../RichContent";
+import { TurnInButton } from "../../TurnInButton";
+import { turnInDumpToClassroom } from "../../actions";
 import { DeleteDumpButton } from "./DeleteDumpButton";
 
 export default async function DumpPage({
@@ -29,7 +31,7 @@ export default async function DumpPage({
         ],
       },
     },
-    include: { pursuit: { select: { title: true } } },
+    include: { pursuit: { select: { title: true, classroomEnabled: true, classroomCourseId: true } } },
   });
 
   if (!dump) {
@@ -60,6 +62,12 @@ export default async function DumpPage({
           >
             Export PDF
           </a>
+          {dump.pursuit.classroomEnabled && dump.pursuit.classroomCourseId && (
+            <TurnInButton
+              pursuitId={id}
+              onSubmit={(courseWorkId) => turnInDumpToClassroom(id, dumpId, courseWorkId)}
+            />
+          )}
           <DeleteDumpButton pursuitId={id} dumpId={dumpId} />
         </div>
       </div>
