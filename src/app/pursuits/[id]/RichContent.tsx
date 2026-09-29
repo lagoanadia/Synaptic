@@ -15,6 +15,18 @@ function Inline({ nodes }: { nodes: InlineNode[] }) {
                 {n.value}
               </span>
             );
+          case "link":
+            return (
+              <a
+                key={i}
+                href={n.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-accent underline hover:no-underline"
+              >
+                {n.text}
+              </a>
+            );
           case "text":
             return n.value;
         }

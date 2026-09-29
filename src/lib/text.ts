@@ -49,7 +49,8 @@ export type InlineNode =
   | { type: "text"; value: string }
   | { type: "bold"; value: string }
   | { type: "italic"; value: string }
-  | { type: "underline"; value: string };
+  | { type: "underline"; value: string }
+  | { type: "link"; text: string; url: string };
 
 export type NoteBlock =
   | { type: "heading"; level: 1 | 2 | 3; inline: InlineNode[] }
@@ -61,13 +62,16 @@ export type NoteBlock =
   | { type: "image"; url: string }
   | { type: "table"; header: InlineNode[][]; rows: InlineNode[][][] };
 
-// `**bold**`, `__underline__`, `*italic*` — matches what Ctrl/Cmd+B, +U
-// and +I wrap a selection in inside the composer (NewDumpForm). The
-// alternation tries the two-character markers before the single-character
-// one, so `**bold**` is never misread as two stray `*italic*` runs.
+// `**bold**`, `__underline__`, `[text](url)`, `*italic*` — matches what
+// Ctrl/Cmd+B, +U and +I wrap a selection in, plus the "Insert link" button,
+// inside the composer (NewDumpForm). The alternation tries the two-character
+// markers (and the link, which always starts with `[`) before the
+// single-character one, so `**bold**` is never misread as two stray
+// `*italic*` runs. A link never collides with `![image](url)` — that
+// pattern is stripped out earlier, by parseContent, before this ever runs.
 function parseInline(line: string): InlineNode[] {
   const nodes: InlineNode[] = [];
-  const pattern = /\*\*(.+?)\*\*|__(.+?)__|\*(.+?)\*/g;
+  const pattern = /\*\*(.+?)\*\*|__(.+?)__|\[(.+?)\]\((.+?)\)|\*(.+?)\*/g;
   let lastIndex = 0;
   let match: RegExpExecArray | null;
   while ((match = pattern.exec(line)) !== null) {
@@ -78,8 +82,10 @@ function parseInline(line: string): InlineNode[] {
       nodes.push({ type: "bold", value: match[1] });
     } else if (match[2] !== undefined) {
       nodes.push({ type: "underline", value: match[2] });
+    } else if (match[3] !== undefined) {
+      nodes.push({ type: "link", text: match[3], url: match[4] });
     } else {
-      nodes.push({ type: "italic", value: match[3] });
+      nodes.push({ type: "italic", value: match[5] });
     }
     lastIndex = pattern.lastIndex;
   }

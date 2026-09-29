@@ -130,6 +130,20 @@ describe("parseNoteBlocks", () => {
     ]);
   });
 
+  it("parses a link without colliding with an image marker", () => {
+    const blocks = parseNoteBlocks("see [the docs](https://example.com) plain");
+    expect(blocks).toEqual([
+      {
+        type: "paragraph",
+        inline: [
+          { type: "text", value: "see " },
+          { type: "link", text: "the docs", url: "https://example.com" },
+          { type: "text", value: " plain" },
+        ],
+      },
+    ]);
+  });
+
   it("parses a table with a header row and body rows", () => {
     const blocks = parseNoteBlocks("| A | B |\n| 1 | 2 |\n| 3 | 4 |");
     expect(blocks).toEqual([

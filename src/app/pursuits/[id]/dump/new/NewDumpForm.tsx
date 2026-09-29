@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { upload } from "@vercel/blob/client";
 import { addBrainDump, transcribeAudio, updateBrainDump, type FormState } from "../../actions";
 import { parseContent, type ContentSegment } from "@/lib/text";
+import { pdfToImagePages } from "@/lib/pdfToImages";
 
 const initialState: FormState = { error: null };
 
@@ -70,11 +71,19 @@ export function NewDumpForm({
   const [activeIndex, setActiveIndex] = useState(0);
   const textareaRefs = useRef<Record<number, HTMLTextAreaElement | null>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const pdfInputRef = useRef<HTMLInputElement>(null);
   const [tablePickerOpen, setTablePickerOpen] = useState(false);
   const tableRowsRef = useRef<HTMLInputElement>(null);
   const tableColsRef = useRef<HTMLInputElement>(null);
+  const [linkPickerOpen, setLinkPickerOpen] = useState(false);
+  const linkTextRef = useRef<HTMLInputElement>(null);
+  const linkUrlRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  // Set while a PDF's pages are being rasterized/uploaded — distinct from
+  // isUploading since this spans many sequential uploads, not one, and the
+  // button needs to show which page it's on.
+  const [pdfProgress, setPdfProgress] = useState<string | null>(null);
   const [draftToOffer, setDraftToOffer] = useState<string | null>(null);
   const [recordingSeconds, setRecordingSeconds] = useState<number | null>(null);
   const [isTranscribing, setIsTranscribing] = useState(false);
@@ -202,6 +211,43 @@ export function NewDumpForm({
     e.target.value = ""; // allow picking the same file again later
     if (!file) return;
     await uploadImageFile(file);
+  }
+
+  // Renders every page to a PNG in the browser (see lib/pdfToImages), then
+  // uploads them one at a time to the same Blob storage as a pasted image —
+  // by the time they're inserted, they're just images, so Organize's Groq
+  // vision call already "sees" them with zero changes on the server side.
+  async function uploadPdfFile(file: File) {
+    setUploadError(null);
+    try {
+      const pages = await pdfToImagePages(file);
+      const urls: string[] = [];
+      for (let i = 0; i < pages.length; i++) {
+        setPdfProgress(`Uploading page ${i + 1} of ${pages.length}…`);
+        const pageFile = new File([pages[i]], `${file.name}-page-${i + 1}.png`, {
+          type: "image/png",
+        });
+        const blob = await upload(`dumps/${pursuitId}/${pageFile.name}`, pageFile, {
+          access: "public",
+          handleUploadUrl: "/api/blob-upload",
+          clientPayload: JSON.stringify({ pursuitId, kind: "image" }),
+        });
+        urls.push(blob.url);
+      }
+      insertImagesAtActiveBlock(urls);
+    } catch {
+      setUploadError("Couldn't process that PDF — try again");
+    } finally {
+      setPdfProgress(null);
+    }
+  }
+
+  async function handlePdfFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setPdfProgress("Reading PDF…");
+    await uploadPdfFile(file);
   }
 
   // A screenshot copied to the clipboard (e.g. a Snipping Tool / Cmd+Shift+4
@@ -353,6 +399,35 @@ export function NewDumpForm({
     });
   }
 
+  // Same idea as insertImageAtActiveBlock, but splits the active block once
+  // and drops every url in between in one update — a PDF's pages need to
+  // land in order, and calling the single-image version once per page would
+  // read a stale `activeIndex`/cursor on every call after the first, since
+  // nothing re-focuses a textarea between them the way a user normally
+  // would between two separate image insertions.
+  function insertImagesAtActiveBlock(urls: string[]) {
+    if (urls.length === 0) return;
+    setBlocks((prev) => {
+      const index = activeIndex;
+      const block = prev[index];
+      const imageBlocks: Block[] = urls.map((url) => ({ type: "image", url }));
+      if (!block || block.type !== "text") {
+        return [...prev, ...imageBlocks, { type: "text", value: "" }];
+      }
+      const textarea = textareaRefs.current[index];
+      const cursor = textarea ? textarea.selectionStart : block.value.length;
+      const before = block.value.slice(0, cursor);
+      const after = block.value.slice(cursor);
+      return [
+        ...prev.slice(0, index),
+        { type: "text", value: before },
+        ...imageBlocks,
+        { type: "text", value: after },
+        ...prev.slice(index + 1),
+      ];
+    });
+  }
+
   // Drops a transcribed voice note in at the cursor, same idea as an
   // inserted image or table — it lands in the current draft as plain
   // text you can still edit before saving, rather than being submitted
@@ -415,6 +490,37 @@ export function NewDumpForm({
       requestAnimationFrame(() => {
         textarea?.focus();
         textarea?.setSelectionRange(cellPos, cellPos);
+        if (textarea) autoResize(textarea);
+      });
+
+      return next;
+    });
+  }
+
+  // Drops a "[text](url)" marker at the cursor — RichContent (and the
+  // Markdown export) already know how to render this syntax, same as
+  // **bold** or a table row, so no new block type or server-side change
+  // is needed for a link to show up as a real clickable link everywhere
+  // the note is read.
+  function insertLinkAtActiveBlock(text: string, url: string) {
+    setBlocks((prev) => {
+      const index = activeIndex;
+      const block = prev[index];
+      if (!block || block.type !== "text") return prev;
+
+      const textarea = textareaRefs.current[index];
+      const cursor = textarea ? textarea.selectionStart : block.value.length;
+      const before = block.value.slice(0, cursor);
+      const after = block.value.slice(cursor);
+      const insertion = `[${text}](${url})`;
+
+      const next = [...prev];
+      next[index] = { type: "text", value: before + insertion + after };
+
+      const pos = before.length + insertion.length;
+      requestAnimationFrame(() => {
+        textarea?.focus();
+        textarea?.setSelectionRange(pos, pos);
         if (textarea) autoResize(textarea);
       });
 
@@ -647,6 +753,22 @@ export function NewDumpForm({
         >
           {isUploading ? "Uploading…" : "🖼 Insert image"}
         </button>
+        <input
+          ref={pdfInputRef}
+          type="file"
+          accept="application/pdf"
+          onChange={handlePdfFileChange}
+          disabled={isPending || pdfProgress !== null}
+          className="hidden"
+        />
+        <button
+          type="button"
+          onClick={() => pdfInputRef.current?.click()}
+          disabled={isPending || pdfProgress !== null}
+          className="rounded-md border border-border-subtle px-3 py-1.5 text-xs text-ink-muted disabled:opacity-50"
+        >
+          {pdfProgress ?? "📄 Insert PDF"}
+        </button>
         <button
           type="button"
           onClick={recordingSeconds !== null ? stopRecording : startRecording}
@@ -705,6 +827,73 @@ export function NewDumpForm({
                   setTablePickerOpen(false);
                 }}
                 className="rounded-md bg-ink px-2 py-1 font-medium text-white hover:opacity-90"
+              >
+                Insert
+              </button>
+            </div>
+          )}
+        </div>
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => {
+              // Prefills the text field with whatever's selected in the
+              // active textarea, same convenience as Ctrl+K in most editors
+              // — select "photosynthesis", hit this, only the URL is left
+              // to type.
+              const textarea = textareaRefs.current[activeIndex];
+              const selected = textarea
+                ? textarea.value.slice(textarea.selectionStart, textarea.selectionEnd)
+                : "";
+              setLinkPickerOpen((open) => !open);
+              requestAnimationFrame(() => {
+                if (linkTextRef.current) linkTextRef.current.value = selected;
+                linkUrlRef.current?.focus();
+              });
+            }}
+            disabled={isPending}
+            className="rounded-md border border-border-subtle px-3 py-1.5 text-xs text-ink-muted disabled:opacity-50"
+          >
+            🔗 Insert link
+          </button>
+          {linkPickerOpen && (
+            <div className="absolute bottom-full left-0 z-10 mb-2 flex w-64 flex-col gap-2 rounded-md border border-border-subtle bg-white p-3 text-xs text-ink-muted shadow-sm">
+              <label className="flex flex-col gap-1">
+                Text
+                <input
+                  ref={linkTextRef}
+                  type="text"
+                  placeholder="Link text"
+                  className="rounded border border-border-subtle px-2 py-1 text-ink"
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                URL
+                <input
+                  ref={linkUrlRef}
+                  type="url"
+                  placeholder="https://…"
+                  className="rounded border border-border-subtle px-2 py-1 text-ink"
+                  onKeyDown={(e) => {
+                    if (e.key !== "Enter") return;
+                    e.preventDefault();
+                    (e.currentTarget.form?.querySelector(
+                      "[data-insert-link]",
+                    ) as HTMLButtonElement | null)?.click();
+                  }}
+                />
+              </label>
+              <button
+                type="button"
+                data-insert-link
+                onClick={() => {
+                  const url = linkUrlRef.current?.value.trim();
+                  if (!url) return;
+                  const text = linkTextRef.current?.value.trim() || url;
+                  insertLinkAtActiveBlock(text, url);
+                  setLinkPickerOpen(false);
+                }}
+                className="self-end rounded-md bg-ink px-2 py-1 font-medium text-white hover:opacity-90"
               >
                 Insert
               </button>

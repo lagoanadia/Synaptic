@@ -15,6 +15,10 @@ function inlineToMarkdown(nodes: InlineNode[]): string {
         // inside Markdown.
         case "underline":
           return `<u>${n.value}</u>`;
+        case "link":
+          // Already standard Markdown syntax — our own [text](url) shortcut
+          // and GFM's link syntax are the same thing, verbatim.
+          return `[${n.text}](${n.url})`;
         case "text":
           return n.value;
       }
