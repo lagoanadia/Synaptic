@@ -167,6 +167,27 @@ describe("parseNoteBlocks", () => {
     expect(blocks[1].type).toBe("table");
   });
 
+  it("parses a code block without running inline/list parsing on its contents", () => {
+    const blocks = parseNoteBlocks("<\nfunction f() {\n- not a bullet\n**not bold**\n}\n>");
+    expect(blocks).toEqual([
+      { type: "codeBlock", code: "function f() {\n- not a bullet\n**not bold**\n}" },
+    ]);
+  });
+
+  it("treats an unclosed code fence as running to the end of the content", () => {
+    const blocks = parseNoteBlocks("<\nconst x = 1;");
+    expect(blocks).toEqual([{ type: "codeBlock", code: "const x = 1;" }]);
+  });
+
+  it("doesn't fold a code block into a preceding paragraph", () => {
+    const blocks = parseNoteBlocks("some text\n<\ncode here\n>");
+    expect(blocks[0]).toEqual({
+      type: "paragraph",
+      inline: [{ type: "text", value: "some text" }],
+    });
+    expect(blocks[1]).toEqual({ type: "codeBlock", code: "code here" });
+  });
+
   it("renders an inline image marker as its own block", () => {
     const blocks = parseNoteBlocks("before\n![image](http://x/y.png)\nafter");
     expect(blocks).toEqual([

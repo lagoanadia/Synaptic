@@ -159,6 +159,15 @@ export function RichContent({
                 </table>
               </div>
             );
+          case "codeBlock":
+            return (
+              <pre
+                key={i}
+                className="overflow-x-auto rounded-md bg-ink px-4 py-3 text-sm leading-relaxed text-white"
+              >
+                <code>{block.code}</code>
+              </pre>
+            );
         }
       })}
     </div>

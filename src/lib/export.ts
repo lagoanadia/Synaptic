@@ -58,6 +58,10 @@ function blockToMarkdown(block: NoteBlock): string {
       return `![image](${block.url})`;
     case "paragraph":
       return inlineToMarkdown(block.inline);
+    // Our own `<`/`>` fences aren't Markdown, but GFM's fenced code block
+    // (```) is the standard equivalent, so it maps over directly.
+    case "codeBlock":
+      return "```\n" + block.code + "\n```";
   }
 }
 

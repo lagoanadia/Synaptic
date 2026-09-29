@@ -530,6 +530,38 @@ export function NewDumpForm({
     });
   }
 
+  // Drops an empty `<` / `>` code fence at the cursor, caret landing on the
+  // blank line between them — same idea as insertTableAtActiveBlock, but
+  // there's no size to ask for first.
+  function insertCodeBlockAtActiveBlock() {
+    setBlocks((prev) => {
+      const index = activeIndex;
+      const block = prev[index];
+      if (!block || block.type !== "text") return prev;
+
+      const textarea = textareaRefs.current[index];
+      const cursor = textarea ? textarea.selectionStart : block.value.length;
+      const before = block.value.slice(0, cursor);
+      const after = block.value.slice(cursor);
+
+      const leading = before.length > 0 && !before.endsWith("\n") ? "\n" : "";
+      const trailing = after.length > 0 && !after.startsWith("\n") ? "\n" : "";
+      const insertion = `${leading}<\n\n>${trailing}`;
+
+      const next = [...prev];
+      next[index] = { type: "text", value: before + insertion + after };
+
+      const cursorPos = before.length + leading.length + 2;
+      requestAnimationFrame(() => {
+        textarea?.focus();
+        textarea?.setSelectionRange(cursorPos, cursorPos);
+        if (textarea) autoResize(textarea);
+      });
+
+      return next;
+    });
+  }
+
   // Ctrl/Cmd+B, +I, +U wrap the selection (or, with nothing selected, drop
   // the cursor between an empty pair) in the matching shortcut marker —
   // ** for bold, * for italic, __ for underline — the same ones
@@ -905,6 +937,14 @@ export function NewDumpForm({
             </div>
           )}
         </div>
+        <button
+          type="button"
+          onClick={insertCodeBlockAtActiveBlock}
+          disabled={isPending}
+          className="rounded-md border border-border-subtle px-3 py-1.5 text-xs text-ink-muted disabled:opacity-50"
+        >
+          {"</> Insert code"}
+        </button>
         <details className="relative">
           <summary
             title="Formatting shortcuts"
@@ -920,6 +960,7 @@ export function NewDumpForm({
               <li><code>1.</code> numbered list</li>
               <li><code>a.</code> lettered list</li>
               <li><code>| a | b |</code> table row</li>
+              <li><code>{"<"}</code> ... <code>{">"}</code> code block</li>
               <li><code>**bold**</code> · <code>*italic*</code> · <code>__underline__</code></li>
               <li>Ctrl/Cmd + B / I / U on a selection</li>
             </ul>

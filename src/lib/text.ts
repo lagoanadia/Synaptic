@@ -60,7 +60,8 @@ export type NoteBlock =
   | { type: "letteredList"; items: InlineNode[][] }
   | { type: "paragraph"; inline: InlineNode[] }
   | { type: "image"; url: string }
-  | { type: "table"; header: InlineNode[][]; rows: InlineNode[][][] };
+  | { type: "table"; header: InlineNode[][]; rows: InlineNode[][][] }
+  | { type: "codeBlock"; code: string };
 
 // `**bold**`, `__underline__`, `[text](url)`, `*italic*` — matches what
 // Ctrl/Cmd+B, +U and +I wrap a selection in, plus the "Insert link" button,
@@ -112,6 +113,11 @@ const LETTERED = /^[a-z]\.\s+(.*)$/i;
 // pipes required, so a line that just happens to contain a "|" mid-sentence
 // isn't mistaken for a table.
 const TABLE_ROW = /^\|(.+)\|$/;
+// A code block is a `<` alone on its own line, then any number of lines
+// verbatim (no inline **bold**/list parsing inside — it's code, not prose),
+// until a `>` alone on its own line closes it.
+const CODE_FENCE_START = /^<\s*$/;
+const CODE_FENCE_END = /^>\s*$/;
 
 function splitTableRow(line: string): InlineNode[][] {
   const inner = TABLE_ROW.exec(line)![1];
@@ -189,6 +195,18 @@ function parseTextBlocks(text: string): NoteBlock[] {
       continue;
     }
 
+    if (CODE_FENCE_START.test(trimmed)) {
+      i++; // past the opening `<`
+      const codeLines: string[] = [];
+      while (i < lines.length && !CODE_FENCE_END.test(lines[i].trim())) {
+        codeLines.push(lines[i]);
+        i++;
+      }
+      if (i < lines.length) i++; // past the closing `>`, if the block was closed
+      blocks.push({ type: "codeBlock", code: codeLines.join("\n") });
+      continue;
+    }
+
     // A plain paragraph: fold in every following line up to the next blank
     // line or shortcut, so a wrapped sentence stays one paragraph block.
     const paraLines: string[] = [];
@@ -201,7 +219,8 @@ function parseTextBlocks(text: string): NoteBlock[] {
         BULLET.test(t) ||
         NUMBERED.test(t) ||
         LETTERED.test(t) ||
-        TABLE_ROW.test(t)
+        TABLE_ROW.test(t) ||
+        CODE_FENCE_START.test(t)
       ) {
         break;
       }
