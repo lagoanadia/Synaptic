@@ -54,9 +54,12 @@ export function AttachmentList({
                 <button
                   type="button"
                   onClick={() => setOpenId(openId === a.id ? null : a.id)}
-                  className="flex-1 truncate text-left text-sm hover:underline"
+                  className="flex flex-1 items-center gap-2 overflow-hidden text-left text-sm hover:underline"
                 >
-                  {a.name}
+                  <span className="truncate">{a.name}</span>
+                  <span className="shrink-0 text-xs text-ink-faint">
+                    {openId === a.id ? "Hide" : "Preview"}
+                  </span>
                 </button>
               ) : (
                 <a
@@ -67,11 +70,6 @@ export function AttachmentList({
                 >
                   {a.name}
                 </a>
-              )}
-              {embedUrl && (
-                <span className="shrink-0 text-xs text-ink-faint">
-                  {openId === a.id ? "Hide" : "Preview"}
-                </span>
               )}
               <DeleteButton
                 action={removeAttachment.bind(null, pursuitId, a.id)}

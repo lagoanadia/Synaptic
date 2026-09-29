@@ -130,13 +130,6 @@ export default async function PursuitPage({
           >
             ↓ Export
           </a>
-          <Link
-            href={`/pursuits/${pursuit.id}/print`}
-            target="_blank"
-            className="text-sm text-ink-muted hover:underline"
-          >
-            ↓ PDF
-          </Link>
           {pursuit.owner.id !== session.user.id && (
             <LeaveButton pursuitId={pursuit.id} />
           )}

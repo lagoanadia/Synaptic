@@ -52,6 +52,14 @@ export default async function DumpPage({
           >
             Edit
           </Link>
+          <a
+            href={`/pursuits/${id}/print?dump=${dumpId}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm text-ink-muted hover:underline"
+          >
+            Export PDF
+          </a>
           <DeleteDumpButton pursuitId={id} dumpId={dumpId} />
         </div>
       </div>
