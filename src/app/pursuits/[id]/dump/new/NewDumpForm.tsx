@@ -603,7 +603,9 @@ export function NewDumpForm({
   // watching the list count itself up (or the table grow a row) as you
   // write. Enter on an EMPTY item ends the list/table instead (strips that
   // line's marker) rather than adding yet another empty one, matching how
-  // e.g. Obsidian or Bear behave.
+  // e.g. Obsidian or Bear behave. A nested (Tab-indented) item keeps its
+  // indentation on the next line too, so continuing a sub-list doesn't pop
+  // it back out to the top level.
   //
   // No textarea.focus() in here, on purpose: the textarea calling this is
   // already focused (that's how Enter reached it), and re-focusing an
@@ -628,20 +630,20 @@ export function NewDumpForm({
     let nextMarker: string | null = null;
     let itemIsEmpty = false;
 
-    const numbered = /^(\d+)\.\s(.*)$/.exec(currentLine);
-    const lettered = /^([a-zA-Z])\.\s(.*)$/.exec(currentLine);
-    const bullet = /^-\s(.*)$/.exec(currentLine);
+    const numbered = /^(\s*)(\d+)\.\s(.*)$/.exec(currentLine);
+    const lettered = /^(\s*)([a-zA-Z])\.\s(.*)$/.exec(currentLine);
+    const bullet = /^(\s*)(-|○|▪)\s(.*)$/.exec(currentLine);
     const table = /^\|(.+)\|$/.exec(currentLine);
 
     if (numbered) {
-      itemIsEmpty = numbered[2].trim() === "";
-      nextMarker = `${Number(numbered[1]) + 1}. `;
+      itemIsEmpty = numbered[3].trim() === "";
+      nextMarker = `${numbered[1]}${Number(numbered[2]) + 1}. `;
     } else if (bullet) {
-      itemIsEmpty = bullet[1].trim() === "";
-      nextMarker = "- ";
+      itemIsEmpty = bullet[3].trim() === "";
+      nextMarker = `${bullet[1]}${bullet[2]} `;
     } else if (lettered) {
-      itemIsEmpty = lettered[2].trim() === "";
-      nextMarker = `${String.fromCharCode(lettered[1].charCodeAt(0) + 1)}. `;
+      itemIsEmpty = lettered[3].trim() === "";
+      nextMarker = `${lettered[1]}${String.fromCharCode(lettered[2].charCodeAt(0) + 1)}. `;
     } else if (table) {
       itemIsEmpty = table[1].replace(/\|/g, "").trim() === "";
       nextMarker = "| ";
@@ -665,6 +667,61 @@ export function NewDumpForm({
     updateTextBlock(index, newValue);
     requestAnimationFrame(() => {
       const pos = cursor + insertion.length;
+      textarea.setSelectionRange(pos, pos);
+      autoResize(textarea);
+    });
+  }
+
+  // Tab on a numbered item escalates it to a lettered sub-item ("1." →
+  // "a."); Tab on a bullet escalates it one notch further ("-" → "○" →
+  // "▪") — two spaces of indentation go with each step, which is exactly
+  // what parseListBlocks (src/lib/text.ts) reads back as "this is nested
+  // under the item above it". Shift+Tab reverses either chain. Neither
+  // fires past the deepest defined marker, or on a line that isn't a list
+  // item at all — Tab then just does its normal thing (move focus along).
+  function nextListMarker(marker: string): string | null {
+    if (marker === "-") return "○";
+    if (marker === "○") return "▪";
+    if (/^\d+\.$/.test(marker)) return "a.";
+    return null;
+  }
+
+  function previousListMarker(marker: string): string | null {
+    if (marker === "▪") return "○";
+    if (marker === "○") return "-";
+    if (/^[a-zA-Z]\.$/.test(marker)) return "1.";
+    return null;
+  }
+
+  function handleListIndent(e: React.KeyboardEvent<HTMLTextAreaElement>, index: number) {
+    if (e.key !== "Tab" || e.ctrlKey || e.metaKey || e.altKey) return;
+    const textarea = textareaRefs.current[index];
+    const block = blocks[index];
+    if (!textarea || !block || block.type !== "text") return;
+
+    const cursor = textarea.selectionStart;
+    const value = block.value;
+    const lineStart = value.lastIndexOf("\n", cursor - 1) + 1;
+    const lineEndIdx = value.indexOf("\n", cursor);
+    const lineEnd = lineEndIdx === -1 ? value.length : lineEndIdx;
+    const line = value.slice(lineStart, lineEnd);
+
+    const m = /^( *)(-|○|▪|\d+\.|[a-zA-Z]\.)(\s.*)$/.exec(line);
+    if (!m) return; // Not on a list line — let Tab behave normally.
+
+    const [, indent, marker, rest] = m;
+    const nextMarker = e.shiftKey ? previousListMarker(marker) : nextListMarker(marker);
+    if (nextMarker === null) return; // Already at the top/bottom of that marker's chain.
+
+    e.preventDefault();
+    const nextIndent = e.shiftKey ? indent.slice(2) : `${indent}  `;
+    const newLine = `${nextIndent}${nextMarker}${rest}`;
+    const newValue = value.slice(0, lineStart) + newLine + value.slice(lineStart + line.length);
+    updateTextBlock(index, newValue);
+
+    const cursorDelta = newLine.length - line.length;
+    requestAnimationFrame(() => {
+      const pos = Math.max(lineStart, cursor + cursorDelta);
       textarea.setSelectionRange(pos, pos);
       autoResize(textarea);
     });
@@ -743,6 +800,7 @@ export function NewDumpForm({
               onKeyDown={(e) => {
                 handleFormatShortcut(e, i);
                 handleListContinuation(e, i);
+                handleListIndent(e, i);
               }}
               onPaste={handlePaste}
               autoFocus={i === 0}
@@ -963,6 +1021,7 @@ export function NewDumpForm({
               <li><code>{"<"}</code> ... <code>{">"}</code> code block</li>
               <li><code>**bold**</code> · <code>*italic*</code> · <code>__underline__</code></li>
               <li>Ctrl/Cmd + B / I / U on a selection</li>
+              <li>Tab on a list line nests it, Shift+Tab un-nests it</li>
             </ul>
           </div>
         </details>

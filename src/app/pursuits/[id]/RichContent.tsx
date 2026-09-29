@@ -1,4 +1,4 @@
-import { parseNoteBlocks, type InlineNode } from "@/lib/text";
+import { parseNoteBlocks, type InlineNode, type ListBlock, type ListItem } from "@/lib/text";
 
 function Inline({ nodes }: { nodes: InlineNode[] }) {
   return (
@@ -33,6 +33,59 @@ function Inline({ nodes }: { nodes: InlineNode[] }) {
       })}
     </>
   );
+}
+
+// A nested bullet list cycles disc → circle → square by depth (the
+// classic outliner convention) so a Tab-indented sub-point is visually
+// distinct without needing a legend; numbered/lettered stay their own
+// style at any depth since the marker CHARACTER itself already changes
+// when a line gets nested (1. → a.).
+function bulletStyleForDepth(depth: number): string {
+  return depth === 0 ? "disc" : depth === 1 ? "circle" : "square";
+}
+
+function ListItems({ items, depth }: { items: ListItem[]; depth: number }) {
+  return (
+    <>
+      {items.map((item, j) => (
+        <li key={j}>
+          <Inline nodes={item.inline} />
+          {item.children.map((child, k) => (
+            <ListBlockView key={k} block={child} depth={depth + 1} />
+          ))}
+        </li>
+      ))}
+    </>
+  );
+}
+
+function ListBlockView({ block, depth }: { block: ListBlock; depth: number }) {
+  switch (block.type) {
+    case "bulletList":
+      return (
+        <ul
+          className="space-y-1 pl-5 text-sm leading-relaxed"
+          style={{ listStyleType: bulletStyleForDepth(depth) }}
+        >
+          <ListItems items={block.items} depth={depth} />
+        </ul>
+      );
+    case "numberedList":
+      return (
+        <ol className="list-decimal space-y-1 pl-5 text-sm leading-relaxed">
+          <ListItems items={block.items} depth={depth} />
+        </ol>
+      );
+    case "letteredList":
+      return (
+        <ol
+          className="space-y-1 pl-5 text-sm leading-relaxed"
+          style={{ listStyleType: "lower-alpha" }}
+        >
+          <ListItems items={block.items} depth={depth} />
+        </ol>
+      );
+  }
 }
 
 const HEADING_TAG = { 1: "h2", 2: "h3", 3: "h4" } as const;
@@ -88,39 +141,9 @@ export function RichContent({
               </div>
             );
           case "bulletList":
-            return (
-              <ul key={i} className="list-disc space-y-1 pl-5 text-sm leading-relaxed">
-                {block.items.map((item, j) => (
-                  <li key={j}>
-                    <Inline nodes={item} />
-                  </li>
-                ))}
-              </ul>
-            );
           case "numberedList":
-            return (
-              <ol key={i} className="list-decimal space-y-1 pl-5 text-sm leading-relaxed">
-                {block.items.map((item, j) => (
-                  <li key={j}>
-                    <Inline nodes={item} />
-                  </li>
-                ))}
-              </ol>
-            );
           case "letteredList":
-            return (
-              <ol
-                key={i}
-                className="space-y-1 pl-5 text-sm leading-relaxed"
-                style={{ listStyleType: "lower-alpha" }}
-              >
-                {block.items.map((item, j) => (
-                  <li key={j}>
-                    <Inline nodes={item} />
-                  </li>
-                ))}
-              </ol>
-            );
+            return <ListBlockView key={i} block={block} depth={0} />;
           case "paragraph":
             return (
               <p key={i} className={paragraphClassName}>

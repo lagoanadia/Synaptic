@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { autoTitle, parseContent, parseNoteBlocks } from "./text";
+import { autoTitle, parseContent, parseNoteBlocks, type ListBlock } from "./text";
+
+// A flat (unnested) list item — most list tests don't care about nesting,
+// so this keeps them readable instead of spelling out { inline, children:
+// [] } everywhere.
+function item(text: string) {
+  return { inline: [{ type: "text" as const, value: text }], children: [] as ListBlock[] };
+}
 
 describe("autoTitle", () => {
   it("returns 'Untitled' for empty or blank content", () => {
@@ -79,11 +86,7 @@ describe("parseNoteBlocks", () => {
     expect(blocks).toEqual([
       {
         type: "bulletList",
-        items: [
-          [{ type: "text", value: "one" }],
-          [{ type: "text", value: "two" }],
-          [{ type: "text", value: "three" }],
-        ],
+        items: [item("one"), item("two"), item("three")],
       },
     ]);
   });
@@ -93,7 +96,7 @@ describe("parseNoteBlocks", () => {
     expect(blocks).toEqual([
       {
         type: "numberedList",
-        items: [[{ type: "text", value: "first" }], [{ type: "text", value: "second" }]],
+        items: [item("first"), item("second")],
       },
     ]);
 
@@ -101,7 +104,58 @@ describe("parseNoteBlocks", () => {
     expect(lettered).toEqual([
       {
         type: "letteredList",
-        items: [[{ type: "text", value: "first" }], [{ type: "text", value: "second" }]],
+        items: [item("first"), item("second")],
+      },
+    ]);
+  });
+
+  it("nests a Tab-indented numbered item as a lettered sub-list", () => {
+    const blocks = parseNoteBlocks("1. parent\n  a. child one\n  b. child two\n2. sibling");
+    expect(blocks).toEqual([
+      {
+        type: "numberedList",
+        items: [
+          {
+            inline: [{ type: "text", value: "parent" }],
+            children: [
+              {
+                type: "letteredList",
+                items: [item("child one"), item("child two")],
+              },
+            ],
+          },
+          item("sibling"),
+        ],
+      },
+    ]);
+  });
+
+  it("nests a Tab-indented bullet two levels deep", () => {
+    const blocks = parseNoteBlocks("- top\n  ○ mid\n    ▪ deep");
+    expect(blocks).toEqual([
+      {
+        type: "bulletList",
+        items: [
+          {
+            inline: [{ type: "text", value: "top" }],
+            children: [
+              {
+                type: "bulletList",
+                items: [
+                  {
+                    inline: [{ type: "text", value: "mid" }],
+                    children: [
+                      {
+                        type: "bulletList",
+                        items: [item("deep")],
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
       },
     ]);
   });

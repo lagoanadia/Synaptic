@@ -52,12 +52,22 @@ export type InlineNode =
   | { type: "underline"; value: string }
   | { type: "link"; text: string; url: string };
 
+// A list item can carry its own nested list(s) — a numbered item Tab'd in
+// the composer becomes a lettered sub-item, a bullet Tab'd becomes a
+// hollow-circle one, same idea as any outliner's sub-points. Only lists
+// nest inside a list item, never a heading/table/etc., which is what
+// ListBlock (rather than the wider NoteBlock) enforces here.
+export type ListItem = { inline: InlineNode[]; children: ListBlock[] };
+
+export type ListBlock =
+  | { type: "bulletList"; items: ListItem[] }
+  | { type: "numberedList"; items: ListItem[] }
+  | { type: "letteredList"; items: ListItem[] };
+
 export type NoteBlock =
   | { type: "heading"; level: 1 | 2 | 3; inline: InlineNode[] }
   | { type: "callout"; inline: InlineNode[] }
-  | { type: "bulletList"; items: InlineNode[][] }
-  | { type: "numberedList"; items: InlineNode[][] }
-  | { type: "letteredList"; items: InlineNode[][] }
+  | ListBlock
   | { type: "paragraph"; inline: InlineNode[] }
   | { type: "image"; url: string }
   | { type: "table"; header: InlineNode[][]; rows: InlineNode[][][] }
@@ -106,9 +116,15 @@ function parseInline(line: string): InlineNode[] {
 // silently produce a literal "#02 Licencias" paragraph instead.
 const HEADING = /^(#+)\s*(.*)$/;
 const CALLOUT = /^!\s+(.*)$/;
-const BULLET = /^-\s+(.*)$/;
-const NUMBERED = /^\d+\.\s+(.*)$/;
-const LETTERED = /^[a-z]\.\s+(.*)$/i;
+// A list line, its leading indentation captured separately from the
+// marker — indentation is what nests it (see parseListBlocks below); the
+// marker alone (ignoring indentation) is also reused as LIST_MARKER_ONLY
+// wherever a line just needs to be recognized as "some kind of list item".
+// ○/▪ are the composer's Tab-nested bullet markers (- → ○ → ▪, see
+// NewDumpForm's handleListIndent) — they're still the same "bulletList"
+// block type as a plain "-", just visually distinct at a glance.
+const LIST_LINE = /^( *)(-|○|▪|\d+\.|[a-zA-Z]\.)\s+(.*)$/;
+const LIST_MARKER_ONLY = /^(?:-|○|▪|\d+\.|[a-zA-Z]\.)\s+/;
 // A table row is typed as `| cell | cell | cell |` — leading and trailing
 // pipes required, so a line that just happens to contain a "|" mid-sentence
 // isn't mistaken for a table.
@@ -122,6 +138,57 @@ const CODE_FENCE_END = /^>\s*$/;
 function splitTableRow(line: string): InlineNode[][] {
   const inner = TABLE_ROW.exec(line)![1];
   return inner.split("|").map((cell) => parseInline(cell.trim()));
+}
+
+type ListLineType = ListBlock["type"];
+
+function parseListLine(
+  line: string,
+): { indent: number; type: ListLineType; text: string } | null {
+  const m = LIST_LINE.exec(line);
+  if (!m) return null;
+  const marker = m[2];
+  const type: ListLineType =
+    marker === "-" || marker === "○" || marker === "▪"
+      ? "bulletList"
+      : /^\d+\.$/.test(marker)
+        ? "numberedList"
+        : "letteredList";
+  return { indent: m[1].length, type, text: m[3] };
+}
+
+// Parses a contiguous run of list lines (bullet/numbered/lettered, at any
+// depth) starting at lines[i.pos] into a tree of ListBlocks. A line
+// indented further than the one before it nests as a sub-list of that
+// item (one nested ListBlock per indent jump); a line indented less than
+// `minIndent` hands control back to the caller — its own parent level.
+// Mirrors how Tab/Shift+Tab in the composer (NewDumpForm) indent/outdent a
+// list line by adding/removing two spaces before its marker.
+function parseListBlocks(lines: string[], i: { pos: number }, minIndent: number): ListBlock[] {
+  const blocks: ListBlock[] = [];
+
+  while (i.pos < lines.length) {
+    const parsed = parseListLine(lines[i.pos]);
+    if (!parsed || parsed.indent < minIndent) break;
+
+    // The actual depth of THIS run — everything sharing this line's exact
+    // indent and marker type joins the same list; a deeper line starts a
+    // nested list under whichever item came right before it.
+    const { indent, type } = parsed;
+    const items: ListItem[] = [];
+
+    while (i.pos < lines.length) {
+      const p = parseListLine(lines[i.pos]);
+      if (!p || p.indent !== indent || p.type !== type) break;
+      i.pos++;
+      const children = parseListBlocks(lines, i, indent + 1);
+      items.push({ inline: parseInline(p.text), children });
+    }
+
+    blocks.push({ type, items } as ListBlock);
+  }
+
+  return blocks;
 }
 
 // Splits a plain-text run into paragraph/heading/callout/list blocks using
@@ -160,27 +227,10 @@ function parseTextBlocks(text: string): NoteBlock[] {
       continue;
     }
 
-    const list = (pattern: RegExp, type: "bulletList" | "numberedList" | "letteredList") => {
-      const items: InlineNode[][] = [];
-      while (i < lines.length) {
-        const m = pattern.exec(lines[i].trim());
-        if (!m) break;
-        items.push(parseInline(m[1]));
-        i++;
-      }
-      blocks.push({ type, items });
-    };
-
-    if (BULLET.test(trimmed)) {
-      list(BULLET, "bulletList");
-      continue;
-    }
-    if (NUMBERED.test(trimmed)) {
-      list(NUMBERED, "numberedList");
-      continue;
-    }
-    if (LETTERED.test(trimmed)) {
-      list(LETTERED, "letteredList");
+    if (LIST_LINE.test(lines[i])) {
+      const ref = { pos: i };
+      blocks.push(...parseListBlocks(lines, ref, 0));
+      i = ref.pos;
       continue;
     }
 
@@ -216,9 +266,7 @@ function parseTextBlocks(text: string): NoteBlock[] {
         t === "" ||
         HEADING.test(t) ||
         CALLOUT.test(t) ||
-        BULLET.test(t) ||
-        NUMBERED.test(t) ||
-        LETTERED.test(t) ||
+        LIST_MARKER_ONLY.test(t) ||
         TABLE_ROW.test(t) ||
         CODE_FENCE_START.test(t)
       ) {

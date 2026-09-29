@@ -1,4 +1,4 @@
-import { parseNoteBlocks, type InlineNode, type NoteBlock } from "@/lib/text";
+import { parseNoteBlocks, type InlineNode, type ListBlock, type ListItem, type NoteBlock } from "@/lib/text";
 
 function inlineToMarkdown(nodes: InlineNode[]): string {
   return nodes
@@ -26,6 +26,39 @@ function inlineToMarkdown(nodes: InlineNode[]): string {
     .join("");
 }
 
+// A nested item's children are indented two more spaces than their parent
+// — not GFM's most rigorous nesting rule (which wants indent matched to
+// the parent marker's own width), but tolerant enough for GitHub/Obsidian
+// to render correctly, and simpler than tracking marker width per line.
+function listItemsToMarkdown(
+  items: ListItem[],
+  markerFor: (index: number) => string,
+  indent: string,
+): string {
+  return items
+    .map((item, i) => {
+      const line = `${indent}${markerFor(i)} ${inlineToMarkdown(item.inline)}`;
+      const nested = item.children
+        .map((child) => listBlockToMarkdown(child, `${indent}  `))
+        .join("\n");
+      return nested ? `${line}\n${nested}` : line;
+    })
+    .join("\n");
+}
+
+function listBlockToMarkdown(block: ListBlock, indent = ""): string {
+  switch (block.type) {
+    case "bulletList":
+      return listItemsToMarkdown(block.items, () => "-", indent);
+    case "numberedList":
+      return listItemsToMarkdown(block.items, (i) => `${i + 1}.`, indent);
+    case "letteredList":
+      // No alphabetic list syntax in Markdown -- falls back to bullets,
+      // same as the old flat case, now applied at any nesting depth too.
+      return listItemsToMarkdown(block.items, () => "-", indent);
+  }
+}
+
 // Re-serializes our own parsed blocks into standard/GFM Markdown, fixing
 // the three places our shortcut syntax isn't quite standard Markdown:
 // "!" callouts (not a Markdown thing) become "> " blockquotes, lettered
@@ -39,13 +72,9 @@ function blockToMarkdown(block: NoteBlock): string {
     case "callout":
       return `> ${inlineToMarkdown(block.inline)}`;
     case "bulletList":
-      return block.items.map((item) => `- ${inlineToMarkdown(item)}`).join("\n");
     case "numberedList":
-      return block.items
-        .map((item, i) => `${i + 1}. ${inlineToMarkdown(item)}`)
-        .join("\n");
     case "letteredList":
-      return block.items.map((item) => `- ${inlineToMarkdown(item)}`).join("\n");
+      return listBlockToMarkdown(block);
     case "table": {
       const headerRow = `| ${block.header.map(inlineToMarkdown).join(" | ")} |`;
       const separatorRow = `| ${block.header.map(() => "---").join(" | ")} |`;

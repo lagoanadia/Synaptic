@@ -1,5 +1,5 @@
 import { PDFDocument, PDFFont, PDFPage, StandardFonts, rgb } from "pdf-lib";
-import { parseNoteBlocks, type InlineNode, type NoteBlock } from "@/lib/text";
+import { parseNoteBlocks, type InlineNode, type ListBlock, type NoteBlock } from "@/lib/text";
 
 // A4 in points (pdf-lib's unit), origin bottom-left.
 const PAGE_WIDTH = 595.28;
@@ -146,6 +146,25 @@ function inlineToTokens(nodes: InlineNode[], fonts: Fonts, size = BODY_SIZE): To
 
 const HEADING_SIZE = { 1: 18, 2: 15, 3: 13 } as const;
 
+function drawListBlock(cursor: PdfCursor, fonts: Fonts, block: ListBlock, depth: number) {
+  const indent = 14 * (depth + 1);
+  block.items.forEach((item, i) => {
+    const marker =
+      block.type === "bulletList"
+        ? "•"
+        : block.type === "numberedList"
+          ? `${i + 1}.`
+          : `${String.fromCharCode(97 + (i % 26))}.`;
+    cursor.drawTokens(
+      [{ text: `${marker} `, font: fonts.regular, size: BODY_SIZE }, ...inlineToTokens(item.inline, fonts)],
+      indent,
+    );
+    for (const child of item.children) {
+      drawListBlock(cursor, fonts, child, depth + 1);
+    }
+  });
+}
+
 async function drawImage(cursor: PdfCursor, url: string) {
   try {
     // Attachment URLs are public Vercel Blob links (same ones the app's
@@ -203,18 +222,7 @@ async function drawBlock(cursor: PdfCursor, fonts: Fonts, block: NoteBlock) {
     case "bulletList":
     case "numberedList":
     case "letteredList": {
-      block.items.forEach((item, i) => {
-        const marker =
-          block.type === "bulletList"
-            ? "•"
-            : block.type === "numberedList"
-              ? `${i + 1}.`
-              : `${String.fromCharCode(97 + (i % 26))}.`;
-        cursor.drawTokens(
-          [{ text: `${marker} `, font: fonts.regular, size: BODY_SIZE }, ...inlineToTokens(item, fonts)],
-          14,
-        );
-      });
+      drawListBlock(cursor, fonts, block, 0);
       cursor.spacer(4);
       return;
     }
