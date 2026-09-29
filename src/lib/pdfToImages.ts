@@ -36,8 +36,14 @@ export async function pdfToImagePages(file: File): Promise<Blob[]> {
 
     await page.render({ canvasContext: context, viewport }).promise;
 
+    // JPEG, not PNG: a scanned/lecture-slide page is mostly a white
+    // background under text, which PNG (lossless) compresses far worse
+    // than a photo — a multi-page PDF at PNG quickly produces several
+    // multi-MB uploads, each of which Groq's vision endpoint has to fetch
+    // and decode within its own timeout. 0.85 quality keeps text legible
+    // at a fraction of the size.
     const blob = await new Promise<Blob | null>((resolve) =>
-      canvas.toBlob(resolve, "image/png"),
+      canvas.toBlob(resolve, "image/jpeg", 0.85),
     );
     if (blob) blobs.push(blob);
   }

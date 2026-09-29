@@ -224,8 +224,8 @@ export function NewDumpForm({
       const urls: string[] = [];
       for (let i = 0; i < pages.length; i++) {
         setPdfProgress(`Uploading page ${i + 1} of ${pages.length}…`);
-        const pageFile = new File([pages[i]], `${file.name}-page-${i + 1}.png`, {
-          type: "image/png",
+        const pageFile = new File([pages[i]], `${file.name}-page-${i + 1}.jpg`, {
+          type: "image/jpeg",
         });
         const blob = await upload(`dumps/${pursuitId}/${pageFile.name}`, pageFile, {
           access: "public",
