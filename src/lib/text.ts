@@ -117,14 +117,12 @@ function parseInline(line: string): InlineNode[] {
 const HEADING = /^(#+)\s*(.*)$/;
 const CALLOUT = /^!\s+(.*)$/;
 // A list line, its leading indentation captured separately from the
-// marker — indentation is what nests it (see parseListBlocks below); the
-// marker alone (ignoring indentation) is also reused as LIST_MARKER_ONLY
-// wherever a line just needs to be recognized as "some kind of list item".
-// ○/▪ are the composer's Tab-nested bullet markers (- → ○ → ▪, see
-// NewDumpForm's handleListIndent) — they're still the same "bulletList"
-// block type as a plain "-", just visually distinct at a glance.
+// marker — indentation (spaces only, not tabs) is what nests it, see
+// parseListBlocks below. ○/▪ are the composer's Tab-nested bullet markers
+// (- → ○ → ▪, see NewDumpForm's handleListIndent) — they're still the
+// same "bulletList" block type as a plain "-", just visually distinct at
+// a glance.
 const LIST_LINE = /^( *)(-|○|▪|\d+\.|[a-zA-Z]\.)\s+(.*)$/;
-const LIST_MARKER_ONLY = /^(?:-|○|▪|\d+\.|[a-zA-Z]\.)\s+/;
 // A table row is typed as `| cell | cell | cell |` — leading and trailing
 // pipes required, so a line that just happens to contain a "|" mid-sentence
 // isn't mistaken for a table.
@@ -259,6 +257,12 @@ function parseTextBlocks(text: string): NoteBlock[] {
 
     // A plain paragraph: fold in every following line up to the next blank
     // line or shortcut, so a wrapped sentence stays one paragraph block.
+    // Checking LIST_LINE against the RAW line (not trimmed) here matters —
+    // it has to agree exactly with the dispatch check above it, or a line
+    // that LOOKS like a list marker once trimmed (e.g. a tab, not spaces,
+    // before it) can break out of this loop on its very first iteration
+    // without ever advancing `i`, freezing the whole parse in an infinite
+    // loop instead of just treating it as an ordinary paragraph line.
     const paraLines: string[] = [];
     while (i < lines.length) {
       const t = lines[i].trim();
@@ -266,7 +270,7 @@ function parseTextBlocks(text: string): NoteBlock[] {
         t === "" ||
         HEADING.test(t) ||
         CALLOUT.test(t) ||
-        LIST_MARKER_ONLY.test(t) ||
+        LIST_LINE.test(lines[i]) ||
         TABLE_ROW.test(t) ||
         CODE_FENCE_START.test(t)
       ) {

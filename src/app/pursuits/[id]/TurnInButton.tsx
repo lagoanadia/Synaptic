@@ -21,7 +21,13 @@ export function TurnInButton({
   const [pending, setPending] = useState<ClassroomDeadline[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [message, setMessage] = useState<{ text: string; ok: boolean } | null>(null);
-  const [isSubmitting, startTransition] = useTransition();
+  // Which assignment's button is mid-submit — not a plain boolean, since
+  // isSubmitting from useTransition is shared across every button in the
+  // list: with that, clicking one assignment made every OTHER pending
+  // assignment's button say "Turning in…" too, even though only the
+  // clicked one was actually doing anything.
+  const [submittingId, setSubmittingId] = useState<string | null>(null);
+  const [, startTransition] = useTransition();
 
   async function toggle() {
     if (open) {
@@ -67,20 +73,22 @@ export function TurnInButton({
                 <button
                   key={d.id}
                   type="button"
-                  disabled={isSubmitting}
-                  onClick={() =>
+                  disabled={submittingId !== null}
+                  onClick={() => {
+                    setSubmittingId(d.id);
                     startTransition(async () => {
                       const result = await onSubmit(d.id);
+                      setSubmittingId(null);
                       setMessage(
                         result.error
                           ? { text: result.error, ok: false }
                           : { text: `Turned in to "${d.title}" ✓`, ok: true },
                       );
-                    })
-                  }
+                    });
+                  }}
                   className="block w-full truncate rounded px-2 py-1 text-left hover:bg-chip disabled:opacity-50"
                 >
-                  {isSubmitting ? "Turning in…" : d.title}
+                  {submittingId === d.id ? "Turning in…" : d.title}
                 </button>
               ))}
             </>

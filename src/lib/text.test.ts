@@ -242,6 +242,21 @@ describe("parseNoteBlocks", () => {
     expect(blocks[1]).toEqual({ type: "codeBlock", code: "code here" });
   });
 
+  it("treats a tab-indented dash as plain text, not an infinite loop", () => {
+    // Regression test: a line whose TRIMMED form looks like a list marker
+    // but whose actual indentation isn't plain spaces (a tab here) used to
+    // desync the paragraph-continuation check from the list dispatch
+    // check, breaking out of the paragraph loop without ever advancing
+    // past that line -- an infinite loop that hung the whole parse.
+    const blocks = parseNoteBlocks("\t- tab indented, not a real list item");
+    expect(blocks).toEqual([
+      {
+        type: "paragraph",
+        inline: [{ type: "text", value: "\t- tab indented, not a real list item" }],
+      },
+    ]);
+  });
+
   it("renders an inline image marker as its own block", () => {
     const blocks = parseNoteBlocks("before\n![image](http://x/y.png)\nafter");
     expect(blocks).toEqual([

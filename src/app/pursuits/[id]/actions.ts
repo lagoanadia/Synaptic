@@ -27,6 +27,7 @@ import {
   getOwnSubmissionId,
   attachDriveFileToSubmission,
   turnInSubmission,
+  ClassroomApiError,
   type ClassroomCourse,
   type ClassroomFile,
   type ClassroomDeadline,
@@ -776,6 +777,17 @@ async function submitPdfToClassroom(
   await turnInSubmission(accessToken, courseId, courseWorkId, submissionId);
 }
 
+// A 401/403 from Drive/Classroom here almost always means the stored
+// access token predates the drive.file + classroom.coursework.me scopes
+// this feature needs — reconnecting is the actual fix, so say that
+// instead of the same generic message every other failure gets.
+function describeTurnInError(err: unknown): string {
+  if (err instanceof ClassroomApiError && (err.status === 401 || err.status === 403)) {
+    return "Google needs new permissions for this — disconnect and reconnect Google Classroom (Files tab), then try again.";
+  }
+  return "Couldn't turn that in — try again.";
+}
+
 export async function turnInNoteToClassroom(
   pursuitId: string,
   noteId: string,
@@ -802,8 +814,8 @@ export async function turnInNoteToClassroom(
       note.content,
     );
     return { error: null, success: true };
-  } catch {
-    return { error: "Couldn't turn that in — try again." };
+  } catch (err) {
+    return { error: describeTurnInError(err) };
   }
 }
 
@@ -833,8 +845,8 @@ export async function turnInDumpToClassroom(
       dump.content,
     );
     return { error: null, success: true };
-  } catch {
-    return { error: "Couldn't turn that in — try again." };
+  } catch (err) {
+    return { error: describeTurnInError(err) };
   }
 }
 

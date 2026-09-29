@@ -1,5 +1,20 @@
 import { prisma } from "@/lib/prisma";
 
+// Carries the HTTP status alongside the message so a caller (see
+// submitPdfToClassroom in actions.ts) can tell "you don't have permission
+// for this yet" (401/403 — almost always a stale access token missing a
+// scope this account hasn't re-consented to) apart from every other
+// failure, instead of every Drive/Classroom error collapsing into one
+// generic "something went wrong".
+export class ClassroomApiError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "ClassroomApiError";
+    this.status = status;
+  }
+}
+
 // Reuses the same Google OAuth Client as NextAuth's own Google sign-in
 // (AUTH_GOOGLE_ID/SECRET — see auth.ts) rather than a second Client, since
 // it's the same Google Cloud project either way; only the requested scopes
@@ -348,7 +363,9 @@ export async function uploadPdfToDrive(
     },
     body,
   });
-  if (!res.ok) throw new Error(`Drive files.create failed: ${await res.text()}`);
+  if (!res.ok) {
+    throw new ClassroomApiError(`Drive files.create failed: ${await res.text()}`, res.status);
+  }
   const data = await res.json();
   return data.id;
 }
@@ -366,7 +383,10 @@ export async function getOwnSubmissionId(
     { headers: { Authorization: `Bearer ${accessToken}` } },
   );
   if (!res.ok) {
-    throw new Error(`Classroom studentSubmissions.list failed: ${await res.text()}`);
+    throw new ClassroomApiError(
+      `Classroom studentSubmissions.list failed: ${await res.text()}`,
+      res.status,
+    );
   }
   const data = await res.json();
   return data.studentSubmissions?.[0]?.id ?? null;
@@ -388,7 +408,10 @@ export async function attachDriveFileToSubmission(
     },
   );
   if (!res.ok) {
-    throw new Error(`Classroom modifyAttachments failed: ${await res.text()}`);
+    throw new ClassroomApiError(
+      `Classroom modifyAttachments failed: ${await res.text()}`,
+      res.status,
+    );
   }
 }
 
@@ -407,6 +430,6 @@ export async function turnInSubmission(
     },
   );
   if (!res.ok) {
-    throw new Error(`Classroom turnIn failed: ${await res.text()}`);
+    throw new ClassroomApiError(`Classroom turnIn failed: ${await res.text()}`, res.status);
   }
 }
