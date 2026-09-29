@@ -8,6 +8,7 @@ type NoteForDisplay = {
   id: string;
   content: string;
   createdAt: string;
+  updatedAt: string;
   tags: { id: string; name: string }[];
   sourceDumps: { id: string }[];
 };
@@ -25,6 +26,13 @@ export function MergeControls({
   const [isPending, startTransition] = useTransition();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
+  // Captured the moment "Edit" is clicked — what this editor is saving
+  // against, so a save that lands after someone else's is caught instead
+  // of silently overwriting it. See updateNote's own comment.
+  const [editingUpdatedAt, setEditingUpdatedAt] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<{ noteId: string; text: string } | null>(
+    null,
+  );
   const [flashcardMessage, setFlashcardMessage] = useState<{
     noteId: string;
     text: string;
@@ -83,7 +91,21 @@ export function MergeControls({
                         disabled={isPending}
                         onClick={() =>
                           startTransition(async () => {
-                            await updateNote(pursuitId, n.id, draft);
+                            setSaveError(null);
+                            const result = await updateNote(
+                              pursuitId,
+                              n.id,
+                              draft,
+                              editingUpdatedAt ?? n.updatedAt,
+                            );
+                            if (result.error) {
+                              // Keep the draft open on a conflict (or any
+                              // other error) — closing it here would throw
+                              // away exactly the edit this is trying to
+                              // protect.
+                              setSaveError({ noteId: n.id, text: result.error });
+                              return;
+                            }
                             setEditingId(null);
                           })
                         }
@@ -93,7 +115,10 @@ export function MergeControls({
                       </button>
                       <button
                         type="button"
-                        onClick={() => setEditingId(null)}
+                        onClick={() => {
+                          setEditingId(null);
+                          setSaveError(null);
+                        }}
                         className="text-xs text-ink-faint hover:text-ink"
                       >
                         Cancel
@@ -105,6 +130,8 @@ export function MergeControls({
                       onClick={() => {
                         setEditingId(n.id);
                         setDraft(n.content);
+                        setEditingUpdatedAt(n.updatedAt);
+                        setSaveError(null);
                       }}
                       className="text-xs text-ink-faint hover:text-ink"
                     >
@@ -151,12 +178,20 @@ export function MergeControls({
                 <p className="text-xs text-ink-faint">{flashcardMessage.text}</p>
               )}
               {editingId === n.id ? (
-                <textarea
-                  value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
-                  rows={6}
-                  className="w-full resize-y rounded border border-border-subtle bg-white p-2 text-sm leading-relaxed outline-none"
-                />
+                <>
+                  {saveError?.noteId === n.id && (
+                    <p className="text-xs text-red-500">
+                      {saveError.text} Your unsaved text is still here if you want to
+                      copy it before reloading.
+                    </p>
+                  )}
+                  <textarea
+                    value={draft}
+                    onChange={(e) => setDraft(e.target.value)}
+                    rows={6}
+                    className="w-full resize-y rounded border border-border-subtle bg-white p-2 text-sm leading-relaxed outline-none"
+                  />
+                </>
               ) : (
                 <RichContent
                   content={n.content}

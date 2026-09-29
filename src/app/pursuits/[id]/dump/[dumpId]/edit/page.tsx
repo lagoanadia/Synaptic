@@ -46,6 +46,7 @@ export default async function EditDumpPage({
         pursuitId={id}
         dumpId={dump.id}
         initialContent={dump.content ?? ""}
+        initialUpdatedAt={dump.updatedAt.toISOString()}
       />
     </div>
   );

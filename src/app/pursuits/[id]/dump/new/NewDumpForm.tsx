@@ -51,10 +51,12 @@ export function NewDumpForm({
   pursuitId,
   dumpId,
   initialContent,
+  initialUpdatedAt,
 }: {
   pursuitId: string;
   dumpId?: string;
   initialContent?: string;
+  initialUpdatedAt?: string;
 }) {
   const router = useRouter();
   const isEditing = dumpId !== undefined;
@@ -658,6 +660,9 @@ export function NewDumpForm({
   return (
     <form action={formAction} className="flex flex-1 flex-col gap-4">
       <input type="hidden" name="content" value={content} />
+      {initialUpdatedAt && (
+        <input type="hidden" name="expectedUpdatedAt" value={initialUpdatedAt} />
+      )}
       {draftToOffer && (
         <div className="flex items-center justify-between rounded-md border border-accent bg-accent-soft px-3 py-2 text-xs text-ink">
           <span>You have an unsaved draft from earlier.</span>

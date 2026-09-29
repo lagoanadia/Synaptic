@@ -244,6 +244,11 @@ model BrainDump {
   images    String[] @default([])
   processed Boolean  @default(false)
   createdAt DateTime @default(now())
+  // @updatedAt so Prisma bumps it on every write — updateBrainDump checks
+  // this against what the editor last loaded before saving, so two people
+  // editing the same dump at once get a conflict instead of one silently
+  // erasing the other's save.
+  updatedAt DateTime @updatedAt
 
   // Postgres-generated column (see the hand-written migration): recomputed
   // automatically by the database whenever `content` changes, so full-text
@@ -268,6 +273,10 @@ model Note {
   id        String   @id @default(cuid())
   content   String
   createdAt DateTime @default(now())
+  // Same optimistic-concurrency guard as BrainDump.updatedAt — Organized
+  // notes are exactly where two collaborators editing at once actually
+  // happened (see updateNote).
+  updatedAt DateTime @updatedAt
 
   searchVector Unsupported("tsvector")?
 

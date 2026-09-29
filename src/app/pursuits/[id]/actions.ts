@@ -233,13 +233,31 @@ export async function updateBrainDump(
     (m) => m[1],
   );
 
-  // Rewriting a dump makes whatever note it was folded into stale, so it
-  // goes back to processed:false — the same "needs organizing" state a
-  // brand new dump starts in — and reappears in the Organize count.
-  await prisma.brainDump.update({
-    where: { id: dumpId },
+  // expectedUpdatedAt is a hidden field carrying the updatedAt this editor
+  // loaded the page with — same optimistic-concurrency guard as
+  // updateNote. A shared Pursuit's dump can just as easily be open in two
+  // people's editors at once as an Organized note can.
+  const expectedUpdatedAt = formData.get("expectedUpdatedAt");
+  const result = await prisma.brainDump.updateMany({
+    where: {
+      id: dumpId,
+      pursuitId,
+      ...(typeof expectedUpdatedAt === "string" && expectedUpdatedAt
+        ? { updatedAt: new Date(expectedUpdatedAt) }
+        : {}),
+    },
+    // Rewriting a dump makes whatever note it was folded into stale, so it
+    // goes back to processed:false — the same "needs organizing" state a
+    // brand new dump starts in — and reappears in the Organize count.
     data: { content: text, images, processed: false },
   });
+
+  if (result.count === 0) {
+    return {
+      error:
+        "This page was changed by someone else since you opened it — reload to see their version before saving over it.",
+    };
+  }
 
   await prisma.pursuit.update({
     where: { id: pursuitId },
@@ -532,24 +550,43 @@ export async function mergeNotes(pursuitId: string, noteIds: string[]) {
   revalidatePath(`/pursuits/${pursuitId}`);
 }
 
+// expectedUpdatedAt is the updatedAt the editor last loaded — an
+// optimistic-concurrency check. Two people (or two tabs) can open the same
+// note; without this, whoever calls Save second just silently overwrites
+// the first save with whatever stale content their editor still had open.
+// The updateMany's where clause only matches if the row is still exactly
+// as this editor last saw it, so a stale save touches 0 rows instead of
+// clobbering someone else's newer one.
 export async function updateNote(
   pursuitId: string,
   noteId: string,
   content: string,
-) {
+  expectedUpdatedAt: string,
+): Promise<{ error: string | null; conflict?: boolean }> {
   await requireAccess(pursuitId);
 
   const text = content.trim();
   if (!text) {
-    throw new Error("Note can't be empty");
+    return { error: "Note can't be empty" };
   }
 
-  await prisma.note.updateMany({
-    where: { id: noteId, pursuitId },
+  const result = await prisma.note.updateMany({
+    where: { id: noteId, pursuitId, updatedAt: new Date(expectedUpdatedAt) },
     data: { content: text },
   });
 
+  if (result.count === 0) {
+    const current = await prisma.note.findFirst({ where: { id: noteId, pursuitId } });
+    if (!current) return { error: "This note no longer exists." };
+    return {
+      error:
+        "This note was changed by someone else since you opened it — reload to see their version before saving over it.",
+      conflict: true,
+    };
+  }
+
   revalidatePath(`/pursuits/${pursuitId}`);
+  return { error: null };
 }
 
 export async function deleteNote(pursuitId: string, noteId: string) {

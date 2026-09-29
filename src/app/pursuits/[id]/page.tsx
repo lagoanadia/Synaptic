@@ -241,6 +241,7 @@ export default async function PursuitPage({
             id: n.id,
             content: n.content,
             createdAt: n.createdAt.toISOString(),
+            updatedAt: n.updatedAt.toISOString(),
             tags: n.tags,
             sourceDumps: n.sourceDumps,
           }))}
