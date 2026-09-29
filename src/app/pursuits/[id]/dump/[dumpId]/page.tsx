@@ -65,7 +65,7 @@ export default async function DumpPage({
           {dump.pursuit.classroomEnabled && dump.pursuit.classroomCourseId && (
             <TurnInButton
               pursuitId={id}
-              onSubmit={(courseWorkId) => turnInDumpToClassroom(id, dumpId, courseWorkId)}
+              onSubmit={turnInDumpToClassroom.bind(null, id, dumpId)}
             />
           )}
           <DeleteDumpButton pursuitId={id} dumpId={dumpId} />
