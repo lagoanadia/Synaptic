@@ -52,17 +52,33 @@ export function UpcomingDeadlines({
   // toggle has somewhere to live.
   if (!hasCourse || !deadlines || now === null) return null;
 
+  // Pending work first (soonest due first within that group, same as
+  // already-turned-in work) — that's the whole point of an "overview of
+  // what's pending" widget: what still needs doing floats to the top
+  // instead of getting buried under stuff that's already handled.
+  const pending = deadlines.filter((d) => !d.turnedIn);
+  const done = deadlines.filter((d) => d.turnedIn);
+  const ordered = [...pending, ...done].slice(0, 5);
+
   return (
     <div className="flex flex-col gap-1.5 rounded-xl border border-border-subtle bg-white p-3">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold text-ink-faint">Upcoming from Classroom</span>
+        <span className="text-xs font-semibold text-ink-faint">
+          Upcoming from Classroom
+          {deadlines.length > 0 && (
+            <span className="font-normal text-ink-faint">
+              {" "}
+              · {pending.length} pending
+            </span>
+          )}
+        </span>
         <NotificationToggle />
       </div>
       {deadlines.length === 0 && (
         <p className="text-xs text-ink-muted">Nothing due soon.</p>
       )}
-      {deadlines.slice(0, 3).map((d) => {
-        const overdue = d.dueAt.getTime() < now;
+      {ordered.map((d) => {
+        const overdue = !d.turnedIn && d.dueAt.getTime() < now;
         return (
           <a
             key={d.id}
@@ -72,16 +88,24 @@ export function UpcomingDeadlines({
             className="flex items-center justify-between gap-3 text-sm hover:underline"
           >
             <span className="truncate">{d.title}</span>
-            <span
-              className={`shrink-0 text-xs ${overdue ? "text-red-500" : "text-ink-faint"}`}
-            >
-              {overdue ? "Overdue · " : "Due "}
-              {d.dueAt.toLocaleDateString("en-US", {
-                weekday: "short",
-                month: "short",
-                day: "numeric",
-              })}
-            </span>
+            {d.turnedIn ? (
+              <span
+                className={`shrink-0 text-xs ${d.late ? "text-amber-600" : "text-forest"}`}
+              >
+                {d.late ? "✓ Turned in late" : "✓ Turned in"}
+              </span>
+            ) : (
+              <span
+                className={`shrink-0 text-xs ${overdue ? "text-red-500" : "text-ink-faint"}`}
+              >
+                {overdue ? "Overdue · " : "Due "}
+                {d.dueAt.toLocaleDateString("en-US", {
+                  weekday: "short",
+                  month: "short",
+                  day: "numeric",
+                })}
+              </span>
+            )}
           </a>
         );
       })}

@@ -219,7 +219,14 @@ export async function listCourseFiles(
   return files;
 }
 
-export type ClassroomDeadline = { id: string; title: string; dueAt: Date; url: string };
+export type ClassroomDeadline = {
+  id: string;
+  title: string;
+  dueAt: Date;
+  url: string;
+  turnedIn: boolean;
+  late: boolean;
+};
 
 type CourseWorkRaw = {
   id: string;
@@ -228,6 +235,37 @@ type CourseWorkRaw = {
   dueDate?: { year: number; month: number; day: number };
   dueTime?: { hours?: number; minutes?: number };
 };
+
+type StudentSubmissionRaw = {
+  courseWorkId: string;
+  state?: string;
+  late?: boolean;
+};
+
+// courseWorkId "-" is Classroom's wildcard for "every courseWork item in
+// this course" — one call here instead of one studentSubmissions.list per
+// assignment. userId "me" scopes it to the signed-in student's own
+// submissions, which is all classroom.coursework.me(.readonly) can see
+// anyway.
+async function listOwnSubmissionStates(
+  accessToken: string,
+  courseId: string,
+): Promise<Map<string, { state: string; late: boolean }>> {
+  const res = await fetch(
+    `https://classroom.googleapis.com/v1/courses/${courseId}/courseWork/-/studentSubmissions?userId=me&pageSize=100`,
+    { headers: { Authorization: `Bearer ${accessToken}` } },
+  );
+  if (!res.ok) {
+    throw new Error(`Classroom studentSubmissions.list failed: ${await res.text()}`);
+  }
+  const data = await res.json();
+  const items: StudentSubmissionRaw[] = data.studentSubmissions ?? [];
+  const map = new Map<string, { state: string; late: boolean }>();
+  for (const item of items) {
+    map.set(item.courseWorkId, { state: item.state ?? "NEW", late: item.late ?? false });
+  }
+  return map;
+}
 
 // Only courseWork (assignments) carries a due date — courseWorkMaterials
 // never does — so this hits just that one endpoint, filtered to published
@@ -239,10 +277,17 @@ export async function listCourseDeadlines(
   accessToken: string,
   courseId: string,
 ): Promise<ClassroomDeadline[]> {
-  const res = await fetch(
-    `https://classroom.googleapis.com/v1/courses/${courseId}/courseWork?pageSize=100&courseWorkStates=PUBLISHED`,
-    { headers: { Authorization: `Bearer ${accessToken}` } },
-  );
+  const [res, submissions] = await Promise.all([
+    fetch(
+      `https://classroom.googleapis.com/v1/courses/${courseId}/courseWork?pageSize=100&courseWorkStates=PUBLISHED`,
+      { headers: { Authorization: `Bearer ${accessToken}` } },
+    ),
+    // Turn-in status is an overlay on top of the deadlines list, not
+    // essential to it — if this one call fails (a scope hiccup, a
+    // transient error), fall back to "no status for anyone" rather than
+    // losing the whole deadlines list over it.
+    listOwnSubmissionStates(accessToken, courseId).catch(() => new Map<string, { state: string; late: boolean }>()),
+  ]);
   if (!res.ok) throw new Error(`Classroom courseWork.list failed: ${await res.text()}`);
   const data = await res.json();
   const items: CourseWorkRaw[] = data.courseWork ?? [];
@@ -253,11 +298,14 @@ export async function listCourseDeadlines(
     const { year, month, day } = item.dueDate;
     const hours = item.dueTime?.hours ?? 23;
     const minutes = item.dueTime?.minutes ?? 59;
+    const submission = submissions.get(item.id);
     deadlines.push({
       id: item.id,
       title: item.title,
       dueAt: new Date(year, month - 1, day, hours, minutes),
       url: item.alternateLink,
+      turnedIn: submission?.state === "TURNED_IN" || submission?.state === "RETURNED",
+      late: submission?.late ?? false,
     });
   }
   deadlines.sort((a, b) => a.dueAt.getTime() - b.dueAt.getTime());
