@@ -777,15 +777,20 @@ async function submitPdfToClassroom(
   await turnInSubmission(accessToken, courseId, courseWorkId, submissionId);
 }
 
-// A 401/403 from Drive/Classroom here almost always means the stored
-// access token predates the drive.file + classroom.coursework.me scopes
-// this feature needs — reconnecting is the actual fix, so say that
-// instead of the same generic message every other failure gets.
+// A 401/403 from Drive/Classroom USUALLY means the stored access token
+// predates the drive.file + classroom.coursework.me scopes this feature
+// needs, but a 403 can just as easily be a real Classroom business-logic
+// rejection (the submission isn't in a state that accepts attachments,
+// the assignment doesn't take them, etc.) that reconnecting won't fix.
+// Surfacing Google's own reason (trimmed) alongside the guess is the only
+// way to tell those apart without server log access.
 function describeTurnInError(err: unknown): string {
   if (err instanceof ClassroomApiError && (err.status === 401 || err.status === 403)) {
-    return "Google needs new permissions for this — disconnect and reconnect Google Classroom (Files tab), then try again.";
+    const reason = err.message.slice(0, 300);
+    return `Google needs new permissions for this — disconnect and reconnect Google Classroom (Files tab), then try again. (${reason})`;
   }
-  return "Couldn't turn that in — try again.";
+  const detail = err instanceof Error ? err.message.slice(0, 300) : String(err).slice(0, 300);
+  return `Couldn't turn that in — try again. (${detail})`;
 }
 
 export async function turnInNoteToClassroom(
