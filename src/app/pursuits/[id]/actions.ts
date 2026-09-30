@@ -26,17 +26,10 @@ import {
   listCourses,
   listCourseFiles,
   listCourseDeadlines,
-  uploadPdfToDrive,
-  getOwnSubmissionId,
-  attachDriveFileToSubmission,
-  turnInSubmission,
-  ClassroomApiError,
   type ClassroomCourse,
   type ClassroomFile,
   type ClassroomDeadline,
 } from "@/lib/googleClassroom";
-import { renderNotePdf } from "@/lib/renderNotePdf";
-import { autoTitle } from "@/lib/text";
 
 async function requireAccess(pursuitId: string) {
   const session = await auth();
@@ -770,105 +763,6 @@ export async function listPursuitDeadlines(
     };
   } catch {
     return { error: "Couldn't load deadlines for that course." };
-  }
-}
-
-// Shared by turnInNoteToClassroom/turnInDumpToClassroom below: render the
-// content to a PDF, put it in the student's Drive, attach that Drive file
-// to their existing submission for this assignment, then turn it in.
-// Classroom auto-creates the submission the moment an assignment is
-// posted, so there's always exactly one to look up here.
-async function submitPdfToClassroom(
-  accessToken: string,
-  courseId: string,
-  courseWorkId: string,
-  title: string,
-  content: string,
-) {
-  const submissionId = await getOwnSubmissionId(accessToken, courseId, courseWorkId);
-  if (!submissionId) throw new Error("No submission found for that assignment.");
-
-  const pdfBytes = await renderNotePdf(title, content);
-  const driveFileId = await uploadPdfToDrive(accessToken, `${title}.pdf`, pdfBytes);
-  await attachDriveFileToSubmission(accessToken, courseId, courseWorkId, submissionId, driveFileId);
-  await turnInSubmission(accessToken, courseId, courseWorkId, submissionId);
-}
-
-// A 401/403 from Drive/Classroom USUALLY means the stored access token
-// predates the drive.file + classroom.coursework.me scopes this feature
-// needs, but a 403 can just as easily be a real Classroom business-logic
-// rejection (the submission isn't in a state that accepts attachments,
-// the assignment doesn't take them, etc.) that reconnecting won't fix.
-// Surfacing Google's own reason (trimmed) alongside the guess is the only
-// way to tell those apart without server log access.
-function describeTurnInError(err: unknown): string {
-  if (err instanceof ClassroomApiError && (err.status === 401 || err.status === 403)) {
-    const reason = err.message.slice(0, 300);
-    return `Google needs new permissions for this — disconnect and reconnect Google Classroom (Files tab), then try again. (${reason})`;
-  }
-  const detail = err instanceof Error ? err.message.slice(0, 300) : String(err).slice(0, 300);
-  return `Couldn't turn that in — try again. (${detail})`;
-}
-
-export async function turnInNoteToClassroom(
-  pursuitId: string,
-  noteId: string,
-  courseWorkId: string,
-): Promise<{ error: string | null; success?: boolean }> {
-  try {
-    const { session, pursuit } = await requireAccess(pursuitId);
-    if (!pursuit.classroomCourseId) {
-      return { error: "This Pursuit isn't linked to a Google Classroom course." };
-    }
-    const note = await prisma.note.findFirst({ where: { id: noteId, pursuitId } });
-    if (!note) return { error: "Note not found." };
-
-    const accessToken = await getValidAccessToken(session.user.id);
-    if (!accessToken) {
-      return { error: "Not connected to Google Classroom — reconnect and try again." };
-    }
-
-    await submitPdfToClassroom(
-      accessToken,
-      pursuit.classroomCourseId,
-      courseWorkId,
-      autoTitle(note.content, 12),
-      note.content,
-    );
-    return { error: null, success: true };
-  } catch (err) {
-    return { error: describeTurnInError(err) };
-  }
-}
-
-export async function turnInDumpToClassroom(
-  pursuitId: string,
-  dumpId: string,
-  courseWorkId: string,
-): Promise<{ error: string | null; success?: boolean }> {
-  try {
-    const { session, pursuit } = await requireAccess(pursuitId);
-    if (!pursuit.classroomCourseId) {
-      return { error: "This Pursuit isn't linked to a Google Classroom course." };
-    }
-    const dump = await prisma.brainDump.findFirst({ where: { id: dumpId, pursuitId } });
-    if (!dump?.content) return { error: "Page not found or empty." };
-
-    const accessToken = await getValidAccessToken(session.user.id);
-    if (!accessToken) {
-      return { error: "Not connected to Google Classroom — reconnect and try again." };
-    }
-
-    await submitPdfToClassroom(
-      accessToken,
-      pursuit.classroomCourseId,
-      courseWorkId,
-      autoTitle(dump.content, 12),
-      dump.content,
-    );
-    return { error: null, success: true };
-  } catch (err) {
-    return { error: describeTurnInError(err) };
   }
 }
 

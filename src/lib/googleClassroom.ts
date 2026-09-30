@@ -1,20 +1,5 @@
 import { prisma } from "@/lib/prisma";
 
-// Carries the HTTP status alongside the message so a caller (see
-// submitPdfToClassroom in actions.ts) can tell "you don't have permission
-// for this yet" (401/403 — almost always a stale access token missing a
-// scope this account hasn't re-consented to) apart from every other
-// failure, instead of every Drive/Classroom error collapsing into one
-// generic "something went wrong".
-export class ClassroomApiError extends Error {
-  status: number;
-  constructor(message: string, status: number) {
-    super(message);
-    this.name = "ClassroomApiError";
-    this.status = status;
-  }
-}
-
 // Reuses the same Google OAuth Client as NextAuth's own Google sign-in
 // (AUTH_GOOGLE_ID/SECRET — see auth.ts) rather than a second Client, since
 // it's the same Google Cloud project either way; only the requested scopes
@@ -22,24 +7,23 @@ export class ClassroomApiError extends Error {
 // flow instead of adding these scopes to the NextAuth provider (that would
 // force every Google sign-in, even people who never touch Classroom, to
 // consent to reading their Classroom/Drive data).
+//
+// Read-only on purpose: Classroom's write methods for a student's own
+// submission (modifyAttachments, turnIn, reclaim, return) are gated by
+// Google to apps allowlisted through their Workspace Marketplace/add-on
+// program — a plain OAuth client in Testing mode gets a hard
+// "@ProjectPermissionDenied" 403 no matter what scope it requests, so
+// there was never a way to submit work through the API from here. The
+// app only reads course/assignment/submission-status data.
 const CLASSROOM_SCOPES = [
   "https://www.googleapis.com/auth/classroom.courses.readonly",
-  // Non-readonly (not .coursework.me.readonly) -- turning work in and
-  // attaching a Drive file to a submission both need write access to the
-  // student's own coursework, which the readonly scope can't grant. It
-  // still covers everything the readonly scope did (listing assignments,
-  // reading submission status).
-  "https://www.googleapis.com/auth/classroom.coursework.me",
+  "https://www.googleapis.com/auth/classroom.coursework.me.readonly",
   // courseWorkMaterials is a distinct resource from courseWork (a plain
   // resource a teacher posts vs. a gradeable assignment) with its own
   // scope — without this, courseWorkMaterials.list 403s even though
   // courseWork.list succeeds on the scope above, which is exactly what
   // was failing "load files" for every course.
   "https://www.googleapis.com/auth/classroom.courseworkmaterials.readonly",
-  // Per-file Drive access, not full Drive read/write -- only lets this
-  // app see/manage files IT creates (the PDF it uploads to turn work in),
-  // never the student's existing Drive contents.
-  "https://www.googleapis.com/auth/drive.file",
 ];
 
 function redirectUri(baseUrl: string) {
@@ -336,100 +320,3 @@ export async function listCourseDeadlines(
   return deadlines;
 }
 
-// Drive's multipart upload: one request body with a JSON metadata part
-// (name/mimeType) followed by the file bytes, separated by a boundary
-// string — the "simple"/resumable upload types don't let you set the
-// filename in the same call, and a PDF turned in with no real name isn't
-// useful to a teacher grading it.
-export async function uploadPdfToDrive(
-  accessToken: string,
-  filename: string,
-  pdfBytes: Uint8Array,
-): Promise<string> {
-  const boundary = "synaptic-turn-in-boundary";
-  const metadata = JSON.stringify({ name: filename, mimeType: "application/pdf" });
-  const body = new Blob([
-    `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${metadata}\r\n`,
-    `--${boundary}\r\nContent-Type: application/pdf\r\n\r\n`,
-    new Uint8Array(pdfBytes),
-    `\r\n--${boundary}--`,
-  ]);
-
-  const res = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      "Content-Type": `multipart/related; boundary=${boundary}`,
-    },
-    body,
-  });
-  if (!res.ok) {
-    throw new ClassroomApiError(`Drive files.create failed: ${await res.text()}`, res.status);
-  }
-  const data = await res.json();
-  return data.id;
-}
-
-// A student has at most one submission per courseWork item — Classroom
-// creates it automatically the moment the assignment is posted, so this
-// is just looking up its id, not creating anything.
-export async function getOwnSubmissionId(
-  accessToken: string,
-  courseId: string,
-  courseWorkId: string,
-): Promise<string | null> {
-  const res = await fetch(
-    `https://classroom.googleapis.com/v1/courses/${courseId}/courseWork/${courseWorkId}/studentSubmissions?userId=me`,
-    { headers: { Authorization: `Bearer ${accessToken}` } },
-  );
-  if (!res.ok) {
-    throw new ClassroomApiError(
-      `Classroom studentSubmissions.list failed: ${await res.text()}`,
-      res.status,
-    );
-  }
-  const data = await res.json();
-  return data.studentSubmissions?.[0]?.id ?? null;
-}
-
-export async function attachDriveFileToSubmission(
-  accessToken: string,
-  courseId: string,
-  courseWorkId: string,
-  submissionId: string,
-  driveFileId: string,
-): Promise<void> {
-  const res = await fetch(
-    `https://classroom.googleapis.com/v1/courses/${courseId}/courseWork/${courseWorkId}/studentSubmissions/${submissionId}:modifyAttachments`,
-    {
-      method: "POST",
-      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ addAttachments: [{ driveFile: { id: driveFileId } }] }),
-    },
-  );
-  if (!res.ok) {
-    throw new ClassroomApiError(
-      `Classroom modifyAttachments failed: ${await res.text()}`,
-      res.status,
-    );
-  }
-}
-
-export async function turnInSubmission(
-  accessToken: string,
-  courseId: string,
-  courseWorkId: string,
-  submissionId: string,
-): Promise<void> {
-  const res = await fetch(
-    `https://classroom.googleapis.com/v1/courses/${courseId}/courseWork/${courseWorkId}/studentSubmissions/${submissionId}:turnIn`,
-    {
-      method: "POST",
-      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-      body: JSON.stringify({}),
-    },
-  );
-  if (!res.ok) {
-    throw new ClassroomApiError(`Classroom turnIn failed: ${await res.text()}`, res.status);
-  }
-}

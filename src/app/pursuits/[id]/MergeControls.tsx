@@ -1,15 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import {
-  deleteNote,
-  generateFlashcards,
-  mergeNotes,
-  turnInNoteToClassroom,
-  updateNote,
-} from "./actions";
+import { deleteNote, generateFlashcards, mergeNotes, updateNote } from "./actions";
 import { RichContent } from "./RichContent";
-import { TurnInButton } from "./TurnInButton";
 import { autoTitle } from "@/lib/text";
 
 type NoteForDisplay = {
@@ -25,11 +18,9 @@ type NoteForDisplay = {
 // call the mergeNotes Server Action directly (not through a <form>).
 export function MergeControls({
   pursuitId,
-  hasCourse,
   notes,
 }: {
   pursuitId: string;
-  hasCourse: boolean;
   notes: NoteForDisplay[];
 }) {
   const [selected, setSelected] = useState<string[]>([]);
@@ -205,14 +196,6 @@ export function MergeControls({
                       >
                         Generate flashcards
                       </button>
-                      {hasCourse && (
-                        <TurnInButton
-                          pursuitId={pursuitId}
-                          onSubmit={(courseWorkId) =>
-                            turnInNoteToClassroom(pursuitId, n.id, courseWorkId)
-                          }
-                        />
-                      )}
                       <button
                         type="button"
                         disabled={isPending}
