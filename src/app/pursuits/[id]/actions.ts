@@ -4,7 +4,10 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { groq } from "@/lib/groq";
-import type { ChatCompletionContentPartImage } from "groq-sdk/resources/chat/completions";
+import type {
+  ChatCompletionContentPartImage,
+  ChatCompletionCreateParamsNonStreaming,
+} from "groq-sdk/resources/chat/completions";
 import { PursuitStatus, MemberRole } from "@/generated/prisma/client";
 import { upsertSection } from "@/lib/sections";
 import { HEADLINE_OPTIONS, buildOrTsQuery } from "@/lib/search";
@@ -328,6 +331,20 @@ const TEXT_MODEL = "openai/gpt-oss-120b";
 const VISION_MODEL = "qwen/qwen3.8-27b";
 const MAX_VISION_IMAGES = 5;
 
+// Groq's own JSON mode occasionally rejects its own generation with a
+// "json_validate_failed" error -- a one-off sampling hiccup, not an
+// outage, that a second attempt with the exact same prompt very often
+// just doesn't repeat. One retry here saves a manual "click Organize
+// again" for what's usually transient, before this falls through to the
+// model-swap/error-message handling below.
+async function createJsonCompletion(params: ChatCompletionCreateParamsNonStreaming) {
+  try {
+    return await groq.chat.completions.create(params);
+  } catch {
+    return await groq.chat.completions.create(params);
+  }
+}
+
 // Returns { error } instead of throwing — DumpControls calls this from a
 // plain onClick/startTransition, not a <form>, so an uncaught throw here
 // would bubble up to Next's generic error boundary (the same crash we've
@@ -418,7 +435,7 @@ JSON object, no other text: {"content": "...", "tags": ["...", "..."]}`;
 
   let completion;
   try {
-    completion = await groq.chat.completions.create({
+    completion = await createJsonCompletion({
       model: VISION_MODEL,
       messages: [
         {
@@ -449,7 +466,7 @@ JSON object, no other text: {"content": "...", "tags": ["...", "..."]}`;
       // note comes out without the model actually having looked at the
       // pictures this once, but Organize still works.
       try {
-        completion = await groq.chat.completions.create({
+        completion = await createJsonCompletion({
           model: TEXT_MODEL,
           messages: [{ role: "user", content: prompt }],
           response_format: { type: "json_object" },
@@ -1195,7 +1212,7 @@ export async function generateFlashcards(
 
   let completion;
   try {
-    completion = await groq.chat.completions.create({
+    completion = await createJsonCompletion({
       model: TEXT_MODEL,
       messages: [{ role: "user", content: prompt }],
       response_format: { type: "json_object" },
