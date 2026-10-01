@@ -1,4 +1,5 @@
 import { parseNoteBlocks, type InlineNode, type ListBlock, type ListItem } from "@/lib/text";
+import { CodeBlock } from "./CodeBlock";
 
 function Inline({ nodes }: { nodes: InlineNode[] }) {
   return (
@@ -183,14 +184,7 @@ export function RichContent({
               </div>
             );
           case "codeBlock":
-            return (
-              <pre
-                key={i}
-                className="overflow-x-auto rounded-md bg-ink px-4 py-3 text-sm leading-relaxed text-white"
-              >
-                <code>{block.code}</code>
-              </pre>
-            );
+            return <CodeBlock key={i} code={block.code} />;
         }
       })}
     </div>
