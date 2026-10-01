@@ -9,6 +9,19 @@ import { pdfToImagePages } from "@/lib/pdfToImages";
 
 const initialState: FormState = { error: null };
 
+// The "value" is what actually lands in the `<lang` fence (see
+// CodeBlock.tsx's LANGUAGES map for how each maps to a Prism grammar and
+// a display label) — "" for plain just opens a bare `<` fence, same as
+// before this picker existed.
+const CODE_LANGUAGES = [
+  { value: "", label: "Plain text" },
+  { value: "js", label: "JavaScript" },
+  { value: "ts", label: "TypeScript" },
+  { value: "python", label: "Python" },
+  { value: "java", label: "Java" },
+  { value: "sql", label: "SQL" },
+] as const;
+
 type Block = ContentSegment;
 
 // Content is still saved as plain text with `![image](url)` markers (see
@@ -80,6 +93,7 @@ export function NewDumpForm({
   const [linkPickerOpen, setLinkPickerOpen] = useState(false);
   const linkTextRef = useRef<HTMLInputElement>(null);
   const linkUrlRef = useRef<HTMLInputElement>(null);
+  const [codePickerOpen, setCodePickerOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   // Set while a PDF's pages are being rasterized/uploaded — distinct from
@@ -530,10 +544,11 @@ export function NewDumpForm({
     });
   }
 
-  // Drops an empty `<` / `>` code fence at the cursor, caret landing on the
-  // blank line between them — same idea as insertTableAtActiveBlock, but
-  // there's no size to ask for first.
-  function insertCodeBlockAtActiveBlock() {
+  // Drops an empty `<lang` / `>` code fence at the cursor, caret landing on
+  // the blank line between them — same idea as insertTableAtActiveBlock,
+  // but there's no size to ask for first, just which language (or none)
+  // RichContent should syntax-highlight it as.
+  function insertCodeBlockAtActiveBlock(language: string) {
     setBlocks((prev) => {
       const index = activeIndex;
       const block = prev[index];
@@ -546,12 +561,13 @@ export function NewDumpForm({
 
       const leading = before.length > 0 && !before.endsWith("\n") ? "\n" : "";
       const trailing = after.length > 0 && !after.startsWith("\n") ? "\n" : "";
-      const insertion = `${leading}<\n\n>${trailing}`;
+      const openFence = language ? `<${language}` : "<";
+      const insertion = `${leading}${openFence}\n\n>${trailing}`;
 
       const next = [...prev];
       next[index] = { type: "text", value: before + insertion + after };
 
-      const cursorPos = before.length + leading.length + 2;
+      const cursorPos = before.length + leading.length + openFence.length + 1;
       requestAnimationFrame(() => {
         textarea?.focus();
         textarea?.setSelectionRange(cursorPos, cursorPos);
@@ -995,14 +1011,33 @@ export function NewDumpForm({
             </div>
           )}
         </div>
-        <button
-          type="button"
-          onClick={insertCodeBlockAtActiveBlock}
-          disabled={isPending}
-          className="rounded-md border border-border-subtle px-3 py-1.5 text-xs text-ink-muted disabled:opacity-50"
-        >
-          {"</> Insert code"}
-        </button>
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setCodePickerOpen((open) => !open)}
+            disabled={isPending}
+            className="rounded-md border border-border-subtle px-3 py-1.5 text-xs text-ink-muted disabled:opacity-50"
+          >
+            {"</> Insert code"}
+          </button>
+          {codePickerOpen && (
+            <div className="absolute bottom-full left-0 z-10 mb-2 flex w-40 flex-col gap-0.5 rounded-md border border-border-subtle bg-white p-1.5 text-xs text-ink-muted shadow-sm">
+              {CODE_LANGUAGES.map(({ value, label }) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => {
+                    insertCodeBlockAtActiveBlock(value);
+                    setCodePickerOpen(false);
+                  }}
+                  className="rounded px-2 py-1 text-left hover:bg-chip"
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         <details className="relative">
           <summary
             title="Formatting shortcuts"
@@ -1018,7 +1053,7 @@ export function NewDumpForm({
               <li><code>1.</code> numbered list</li>
               <li><code>a.</code> lettered list</li>
               <li><code>| a | b |</code> table row</li>
-              <li><code>{"<"}</code> ... <code>{">"}</code> code block</li>
+              <li><code>{"<js"}</code> ... <code>{">"}</code> code block (language optional)</li>
               <li><code>**bold**</code> · <code>*italic*</code> · <code>__underline__</code></li>
               <li>Ctrl/Cmd + B / I / U on a selection</li>
               <li>Tab on a list line nests it, Shift+Tab un-nests it</li>

@@ -224,13 +224,17 @@ describe("parseNoteBlocks", () => {
   it("parses a code block without running inline/list parsing on its contents", () => {
     const blocks = parseNoteBlocks("<\nfunction f() {\n- not a bullet\n**not bold**\n}\n>");
     expect(blocks).toEqual([
-      { type: "codeBlock", code: "function f() {\n- not a bullet\n**not bold**\n}" },
+      {
+        type: "codeBlock",
+        code: "function f() {\n- not a bullet\n**not bold**\n}",
+        language: "",
+      },
     ]);
   });
 
   it("treats an unclosed code fence as running to the end of the content", () => {
     const blocks = parseNoteBlocks("<\nconst x = 1;");
-    expect(blocks).toEqual([{ type: "codeBlock", code: "const x = 1;" }]);
+    expect(blocks).toEqual([{ type: "codeBlock", code: "const x = 1;", language: "" }]);
   });
 
   it("doesn't fold a code block into a preceding paragraph", () => {
@@ -239,7 +243,17 @@ describe("parseNoteBlocks", () => {
       type: "paragraph",
       inline: [{ type: "text", value: "some text" }],
     });
-    expect(blocks[1]).toEqual({ type: "codeBlock", code: "code here" });
+    expect(blocks[1]).toEqual({ type: "codeBlock", code: "code here", language: "" });
+  });
+
+  it("captures an optional language tag right after the opening fence", () => {
+    const blocks = parseNoteBlocks("<js\nconst x = 1;\n>");
+    expect(blocks).toEqual([{ type: "codeBlock", code: "const x = 1;", language: "js" }]);
+
+    const python = parseNoteBlocks("<Python\nprint('hi')\n>");
+    expect(python).toEqual([
+      { type: "codeBlock", code: "print('hi')", language: "python" },
+    ]);
   });
 
   it("treats a tab-indented dash as plain text, not an infinite loop", () => {

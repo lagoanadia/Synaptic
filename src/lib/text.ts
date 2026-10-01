@@ -71,7 +71,7 @@ export type NoteBlock =
   | { type: "paragraph"; inline: InlineNode[] }
   | { type: "image"; url: string }
   | { type: "table"; header: InlineNode[][]; rows: InlineNode[][][] }
-  | { type: "codeBlock"; code: string };
+  | { type: "codeBlock"; code: string; language: string };
 
 // `**bold**`, `__underline__`, `[text](url)`, `*italic*` — matches what
 // Ctrl/Cmd+B, +U and +I wrap a selection in, plus the "Insert link" button,
@@ -127,10 +127,12 @@ const LIST_LINE = /^( *)(-|○|▪|\d+\.|[a-zA-Z]\.)\s+(.*)$/;
 // pipes required, so a line that just happens to contain a "|" mid-sentence
 // isn't mistaken for a table.
 const TABLE_ROW = /^\|(.+)\|$/;
-// A code block is a `<` alone on its own line, then any number of lines
-// verbatim (no inline **bold**/list parsing inside — it's code, not prose),
-// until a `>` alone on its own line closes it.
-const CODE_FENCE_START = /^<\s*$/;
+// A code block opens with `<` alone (optionally followed by a language
+// name, e.g. `<js` or `<python` — same idea as a fenced ```js block in
+// standard Markdown) on its own line, then any number of lines verbatim
+// (no inline **bold**/list parsing inside — it's code, not prose), until a
+// `>` alone on its own line closes it.
+const CODE_FENCE_START = /^<\s*([a-zA-Z0-9+#.]*)\s*$/;
 const CODE_FENCE_END = /^>\s*$/;
 
 function splitTableRow(line: string): InlineNode[][] {
@@ -243,7 +245,9 @@ function parseTextBlocks(text: string): NoteBlock[] {
       continue;
     }
 
-    if (CODE_FENCE_START.test(trimmed)) {
+    const codeFence = CODE_FENCE_START.exec(trimmed);
+    if (codeFence) {
+      const language = codeFence[1].toLowerCase();
       i++; // past the opening `<`
       const codeLines: string[] = [];
       while (i < lines.length && !CODE_FENCE_END.test(lines[i].trim())) {
@@ -251,7 +255,7 @@ function parseTextBlocks(text: string): NoteBlock[] {
         i++;
       }
       if (i < lines.length) i++; // past the closing `>`, if the block was closed
-      blocks.push({ type: "codeBlock", code: codeLines.join("\n") });
+      blocks.push({ type: "codeBlock", code: codeLines.join("\n"), language });
       continue;
     }
 

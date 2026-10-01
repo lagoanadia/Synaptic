@@ -184,7 +184,7 @@ export function RichContent({
               </div>
             );
           case "codeBlock":
-            return <CodeBlock key={i} code={block.code} />;
+            return <CodeBlock key={i} code={block.code} language={block.language} />;
         }
       })}
     </div>
