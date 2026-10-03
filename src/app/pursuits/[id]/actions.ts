@@ -398,9 +398,9 @@ export async function organizeDumps(
   }\n\nSynthesize the material above into one organized, structured note.
 
 Format the note's content using ONLY this exact set of shortcuts — nothing
-else, since the app only knows how to render these (anything else, like
-####, or code fences, would show up as literal stray characters instead of
-formatting):
+else, since the app only knows how to render these (anything not listed
+here, like #### or standard \`\`\` code fences, would show up as literal
+stray characters instead of formatting):
 - "# " at the start of a line for a heading (also "## " and "### " for
   smaller headings — never more than three #s)
 - "! " at the start of a line for a callout / key takeaway
@@ -413,9 +413,16 @@ formatting):
   blank line between them form one table. Only use this for genuinely
   tabular data (comparisons, options with several attributes each) — don't
   force a table where a bullet list reads better.
-- "![image](url)" to keep a referenced image, exactly as it appears in the
-  material above, verbatim and on its own line — never describe the image
-  in words and never write its bare url as plain text
+- A line with just "<" (optionally followed directly by a language name,
+  e.g. "<python" or "<sql" — leave it bare if the material doesn't say),
+  then the code verbatim on its own lines, then a line with just ">" to
+  close it — this is the ONLY way to preserve a code snippet from the
+  material above; never use \`\`\` for this, and never reformat/prettify the
+  code inside, keep it exactly as written.
+- "![image](url)" to keep a referenced image, EXACTLY as it appears in the
+  material above, verbatim and on its own line. This is mandatory whenever
+  the material contains one — never skip it, never describe the image in
+  words instead, and never write its bare url as plain text.
 Plain paragraphs need no marker. Keep it to one blank line between blocks.
 
 Write the note in the same language as the material above (if it's
