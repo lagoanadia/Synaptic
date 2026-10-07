@@ -191,33 +191,47 @@ export async function deleteContentSection(pursuitId: string, sectionId: string)
   revalidatePath(`/pursuits/${pursuitId}`);
 }
 
-// Drag-and-drop target for a Brain Dump page — sectionId null moves it
-// back to "unsectioned" (dragged onto that zone, or a section was
-// deleted out from under it).
-export async function assignDumpSection(
+// Drag-and-drop target for a Brain Dump page — one call handles both
+// moving a page into (or out of, with sectionId null) a section AND
+// reordering within one, since both are really the same operation: "this
+// exact list, in this exact order, is what the target group looks like
+// now." orderedIds is the WHOLE resulting list for that group (dropped
+// on empty space, that's everything already there plus the dragged page
+// appended at the end; dropped on a specific page, that's everything
+// with the dragged page spliced in before/after it) — every id in it
+// gets written to this sectionId at its index in the array.
+export async function reorderDumpSection(
   pursuitId: string,
-  dumpId: string,
   sectionId: string | null,
+  orderedIds: string[],
 ) {
   await requireAccess(pursuitId);
-  await prisma.brainDump.updateMany({
-    where: { id: dumpId, pursuitId },
-    data: { sectionId },
-  });
+  await prisma.$transaction(
+    orderedIds.map((id, index) =>
+      prisma.brainDump.updateMany({
+        where: { id, pursuitId },
+        data: { sectionId, sectionOrder: index },
+      }),
+    ),
+  );
   revalidatePath(`/pursuits/${pursuitId}`);
 }
 
-// Same as assignDumpSection, for an Organized note.
-export async function assignNoteSection(
+// Same as reorderDumpSection, for Organized notes.
+export async function reorderNoteSection(
   pursuitId: string,
-  noteId: string,
   sectionId: string | null,
+  orderedIds: string[],
 ) {
   await requireAccess(pursuitId);
-  await prisma.note.updateMany({
-    where: { id: noteId, pursuitId },
-    data: { sectionId },
-  });
+  await prisma.$transaction(
+    orderedIds.map((id, index) =>
+      prisma.note.updateMany({
+        where: { id, pursuitId },
+        data: { sectionId, sectionOrder: index },
+      }),
+    ),
+  );
   revalidatePath(`/pursuits/${pursuitId}`);
 }
 

@@ -298,6 +298,11 @@ model BrainDump {
 
   sectionId String?
   section   PursuitContentSection? @relation(fields: [sectionId], references: [id])
+  // Where this dump sits within its section, set past the current max
+  // whenever it's dragged into one (see assignDumpSection) — so the last
+  // thing dragged in lands at the bottom, not wherever its createdAt
+  // would otherwise sort it.
+  sectionOrder Int @default(0)
 
   notes Note[]
 
@@ -325,6 +330,9 @@ model Note {
   // Organized from scratch.
   sectionId String?
   section   PursuitContentSection? @relation(fields: [sectionId], references: [id])
+  // Same idea as BrainDump.sectionOrder — set past the current max
+  // whenever this note is dragged into a section.
+  sectionOrder Int @default(0)
 
   sourceDumps BrainDump[]
   tags        Tag[]

@@ -2,12 +2,12 @@
 
 import { useRef, useState, useTransition } from "react";
 import {
-  assignNoteSection,
   createContentSection,
   deleteContentSection,
   deleteNote,
   generateFlashcards,
   mergeNotes,
+  reorderNoteSection,
   updateNote,
 } from "./actions";
 import { DeleteButton } from "../DeleteButton";
@@ -22,13 +22,17 @@ type NoteForDisplay = {
   tags: { id: string; name: string }[];
   sourceDumps: { id: string }[];
   sectionId: string | null;
+  sectionOrder: number;
 };
 
 type SectionForDisplay = { id: string; name: string };
 
-// Same grouping rule as DumpControls' groupBySection — a note whose
-// sectionId doesn't match any current section (one just got deleted)
-// falls back to unsectioned instead of disappearing.
+// Same grouping rule as DumpControls' groupBySection — sorted within
+// each group by sectionOrder (an untouched note's sectionOrder is 0 for
+// everyone, and the sort is stable, so an untouched group still reads in
+// its original createdAt-desc order). A note whose sectionId doesn't
+// match any current section (one just got deleted) falls back to
+// unsectioned instead of disappearing.
 function groupBySection(notes: NoteForDisplay[], sections: SectionForDisplay[]) {
   const bySection = new Map<string, NoteForDisplay[]>();
   const unsectioned: NoteForDisplay[] = [];
@@ -40,7 +44,25 @@ function groupBySection(notes: NoteForDisplay[], sections: SectionForDisplay[]) 
       bySection.set(section, [...(bySection.get(section) ?? []), n]);
     }
   }
+  unsectioned.sort((a, b) => a.sectionOrder - b.sectionOrder);
+  for (const items of bySection.values()) {
+    items.sort((a, b) => a.sectionOrder - b.sectionOrder);
+  }
   return { unsectioned, bySection };
+}
+
+// Same idea as DumpControls' withDraggedInsertedAt.
+function withDraggedInsertedAt(
+  list: NoteForDisplay[],
+  draggedId: string,
+  targetId: string,
+  insertAfter: boolean,
+): string[] {
+  const ids = list.filter((n) => n.id !== draggedId).map((n) => n.id);
+  const targetIndex = ids.indexOf(targetId);
+  const insertAt = insertAfter ? targetIndex + 1 : targetIndex;
+  ids.splice(insertAt, 0, draggedId);
+  return ids;
 }
 
 // Client Component: needs local state for which notes are checked, and to
@@ -95,15 +117,37 @@ export function MergeControls({
     });
   }
 
-  function handleDrop(sectionId: string | null, e: React.DragEvent) {
+  // Dropped on empty space in a group — append to the end of it.
+  function handleGroupDrop(sectionId: string | null, list: NoteForDisplay[], e: React.DragEvent) {
     e.preventDefault();
     setDragOverSection(null);
-    const noteId = e.dataTransfer.getData("text/plain");
-    if (!noteId) return;
-    startTransition(() => assignNoteSection(pursuitId, noteId, sectionId));
+    const draggedId = e.dataTransfer.getData("text/plain");
+    if (!draggedId) return;
+    const ids = [...list.filter((n) => n.id !== draggedId).map((n) => n.id), draggedId];
+    startTransition(() => reorderNoteSection(pursuitId, sectionId, ids));
   }
 
-  function renderCard(n: NoteForDisplay) {
+  // Dropped on a specific card — insert right there instead of at the
+  // end, whether that card's own group is the dragged note's current one
+  // or not.
+  function handleRowDrop(
+    sectionId: string | null,
+    list: NoteForDisplay[],
+    targetId: string,
+    e: React.DragEvent,
+  ) {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOverSection(null);
+    const draggedId = e.dataTransfer.getData("text/plain");
+    if (!draggedId || draggedId === targetId) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const insertAfter = e.clientY - rect.top > rect.height / 2;
+    const ids = withDraggedInsertedAt(list, draggedId, targetId, insertAfter);
+    startTransition(() => reorderNoteSection(pursuitId, sectionId, ids));
+  }
+
+  function renderCard(n: NoteForDisplay, sectionId: string | null, list: NoteForDisplay[]) {
     const isExpanded = expandedIds.has(n.id) || editingId === n.id;
     return (
       <div
@@ -111,6 +155,8 @@ export function MergeControls({
         id={n.id}
         draggable
         onDragStart={(e) => e.dataTransfer.setData("text/plain", n.id)}
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={(e) => handleRowDrop(sectionId, list, n.id, e)}
         className="flex scroll-mt-6 cursor-grab gap-3 rounded-2xl bg-white p-5 shadow-[0_1px_2px_rgba(13,13,13,0.06)] transition-shadow hover:shadow-[0_8px_24px_rgba(13,13,13,0.08),0_2px_6px_rgba(13,13,13,0.06)] active:cursor-grabbing"
       >
         <span className="text-ink-faint">▤</span>
@@ -340,12 +386,12 @@ export function MergeControls({
           setDragOverSection("unsectioned");
         }}
         onDragLeave={() => setDragOverSection(null)}
-        onDrop={(e) => handleDrop(null, e)}
+        onDrop={(e) => handleGroupDrop(null, unsectioned, e)}
         className={`flex flex-col gap-4 rounded-2xl transition-colors ${
           dragOverSection === "unsectioned" ? "bg-chip" : ""
         }`}
       >
-        {unsectioned.map(renderCard)}
+        {unsectioned.map((n) => renderCard(n, null, unsectioned))}
       </div>
 
       {sections.map((s) => {
@@ -370,13 +416,13 @@ export function MergeControls({
                 setDragOverSection(s.id);
               }}
               onDragLeave={() => setDragOverSection(null)}
-              onDrop={(e) => handleDrop(s.id, e)}
+              onDrop={(e) => handleGroupDrop(s.id, items, e)}
               className={`flex flex-col gap-4 rounded-2xl transition-colors ${
                 dragOverSection === s.id ? "bg-chip" : ""
               }`}
             >
               {items.length > 0 ? (
-                items.map(renderCard)
+                items.map((n) => renderCard(n, s.id, items))
               ) : (
                 <p className="px-2 py-2 text-xs text-ink-faint">Drag a note here</p>
               )}

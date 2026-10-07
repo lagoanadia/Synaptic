@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE "BrainDump" ADD COLUMN "sectionOrder" INTEGER NOT NULL DEFAULT 0;
+
+-- AlterTable
+ALTER TABLE "Note" ADD COLUMN "sectionOrder" INTEGER NOT NULL DEFAULT 0;

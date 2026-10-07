@@ -249,6 +249,7 @@ export default async function PursuitPage({
             processed: d.processed,
             createdAt: d.createdAt.toISOString(),
             sectionId: d.sectionId,
+            sectionOrder: d.sectionOrder,
             author: {
               name: d.author.name ?? d.author.email,
               image: d.author.image,
@@ -270,6 +271,7 @@ export default async function PursuitPage({
             tags: n.tags,
             sourceDumps: n.sourceDumps,
             sectionId: n.sectionId,
+            sectionOrder: n.sectionOrder,
           }))}
         />
       )}

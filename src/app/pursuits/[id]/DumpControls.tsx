@@ -3,12 +3,12 @@
 import { useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import {
-  assignDumpSection,
   createContentSection,
   deleteBrainDump,
   deleteContentSection,
   finalizeBrainDump,
   organizeDumps,
+  reorderDumpSection,
 } from "./actions";
 import { DeleteButton } from "../DeleteButton";
 import { AuthorBadge } from "./AuthorBadge";
@@ -21,15 +21,21 @@ type DumpForDisplay = {
   processed: boolean;
   createdAt: string;
   sectionId: string | null;
+  sectionOrder: number;
   author: { name: string; image: string | null; colorIndex: number };
 };
 
 type SectionForDisplay = { id: string; name: string };
 
-// Groups dumps by sectionId, keeping each group's own relative order and
-// the Pursuit's section order — dumps whose sectionId doesn't match any
-// current section (one just got deleted elsewhere) fall back into the
-// unsectioned bucket rather than disappearing.
+// Groups dumps by sectionId — within a group, sorted by sectionOrder
+// (set to its index in the list every time something's dragged into or
+// reordered within that group — see reorderDumpSection) rather than
+// createdAt, which would otherwise put whatever's newest on top
+// regardless of where it was actually dropped. A dump that's never been
+// touched keeps sectionOrder 0, and the sort is stable, so untouched
+// groups still read in their original createdAt-desc order. Dumps whose
+// sectionId doesn't match any current section (one just got deleted
+// elsewhere) fall back into unsectioned rather than disappearing.
 function groupBySection(dumps: DumpForDisplay[], sections: SectionForDisplay[]) {
   const bySection = new Map<string, DumpForDisplay[]>();
   const unsectioned: DumpForDisplay[] = [];
@@ -41,7 +47,29 @@ function groupBySection(dumps: DumpForDisplay[], sections: SectionForDisplay[]) 
       bySection.set(section, [...(bySection.get(section) ?? []), d]);
     }
   }
+  unsectioned.sort((a, b) => a.sectionOrder - b.sectionOrder);
+  for (const items of bySection.values()) {
+    items.sort((a, b) => a.sectionOrder - b.sectionOrder);
+  }
   return { unsectioned, bySection };
+}
+
+// Builds the full ordered id list a group should have after dragging
+// draggedId onto targetId within it — draggedId is removed first (a
+// no-op if it wasn't already in this group, i.e. it's arriving from
+// somewhere else) then spliced back in right before or after targetId
+// depending which half of targetId's row the cursor is over.
+function withDraggedInsertedAt(
+  list: DumpForDisplay[],
+  draggedId: string,
+  targetId: string,
+  insertAfter: boolean,
+): string[] {
+  const ids = list.filter((d) => d.id !== draggedId).map((d) => d.id);
+  const targetIndex = ids.indexOf(targetId);
+  const insertAt = insertAfter ? targetIndex + 1 : targetIndex;
+  ids.splice(insertAt, 0, draggedId);
+  return ids;
 }
 
 function DumpRow({
@@ -53,6 +81,7 @@ function DumpRow({
   isPending,
   startTransition,
   onDragStart,
+  onDropOnRow,
 }: {
   pursuitId: string;
   d: DumpForDisplay;
@@ -62,11 +91,14 @@ function DumpRow({
   isPending: boolean;
   startTransition: (fn: () => void | Promise<void>) => void;
   onDragStart: (e: React.DragEvent) => void;
+  onDropOnRow: (e: React.DragEvent) => void;
 }) {
   return (
     <div
       draggable
       onDragStart={onDragStart}
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={onDropOnRow}
       className="-mx-2 flex cursor-grab items-center gap-3 rounded-xl px-2 py-2.5 transition-colors hover:bg-chip active:cursor-grabbing"
     >
       {!d.processed && (
@@ -158,17 +190,38 @@ export function DumpControls({
     );
   }
 
-  function handleDrop(sectionId: string | null, e: React.DragEvent) {
+  // Dropped on empty space in a group — append to the end of it.
+  function handleGroupDrop(sectionId: string | null, list: DumpForDisplay[], e: React.DragEvent) {
     e.preventDefault();
     setDragOverSection(null);
-    const dumpId = e.dataTransfer.getData("text/plain");
-    if (!dumpId) return;
-    startTransition(() => assignDumpSection(pursuitId, dumpId, sectionId));
+    const draggedId = e.dataTransfer.getData("text/plain");
+    if (!draggedId) return;
+    const ids = [...list.filter((d) => d.id !== draggedId).map((d) => d.id), draggedId];
+    startTransition(() => reorderDumpSection(pursuitId, sectionId, ids));
+  }
+
+  // Dropped on a specific row — insert right there instead of at the end,
+  // whether that row's own group is the dragged page's current one or not.
+  function handleRowDrop(
+    sectionId: string | null,
+    list: DumpForDisplay[],
+    targetId: string,
+    e: React.DragEvent,
+  ) {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOverSection(null);
+    const draggedId = e.dataTransfer.getData("text/plain");
+    if (!draggedId || draggedId === targetId) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const insertAfter = e.clientY - rect.top > rect.height / 2;
+    const ids = withDraggedInsertedAt(list, draggedId, targetId, insertAfter);
+    startTransition(() => reorderDumpSection(pursuitId, sectionId, ids));
   }
 
   const { unsectioned, bySection } = groupBySection(dumps, sections);
 
-  function renderRows(list: DumpForDisplay[]) {
+  function renderRows(list: DumpForDisplay[], sectionId: string | null) {
     return list.map((d) => (
       <DumpRow
         key={d.id}
@@ -180,6 +233,7 @@ export function DumpControls({
         isPending={isPending}
         startTransition={startTransition}
         onDragStart={(e) => e.dataTransfer.setData("text/plain", d.id)}
+        onDropOnRow={(e) => handleRowDrop(sectionId, list, d.id, e)}
       />
     ));
   }
@@ -249,12 +303,12 @@ export function DumpControls({
           setDragOverSection("unsectioned");
         }}
         onDragLeave={() => setDragOverSection(null)}
-        onDrop={(e) => handleDrop(null, e)}
+        onDrop={(e) => handleGroupDrop(null, unsectioned, e)}
         className={`flex flex-col rounded-xl transition-colors ${
           dragOverSection === "unsectioned" ? "bg-chip" : ""
         }`}
       >
-        {renderRows(unsectioned)}
+        {renderRows(unsectioned, null)}
       </div>
 
       {sections.map((s) => {
@@ -279,13 +333,13 @@ export function DumpControls({
                 setDragOverSection(s.id);
               }}
               onDragLeave={() => setDragOverSection(null)}
-              onDrop={(e) => handleDrop(s.id, e)}
+              onDrop={(e) => handleGroupDrop(s.id, items, e)}
               className={`flex flex-col rounded-xl transition-colors ${
                 dragOverSection === s.id ? "bg-chip" : ""
               }`}
             >
               {items.length > 0 ? (
-                renderRows(items)
+                renderRows(items, s.id)
               ) : (
                 <p className="px-2 py-2 text-xs text-ink-faint">Drag a page here</p>
               )}
