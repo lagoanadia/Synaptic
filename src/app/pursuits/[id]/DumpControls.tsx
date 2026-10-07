@@ -29,7 +29,7 @@ export function DumpControls({
   showAuthors: boolean;
 }) {
   const unprocessed = dumps.filter((d) => !d.processed);
-  const [selected, setSelected] = useState<string[]>(() => unprocessed.map((d) => d.id));
+  const [selected, setSelected] = useState<string[]>([]);
   const [isPending, startTransition] = useTransition();
   const [organizeError, setOrganizeError] = useState<string | null>(null);
 
