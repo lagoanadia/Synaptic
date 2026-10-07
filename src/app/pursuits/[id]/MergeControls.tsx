@@ -97,7 +97,29 @@ export function MergeControls({
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [addingSection, setAddingSection] = useState(false);
   const [dragOverSection, setDragOverSection] = useState<string | "unsectioned" | null>(null);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  // Which card the dragged note would land next to if dropped right
+  // now, and on which side — drawn as a thin blue line.
+  const [dropTarget, setDropTarget] = useState<{ id: string; position: "before" | "after" } | null>(
+    null,
+  );
   const newSectionRef = useRef<HTMLInputElement>(null);
+
+  // A drag truly ending (dropped, or dragged out of the window) clears
+  // the dragged card's dimmed state too.
+  function clearDragState() {
+    setDraggingId(null);
+    setDropTarget(null);
+    setDragOverSection(null);
+  }
+
+  // The cursor merely leaving one drop zone for another during the same
+  // drag — the dragged card stays dimmed, only the position indicators
+  // reset.
+  function clearDropIndicators() {
+    setDropTarget(null);
+    setDragOverSection(null);
+  }
 
   function toggle(id: string) {
     setSelected((cur) =>
@@ -120,8 +142,8 @@ export function MergeControls({
   // Dropped on empty space in a group — append to the end of it.
   function handleGroupDrop(sectionId: string | null, list: NoteForDisplay[], e: React.DragEvent) {
     e.preventDefault();
-    setDragOverSection(null);
     const draggedId = e.dataTransfer.getData("text/plain");
+    clearDragState();
     if (!draggedId) return;
     const ids = [...list.filter((n) => n.id !== draggedId).map((n) => n.id), draggedId];
     startTransition(() => reorderNoteSection(pursuitId, sectionId, ids));
@@ -138,11 +160,10 @@ export function MergeControls({
   ) {
     e.preventDefault();
     e.stopPropagation();
-    setDragOverSection(null);
     const draggedId = e.dataTransfer.getData("text/plain");
+    const insertAfter = dropTarget?.id === targetId ? dropTarget.position === "after" : false;
+    clearDragState();
     if (!draggedId || draggedId === targetId) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const insertAfter = e.clientY - rect.top > rect.height / 2;
     const ids = withDraggedInsertedAt(list, draggedId, targetId, insertAfter);
     startTransition(() => reorderNoteSection(pursuitId, sectionId, ids));
   }
@@ -150,15 +171,30 @@ export function MergeControls({
   function renderCard(n: NoteForDisplay, sectionId: string | null, list: NoteForDisplay[]) {
     const isExpanded = expandedIds.has(n.id) || editingId === n.id;
     return (
-      <div
-        key={n.id}
-        id={n.id}
-        draggable
-        onDragStart={(e) => e.dataTransfer.setData("text/plain", n.id)}
-        onDragOver={(e) => e.preventDefault()}
-        onDrop={(e) => handleRowDrop(sectionId, list, n.id, e)}
-        className="flex scroll-mt-6 cursor-grab gap-3 rounded-2xl bg-white p-5 shadow-[0_1px_2px_rgba(13,13,13,0.06)] transition-shadow hover:shadow-[0_8px_24px_rgba(13,13,13,0.08),0_2px_6px_rgba(13,13,13,0.06)] active:cursor-grabbing"
-      >
+      <div key={n.id}>
+        {dropTarget?.id === n.id && dropTarget.position === "before" && (
+          <div className="mx-2 mb-4 h-0.5 rounded-full bg-accent" />
+        )}
+        <div
+          id={n.id}
+          draggable
+          onDragStart={(e) => {
+            e.dataTransfer.setData("text/plain", n.id);
+            setDraggingId(n.id);
+          }}
+          onDragEnd={clearDragState}
+          onDragOver={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const rect = e.currentTarget.getBoundingClientRect();
+            const position = e.clientY - rect.top > rect.height / 2 ? "after" : "before";
+            setDropTarget({ id: n.id, position });
+          }}
+          onDrop={(e) => handleRowDrop(sectionId, list, n.id, e)}
+          className={`flex scroll-mt-6 cursor-grab gap-3 rounded-2xl bg-white p-5 shadow-[0_1px_2px_rgba(13,13,13,0.06)] transition-shadow hover:shadow-[0_8px_24px_rgba(13,13,13,0.08),0_2px_6px_rgba(13,13,13,0.06)] active:cursor-grabbing ${
+            draggingId === n.id ? "opacity-40" : ""
+          }`}
+        >
         <span className="text-ink-faint">▤</span>
         <div className="flex flex-1 flex-col gap-2">
           <div className="flex flex-wrap items-center gap-3">
@@ -188,6 +224,7 @@ export function MergeControls({
               href={`/pursuits/${pursuitId}/print?note=${n.id}`}
               target="_blank"
               rel="noopener noreferrer"
+              draggable={false}
               className="text-xs whitespace-nowrap text-ink-faint hover:text-ink"
             >
               Export PDF
@@ -326,6 +363,10 @@ export function MergeControls({
             </>
           )}
         </div>
+        </div>
+        {dropTarget?.id === n.id && dropTarget.position === "after" && (
+          <div className="mx-2 mt-4 h-0.5 rounded-full bg-accent" />
+        )}
       </div>
     );
   }
@@ -384,8 +425,9 @@ export function MergeControls({
         onDragOver={(e) => {
           e.preventDefault();
           setDragOverSection("unsectioned");
+          setDropTarget(null);
         }}
-        onDragLeave={() => setDragOverSection(null)}
+        onDragLeave={clearDropIndicators}
         onDrop={(e) => handleGroupDrop(null, unsectioned, e)}
         className={`flex flex-col gap-4 rounded-2xl transition-colors ${
           dragOverSection === "unsectioned" ? "bg-chip" : ""
@@ -414,8 +456,9 @@ export function MergeControls({
               onDragOver={(e) => {
                 e.preventDefault();
                 setDragOverSection(s.id);
+                setDropTarget(null);
               }}
-              onDragLeave={() => setDragOverSection(null)}
+              onDragLeave={clearDropIndicators}
               onDrop={(e) => handleGroupDrop(s.id, items, e)}
               className={`flex flex-col gap-4 rounded-2xl transition-colors ${
                 dragOverSection === s.id ? "bg-chip" : ""

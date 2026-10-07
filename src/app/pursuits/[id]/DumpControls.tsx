@@ -80,7 +80,10 @@ function DumpRow({
   showAuthors,
   isPending,
   startTransition,
+  isDragging,
   onDragStart,
+  onDragEnd,
+  onDragOverRow,
   onDropOnRow,
 }: {
   pursuitId: string;
@@ -90,16 +93,22 @@ function DumpRow({
   showAuthors: boolean;
   isPending: boolean;
   startTransition: (fn: () => void | Promise<void>) => void;
+  isDragging: boolean;
   onDragStart: (e: React.DragEvent) => void;
+  onDragEnd: () => void;
+  onDragOverRow: (e: React.DragEvent) => void;
   onDropOnRow: (e: React.DragEvent) => void;
 }) {
   return (
     <div
       draggable
       onDragStart={onDragStart}
-      onDragOver={(e) => e.preventDefault()}
+      onDragEnd={onDragEnd}
+      onDragOver={onDragOverRow}
       onDrop={onDropOnRow}
-      className="-mx-2 flex cursor-grab items-center gap-3 rounded-xl px-2 py-2.5 transition-colors hover:bg-chip active:cursor-grabbing"
+      className={`-mx-2 flex cursor-grab items-center gap-3 rounded-xl px-2 py-2.5 transition-colors hover:bg-chip active:cursor-grabbing ${
+        isDragging ? "opacity-40" : ""
+      }`}
     >
       {!d.processed && (
         <input
@@ -111,6 +120,7 @@ function DumpRow({
       )}
       <Link
         href={`/pursuits/${pursuitId}/dump/${d.id}`}
+        draggable={false}
         className="flex flex-1 items-center gap-3 overflow-hidden"
       >
         <span
@@ -176,7 +186,30 @@ export function DumpControls({
   const [organizeError, setOrganizeError] = useState<string | null>(null);
   const [addingSection, setAddingSection] = useState(false);
   const [dragOverSection, setDragOverSection] = useState<string | "unsectioned" | null>(null);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  // Which row the dragged page would land next to if dropped right now,
+  // and on which side — drawn as a thin blue line so dropping somewhere
+  // specific doesn't feel like a guess.
+  const [dropTarget, setDropTarget] = useState<{ id: string; position: "before" | "after" } | null>(
+    null,
+  );
   const newSectionRef = useRef<HTMLInputElement>(null);
+
+  // Called when a drag truly ends (dropped, or dragged out of the
+  // window) — clears the dragged row's dimmed state too.
+  function clearDragState() {
+    setDraggingId(null);
+    setDropTarget(null);
+    setDragOverSection(null);
+  }
+
+  // Called when the cursor merely leaves one drop zone for another
+  // during the same drag — the dragged row should stay dimmed the whole
+  // time, only the position indicators reset.
+  function clearDropIndicators() {
+    setDropTarget(null);
+    setDragOverSection(null);
+  }
 
   // A dump that got organized (or deleted) since this state was last set
   // shouldn't still count toward the selection — its checkbox is gone too.
@@ -193,8 +226,8 @@ export function DumpControls({
   // Dropped on empty space in a group — append to the end of it.
   function handleGroupDrop(sectionId: string | null, list: DumpForDisplay[], e: React.DragEvent) {
     e.preventDefault();
-    setDragOverSection(null);
     const draggedId = e.dataTransfer.getData("text/plain");
+    clearDragState();
     if (!draggedId) return;
     const ids = [...list.filter((d) => d.id !== draggedId).map((d) => d.id), draggedId];
     startTransition(() => reorderDumpSection(pursuitId, sectionId, ids));
@@ -210,11 +243,10 @@ export function DumpControls({
   ) {
     e.preventDefault();
     e.stopPropagation();
-    setDragOverSection(null);
     const draggedId = e.dataTransfer.getData("text/plain");
+    const insertAfter = dropTarget?.id === targetId ? dropTarget.position === "after" : false;
+    clearDragState();
     if (!draggedId || draggedId === targetId) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const insertAfter = e.clientY - rect.top > rect.height / 2;
     const ids = withDraggedInsertedAt(list, draggedId, targetId, insertAfter);
     startTransition(() => reorderDumpSection(pursuitId, sectionId, ids));
   }
@@ -223,18 +255,37 @@ export function DumpControls({
 
   function renderRows(list: DumpForDisplay[], sectionId: string | null) {
     return list.map((d) => (
-      <DumpRow
-        key={d.id}
-        pursuitId={pursuitId}
-        d={d}
-        selected={selected.includes(d.id)}
-        onToggle={() => toggle(d.id)}
-        showAuthors={showAuthors}
-        isPending={isPending}
-        startTransition={startTransition}
-        onDragStart={(e) => e.dataTransfer.setData("text/plain", d.id)}
-        onDropOnRow={(e) => handleRowDrop(sectionId, list, d.id, e)}
-      />
+      <div key={d.id}>
+        {dropTarget?.id === d.id && dropTarget.position === "before" && (
+          <div className="mx-2 h-0.5 rounded-full bg-accent" />
+        )}
+        <DumpRow
+          pursuitId={pursuitId}
+          d={d}
+          selected={selected.includes(d.id)}
+          onToggle={() => toggle(d.id)}
+          showAuthors={showAuthors}
+          isPending={isPending}
+          startTransition={startTransition}
+          isDragging={draggingId === d.id}
+          onDragStart={(e) => {
+            e.dataTransfer.setData("text/plain", d.id);
+            setDraggingId(d.id);
+          }}
+          onDragEnd={clearDragState}
+          onDragOverRow={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const rect = e.currentTarget.getBoundingClientRect();
+            const position = e.clientY - rect.top > rect.height / 2 ? "after" : "before";
+            setDropTarget({ id: d.id, position });
+          }}
+          onDropOnRow={(e) => handleRowDrop(sectionId, list, d.id, e)}
+        />
+        {dropTarget?.id === d.id && dropTarget.position === "after" && (
+          <div className="mx-2 h-0.5 rounded-full bg-accent" />
+        )}
+      </div>
     ));
   }
 
@@ -301,8 +352,9 @@ export function DumpControls({
         onDragOver={(e) => {
           e.preventDefault();
           setDragOverSection("unsectioned");
+          setDropTarget(null);
         }}
-        onDragLeave={() => setDragOverSection(null)}
+        onDragLeave={clearDropIndicators}
         onDrop={(e) => handleGroupDrop(null, unsectioned, e)}
         className={`flex flex-col rounded-xl transition-colors ${
           dragOverSection === "unsectioned" ? "bg-chip" : ""
@@ -331,8 +383,9 @@ export function DumpControls({
               onDragOver={(e) => {
                 e.preventDefault();
                 setDragOverSection(s.id);
+                setDropTarget(null);
               }}
-              onDragLeave={() => setDragOverSection(null)}
+              onDragLeave={clearDropIndicators}
               onDrop={(e) => handleGroupDrop(s.id, items, e)}
               className={`flex flex-col rounded-xl transition-colors ${
                 dragOverSection === s.id ? "bg-chip" : ""
