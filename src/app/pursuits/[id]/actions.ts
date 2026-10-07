@@ -480,6 +480,13 @@ JSON object, no other text: {"content": "...", "tags": ["...", "..."]}`;
         },
       ],
       response_format: { type: "json_object" },
+      // Left unset, Groq's own default completion cap can land well under
+      // what a long source note needs to come back out again — the
+      // response then gets cut off mid-string, and invalid JSON up to the
+      // cut is indistinguishable from json_validate_failed on Groq's side.
+      // A generous explicit ceiling (comfortably under both models' real
+      // max) costs nothing for a short note and saves a long one.
+      max_completion_tokens: 16000,
     });
   } catch {
     if (hasImages) {
@@ -496,6 +503,7 @@ JSON object, no other text: {"content": "...", "tags": ["...", "..."]}`;
           model: TEXT_MODEL,
           messages: [{ role: "user", content: prompt }],
           response_format: { type: "json_object" },
+          max_completion_tokens: 16000,
         });
       } catch {
         return {
