@@ -950,7 +950,7 @@ export function NewDumpForm({
           type="button"
           onClick={() => fileInputRef.current?.click()}
           disabled={isPending || isUploading}
-          className="rounded-md bg-flame-soft px-3 py-1.5 text-xs text-ink disabled:opacity-50"
+          className="rounded-md border border-border-subtle px-3 py-1.5 text-xs text-ink-muted disabled:opacity-50"
         >
           {isUploading ? "Uploading…" : "🖼 Insert image"}
         </button>
@@ -966,7 +966,7 @@ export function NewDumpForm({
           type="button"
           onClick={() => pdfInputRef.current?.click()}
           disabled={isPending || pdfProgress !== null}
-          className="rounded-md bg-crimson-soft px-3 py-1.5 text-xs text-ink disabled:opacity-50"
+          className="rounded-md border border-border-subtle px-3 py-1.5 text-xs text-ink-muted disabled:opacity-50"
         >
           {pdfProgress ?? "📄 Insert PDF"}
         </button>
@@ -977,7 +977,7 @@ export function NewDumpForm({
           className={`rounded-md border px-3 py-1.5 text-xs disabled:opacity-50 ${
             recordingSeconds !== null
               ? "border-red-300 bg-red-50 text-red-600"
-              : "border-transparent bg-cobalt-soft text-ink"
+              : "border-border-subtle text-ink-muted"
           }`}
         >
           {isTranscribing
@@ -991,7 +991,7 @@ export function NewDumpForm({
             type="button"
             onClick={() => setTablePickerOpen((open) => !open)}
             disabled={isPending}
-            className="rounded-md bg-gold-soft px-3 py-1.5 text-xs text-ink disabled:opacity-50"
+            className="rounded-md border border-border-subtle px-3 py-1.5 text-xs text-ink-muted disabled:opacity-50"
           >
             ⊞ Insert table
           </button>
@@ -1053,7 +1053,7 @@ export function NewDumpForm({
               });
             }}
             disabled={isPending}
-            className="rounded-md bg-rose-soft px-3 py-1.5 text-xs text-ink disabled:opacity-50"
+            className="rounded-md border border-border-subtle px-3 py-1.5 text-xs text-ink-muted disabled:opacity-50"
           >
             🔗 Insert link
           </button>
@@ -1106,7 +1106,7 @@ export function NewDumpForm({
             type="button"
             onClick={() => setCodePickerOpen((open) => !open)}
             disabled={isPending}
-            className="rounded-md bg-forest-soft px-3 py-1.5 text-xs text-ink disabled:opacity-50"
+            className="rounded-md border border-border-subtle px-3 py-1.5 text-xs text-ink-muted disabled:opacity-50"
           >
             {"</> Insert code"}
           </button>
