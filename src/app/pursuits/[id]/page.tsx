@@ -76,6 +76,7 @@ export default async function PursuitPage({
             orderBy: { createdAt: "desc" },
             include: { tags: true, sourceDumps: { select: { id: true } } },
           },
+          contentSections: { orderBy: { order: "asc" } },
           attachments: { orderBy: { createdAt: "desc" } },
         },
       }),
@@ -240,12 +241,14 @@ export default async function PursuitPage({
         <DumpControls
           pursuitId={pursuit.id}
           showAuthors={showAuthors}
+          sections={pursuit.contentSections.map((s) => ({ id: s.id, name: s.name }))}
           dumps={pursuit.brainDumps.map((d) => ({
             id: d.id,
             content: d.content,
             images: d.images,
             processed: d.processed,
             createdAt: d.createdAt.toISOString(),
+            sectionId: d.sectionId,
             author: {
               name: d.author.name ?? d.author.email,
               image: d.author.image,
@@ -258,6 +261,7 @@ export default async function PursuitPage({
       {tab === "organized" && (
         <MergeControls
           pursuitId={pursuit.id}
+          sections={pursuit.contentSections.map((s) => ({ id: s.id, name: s.name }))}
           notes={pursuit.notes.map((n) => ({
             id: n.id,
             content: n.content,
@@ -265,6 +269,7 @@ export default async function PursuitPage({
             updatedAt: n.updatedAt.toISOString(),
             tags: n.tags,
             sourceDumps: n.sourceDumps,
+            sectionId: n.sectionId,
           }))}
         />
       )}

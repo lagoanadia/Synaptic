@@ -9,7 +9,7 @@ import type {
   ChatCompletionCreateParamsNonStreaming,
 } from "groq-sdk/resources/chat/completions";
 import { PursuitStatus, MemberRole } from "@/generated/prisma/client";
-import { upsertSection } from "@/lib/sections";
+import { upsertSection, upsertContentSection } from "@/lib/sections";
 import { HEADLINE_OPTIONS, buildOrTsQuery } from "@/lib/search";
 import { parseOrganizeResponse } from "@/lib/organize";
 import { parseFlashcardsResponse } from "@/lib/flashcards";
@@ -170,6 +170,57 @@ export async function updateMemberRole(
   revalidatePath(`/pursuits/${pursuitId}`);
 }
 
+// Creates an empty section ready to drag pages/notes onto — reuses an
+// existing one by name instead of making a duplicate if it somehow
+// already exists (e.g. a second browser tab creating the same name).
+export async function createContentSection(pursuitId: string, name: string) {
+  await requireAccess(pursuitId);
+  if (name.trim() === "") return;
+
+  await upsertContentSection(pursuitId, name);
+  revalidatePath(`/pursuits/${pursuitId}`);
+}
+
+// Deletes only this Pursuit's own section — any page/note in it falls
+// back to sectionId: null automatically (ON DELETE SET NULL).
+export async function deleteContentSection(pursuitId: string, sectionId: string) {
+  await requireAccess(pursuitId);
+  await prisma.pursuitContentSection.deleteMany({
+    where: { id: sectionId, pursuitId },
+  });
+  revalidatePath(`/pursuits/${pursuitId}`);
+}
+
+// Drag-and-drop target for a Brain Dump page — sectionId null moves it
+// back to "unsectioned" (dragged onto that zone, or a section was
+// deleted out from under it).
+export async function assignDumpSection(
+  pursuitId: string,
+  dumpId: string,
+  sectionId: string | null,
+) {
+  await requireAccess(pursuitId);
+  await prisma.brainDump.updateMany({
+    where: { id: dumpId, pursuitId },
+    data: { sectionId },
+  });
+  revalidatePath(`/pursuits/${pursuitId}`);
+}
+
+// Same as assignDumpSection, for an Organized note.
+export async function assignNoteSection(
+  pursuitId: string,
+  noteId: string,
+  sectionId: string | null,
+) {
+  await requireAccess(pursuitId);
+  await prisma.note.updateMany({
+    where: { id: noteId, pursuitId },
+    data: { sectionId },
+  });
+  revalidatePath(`/pursuits/${pursuitId}`);
+}
+
 export async function addBrainDump(
   pursuitId: string,
   _prevState: FormState,
@@ -301,6 +352,7 @@ export async function finalizeBrainDump(pursuitId: string, dumpId: string) {
     data: {
       pursuitId,
       content: dump.content ?? "",
+      sectionId: dump.sectionId,
       sourceDumps: { connect: { id: dump.id } },
     },
   });
@@ -547,10 +599,20 @@ JSON object, no other text: {"content": "...", "tags": ["...", "..."]}`;
     );
   }
 
+  // Only when every dump going in agrees on the same section — a note
+  // Organized from a mix of sections (or none) starts unsectioned rather
+  // than guessing which one it "mostly" belongs to.
+  const firstSectionId = dumps[0].sectionId;
+  const sharedSectionId =
+    firstSectionId !== null && dumps.every((d) => d.sectionId === firstSectionId)
+      ? firstSectionId
+      : null;
+
   await prisma.note.create({
     data: {
       pursuitId,
       content: noteContent,
+      sectionId: sharedSectionId,
       sourceDumps: { connect: dumps.map((d) => ({ id: d.id })) },
       tags: { connect: tagRecords.map((t) => ({ id: t.id })) },
     },
@@ -593,11 +655,17 @@ export async function mergeNotes(pursuitId: string, noteIds: string[]) {
   const dumpIds = Array.from(
     new Set(notes.flatMap((n) => n.sourceDumps.map((d) => d.id))),
   );
+  const firstSectionId = notes[0].sectionId;
+  const sharedSectionId =
+    firstSectionId !== null && notes.every((n) => n.sectionId === firstSectionId)
+      ? firstSectionId
+      : null;
 
   await prisma.note.create({
     data: {
       pursuitId,
       content: mergedContent,
+      sectionId: sharedSectionId,
       tags: { connect: tagIds.map((id) => ({ id })) },
       sourceDumps: { connect: dumpIds.map((id) => ({ id })) },
     },

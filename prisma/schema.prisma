@@ -181,13 +181,37 @@ model Pursuit {
   // it reliably. Toggled from the Files tab.
   classroomEnabled    Boolean @default(false)
 
-  members     PursuitMember[]
-  pursuitTags PursuitTag[]
-  brainDumps  BrainDump[]
-  notes       Note[]
-  tags        Tag[]
-  attachments Attachment[]
-  flashcards  Flashcard[]
+  members         PursuitMember[]
+  pursuitTags     PursuitTag[]
+  brainDumps      BrainDump[]
+  notes           Note[]
+  tags            Tag[]
+  attachments     Attachment[]
+  flashcards      Flashcard[]
+  contentSections PursuitContentSection[]
+}
+
+// Groups a Pursuit's OWN Brain Dump pages and Organized notes into
+// named buckets (e.g. "U1", "U2") by dragging a page/note onto one —
+// a different axis from Section above, which groups whole Pursuits for
+// one user across all of them, not what's inside a single Pursuit.
+// Shared between BrainDump and Note (not two separate lists) so
+// Organizing a dump that's already in a section carries that same
+// grouping over to the note it becomes, instead of starting
+// unsectioned every time (see organizeDumps).
+model PursuitContentSection {
+  id        String   @id @default(cuid())
+  name      String
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  pursuitId String
+  pursuit   Pursuit @relation(fields: [pursuitId], references: [id])
+
+  brainDumps BrainDump[]
+  notes      Note[]
+
+  @@unique([pursuitId, name])
 }
 
 // Who else (besides the owner) can see/edit a shared Pursuit, and at what level.
@@ -272,6 +296,9 @@ model BrainDump {
   // this existed — callers fall back to `authorId` for every line then.
   lineAuthorIds String[] @default([])
 
+  sectionId String?
+  section   PursuitContentSection? @relation(fields: [sectionId], references: [id])
+
   notes Note[]
 
   @@index([searchVector], type: Gin)
@@ -291,6 +318,13 @@ model Note {
 
   pursuitId String
   pursuit   Pursuit @relation(fields: [pursuitId], references: [id])
+
+  // Inherited from its source dumps when Organized (see organizeDumps):
+  // if every dump going in shared the same section, the note that comes
+  // out keeps it; otherwise it starts unsectioned, same as a note
+  // Organized from scratch.
+  sectionId String?
+  section   PursuitContentSection? @relation(fields: [sectionId], references: [id])
 
   sourceDumps BrainDump[]
   tags        Tag[]
