@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { deleteBrainDump, finalizeBrainDump, organizeDumps } from "./actions";
 import { DeleteButton } from "../DeleteButton";
+import { AuthorBadge } from "./AuthorBadge";
 import { autoTitle } from "@/lib/text";
 
 type DumpForDisplay = {
@@ -12,6 +13,7 @@ type DumpForDisplay = {
   images: string[];
   processed: boolean;
   createdAt: string;
+  author: { name: string; image: string | null; colorIndex: number };
 };
 
 // Client Component: needs local state for which unprocessed dumps are
@@ -20,9 +22,11 @@ type DumpForDisplay = {
 export function DumpControls({
   pursuitId,
   dumps,
+  showAuthors,
 }: {
   pursuitId: string;
   dumps: DumpForDisplay[];
+  showAuthors: boolean;
 }) {
   const unprocessed = dumps.filter((d) => !d.processed);
   const [selected, setSelected] = useState<string[]>(() => unprocessed.map((d) => d.id));
@@ -92,6 +96,13 @@ export function DumpControls({
                   d.processed ? "bg-ink-faint" : "bg-accent"
                 }`}
               />
+              {showAuthors && (
+                <AuthorBadge
+                  name={d.author.name}
+                  image={d.author.image}
+                  colorIndex={d.author.colorIndex}
+                />
+              )}
               {d.images.length > 0 && <span>🖼</span>}
               <span className="flex-1 truncate text-sm">{autoTitle(d.content)}</span>
               <span className="text-xs whitespace-nowrap text-ink-faint">

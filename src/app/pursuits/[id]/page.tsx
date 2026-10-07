@@ -19,6 +19,7 @@ import { DeleteButton } from "../DeleteButton";
 import { ClassroomImport } from "./ClassroomImport";
 import { AttachmentList } from "./AttachmentList";
 import { UpcomingDeadlines } from "./UpcomingDeadlines";
+import { collaboratorOrder, colorIndexById } from "@/lib/authorColor";
 
 const CLASSROOM_ERROR_COPY: Record<string, string> = {
   denied: "Google Classroom connection canceled.",
@@ -62,11 +63,15 @@ export default async function PursuitPage({
         include: {
           pursuitTags: true,
           section: true,
-          owner: { select: { id: true, name: true, email: true } },
+          owner: { select: { id: true, name: true, email: true, image: true } },
           members: {
-            include: { user: { select: { id: true, name: true, email: true } } },
+            orderBy: { invitedAt: "asc" },
+            include: { user: { select: { id: true, name: true, email: true, image: true } } },
           },
-          brainDumps: { orderBy: { createdAt: "desc" } },
+          brainDumps: {
+            orderBy: { createdAt: "desc" },
+            include: { author: { select: { id: true, name: true, email: true, image: true } } },
+          },
           notes: {
             orderBy: { createdAt: "desc" },
             include: { tags: true, sourceDumps: { select: { id: true } } },
@@ -99,6 +104,16 @@ export default async function PursuitPage({
   if (!pursuit) {
     notFound();
   }
+
+  // Only shown once a Pursuit actually has someone besides the owner —
+  // no point coloring who-wrote-what when there's only ever been one
+  // possible author.
+  const showAuthors = pursuit.members.length > 0;
+  const collaborators = collaboratorOrder(
+    pursuit.owner,
+    pursuit.members.map((m) => m.user),
+  );
+  const authorColorIndex = colorIndexById(collaborators);
 
   // Each tab's active underline picks up a color from nadia-lagoa.vercel.app's
   // own project-card palette (Cards → cobalt, Ask → flame, everything else →
@@ -224,12 +239,18 @@ export default async function PursuitPage({
       {tab === "dump" && (
         <DumpControls
           pursuitId={pursuit.id}
+          showAuthors={showAuthors}
           dumps={pursuit.brainDumps.map((d) => ({
             id: d.id,
             content: d.content,
             images: d.images,
             processed: d.processed,
             createdAt: d.createdAt.toISOString(),
+            author: {
+              name: d.author.name ?? d.author.email,
+              image: d.author.image,
+              colorIndex: authorColorIndex.get(d.author.id) ?? 0,
+            },
           }))}
         />
       )}

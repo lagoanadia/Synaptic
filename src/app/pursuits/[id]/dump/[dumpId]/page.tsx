@@ -5,6 +5,8 @@ import { prisma } from "@/lib/prisma";
 import { autoTitle } from "@/lib/text";
 import { RichContent } from "../../RichContent";
 import { DeleteDumpButton } from "./DeleteDumpButton";
+import { AuthorBadge } from "../../AuthorBadge";
+import { collaboratorOrder, colorIndexById } from "@/lib/authorColor";
 
 export default async function DumpPage({
   params,
@@ -29,12 +31,30 @@ export default async function DumpPage({
         ],
       },
     },
-    include: { pursuit: { select: { title: true } } },
+    include: {
+      author: { select: { id: true, name: true, email: true, image: true } },
+      pursuit: {
+        select: {
+          title: true,
+          owner: { select: { id: true, name: true, email: true, image: true } },
+          members: {
+            select: { user: { select: { id: true, name: true, email: true, image: true } } },
+          },
+        },
+      },
+    },
   });
 
   if (!dump) {
     notFound();
   }
+
+  const showAuthor = dump.pursuit.members.length > 0;
+  const collaborators = collaboratorOrder(
+    dump.pursuit.owner,
+    dump.pursuit.members.map((m) => m.user),
+  );
+  const authorColorIndex = colorIndexById(collaborators).get(dump.author.id) ?? 0;
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-6 py-9">
@@ -74,6 +94,13 @@ export default async function DumpPage({
               dump.processed ? "bg-ink-faint" : "bg-accent"
             }`}
           />
+          {showAuthor && (
+            <AuthorBadge
+              name={dump.author.name ?? dump.author.email}
+              image={dump.author.image}
+              colorIndex={authorColorIndex}
+            />
+          )}
           <span className="text-xs text-ink-faint">
             {dump.createdAt.toLocaleString("en-US", { timeZone: "UTC" })}
             {dump.processed && " · folded into a note"}
