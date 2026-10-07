@@ -411,8 +411,21 @@ stray characters instead of formatting):
   smaller headings — never more than three #s)
 - "! " at the start of a line for a callout / key takeaway
 - "- " at the start of a line for a bullet list
-- "1. " (etc.) at the start of a line for a numbered list
-- "a. " (etc.) at the start of a line for a lettered list
+- "1. " (etc.) at the start of a line for a numbered list — a numbered
+  list is ONE list: number its items 1, 2, 3, 4... in order and keep
+  going up for every item that belongs to it, even if each one also has
+  its own explanation/answer underneath (see nesting below). Never
+  restart at "1." for each item — a blank line between items (or
+  anything that isn't itself a nested sub-item right under the item
+  above) splits it into a separate list, and that separate list visually
+  restarts its own count at 1, however it's numbered in this text.
+- "a. " (etc.) at the start of a line for a lettered list — also used,
+  indented two spaces under a numbered item, to attach that item's own
+  follow-up (an answer, a sub-point) WITHOUT a blank line before it, so
+  it stays nested inside that same numbered item instead of breaking the
+  numbered list in two. For Q&A-style material specifically, write each
+  question as a numbered item and its answer as that item's own nested
+  lettered sub-item, not as a separate paragraph below it.
 - "**text**" for bold — no other inline styling
 - "| cell | cell | cell |" for a table row — the first row is the header;
   every row needs the same number of cells, and consecutive rows with no
