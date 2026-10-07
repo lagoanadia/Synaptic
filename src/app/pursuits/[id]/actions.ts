@@ -200,20 +200,25 @@ export async function deleteContentSection(pursuitId: string, sectionId: string)
 // appended at the end; dropped on a specific page, that's everything
 // with the dragged page spliced in before/after it) — every id in it
 // gets written to this sectionId at its index in the array.
+// One UPDATE instead of N separate ones (previously $transaction'd
+// together) — a transaction still opens a connection per statement, so
+// reordering a 10-page section meant 10 round trips every single drag.
+// unnest(...) WITH ORDINALITY zips the array with its own 1-based index
+// so the whole list becomes one set of (id, position) rows to join
+// against in a single UPDATE.
 export async function reorderDumpSection(
   pursuitId: string,
   sectionId: string | null,
   orderedIds: string[],
 ) {
   await requireAccess(pursuitId);
-  await prisma.$transaction(
-    orderedIds.map((id, index) =>
-      prisma.brainDump.updateMany({
-        where: { id, pursuitId },
-        data: { sectionId, sectionOrder: index },
-      }),
-    ),
-  );
+  if (orderedIds.length === 0) return;
+  await prisma.$executeRaw`
+    UPDATE "BrainDump" AS d
+    SET "sectionId" = ${sectionId}, "sectionOrder" = (data.ord - 1)
+    FROM unnest(${orderedIds}::text[]) WITH ORDINALITY AS data(id, ord)
+    WHERE d.id = data.id AND d."pursuitId" = ${pursuitId}
+  `;
   revalidatePath(`/pursuits/${pursuitId}`);
 }
 
@@ -224,14 +229,13 @@ export async function reorderNoteSection(
   orderedIds: string[],
 ) {
   await requireAccess(pursuitId);
-  await prisma.$transaction(
-    orderedIds.map((id, index) =>
-      prisma.note.updateMany({
-        where: { id, pursuitId },
-        data: { sectionId, sectionOrder: index },
-      }),
-    ),
-  );
+  if (orderedIds.length === 0) return;
+  await prisma.$executeRaw`
+    UPDATE "Note" AS n
+    SET "sectionId" = ${sectionId}, "sectionOrder" = (data.ord - 1)
+    FROM unnest(${orderedIds}::text[]) WITH ORDINALITY AS data(id, ord)
+    WHERE n.id = data.id AND n."pursuitId" = ${pursuitId}
+  `;
   revalidatePath(`/pursuits/${pursuitId}`);
 }
 
