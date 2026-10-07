@@ -42,6 +42,23 @@
   --color-rose-soft: #f2eeec;
   --color-forest: #0f3d2e;
   --color-forest-soft: #e4e6e2;
+  /* A separate 6-color set for "who wrote this" identity (per-collaborator
+     avatar rings and editor highlights) — NOT the card palette above.
+     Those 6 anchors were picked to match a portfolio site's project
+     cards, each always paired with a text label, and running them
+     through a colorblind-safe categorical check (see the `dataviz`
+     skill's validate_palette.js) showed flame/crimson sit only ~7 apart
+     in OKLab ΔE — indistinguishable to a colorblind reader, and still
+     hard to tell apart with full color vision (the ΔE>=15 floor).
+     Identity-by-color-alone needs a stricter set, so this one instead:
+     the skill's own validated reference categorical palette, which
+     passes every check (worst adjacent pair ΔE 9.1 CVD / 19.6 normal). */
+  --color-ocean: #2a78d6;
+  --color-tangerine: #eb6834;
+  --color-mint: #1baf7a;
+  --color-amber: #eda100;
+  --color-orchid: #e87ba4;
+  --color-moss: #008300;
   --font-sans: var(--font-app);
 }
 

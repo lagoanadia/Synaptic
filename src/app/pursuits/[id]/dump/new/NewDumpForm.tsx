@@ -7,7 +7,7 @@ import { addBrainDump, transcribeAudio, updateBrainDump, type FormState } from "
 import { parseContent, type ContentSegment } from "@/lib/text";
 import { pdfToImagePages } from "@/lib/pdfToImages";
 import { diffLineAuthors, normalizeLineAuthors } from "@/lib/lineAuthors";
-import { AUTHOR_HIGHLIGHT, colorIndexById, type Collaborator } from "@/lib/authorColor";
+import { AUTHOR_UNDERLINE, colorIndexById, type Collaborator } from "@/lib/authorColor";
 
 const initialState: FormState = { error: null };
 
@@ -861,23 +861,28 @@ export function NewDumpForm({
                   {block.value.split("\n").flatMap((line, li, lines) => {
                     const authorId = liveLineAuthorIds[blockLineStarts[i] + li];
                     const collaborator = collaborators.find((c) => c.id === authorId);
-                    const bg = collaborator
-                      ? AUTHOR_HIGHLIGHT[
-                          (authorColorIndex.get(collaborator.id) ?? 0) % AUTHOR_HIGHLIGHT.length
+                    const underline = collaborator
+                      ? AUTHOR_UNDERLINE[
+                          (authorColorIndex.get(collaborator.id) ?? 0) % AUTHOR_UNDERLINE.length
                         ]
                       : undefined;
-                    // No avatar photo in here on purpose — anything that
-                    // adds inline width (an <img>, extra padding) shifts
-                    // this line's characters sideways relative to the real
-                    // textarea underneath, which doesn't have it. The real
-                    // caret follows the real (invisible) textarea text, so
-                    // any mismatch makes it look like it's in the wrong
-                    // spot. background-color is the one style that never
-                    // affects text layout, so it's the only thing safe to
-                    // put here — the line's own content, unmodified,
-                    // keeps the two layers pixel-identical.
+                    // No avatar photo in here, and an underline rather than
+                    // a background: anything that adds inline width (an
+                    // <img>, extra padding) shifts this line's characters
+                    // sideways relative to the real textarea underneath,
+                    // which doesn't have it — the real caret follows that
+                    // real (invisible) text, so any mismatch makes it look
+                    // like it's in the wrong spot. A decoration (underline)
+                    // never affects layout width the way a background
+                    // forced pale enough to read text on top of it would,
+                    // so it's the one effect safe to add here.
                     const span = (
-                      <span key={`l-${li}`} className={bg}>
+                      <span
+                        key={`l-${li}`}
+                        className={
+                          underline ? `underline decoration-2 underline-offset-2 ${underline}` : undefined
+                        }
+                      >
                         {line}
                       </span>
                     );
