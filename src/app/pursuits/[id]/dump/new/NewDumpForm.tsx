@@ -866,17 +866,19 @@ export function NewDumpForm({
                           (authorColorIndex.get(collaborator.id) ?? 0) % AUTHOR_BG_SOFT.length
                         ]
                       : undefined;
+                    // No avatar photo in here on purpose — anything that
+                    // adds inline width (an <img>, extra padding) shifts
+                    // this line's characters sideways relative to the real
+                    // textarea underneath, which doesn't have it. The real
+                    // caret follows the real (invisible) textarea text, so
+                    // any mismatch makes it look like it's in the wrong
+                    // spot. background-color is the one style that never
+                    // affects text layout, so it's the only thing safe to
+                    // put here — the line's own content, unmodified,
+                    // keeps the two layers pixel-identical.
                     const span = (
-                      <span key={`l-${li}`} className={bg ? `${bg} rounded` : undefined}>
-                        {collaborator?.image && (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={collaborator.image}
-                            alt=""
-                            className="mr-1 inline-block h-3 w-3 rounded-full align-middle object-cover"
-                          />
-                        )}
-                        {line.length > 0 ? line : " "}
+                      <span key={`l-${li}`} className={bg}>
+                        {line}
                       </span>
                     );
                     return li < lines.length - 1 ? [span, "\n"] : [span];
