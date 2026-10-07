@@ -21,6 +21,19 @@ export const AUTHOR_RING = [
   "ring-forest",
 ] as const;
 
+// Pale washes of the same 6 hues — a highlighter-style background behind
+// dark ink text (used for the per-line "who wrote this" marks in the
+// editor) instead of the full-saturation color, which would make text on
+// top of it unreadable.
+export const AUTHOR_BG_SOFT = [
+  "bg-flame-soft",
+  "bg-crimson-soft",
+  "bg-cobalt-soft",
+  "bg-gold-soft",
+  "bg-rose-soft",
+  "bg-forest-soft",
+] as const;
+
 export type Collaborator = { id: string; name: string | null; email: string; image: string | null };
 
 // Owner first, then members in join order, deduped by id (an owner who's

@@ -19,13 +19,19 @@ export function AuthorBadge({
   return (
     <span
       title={name}
-      className={`flex h-5 w-5 flex-shrink-0 items-center justify-center overflow-hidden rounded-full text-[10px] font-semibold text-white ring-2 ring-offset-1 ring-offset-background ${ring} ${bg}`}
+      className={`relative block h-5 w-5 flex-shrink-0 overflow-hidden rounded-full ring-2 ring-offset-1 ring-offset-background ${ring} ${bg}`}
     >
       {image ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={image} alt="" className="h-full w-full object-cover" />
+        <img
+          src={image}
+          alt=""
+          className="absolute inset-0 h-full w-full rounded-full object-cover"
+        />
       ) : (
-        initial
+        <span className="flex h-full w-full items-center justify-center text-[10px] font-semibold text-white">
+          {initial}
+        </span>
       )}
     </span>
   );

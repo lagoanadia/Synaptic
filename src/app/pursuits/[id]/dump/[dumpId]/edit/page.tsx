@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { NewDumpForm } from "../../new/NewDumpForm";
+import { collaboratorOrder } from "@/lib/authorColor";
 
 export default async function EditDumpPage({
   params,
@@ -27,12 +28,28 @@ export default async function EditDumpPage({
         ],
       },
     },
-    include: { pursuit: { select: { title: true } } },
+    include: {
+      pursuit: {
+        select: {
+          title: true,
+          owner: { select: { id: true, name: true, email: true, image: true } },
+          members: {
+            select: { user: { select: { id: true, name: true, email: true, image: true } } },
+          },
+        },
+      },
+    },
   });
 
   if (!dump) {
     notFound();
   }
+
+  const showAuthors = dump.pursuit.members.length > 0;
+  const collaborators = collaboratorOrder(
+    dump.pursuit.owner,
+    dump.pursuit.members.map((m) => m.user),
+  );
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-6 py-9">
@@ -47,6 +64,11 @@ export default async function EditDumpPage({
         dumpId={dump.id}
         initialContent={dump.content ?? ""}
         initialUpdatedAt={dump.updatedAt.toISOString()}
+        showAuthors={showAuthors}
+        initialLineAuthorIds={dump.lineAuthorIds}
+        dumpAuthorId={dump.authorId}
+        collaborators={collaborators}
+        viewerId={session.user.id}
       />
     </div>
   );

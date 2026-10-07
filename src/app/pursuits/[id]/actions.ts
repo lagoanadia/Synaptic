@@ -30,6 +30,7 @@ import {
   type ClassroomFile,
   type ClassroomDeadline,
 } from "@/lib/googleClassroom";
+import { diffLineAuthors, normalizeLineAuthors } from "@/lib/lineAuthors";
 
 async function requireAccess(pursuitId: string) {
   const session = await auth();
@@ -196,6 +197,7 @@ export async function addBrainDump(
       authorId: session.user.id,
       content: text,
       images,
+      lineAuthorIds: text.split("\n").map(() => session.user.id),
     },
   });
 
@@ -217,7 +219,7 @@ export async function updateBrainDump(
   _prevState: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  await requireAccess(pursuitId);
+  const { session } = await requireAccess(pursuitId);
 
   const dump = await prisma.brainDump.findFirst({
     where: { id: dumpId, pursuitId },
@@ -236,6 +238,10 @@ export async function updateBrainDump(
     (m) => m[1],
   );
 
+  const oldLines = (dump.content ?? "").split("\n");
+  const oldLineAuthorIds = normalizeLineAuthors(oldLines, dump.lineAuthorIds, dump.authorId);
+  const lineAuthorIds = diffLineAuthors(oldLines, oldLineAuthorIds, text.split("\n"), session.user.id);
+
   // expectedUpdatedAt is a hidden field carrying the updatedAt this editor
   // loaded the page with — same optimistic-concurrency guard as
   // updateNote. A shared Pursuit's dump can just as easily be open in two
@@ -252,7 +258,7 @@ export async function updateBrainDump(
     // Rewriting a dump makes whatever note it was folded into stale, so it
     // goes back to processed:false — the same "needs organizing" state a
     // brand new dump starts in — and reappears in the Organize count.
-    data: { content: text, images, processed: false },
+    data: { content: text, images, processed: false, lineAuthorIds },
   });
 
   if (result.count === 0) {

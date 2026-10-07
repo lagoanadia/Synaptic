@@ -6,6 +6,8 @@ import { upload } from "@vercel/blob/client";
 import { addBrainDump, transcribeAudio, updateBrainDump, type FormState } from "../../actions";
 import { parseContent, type ContentSegment } from "@/lib/text";
 import { pdfToImagePages } from "@/lib/pdfToImages";
+import { diffLineAuthors, normalizeLineAuthors } from "@/lib/lineAuthors";
+import { AUTHOR_BG_SOFT, colorIndexById, type Collaborator } from "@/lib/authorColor";
 
 const initialState: FormState = { error: null };
 
@@ -65,11 +67,24 @@ export function NewDumpForm({
   dumpId,
   initialContent,
   initialUpdatedAt,
+  showAuthors = false,
+  initialLineAuthorIds = [],
+  dumpAuthorId,
+  collaborators = [],
+  viewerId,
 }: {
   pursuitId: string;
   dumpId?: string;
   initialContent?: string;
   initialUpdatedAt?: string;
+  // Only relevant when editing an existing page in a shared Pursuit — see
+  // the per-line highlight block below. A brand new page has nothing to
+  // diff against yet, so these all default to "off".
+  showAuthors?: boolean;
+  initialLineAuthorIds?: string[];
+  dumpAuthorId?: string;
+  collaborators?: Collaborator[];
+  viewerId?: string;
 }) {
   const router = useRouter();
   const isEditing = dumpId !== undefined;
@@ -109,6 +124,41 @@ export function NewDumpForm({
   const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const content = useMemo(() => serialize(blocks), [blocks]);
+
+  // Re-diffs on every keystroke against the version this editor loaded —
+  // same diff the server redoes (and persists) on save, just run here too
+  // so the highlight updates live instead of only appearing after a
+  // reload. Lines no one has touched this session keep their original
+  // author; anything added or changed becomes the viewer currently typing.
+  const liveLineAuthorIds = useMemo(() => {
+    if (!showAuthors || !viewerId) return [];
+    const oldLines = (initialContent ?? "").split("\n");
+    const oldAuthors = normalizeLineAuthors(
+      oldLines,
+      initialLineAuthorIds,
+      dumpAuthorId ?? viewerId,
+    );
+    return diffLineAuthors(oldLines, oldAuthors, content.split("\n"), viewerId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [content, showAuthors, viewerId]);
+
+  const authorColorIndex = useMemo(() => colorIndexById(collaborators), [collaborators]);
+
+  // Where (as a 0-based global line index into `content`) each block
+  // starts — counted by walking the same concatenation `serialize` does,
+  // so it's exact even when an image sits mid-line rather than on its
+  // own line.
+  const blockLineStarts = useMemo(() => {
+    let lineIndex = 0;
+    return blocks.map((block) => {
+      const start = lineIndex;
+      const piece = block.type === "text" ? block.value : `![image](${block.url})`;
+      for (const ch of piece) {
+        if (ch === "\n") lineIndex++;
+      }
+      return start;
+    });
+  }, [blocks]);
 
   // Nothing here is saved to the server until "Save" is clicked — losing
   // the tab, hitting the browser back button, or a crash before then
@@ -802,32 +852,65 @@ export function NewDumpForm({
       <div className="flex flex-1 flex-col gap-3">
         {blocks.map((block, i) =>
           block.type === "text" ? (
-            <textarea
-              key={i}
-              ref={(el) => {
-                textareaRefs.current[i] = el;
-              }}
-              value={block.value}
-              onChange={(e) => {
-                updateTextBlock(i, e.target.value);
-                autoResize(e.target);
-              }}
-              onFocus={() => setActiveIndex(i)}
-              onKeyDown={(e) => {
-                handleFormatShortcut(e, i);
-                handleListContinuation(e, i);
-                handleListIndent(e, i);
-              }}
-              onPaste={handlePaste}
-              autoFocus={i === 0}
-              placeholder={
-                blocks.length === 1 && !isEditing ? "Start writing…" : undefined
-              }
-              disabled={isPending}
-              rows={1}
-              className="resize-none overflow-hidden border-none bg-transparent p-0 text-lg leading-relaxed outline-none disabled:opacity-50"
-              style={i === 0 && blocks.length === 1 ? { minHeight: "55vh" } : undefined}
-            />
+            <div key={i} className="relative">
+              {showAuthors && (
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-0 w-full text-lg leading-relaxed break-words whitespace-pre-wrap"
+                >
+                  {block.value.split("\n").flatMap((line, li, lines) => {
+                    const authorId = liveLineAuthorIds[blockLineStarts[i] + li];
+                    const collaborator = collaborators.find((c) => c.id === authorId);
+                    const bg = collaborator
+                      ? AUTHOR_BG_SOFT[
+                          (authorColorIndex.get(collaborator.id) ?? 0) % AUTHOR_BG_SOFT.length
+                        ]
+                      : undefined;
+                    const span = (
+                      <span key={`l-${li}`} className={bg ? `${bg} rounded` : undefined}>
+                        {collaborator?.image && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={collaborator.image}
+                            alt=""
+                            className="mr-1 inline-block h-3 w-3 rounded-full align-middle object-cover"
+                          />
+                        )}
+                        {line.length > 0 ? line : " "}
+                      </span>
+                    );
+                    return li < lines.length - 1 ? [span, "\n"] : [span];
+                  })}
+                </div>
+              )}
+              <textarea
+                ref={(el) => {
+                  textareaRefs.current[i] = el;
+                }}
+                value={block.value}
+                onChange={(e) => {
+                  updateTextBlock(i, e.target.value);
+                  autoResize(e.target);
+                }}
+                onFocus={() => setActiveIndex(i)}
+                onKeyDown={(e) => {
+                  handleFormatShortcut(e, i);
+                  handleListContinuation(e, i);
+                  handleListIndent(e, i);
+                }}
+                onPaste={handlePaste}
+                autoFocus={i === 0}
+                placeholder={
+                  blocks.length === 1 && !isEditing ? "Start writing…" : undefined
+                }
+                disabled={isPending}
+                rows={1}
+                className={`relative w-full resize-none overflow-hidden border-none bg-transparent p-0 text-lg leading-relaxed outline-none disabled:opacity-50 ${
+                  showAuthors ? "text-transparent caret-ink" : ""
+                }`}
+                style={i === 0 && blocks.length === 1 ? { minHeight: "55vh" } : undefined}
+              />
+            </div>
           ) : (
             <div key={i} className="group relative w-fit max-w-full">
               {/* eslint-disable-next-line @next/next/no-img-element */}

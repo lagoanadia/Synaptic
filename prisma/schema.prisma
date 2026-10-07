@@ -263,6 +263,15 @@ model BrainDump {
   authorId String
   author   User   @relation(fields: [authorId], references: [id])
 
+  // Index-aligned with content.split("\n") — who last touched each line,
+  // so a shared Pursuit's editor can show a per-line color/avatar instead
+  // of just one author for the whole page. Recomputed on every save by
+  // diffing old vs new content line-by-line (see lib/lineAuthors.ts):
+  // unchanged lines keep their existing author, changed/added lines
+  // become whoever just saved. Defaults to [] for dumps created before
+  // this existed — callers fall back to `authorId` for every line then.
+  lineAuthorIds String[] @default([])
+
   notes Note[]
 
   @@index([searchVector], type: Gin)
