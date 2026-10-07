@@ -157,6 +157,11 @@ model Pursuit {
   // already free-typed and optional.
   type          String?
   status        PursuitStatus @default(ACTIVE)
+  // A free-form scratchpad for this Pursuit ("current status", "pending:
+  // ...") — just text, no structure, no history, shown above the search
+  // bar. Separate from everything else here (BrainDump/Note) since it's
+  // not part of the capture-then-organize pipeline, just a sticky note.
+  statusNote    String?
   artifactUrl   String?
   lastTouchedAt DateTime      @default(now())
   createdAt     DateTime      @default(now())

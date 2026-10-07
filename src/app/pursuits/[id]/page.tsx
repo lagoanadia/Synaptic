@@ -19,6 +19,7 @@ import { DeleteButton } from "../DeleteButton";
 import { ClassroomImport } from "./ClassroomImport";
 import { AttachmentList } from "./AttachmentList";
 import { UpcomingDeadlines } from "./UpcomingDeadlines";
+import { StatusNote } from "./StatusNote";
 import { collaboratorOrder, colorIndexById } from "@/lib/authorColor";
 
 const CLASSROOM_ERROR_COPY: Record<string, string> = {
@@ -205,6 +206,8 @@ export default async function PursuitPage({
           )}
         </div>
       </div>
+
+      <StatusNote pursuitId={pursuit.id} initialNote={pursuit.statusNote} />
 
       <SearchBar pursuitId={pursuit.id} />
 

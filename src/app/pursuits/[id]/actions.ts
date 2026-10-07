@@ -963,6 +963,21 @@ export async function renamePursuit(pursuitId: string, title: string) {
   revalidatePath("/pursuits");
 }
 
+// A quick scratchpad note on the Pursuit itself — current status,
+// pending stuff — saved as plain text, no history, no markup. Empty
+// string is saved as null so an emptied-out note goes back to not
+// showing the box's placeholder as "saved content".
+export async function updateStatusNote(pursuitId: string, note: string) {
+  await requireAccess(pursuitId);
+
+  await prisma.pursuit.update({
+    where: { id: pursuitId },
+    data: { statusNote: note.trim() === "" ? null : note },
+  });
+
+  revalidatePath(`/pursuits/${pursuitId}`);
+}
+
 export async function updatePursuitMeta(pursuitId: string, formData: FormData) {
   const { session } = await requireAccess(pursuitId);
 
