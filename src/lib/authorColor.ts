@@ -21,17 +21,20 @@ export const AUTHOR_RING = [
   "ring-forest",
 ] as const;
 
-// Pale washes of the same 6 hues — a highlighter-style background behind
-// dark ink text (used for the per-line "who wrote this" marks in the
-// editor) instead of the full-saturation color, which would make text on
-// top of it unreadable.
-export const AUTHOR_BG_SOFT = [
-  "bg-flame-soft",
-  "bg-crimson-soft",
-  "bg-cobalt-soft",
-  "bg-gold-soft",
-  "bg-rose-soft",
-  "bg-forest-soft",
+// A real-highlighter-style mark for the editor's per-line "who wrote
+// this" background: the same 6 hues at partial opacity, not the
+// pre-baked "-soft" tokens — those were designed as a single pale wash
+// against the page background (a success/error banner), not to sit next
+// to each other and stay visually distinct, so two of them can end up
+// looking nearly identical side by side. Full hue at low alpha keeps
+// each color's identity while still letting black text read on top.
+export const AUTHOR_HIGHLIGHT = [
+  "bg-flame/30",
+  "bg-crimson/30",
+  "bg-cobalt/30",
+  "bg-gold/35",
+  "bg-rose/40",
+  "bg-forest/25",
 ] as const;
 
 export type Collaborator = { id: string; name: string | null; email: string; image: string | null };

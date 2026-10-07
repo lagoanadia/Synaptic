@@ -7,7 +7,7 @@ import { addBrainDump, transcribeAudio, updateBrainDump, type FormState } from "
 import { parseContent, type ContentSegment } from "@/lib/text";
 import { pdfToImagePages } from "@/lib/pdfToImages";
 import { diffLineAuthors, normalizeLineAuthors } from "@/lib/lineAuthors";
-import { AUTHOR_BG_SOFT, colorIndexById, type Collaborator } from "@/lib/authorColor";
+import { AUTHOR_HIGHLIGHT, colorIndexById, type Collaborator } from "@/lib/authorColor";
 
 const initialState: FormState = { error: null };
 
@@ -862,8 +862,8 @@ export function NewDumpForm({
                     const authorId = liveLineAuthorIds[blockLineStarts[i] + li];
                     const collaborator = collaborators.find((c) => c.id === authorId);
                     const bg = collaborator
-                      ? AUTHOR_BG_SOFT[
-                          (authorColorIndex.get(collaborator.id) ?? 0) % AUTHOR_BG_SOFT.length
+                      ? AUTHOR_HIGHLIGHT[
+                          (authorColorIndex.get(collaborator.id) ?? 0) % AUTHOR_HIGHLIGHT.length
                         ]
                       : undefined;
                     // No avatar photo in here on purpose — anything that
