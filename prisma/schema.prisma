@@ -42,6 +42,27 @@ model User {
   classroomConnection GoogleClassroomConnection?
   pushSubscriptions   PushSubscription[]
   sentNotifications   SentDeadlineNotification[]
+  apiKeys             ApiKey[]
+}
+
+// A personal access token for the MCP server (src/app/api/mcp) — lets an
+// external tool (Claude Desktop, another agent, a script) read and write
+// this user's own Pursuits over the Model Context Protocol, the same way
+// an OAuth app would, but with a token the user generates and revokes
+// themselves instead of a sign-in flow. Only the hash is stored; the raw
+// key is shown once, at creation, same as GitHub/Stripe's own API keys.
+// prefix is kept in the clear purely so the list UI can show "syn_a1b2…"
+// without needing the hash reversed.
+model ApiKey {
+  id         String    @id @default(cuid())
+  name       String
+  keyHash    String    @unique
+  prefix     String
+  createdAt  DateTime  @default(now())
+  lastUsedAt DateTime?
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 enum Plan {

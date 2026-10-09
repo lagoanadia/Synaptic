@@ -95,6 +95,12 @@ export function ProfileMenu({
               Billing
             </a>
             <a
+              href="/settings/api-keys"
+              className="block w-full rounded-lg px-3.5 py-2.5 text-left text-sm font-medium text-[#0d0d0d] transition-colors hover:bg-[#f2f1ee]"
+            >
+              API keys
+            </a>
+            <a
               href="/"
               className="block w-full rounded-lg px-3.5 py-2.5 text-left text-sm font-medium text-[#0d0d0d] transition-colors hover:bg-[#f2f1ee]"
             >
