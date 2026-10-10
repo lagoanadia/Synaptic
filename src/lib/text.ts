@@ -260,7 +260,12 @@ function parseTextBlocks(text: string): NoteBlock[] {
     }
 
     // A plain paragraph: fold in every following line up to the next blank
-    // line or shortcut, so a wrapped sentence stays one paragraph block.
+    // line or shortcut, so they render as one block — joined with "\n"
+    // (not " ") so each Enter the user typed stays a real line break
+    // (RichContent's paragraph <p> is whitespace-pre-wrap, so \n shows up
+    // as a break instead of being swallowed). A fully blank line is still
+    // what starts a new paragraph block; this only preserves line breaks
+    // *within* one.
     // Checking LIST_LINE against the RAW line (not trimmed) here matters —
     // it has to agree exactly with the dispatch check above it, or a line
     // that LOOKS like a list marker once trimmed (e.g. a tab, not spaces,
@@ -283,7 +288,7 @@ function parseTextBlocks(text: string): NoteBlock[] {
       paraLines.push(lines[i]);
       i++;
     }
-    blocks.push({ type: "paragraph", inline: parseInline(paraLines.join(" ")) });
+    blocks.push({ type: "paragraph", inline: parseInline(paraLines.join("\n")) });
   }
 
   return blocks;

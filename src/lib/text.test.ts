@@ -160,10 +160,10 @@ describe("parseNoteBlocks", () => {
     ]);
   });
 
-  it("folds wrapped lines into one paragraph", () => {
+  it("folds consecutive lines into one paragraph block, keeping each line break", () => {
     const blocks = parseNoteBlocks("line one\nline two continues");
     expect(blocks).toEqual([
-      { type: "paragraph", inline: [{ type: "text", value: "line one line two continues" }] },
+      { type: "paragraph", inline: [{ type: "text", value: "line one\nline two continues" }] },
     ]);
   });
 

@@ -471,7 +471,13 @@ export async function organizeDumps(
     hasImages
       ? `\n\n${imageUrls.length} image(s) referenced above are attached below for you to actually look at — use what's in them, don't just guess from the surrounding text.`
       : ""
-  }\n\nSynthesize the material above into one organized, structured note.
+  }\n\nIn the material above, a line break the author typed on its own (not
+just a long sentence that happens to wrap) usually marks a separate point,
+fact, or step, even without a "-" or "1." in front of it — don't flatten
+several such lines into one run-on paragraph. When in doubt, a short line
+followed by another short line is almost always two separate points.
+
+Synthesize the material above into one organized, structured note.
 
 Format the note's content using ONLY this exact set of shortcuts — nothing
 else, since the app only knows how to render these (anything not listed
