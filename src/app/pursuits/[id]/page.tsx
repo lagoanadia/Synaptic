@@ -23,6 +23,8 @@ import { StatusNote } from "./StatusNote";
 import { collaboratorOrder, colorIndexById } from "@/lib/authorColor";
 import { completeOnboarding } from "../actions";
 import { Tour } from "../../Tour";
+import { ProjectsBoard } from "./ProjectsBoard";
+import { TOUR_COPY, TOUR_UI, isLocale } from "@/lib/i18n";
 
 const CLASSROOM_ERROR_COPY: Record<string, string> = {
   denied: "Google Classroom connection canceled.",
@@ -44,7 +46,8 @@ export default async function PursuitPage({
     rawTab === "files" ||
     rawTab === "ask" ||
     rawTab === "cards" ||
-    rawTab === "timeline"
+    rawTab === "timeline" ||
+    rawTab === "projects"
       ? rawTab
       : "dump";
 
@@ -81,6 +84,10 @@ export default async function PursuitPage({
           },
           contentSections: { orderBy: { order: "asc" } },
           attachments: { orderBy: { createdAt: "desc" } },
+          projects: {
+            orderBy: { createdAt: "desc" },
+            include: { cards: { select: { status: true } } },
+          },
         },
       }),
       prisma.section.findMany({
@@ -105,13 +112,16 @@ export default async function PursuitPage({
       }),
       prisma.user.findUniqueOrThrow({
         where: { id: session.user.id },
-        select: { onboardedAt: true },
+        select: { onboardedAt: true, locale: true },
       }),
     ]);
 
   if (!pursuit) {
     notFound();
   }
+
+  const locale = isLocale(viewer.locale) ? viewer.locale : "en";
+  const tourCopy = TOUR_COPY[locale];
 
   // Only shown once a Pursuit actually has someone besides the owner —
   // no point coloring who-wrote-what when there's only ever been one
@@ -247,6 +257,9 @@ export default async function PursuitPage({
         </Link>
         <Link href={`/pursuits/${pursuit.id}?tab=timeline`} className={tabClass("timeline")}>
           Timeline
+        </Link>
+        <Link href={`/pursuits/${pursuit.id}?tab=projects`} className={tabClass("projects")}>
+          Projects
         </Link>
       </div>
 
@@ -393,28 +406,42 @@ export default async function PursuitPage({
         </div>
       )}
 
+      {tab === "projects" && (
+        <ProjectsBoard
+          pursuitId={pursuit.id}
+          projects={pursuit.projects.map((p) => ({
+            id: p.id,
+            title: p.title,
+            dueDate: p.dueDate ? p.dueDate.toISOString() : null,
+            totalCards: p.cards.length,
+            doneCards: p.cards.filter((c) => c.status === "DONE").length,
+          }))}
+        />
+      )}
+
       {viewer.onboardedAt === null && tab === "dump" && (
         <Tour
+          labels={TOUR_UI[locale]}
           steps={[
             {
               target: '[data-tour="tab-bar"]',
-              title: "Las seis vistas de una Pursuit",
-              body: "Brain Dump es donde apuntas todo en bruto. Organized son las notas limpias que genera la IA. Luego Files, Ask (pregúntale a tus apuntes), Cards (repaso espaciado) y Timeline.",
+              title: tourCopy.detail.tabs.title,
+              body: tourCopy.detail.tabs.body,
             },
             {
               target: '[data-tour="status-note"]',
-              title: "Tu nota de estado",
-              body: "Un espacio libre para apuntar en qué punto te quedaste o qué falta por hacer — no es un apunte más, solo un recordatorio para ti.",
+              title: tourCopy.detail.statusNote.title,
+              body: tourCopy.detail.statusNote.body,
             },
             {
               target: '[data-tour="search-bar"]',
-              title: "Busca dentro de esta Pursuit",
-              body: "Encuentra cualquier palabra que hayas escrito, tanto en tus apuntes en bruto como en las notas organizadas.",
+              title: tourCopy.detail.searchBar.title,
+              body: tourCopy.detail.searchBar.body,
             },
             {
               target: '[data-tour="dump-area"]',
-              title: "Captura y organiza",
-              body: "Marca la casilla de uno o varios apuntes y pulsa Organize para que la IA los convierta en una nota limpia, como la que ya tienes aquí de ejemplo en la pestaña Organized.",
+              title: tourCopy.detail.dumpArea.title,
+              body: tourCopy.detail.dumpArea.body,
             },
           ]}
           onFinish={completeOnboarding}

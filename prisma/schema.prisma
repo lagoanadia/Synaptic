@@ -34,6 +34,13 @@ model User {
   // it". See src/lib/onboarding.ts.
   onboardedAt DateTime?
 
+  // "en" | "de" | "fr" | "es" — see src/lib/i18n.ts. Only the onboarding
+  // tour actually reads this today; the rest of the app's copy is plain
+  // English text in the JSX, not yet routed through any translation
+  // table. Stored per-user (not a cookie) so it survives switching
+  // devices, same reasoning as onboardedAt.
+  locale String @default("en")
+
   accounts Account[]
   sessions Session[]
 
@@ -220,6 +227,7 @@ model Pursuit {
   attachments     Attachment[]
   flashcards      Flashcard[]
   contentSections PursuitContentSection[]
+  projects        Project[]
 }
 
 // Groups a Pursuit's OWN Brain Dump pages and Organized notes into
@@ -243,6 +251,54 @@ model PursuitContentSection {
   notes      Note[]
 
   @@unique([pursuitId, name])
+}
+
+// A separate thing from Pursuit itself — a Pursuit is "Calculus" or "Learn
+// Spanish"; a Project inside it is a single deliverable with a deadline,
+// like "Activity booklet, unit 3", tracked on its own Kanban board rather
+// than mixed into the capture-then-organize BrainDump/Note pipeline. The
+// "template" the UI asks for on creation (Kanban today) isn't stored here
+// — there's only ever been one board shape (fixed TODO/IN_PROGRESS/DONE
+// columns via ProjectCardStatus below), so there's nothing yet to persist
+// about which one was picked.
+model Project {
+  id          String    @id @default(cuid())
+  title       String
+  // The assignment description/"enunciado" text, if one was uploaded —
+  // kept verbatim as a reference a card's own description can point back
+  // to, separate from any single card. Not required: a Project can start
+  // from an empty board.
+  briefText   String?
+  dueDate     DateTime?
+  createdAt   DateTime  @default(now())
+
+  pursuitId String
+  pursuit   Pursuit @relation(fields: [pursuitId], references: [id])
+
+  cards ProjectCard[]
+}
+
+enum ProjectCardStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+}
+
+model ProjectCard {
+  id          String            @id @default(cuid())
+  title       String
+  description String?
+  status      ProjectCardStatus @default(TODO)
+  // Position within its OWN status column, same role as
+  // BrainDump/Note.sectionOrder — set past the current max whenever a
+  // card is dragged into a column, rewritten in full (via
+  // reorderProjectCards' bulk unnest UPDATE) whenever the column's order
+  // changes.
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 }
 
 // Who else (besides the owner) can see/edit a shared Pursuit, and at what level.

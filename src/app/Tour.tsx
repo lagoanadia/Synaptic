@@ -21,9 +21,13 @@ export type TourStep = {
 // one thing we need without a new dependency.
 export function Tour({
   steps,
+  labels = { skip: "Skip tutorial", next: "Next", done: "Got it" },
   onFinish,
 }: {
   steps: TourStep[];
+  // Button text — defaults to English; pages pass the viewer's own
+  // locale's labels from src/lib/i18n.ts's TOUR_UI instead.
+  labels?: { skip: string; next: string; done: string };
   // Called once, when the user finishes the last step or clicks "Skip".
   // The list-page tour passes nothing here (dismissing it is purely
   // local — it can reappear on a later visit); the detail-page tour
@@ -105,7 +109,7 @@ export function Tour({
             onClick={close}
             className="text-xs text-ink-faint hover:text-ink"
           >
-            Saltar tutorial
+            {labels.skip}
           </button>
           <div className="flex items-center gap-2">
             <span className="text-xs text-ink-faint">
@@ -116,7 +120,7 @@ export function Tour({
               onClick={next}
               className="rounded-full bg-ink px-3.5 py-1.5 text-xs font-semibold text-white transition-transform hover:-translate-y-0.5 hover:shadow-md"
             >
-              {isLast ? "Entendido" : "Siguiente"}
+              {isLast ? labels.done : labels.next}
             </button>
           </div>
         </div>

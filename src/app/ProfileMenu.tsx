@@ -1,8 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
+import { useRouter } from "next/navigation";
 import { signOutAction } from "./actions";
+import { setLocale } from "./pursuits/actions";
+import { LOCALES, type Locale } from "@/lib/i18n";
 
 const MENU_WIDTH = 220;
 
@@ -17,12 +20,20 @@ export function ProfileMenu({
   email,
   image,
   plan,
+  locale,
 }: {
   name: string | null | undefined;
   email: string | null | undefined;
   image: string | null | undefined;
   plan: string;
+  // Only the onboarding tour's text actually changes with this today —
+  // see src/lib/i18n.ts. Optional so existing callers that don't fetch a
+  // viewer's locale (there are none left, but nothing requires it) don't
+  // break; defaults to English.
+  locale?: Locale;
 }) {
+  const router = useRouter();
+  const [isChangingLocale, startLocaleTransition] = useTransition();
   const [open, setOpen] = useState(false);
   const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -86,6 +97,28 @@ export function ProfileMenu({
               <p className="mt-1 text-xs font-medium text-[#2383e2]">
                 {PLAN_LABEL[plan] ?? plan}
               </p>
+            </div>
+            <div className="my-1 h-px bg-black/5" />
+            <div className="flex items-center justify-between px-3.5 py-2">
+              <span className="text-xs font-medium text-[#6b6b6b]">🌐 Language</span>
+              <select
+                value={locale ?? "en"}
+                disabled={isChangingLocale}
+                onChange={(e) => {
+                  const next = e.target.value as Locale;
+                  startLocaleTransition(async () => {
+                    await setLocale(next);
+                    router.refresh();
+                  });
+                }}
+                className="rounded-md border border-black/10 bg-white px-1.5 py-1 text-xs text-[#0d0d0d] disabled:opacity-50"
+              >
+                {LOCALES.map((l) => (
+                  <option key={l.code} value={l.code}>
+                    {l.label}
+                  </option>
+                ))}
+              </select>
             </div>
             <div className="my-1 h-px bg-black/5" />
             <a

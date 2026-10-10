@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { upsertSection } from "@/lib/sections";
+import { isLocale } from "@/lib/i18n";
 
 export async function createPursuit(formData: FormData) {
   const session = await auth();
@@ -84,6 +85,8 @@ export async function deletePursuit(pursuitId: string) {
     prisma.tag.deleteMany({ where: { pursuitId } }),
     prisma.attachment.deleteMany({ where: { pursuitId } }),
     prisma.pursuitMember.deleteMany({ where: { pursuitId } }),
+    // ProjectCard cascades from Project, so deleting Project is enough.
+    prisma.project.deleteMany({ where: { pursuitId } }),
     prisma.pursuit.delete({ where: { id: pursuitId } }),
   ]);
 
@@ -178,6 +181,17 @@ export async function unsubscribeFromPush(endpoint: string) {
 // Called by the onboarding tour's last step (or its "skip" link) — once
 // set, neither the list-page nor the detail-page tour renders again. See
 // src/components/Tour.tsx and src/lib/onboarding.ts.
+// The "little button" to switch language — see ProfileMenu.tsx. Only the
+// onboarding tour's own text actually reads this today (src/lib/i18n.ts);
+// stored on User so it survives switching devices, same as onboardedAt.
+export async function setLocale(locale: string) {
+  const session = await auth();
+  if (!session?.user?.id) return;
+  if (!isLocale(locale)) return;
+  await prisma.user.update({ where: { id: session.user.id }, data: { locale } });
+  revalidatePath("/pursuits");
+}
+
 export async function completeOnboarding() {
   const session = await auth();
   if (!session?.user?.id) return;

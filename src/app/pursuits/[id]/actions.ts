@@ -8,10 +8,11 @@ import type {
   ChatCompletionContentPartImage,
   ChatCompletionCreateParamsNonStreaming,
 } from "groq-sdk/resources/chat/completions";
-import { PursuitStatus, MemberRole } from "@/generated/prisma/client";
+import { PursuitStatus, MemberRole, ProjectCardStatus } from "@/generated/prisma/client";
 import { upsertSection, upsertContentSection } from "@/lib/sections";
 import { HEADLINE_OPTIONS, buildOrTsQuery } from "@/lib/search";
 import { parseOrganizeResponse } from "@/lib/organize";
+import { parseJsonLoosely } from "@/lib/json";
 import { parseFlashcardsResponse } from "@/lib/flashcards";
 import { computeNextReview, dueDateAfter } from "@/lib/sm2";
 import {
@@ -1331,4 +1332,219 @@ export async function deleteFlashcard(pursuitId: string, flashcardId: string) {
   await requireAccess(pursuitId);
   await prisma.flashcard.deleteMany({ where: { id: flashcardId, pursuitId } });
   revalidatePath(`/pursuits/${pursuitId}`);
+}
+
+// ── Projects (a per-Pursuit Kanban board for a single deliverable) ─────────
+
+export async function createProject(pursuitId: string, title: string, dueDate: string | null) {
+  await requireAccess(pursuitId);
+  if (title.trim() === "") {
+    throw new Error("Title is required");
+  }
+  const project = await prisma.project.create({
+    data: {
+      pursuitId,
+      title: title.trim(),
+      dueDate: dueDate ? new Date(dueDate) : null,
+    },
+  });
+  revalidatePath(`/pursuits/${pursuitId}`);
+  return project.id;
+}
+
+export async function deleteProject(pursuitId: string, projectId: string) {
+  await requireAccess(pursuitId);
+  // ProjectCard has ON DELETE CASCADE on projectId, so its cards go with it.
+  await prisma.project.deleteMany({ where: { id: projectId, pursuitId } });
+  revalidatePath(`/pursuits/${pursuitId}`);
+}
+
+export async function updateProjectDueDate(
+  pursuitId: string,
+  projectId: string,
+  dueDate: string | null,
+) {
+  await requireAccess(pursuitId);
+  await prisma.project.updateMany({
+    where: { id: projectId, pursuitId },
+    data: { dueDate: dueDate ? new Date(dueDate) : null },
+  });
+  revalidatePath(`/pursuits/${pursuitId}/projects/${projectId}`);
+}
+
+export async function createProjectCard(
+  pursuitId: string,
+  projectId: string,
+  status: ProjectCardStatus,
+  title: string,
+) {
+  await requireAccess(pursuitId);
+  if (title.trim() === "") return;
+
+  // Appended past the current highest order in this column, same idea as
+  // BrainDump/Note.sectionOrder — a fresh card always lands at the bottom
+  // of its column instead of jumbling existing ones.
+  const top = await prisma.projectCard.findFirst({
+    where: { projectId, status },
+    orderBy: { order: "desc" },
+    select: { order: true },
+  });
+  await prisma.projectCard.create({
+    data: {
+      projectId,
+      status,
+      title: title.trim(),
+      order: (top?.order ?? -1) + 1,
+    },
+  });
+  revalidatePath(`/pursuits/${pursuitId}/projects/${projectId}`);
+}
+
+export async function updateProjectCard(
+  pursuitId: string,
+  projectId: string,
+  cardId: string,
+  data: { title?: string; description?: string | null },
+) {
+  await requireAccess(pursuitId);
+  await prisma.projectCard.updateMany({
+    where: { id: cardId, projectId, project: { pursuitId } },
+    data: {
+      ...(data.title !== undefined ? { title: data.title.trim() } : {}),
+      ...(data.description !== undefined ? { description: data.description } : {}),
+    },
+  });
+  revalidatePath(`/pursuits/${pursuitId}/projects/${projectId}`);
+}
+
+export async function deleteProjectCard(pursuitId: string, projectId: string, cardId: string) {
+  await requireAccess(pursuitId);
+  await prisma.projectCard.deleteMany({ where: { id: cardId, projectId, project: { pursuitId } } });
+  revalidatePath(`/pursuits/${pursuitId}/projects/${projectId}`);
+}
+
+// Moves a card into (or within) one column in one trip — same bulk
+// UPDATE...unnest...WITH ORDINALITY idiom as reorderDumpSection /
+// reorderNoteSection, for the same reason: a per-item loop here is exactly
+// the pattern that previously caused a "failed to connect to upstream
+// database" outage under connection-pool pressure (see that fix's commit).
+// Callers always pass the WHOLE resulting ordered id list for the target
+// column, not just the one card that moved.
+export async function reorderProjectCards(
+  pursuitId: string,
+  projectId: string,
+  status: ProjectCardStatus,
+  orderedCardIds: string[],
+) {
+  await requireAccess(pursuitId);
+  if (orderedCardIds.length === 0) return;
+  await prisma.$executeRaw`
+    UPDATE "ProjectCard" AS c
+    SET "status" = ${status}::"ProjectCardStatus", "order" = (data.ord - 1)
+    FROM unnest(${orderedCardIds}::text[]) WITH ORDINALITY AS data(id, ord)
+    WHERE c.id = data.id AND c."projectId" = ${projectId}
+  `;
+  revalidatePath(`/pursuits/${pursuitId}/projects/${projectId}`);
+}
+
+// Same vision/text-fallback pattern as organizeDumps, reusing the same
+// daily Groq quota (it's the same cost surface) — proposes starting cards
+// from an uploaded assignment description ("enunciado") instead of
+// writing them by hand. Cards come back as TODO; the user edits/deletes
+// before — or after — ever dragging anything.
+export async function proposeProjectCards(
+  pursuitId: string,
+  projectId: string,
+  imageUrls: string[],
+): Promise<{ error: string | null; count?: number }> {
+  const { session } = await requireAccess(pursuitId);
+  const unlimited = await hasUnlimitedAccess(session.user.id, session.user.email);
+
+  if (!unlimited) {
+    const usedToday = await getOrganizeUsageToday(session.user.id);
+    if (usedToday >= DAILY_ORGANIZE_LIMIT) {
+      return {
+        error: `You've hit the limit of ${DAILY_ORGANIZE_LIMIT} AI organizes for today. Try again tomorrow.`,
+      };
+    }
+  }
+
+  if (imageUrls.length === 0) {
+    return { error: "No pages to read" };
+  }
+  const usedImages = imageUrls.slice(0, MAX_VISION_IMAGES);
+
+  const prompt = `The attached image(s) are an assignment description ("enunciado"). Read them and break the assignment down into a short list of concrete to-do cards — one per distinct task/activity/section/deliverable it asks for. Each card's title should be short (a few words); the description can restate that specific task in a bit more detail.
+
+Respond with ONLY a JSON object, no other text: {"cards": [{"title": "...", "description": "..."}, ...]}. Write in the same language as the assignment. Produce between 1 and 12 cards — never invent tasks the assignment doesn't actually ask for.`;
+
+  let completion;
+  try {
+    completion = await createJsonCompletion({
+      model: VISION_MODEL,
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: prompt },
+            ...usedImages.map(
+              (url): ChatCompletionContentPartImage => ({
+                type: "image_url",
+                image_url: { url },
+              }),
+            ),
+          ],
+        },
+      ],
+      response_format: { type: "json_object" },
+      max_completion_tokens: 4000,
+    });
+  } catch {
+    return { error: "Couldn't reach the AI right now. Try again in a few minutes." };
+  }
+
+  const text = completion.choices[0]?.message?.content;
+  if (!text) {
+    return { error: "AI did not return a usable response" };
+  }
+
+  if (!unlimited) {
+    await incrementOrganizeUsage(session.user.id);
+  }
+
+  const parsed = parseJsonLoosely(text);
+  const rawCards =
+    parsed && typeof parsed === "object" && Array.isArray((parsed as { cards?: unknown }).cards)
+      ? (parsed as { cards: unknown[] }).cards
+      : [];
+  const cards = rawCards
+    .filter(
+      (c): c is { title: string; description?: string } =>
+        !!c && typeof c === "object" && typeof (c as { title?: unknown }).title === "string",
+    )
+    .slice(0, 12);
+
+  if (cards.length === 0) {
+    return { error: "Couldn't find any tasks in that — try a clearer page or add cards by hand" };
+  }
+
+  const top = await prisma.projectCard.findFirst({
+    where: { projectId, status: "TODO" },
+    orderBy: { order: "desc" },
+    select: { order: true },
+  });
+  let nextOrder = (top?.order ?? -1) + 1;
+
+  await prisma.projectCard.createMany({
+    data: cards.map((c) => ({
+      projectId,
+      status: "TODO" as const,
+      title: c.title.trim().slice(0, 200),
+      description: typeof c.description === "string" ? c.description : null,
+      order: nextOrder++,
+    })),
+  });
+
+  revalidatePath(`/pursuits/${pursuitId}/projects/${projectId}`);
+  return { error: null, count: cards.length };
 }

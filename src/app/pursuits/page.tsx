@@ -7,6 +7,7 @@ import { DeleteButton } from "./DeleteButton";
 import { PursuitsBoard, type PursuitForDisplay } from "./PursuitsBoard";
 import { ProfileMenu } from "../ProfileMenu";
 import { Tour } from "../Tour";
+import { TOUR_COPY, TOUR_UI, isLocale } from "@/lib/i18n";
 
 function timeAgo(date: Date) {
   const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
@@ -42,9 +43,12 @@ export default async function PursuitsPage() {
     }),
     prisma.user.findUniqueOrThrow({
       where: { id: session.user.id },
-      select: { plan: true, onboardedAt: true },
+      select: { plan: true, onboardedAt: true, locale: true },
     }),
   ]);
+
+  const locale = isLocale(viewer.locale) ? viewer.locale : "en";
+  const tourCopy = TOUR_COPY[locale];
 
   // Sections are free-typed and stored per user (see Section in the
   // schema) — grouped here from whichever pursuits already carry one,
@@ -103,6 +107,7 @@ export default async function PursuitsPage() {
           email={session.user.email}
           image={session.user.image}
           plan={viewer.plan}
+          locale={locale}
         />
       </div>
 
@@ -192,16 +197,17 @@ export default async function PursuitsPage() {
 
       {viewer.onboardedAt === null && (
         <Tour
+          labels={TOUR_UI[locale]}
           steps={[
             {
               target: '[data-tour="new-pursuit-form"]',
-              title: "Crea tu primera Pursuit",
-              body: "Una Pursuit es una asignatura, un proyecto o cualquier cosa que quieras seguir — ponle un título aquí y pulsa + New.",
+              title: tourCopy.list.newProject.title,
+              body: tourCopy.list.newProject.body,
             },
             {
               target: '[data-tour="pursuits-list"]',
-              title: "Ya te hemos creado un ejemplo",
-              body: "Ábrela — \"👋 Bienvenida a Synaptic\" — para ver cómo es un apunte en bruto y la nota ya organizada que genera la IA.",
+              title: tourCopy.list.openExample.title,
+              body: tourCopy.list.openExample.body,
             },
           ]}
         />
