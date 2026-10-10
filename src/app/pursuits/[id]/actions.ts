@@ -399,7 +399,14 @@ const TEXT_MODEL = "openai/gpt-oss-120b";
 // that docs page directly (or the Playground's model list with an image
 // attached) for whatever's current, and swap it in here again.
 const VISION_MODEL = "qwen/qwen3.8-27b";
-const MAX_VISION_IMAGES = 5;
+// Was 5 — confirmed wrong from a live Groq error: "Too many images
+// provided. This model supports up to 3 images" (invalid_request_error),
+// hit in production via proposeProjectCards with a multi-page assignment.
+// Previously documented as a Groq-wide "vision models cap at 5
+// images/request" rule, which doesn't hold for qwen/qwen3.8-27b
+// specifically — if this model changes again, re-check the real cap from
+// an actual error rather than trusting that number.
+const MAX_VISION_IMAGES = 3;
 
 // Groq's own JSON mode occasionally rejects its own generation with a
 // "json_validate_failed" error -- a one-off sampling hiccup, not an
@@ -1472,57 +1479,98 @@ export async function proposeProjectCards(
   if (imageUrls.length === 0) {
     return { error: "No pages to read" };
   }
-  const usedImages = imageUrls.slice(0, MAX_VISION_IMAGES);
 
-  const prompt = `The attached image(s) are an assignment description ("enunciado"). Read them and break the assignment down into a short list of concrete to-do cards — one per distinct task/activity/section/deliverable it asks for. Each card's title should be short (a few words); the description can restate that specific task in a bit more detail.
-
-Respond with ONLY a JSON object, no other text: {"cards": [{"title": "...", "description": "..."}, ...]}. Write in the same language as the assignment. Produce between 1 and 12 cards — never invent tasks the assignment doesn't actually ask for.`;
-
-  let completion;
-  try {
-    completion = await createJsonCompletion({
-      model: VISION_MODEL,
-      messages: [
-        {
-          role: "user",
-          content: [
-            { type: "text", text: prompt },
-            ...usedImages.map(
-              (url): ChatCompletionContentPartImage => ({
-                type: "image_url",
-                image_url: { url },
-              }),
-            ),
-          ],
-        },
-      ],
-      response_format: { type: "json_object" },
-      max_completion_tokens: 4000,
-    });
-  } catch {
-    return { error: "Couldn't reach the AI right now. Try again in a few minutes." };
+  // The vision model caps out at MAX_VISION_IMAGES per call (confirmed
+  // from a live Groq invalid_request_error, not just assumed) — a
+  // multi-page PDF (a real assignment easily runs 10+ pages) has to be
+  // read in several sequential calls instead of one, or every page past
+  // the cap is silently dropped. Each chunk's prompt says which pages it
+  // is so the model doesn't assume it's seeing the whole document.
+  const chunks: string[][] = [];
+  for (let i = 0; i < imageUrls.length; i += MAX_VISION_IMAGES) {
+    chunks.push(imageUrls.slice(i, i + MAX_VISION_IMAGES));
   }
 
-  const text = completion.choices[0]?.message?.content;
-  if (!text) {
-    return { error: "AI did not return a usable response" };
+  type ProposedCard = { title: string; description?: string };
+  const allCards: ProposedCard[] = [];
+  let anySucceeded = false;
+
+  for (let i = 0; i < chunks.length; i++) {
+    const chunk = chunks[i];
+    const pageRange =
+      chunks.length > 1
+        ? ` (pages ${i * MAX_VISION_IMAGES + 1}-${i * MAX_VISION_IMAGES + chunk.length} of ${imageUrls.length} — other pages are sent in separate calls, propose cards for ONLY what's visible here)`
+        : "";
+    const prompt = `The attached image(s) are pages from an assignment description ("enunciado")${pageRange}. Read them and break the assignment down into a short list of concrete to-do cards — one per distinct task/activity/section/deliverable it asks for. Each card's title should be short (a few words); the description can restate that specific task in a bit more detail.
+
+Respond with ONLY a JSON object, no other text: {"cards": [{"title": "...", "description": "..."}, ...]}. Write in the same language as the assignment. Never invent tasks the assignment doesn't actually ask for — an empty {"cards": []} is fine if this page has none.`;
+
+    try {
+      const completion = await createJsonCompletion({
+        model: VISION_MODEL,
+        messages: [
+          {
+            role: "user",
+            content: [
+              { type: "text", text: prompt },
+              ...chunk.map(
+                (url): ChatCompletionContentPartImage => ({
+                  type: "image_url",
+                  image_url: { url },
+                }),
+              ),
+            ],
+          },
+        ],
+        response_format: { type: "json_object" },
+        // Was 4000 — too tight for a page with several tasks: Groq's
+        // json_object mode throws json_validate_failed when
+        // max_completion_tokens cuts the response off mid-string, which
+        // is indistinguishable from a real outage here (the exact bug
+        // organizeDumps hit before it got its own explicit 16000 cap).
+        max_completion_tokens: 8000,
+      });
+      const text = completion.choices[0]?.message?.content;
+      if (!text) continue;
+
+      anySucceeded = true;
+      const parsed = parseJsonLoosely(text);
+      const rawCards =
+        parsed && typeof parsed === "object" && Array.isArray((parsed as { cards?: unknown }).cards)
+          ? (parsed as { cards: unknown[] }).cards
+          : [];
+      allCards.push(
+        ...rawCards.filter(
+          (c): c is ProposedCard =>
+            !!c && typeof c === "object" && typeof (c as { title?: unknown }).title === "string",
+        ),
+      );
+    } catch (err) {
+      // One bad chunk (a transient Groq error, a page it couldn't parse)
+      // shouldn't throw away every other page's cards — log it and keep
+      // going. Unlike organizeDumps, there's no text-model fallback worth
+      // trying per chunk: the prompt has nothing but "the attached
+      // image(s)" — no inline "![image](url)" markers with real
+      // surrounding material the way a Brain Dump's content has — so a
+      // text-only retry would have nothing to read from and only
+      // fabricate cards.
+      console.error(`proposeProjectCards: chunk ${i + 1}/${chunks.length} failed`, err);
+    }
+  }
+
+  if (!anySucceeded) {
+    return { error: "Couldn't reach the AI right now. Try again in a few minutes." };
   }
 
   if (!unlimited) {
     await incrementOrganizeUsage(session.user.id);
   }
 
-  const parsed = parseJsonLoosely(text);
-  const rawCards =
-    parsed && typeof parsed === "object" && Array.isArray((parsed as { cards?: unknown }).cards)
-      ? (parsed as { cards: unknown[] }).cards
-      : [];
-  const cards = rawCards
-    .filter(
-      (c): c is { title: string; description?: string } =>
-        !!c && typeof c === "object" && typeof (c as { title?: unknown }).title === "string",
-    )
-    .slice(0, 12);
+  // A thorough multi-page read can legitimately propose more cards than
+  // a single short assignment — capped generously rather than to a
+  // single page's worth, but still bounded so one odd document can't
+  // flood the board.
+  const cards = allCards.slice(0, 40);
 
   if (cards.length === 0) {
     return { error: "Couldn't find any tasks in that — try a clearer page or add cards by hand" };

@@ -4,6 +4,14 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { ProjectBoard } from "./ProjectBoard";
 
+// proposeProjectCards (invoked as a Server Action from this page) can make
+// several sequential Groq calls for a multi-page PDF (one per
+// MAX_VISION_IMAGES-sized chunk of pages) — comfortably past Vercel's
+// default Function duration. A Server Action executes in whichever
+// route's own Function served the page it was called from, so this is
+// set here, not on the action itself.
+export const maxDuration = 60;
+
 export default async function ProjectPage({
   params,
 }: {
