@@ -175,6 +175,18 @@ export async function unsubscribeFromPush(endpoint: string) {
   await prisma.pushSubscription.deleteMany({ where: { endpoint, userId: session.user.id } });
 }
 
+// Called by the onboarding tour's last step (or its "skip" link) — once
+// set, neither the list-page nor the detail-page tour renders again. See
+// src/components/Tour.tsx and src/lib/onboarding.ts.
+export async function completeOnboarding() {
+  const session = await auth();
+  if (!session?.user?.id) return;
+  await prisma.user.update({
+    where: { id: session.user.id },
+    data: { onboardedAt: new Date() },
+  });
+}
+
 export async function hasPushSubscription(endpoint: string): Promise<boolean> {
   const session = await auth();
   if (!session?.user?.id) return false;

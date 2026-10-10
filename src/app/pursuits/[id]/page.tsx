@@ -21,6 +21,8 @@ import { AttachmentList } from "./AttachmentList";
 import { UpcomingDeadlines } from "./UpcomingDeadlines";
 import { StatusNote } from "./StatusNote";
 import { collaboratorOrder, colorIndexById } from "@/lib/authorColor";
+import { completeOnboarding } from "../actions";
+import { Tour } from "../../Tour";
 
 const CLASSROOM_ERROR_COPY: Record<string, string> = {
   denied: "Google Classroom connection canceled.",
@@ -51,7 +53,7 @@ export default async function PursuitPage({
     redirect("/");
   }
 
-  const [pursuit, sections, distinctTypes, dueFlashcards, upcomingFlashcardCount, classroomConnection] =
+  const [pursuit, sections, distinctTypes, dueFlashcards, upcomingFlashcardCount, classroomConnection, viewer] =
     await Promise.all([
       prisma.pursuit.findFirst({
         where: {
@@ -100,6 +102,10 @@ export default async function PursuitPage({
       prisma.googleClassroomConnection.findUnique({
         where: { userId: session.user.id },
         select: { id: true },
+      }),
+      prisma.user.findUniqueOrThrow({
+        where: { id: session.user.id },
+        select: { onboardedAt: true },
       }),
     ]);
 
@@ -207,16 +213,20 @@ export default async function PursuitPage({
         </div>
       </div>
 
-      <StatusNote pursuitId={pursuit.id} initialNote={pursuit.statusNote} />
+      <div data-tour="status-note">
+        <StatusNote pursuitId={pursuit.id} initialNote={pursuit.statusNote} />
+      </div>
 
-      <SearchBar pursuitId={pursuit.id} />
+      <div data-tour="search-bar">
+        <SearchBar pursuitId={pursuit.id} />
+      </div>
 
       <UpcomingDeadlines
         pursuitId={pursuit.id}
         hasCourse={pursuit.classroomEnabled && !!pursuit.classroomCourseId}
       />
 
-      <div className="flex gap-7 border-b border-border-subtle">
+      <div data-tour="tab-bar" className="flex gap-7 border-b border-border-subtle">
         <Link href={`/pursuits/${pursuit.id}?tab=dump`} className={tabClass("dump")}>
           Brain Dump
         </Link>
@@ -381,6 +391,34 @@ export default async function PursuitPage({
             }))}
           />
         </div>
+      )}
+
+      {viewer.onboardedAt === null && tab === "dump" && (
+        <Tour
+          steps={[
+            {
+              target: '[data-tour="tab-bar"]',
+              title: "Las seis vistas de una Pursuit",
+              body: "Brain Dump es donde apuntas todo en bruto. Organized son las notas limpias que genera la IA. Luego Files, Ask (pregúntale a tus apuntes), Cards (repaso espaciado) y Timeline.",
+            },
+            {
+              target: '[data-tour="status-note"]',
+              title: "Tu nota de estado",
+              body: "Un espacio libre para apuntar en qué punto te quedaste o qué falta por hacer — no es un apunte más, solo un recordatorio para ti.",
+            },
+            {
+              target: '[data-tour="search-bar"]',
+              title: "Busca dentro de esta Pursuit",
+              body: "Encuentra cualquier palabra que hayas escrito, tanto en tus apuntes en bruto como en las notas organizadas.",
+            },
+            {
+              target: '[data-tour="dump-area"]',
+              title: "Captura y organiza",
+              body: "Marca la casilla de uno o varios apuntes y pulsa Organize para que la IA los convierta en una nota limpia, como la que ya tienes aquí de ejemplo en la pestaña Organized.",
+            },
+          ]}
+          onFinish={completeOnboarding}
+        />
       )}
     </div>
   );

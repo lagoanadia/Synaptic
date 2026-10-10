@@ -29,6 +29,11 @@ model User {
   stripeSubscriptionId   String?   @unique
   stripeCurrentPeriodEnd DateTime?
 
+  // Set once the first-run tour (list page + the seeded example Pursuit's
+  // Brain Dump tab) has been finished or skipped — null means "still show
+  // it". See src/lib/onboarding.ts.
+  onboardedAt DateTime?
+
   accounts Account[]
   sessions Session[]
 

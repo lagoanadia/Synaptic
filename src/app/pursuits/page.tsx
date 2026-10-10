@@ -6,6 +6,7 @@ import { TypeSelect } from "./TypeSelect";
 import { DeleteButton } from "./DeleteButton";
 import { PursuitsBoard, type PursuitForDisplay } from "./PursuitsBoard";
 import { ProfileMenu } from "../ProfileMenu";
+import { Tour } from "../Tour";
 
 function timeAgo(date: Date) {
   const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
@@ -41,7 +42,7 @@ export default async function PursuitsPage() {
     }),
     prisma.user.findUniqueOrThrow({
       where: { id: session.user.id },
-      select: { plan: true },
+      select: { plan: true, onboardedAt: true },
     }),
   ]);
 
@@ -105,7 +106,11 @@ export default async function PursuitsPage() {
         />
       </div>
 
-      <form action={createPursuit} className="flex flex-wrap gap-2">
+      <form
+        action={createPursuit}
+        data-tour="new-pursuit-form"
+        className="flex flex-wrap gap-2"
+      >
         <input
           type="text"
           name="title"
@@ -175,13 +180,32 @@ export default async function PursuitsPage() {
         </div>
       )}
 
-      <PursuitsBoard
-        sectionRows={sectionRows}
-        shared={shared}
-        unsectioned={unsectioned}
-        sectionNames={sections.map((s) => s.name)}
-        viewerId={session.user.id}
-      />
+      <div data-tour="pursuits-list">
+        <PursuitsBoard
+          sectionRows={sectionRows}
+          shared={shared}
+          unsectioned={unsectioned}
+          sectionNames={sections.map((s) => s.name)}
+          viewerId={session.user.id}
+        />
+      </div>
+
+      {viewer.onboardedAt === null && (
+        <Tour
+          steps={[
+            {
+              target: '[data-tour="new-pursuit-form"]',
+              title: "Crea tu primera Pursuit",
+              body: "Una Pursuit es una asignatura, un proyecto o cualquier cosa que quieras seguir — ponle un título aquí y pulsa + New.",
+            },
+            {
+              target: '[data-tour="pursuits-list"]',
+              title: "Ya te hemos creado un ejemplo",
+              body: "Ábrela — \"👋 Bienvenida a Synaptic\" — para ver cómo es un apunte en bruto y la nota ya organizada que genera la IA.",
+            },
+          ]}
+        />
+      )}
     </div>
   );
 }
