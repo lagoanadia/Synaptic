@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { TypeSelect } from "../TypeSelect";
 import { updatePursuitMeta } from "./actions";
+import { pursuitDotColor } from "@/lib/pursuitColor";
 
 const STATUS_OPTIONS = ["ACTIVE", "PAUSED", "DONE"];
 
@@ -34,7 +35,7 @@ export function PursuitMeta({
         className="flex items-center gap-2"
       >
         <span
-          className={`h-2 w-2 rounded-full ${status === "ACTIVE" ? "bg-accent" : "bg-ink-faint"}`}
+          className={`h-2 w-2 rounded-full ${status === "ACTIVE" ? pursuitDotColor(pursuitId) : "bg-ink-faint"}`}
         />
         <span className="text-sm text-ink-muted hover:text-ink hover:underline">
           {type && `${type} · `}

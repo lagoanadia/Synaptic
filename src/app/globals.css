@@ -14,10 +14,26 @@
   --color-foreground: var(--foreground);
   --color-ink: #0d0d0d;
   --color-ink-muted: #6b6b6b;
-  --color-ink-faint: #9a9a9a;
+  /* Was #9a9a9a — only 2.49:1 against this page's cream background
+     (--background #f2f1ee), failing WCAG AA's 4.5:1 floor for normal
+     text. On this specific background, 4.5:1 caps out around #6e6e6e, so
+     ink-faint ends up only one shade lighter than ink-muted (#6b6b6b) —
+     there isn't room for a third distinct gray tier and AA compliance at
+     the same time on a background this light. */
+  --color-ink-faint: #6c6c6c;
   --color-border-subtle: rgba(13, 13, 13, 0.08);
-  --color-accent: #2383e2;
-  --color-accent-soft: #eaf3fd;
+  /* Was #2383e2 (a blue with no connection to the brand) — Synaptic has
+     no brand color of its own beyond its own ink/cream palette, so the
+     "accent" is now just that ink, used with intent (primary actions,
+     focus, the active tab) rather than as a decorative color. accent-fg
+     is the text/icon color to put ON TOP of a solid accent fill;
+     accent-soft is the pale tint for a hover state or a soft fill
+     (e.g. a selected card) that needs to read as "accent" without the
+     full-strength black. Every previous literal #2383e2 in the codebase
+     was swapped for one of these three, not left as a stray hex. */
+  --color-accent: #0d0d0d;
+  --color-accent-fg: #ffffff;
+  --color-accent-soft: #ececea;
   --color-chip: #f1f1ef;
   --color-callout: #f7f6f3;
   /* The card color set, pulled directly from nadia-lagoa.vercel.app's own

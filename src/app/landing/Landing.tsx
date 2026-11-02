@@ -13,7 +13,7 @@ export function Landing() {
         <Reveal>
           <h1 className="text-[clamp(2rem,5.5vw,3.4rem)] font-extrabold leading-[1.15] tracking-tight text-[#0d0d0d]">
             A place for your{" "}
-            <span className="whitespace-nowrap rounded-[10px] bg-[#eaf3fd] px-2.5 text-[#2383e2]">
+            <span className="whitespace-nowrap rounded-[10px] bg-accent-soft px-2.5 text-accent">
               brain dumps
             </span>{" "}
             to become{" "}
@@ -35,7 +35,7 @@ export function Landing() {
             <AuthMenu triggerClassName="rounded-full bg-[#0d0d0d] px-7 py-3.5 text-[0.95rem] font-semibold text-white transition-transform hover:-translate-y-1 hover:shadow-[0_24px_48px_-12px_rgba(13,13,13,0.22),0_8px_16px_rgba(13,13,13,0.08)]">
               Join for free
             </AuthMenu>
-            <a href="#features" className="font-semibold transition-colors hover:text-[#2383e2]">
+            <a href="#features" className="font-semibold transition-colors hover:text-accent">
               Read more →
             </a>
           </div>
@@ -61,7 +61,7 @@ export function Landing() {
 
         <div className="mx-auto grid max-w-6xl grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Reveal delayMs={0} className="lg:row-span-2">
-            <div className={`${tileBase} flex h-full min-h-[340px] flex-col justify-end bg-[#2383e2]`}>
+            <div className={`${tileBase} flex h-full min-h-[340px] flex-col justify-end bg-[#0f3d2e]`}>
               <span className="text-xs font-bold tracking-wide opacity-75">01 — BRAIN DUMPS</span>
               <p className="mt-2.5 text-[1.3rem] font-bold">Organized by AI, automatically</p>
               <p className="mt-2 text-sm opacity-85">
@@ -97,13 +97,13 @@ export function Landing() {
       </section>
 
       {/* ---------- how it works ---------- */}
-      <section className="bg-[#eaf3fd] px-6 py-[clamp(60px,8vw,100px)] text-center">
+      <section className="bg-[#f7f6f3] px-6 py-[clamp(60px,8vw,100px)] text-center">
         <Reveal>
           <h2 className="mb-10 text-[clamp(1.7rem,3.6vw,2.4rem)] font-extrabold">How it works</h2>
         </Reveal>
         <div className="mx-auto grid max-w-[1100px] grid-cols-1 gap-5 sm:grid-cols-3">
           {[
-            { n: "1", color: "#2383e2", title: "Dump", desc: "Capture everything mid-lecture, no structure required." },
+            { n: "1", color: "#0f3d2e", title: "Dump", desc: "Capture everything mid-lecture, no structure required." },
             { n: "2", color: "#b5502e", title: "Organize", desc: "AI sorts, tags, and files notes into sections." },
             { n: "3", color: "#a3821f", title: "Recall", desc: "Ask questions, spin up flashcards, study smarter." },
           ].map((step, i) => (
@@ -135,7 +135,7 @@ export function Landing() {
               <ul className="mb-7 flex flex-col gap-2.5 text-sm">
                 {["Unlimited capture", "AI organizing", "10 flashcards/mo"].map((f) => (
                   <li key={f} className="relative pl-5 opacity-85">
-                    <span className="absolute left-0 font-bold text-[#2383e2]">✓</span>
+                    <span className="absolute left-0 font-bold text-accent">✓</span>
                     {f}
                   </li>
                 ))}
@@ -169,7 +169,7 @@ export function Landing() {
               </ul>
               <a
                 href="/billing"
-                className="block w-full rounded-full bg-[#2383e2] py-3.5 text-center text-sm font-semibold transition-transform hover:-translate-y-1 hover:shadow-[0_16px_32px_rgba(35,131,226,0.35)]"
+                className="block w-full rounded-full bg-white py-3.5 text-center text-sm font-semibold text-accent transition-transform hover:-translate-y-1 hover:shadow-[0_16px_32px_rgba(13,13,13,0.3)]"
               >
                 Go Pro
               </a>
@@ -185,7 +185,7 @@ export function Landing() {
               <ul className="mb-7 flex flex-col gap-2.5 text-sm">
                 {["Shared sections", "Study group spaces", "Priority support"].map((f) => (
                   <li key={f} className="relative pl-5 opacity-85">
-                    <span className="absolute left-0 font-bold text-[#2383e2]">✓</span>
+                    <span className="absolute left-0 font-bold text-[#b5502e]">✓</span>
                     {f}
                   </li>
                 ))}
@@ -203,7 +203,7 @@ export function Landing() {
 
       {/* ---------- CTA banner ---------- */}
       <Reveal className="block px-6">
-        <section className="mx-auto mb-20 flex max-w-6xl flex-wrap items-center justify-between gap-8 rounded-[28px] bg-[#2383e2] p-[clamp(32px,6vw,60px)] text-white shadow-[0_24px_48px_-12px_rgba(13,13,13,0.22),0_8px_16px_rgba(13,13,13,0.08)]">
+        <section className="mx-auto mb-20 flex max-w-6xl flex-wrap items-center justify-between gap-8 rounded-[28px] bg-accent p-[clamp(32px,6vw,60px)] text-accent-fg shadow-[0_24px_48px_-12px_rgba(13,13,13,0.22),0_8px_16px_rgba(13,13,13,0.08)]">
           <div className="text-center sm:text-left">
             <h2 className="text-[clamp(1.5rem,3vw,2.1rem)] font-extrabold">
               Start your first pursuit today.
@@ -211,7 +211,7 @@ export function Landing() {
             <p className="my-2.5 mb-5 opacity-90">Free forever plan. No credit card.</p>
             <AuthMenu
               align="left"
-              triggerClassName="rounded-full bg-white px-7 py-3.5 text-[0.95rem] font-semibold text-[#2383e2] transition-transform hover:-translate-y-1 hover:shadow-[0_24px_48px_-12px_rgba(13,13,13,0.22),0_8px_16px_rgba(13,13,13,0.08)]"
+              triggerClassName="rounded-full bg-white px-7 py-3.5 text-[0.95rem] font-semibold text-accent transition-transform hover:-translate-y-1 hover:shadow-[0_24px_48px_-12px_rgba(13,13,13,0.22),0_8px_16px_rgba(13,13,13,0.08)]"
             >
               Join for free
             </AuthMenu>
@@ -222,7 +222,7 @@ export function Landing() {
               <p className="mt-2 font-bold">Outline shared</p>
             </div>
             <div className="absolute bottom-0 right-0 w-[170px] rounded-2xl bg-white p-[18px] text-[#0d0d0d] shadow-[0_8px_24px_rgba(13,13,13,0.08),0_2px_6px_rgba(13,13,13,0.06)]">
-              <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-[#2383e2]" />
+              <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-accent" />
               <span className="text-xs font-semibold opacity-65">Chem · active</span>
               <p className="mt-2 font-bold">12 cards ready</p>
             </div>

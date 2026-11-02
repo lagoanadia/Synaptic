@@ -6,6 +6,7 @@ import { TypeSelect } from "./TypeSelect";
 import { DeleteButton } from "./DeleteButton";
 import { PursuitsBoard, type PursuitForDisplay } from "./PursuitsBoard";
 import { ProfileMenu } from "../ProfileMenu";
+import { Logo } from "../Logo";
 import { Tour } from "../Tour";
 import { TOUR_COPY, TOUR_UI, isLocale } from "@/lib/i18n";
 
@@ -94,13 +95,16 @@ export default async function PursuitsPage() {
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-6 py-12">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <h1 className="text-2xl font-semibold">Pursuits</h1>
-          {viewer.plan !== "FREE" && (
-            <span className="rounded-full bg-accent-soft px-2.5 py-1 text-xs font-semibold text-accent">
-              {viewer.plan === "PRO" ? "Student Pro" : "Team"}
-            </span>
-          )}
+        <div className="flex items-center gap-5">
+          <Logo href="/pursuits" />
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-2xl font-semibold">Pursuits</h1>
+            {viewer.plan !== "FREE" && (
+              <span className="rounded-full bg-accent-soft px-2.5 py-1 text-xs font-semibold text-accent">
+                {viewer.plan === "PRO" ? "Student Pro" : "Team"}
+              </span>
+            )}
+          </div>
         </div>
         <ProfileMenu
           name={session.user.name}

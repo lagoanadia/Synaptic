@@ -57,16 +57,16 @@ export function HeroCards() {
     >
       <Reveal delayMs={0}>
         <div data-tilt-card style={tiltStyle} className={`${cardBase} bg-white`}>
-          <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-[#2383e2]" />
+          <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-accent" />
           <span className="text-xs font-semibold opacity-65">Chem · active</span>
           <p className="mt-2 text-[0.95rem] font-bold leading-tight">Ch.9 — Thermodynamics</p>
-          <span className="mt-3 inline-block rounded-full bg-[#eaf3fd] px-2.5 py-0.5 text-[0.7rem] font-bold text-[#2383e2]">
+          <span className="mt-3 inline-block rounded-full bg-accent-soft px-2.5 py-0.5 text-[0.7rem] font-bold text-accent">
             12 cards
           </span>
         </div>
       </Reveal>
       <Reveal delayMs={90}>
-        <div data-tilt-card style={tiltStyle} className={`${cardBase} bg-[#2383e2] text-white`}>
+        <div data-tilt-card style={tiltStyle} className={`${cardBase} bg-accent text-accent-fg`}>
           <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-white" />
           <span className="text-xs font-semibold opacity-65">Bio Lab · active</span>
           <p className="mt-2 text-[0.95rem] font-bold leading-tight">Prep organized into 3 sections</p>
@@ -77,7 +77,7 @@ export function HeroCards() {
       </Reveal>
       <Reveal delayMs={180}>
         <div data-tilt-card style={tiltStyle} className={`${cardBase} bg-[#ebda3c]`}>
-          <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-[#2383e2]" />
+          <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-accent" />
           <span className="text-xs font-semibold opacity-65">Essay · active</span>
           <p className="mt-2 text-[0.95rem] font-bold leading-tight">Outline shared with 2 classmates</p>
           <span className="mt-3 inline-block rounded-full bg-black/10 px-2.5 py-0.5 text-[0.7rem] font-bold">

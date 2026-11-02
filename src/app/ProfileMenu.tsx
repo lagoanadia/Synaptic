@@ -72,7 +72,7 @@ export function ProfileMenu({
         ref={triggerRef}
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-[#2383e2] text-sm font-bold text-white transition-transform hover:-translate-y-0.5 hover:shadow-md"
+        className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-accent text-sm font-bold text-accent-fg transition-transform hover:-translate-y-0.5 hover:shadow-md"
         aria-label="Account menu"
       >
         {image ? (
@@ -94,7 +94,7 @@ export function ProfileMenu({
             <div className="truncate px-3.5 py-2 text-sm">
               <p className="font-semibold text-[#0d0d0d]">{name ?? "Your account"}</p>
               {email && <p className="truncate text-xs text-[#6b6b6b]">{email}</p>}
-              <p className="mt-1 text-xs font-medium text-[#2383e2]">
+              <p className="mt-1 text-xs font-medium text-accent">
                 {PLAN_LABEL[plan] ?? plan}
               </p>
             </div>

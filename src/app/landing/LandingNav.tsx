@@ -21,13 +21,13 @@ export function LandingNav() {
         </a>
 
         <nav className="hidden gap-8 text-sm font-medium text-[#0d0d0d] sm:flex">
-          <a href="#features" className="transition-colors hover:text-[#2383e2]">
+          <a href="#features" className="transition-colors hover:text-accent">
             Features
           </a>
-          <a href="#pricing" className="transition-colors hover:text-[#2383e2]">
+          <a href="#pricing" className="transition-colors hover:text-accent">
             Pricing
           </a>
-          <a href="#contact" className="transition-colors hover:text-[#2383e2]">
+          <a href="#contact" className="transition-colors hover:text-accent">
             Contact
           </a>
         </nav>

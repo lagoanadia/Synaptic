@@ -32,7 +32,7 @@ export const metadata: Metadata = {
 // themeColor used to live on `metadata` — Next.js 14 split it out into
 // this separate `viewport` export instead.
 export const viewport: Viewport = {
-  themeColor: "#2383e2",
+  themeColor: "#0d0d0d",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

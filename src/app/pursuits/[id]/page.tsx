@@ -18,6 +18,7 @@ import { Timeline } from "./Timeline";
 import { DeleteButton } from "../DeleteButton";
 import { ClassroomImport } from "./ClassroomImport";
 import { AttachmentList } from "./AttachmentList";
+import { Logo } from "../../Logo";
 import { UpcomingDeadlines } from "./UpcomingDeadlines";
 import { StatusNote } from "./StatusNote";
 import { collaboratorOrder, colorIndexById } from "@/lib/authorColor";
@@ -150,12 +151,15 @@ export default async function PursuitPage({
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-5 px-6 py-9">
       <div className="flex items-center justify-between">
-        <Link
-          href="/pursuits"
-          className="text-sm text-ink-muted hover:underline"
-        >
-          ← Exit
-        </Link>
+        <div className="flex items-center gap-4">
+          <Logo href="/pursuits" withWordmark={false} size={20} />
+          <Link
+            href="/pursuits"
+            className="text-sm text-ink-muted hover:underline"
+          >
+            ← Exit
+          </Link>
+        </div>
         <div className="flex items-center gap-4">
           <a
             href={`/api/pursuits/${pursuit.id}/export`}
