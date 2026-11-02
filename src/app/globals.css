@@ -22,18 +22,14 @@
      the same time on a background this light. */
   --color-ink-faint: #6c6c6c;
   --color-border-subtle: rgba(13, 13, 13, 0.08);
-  /* Was #2383e2 (a blue with no connection to the brand) — Synaptic has
-     no brand color of its own beyond its own ink/cream palette, so the
-     "accent" is now just that ink, used with intent (primary actions,
-     focus, the active tab) rather than as a decorative color. accent-fg
-     is the text/icon color to put ON TOP of a solid accent fill;
-     accent-soft is the pale tint for a hover state or a soft fill
-     (e.g. a selected card) that needs to read as "accent" without the
-     full-strength black. Every previous literal #2383e2 in the codebase
-     was swapped for one of these three, not left as a stray hex. */
-  --color-accent: #0d0d0d;
+  /* Back to the original blue — the neutral ink accent tried during the
+     rebranding pass was rejected outright ("hate this black"), so this
+     reverts to Synaptic's actual brand color. accent-fg is the text/icon
+     color to put ON TOP of a solid accent fill; accent-soft is the pale
+     tint for a hover state or a soft fill (e.g. a selected card). */
+  --color-accent: #2383e2;
   --color-accent-fg: #ffffff;
-  --color-accent-soft: #ececea;
+  --color-accent-soft: #eaf3fd;
   --color-chip: #f1f1ef;
   --color-callout: #f7f6f3;
   /* The card color set, pulled directly from nadia-lagoa.vercel.app's own
