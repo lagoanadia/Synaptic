@@ -202,7 +202,7 @@ export function MergeControls({
             setDropTarget({ id: n.id, position });
           }}
           onDrop={(e) => handleRowDrop(sectionId, list, n.id, e)}
-          className={`flex scroll-mt-6 cursor-grab gap-3 rounded-2xl bg-white p-5 shadow-[0_1px_2px_rgba(13,13,13,0.06)] transition-shadow hover:shadow-[0_8px_24px_rgba(13,13,13,0.08),0_2px_6px_rgba(13,13,13,0.06)] active:cursor-grabbing ${
+          className={`group flex scroll-mt-6 cursor-grab gap-3 rounded-2xl bg-white p-5 shadow-[0_1px_2px_rgba(13,13,13,0.06)] transition-shadow hover:shadow-[0_8px_24px_rgba(13,13,13,0.08),0_2px_6px_rgba(13,13,13,0.06)] active:cursor-grabbing ${
             draggingId === n.id ? "opacity-40" : ""
           }`}
         >
@@ -246,9 +246,9 @@ export function MergeControls({
                 disabled={isPending}
                 onChange={(e) => assignToSection(n, e.target.value || null)}
                 title="Move to section"
-                className="max-w-24 truncate rounded-md border border-border-subtle bg-white px-1.5 py-1 text-xs text-ink-muted disabled:opacity-50"
+                className="max-w-20 shrink-0 truncate border-none bg-transparent p-0 text-xs text-ink-faint opacity-0 outline-none transition-opacity group-hover:opacity-100 hover:text-ink focus:opacity-100 disabled:opacity-50"
               >
-                <option value="">No section</option>
+                <option value="">—</option>
                 {sections.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.name}

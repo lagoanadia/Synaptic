@@ -114,7 +114,7 @@ function DumpRow({
       onDragEnd={onDragEnd}
       onDragOver={onDragOverRow}
       onDrop={onDropOnRow}
-      className={`-mx-2 flex cursor-grab items-center gap-3 rounded-xl px-2 py-2.5 transition-colors hover:bg-chip active:cursor-grabbing ${
+      className={`group -mx-2 flex cursor-grab items-center gap-3 rounded-xl px-2 py-2.5 transition-colors hover:bg-chip active:cursor-grabbing ${
         isDragging ? "opacity-40" : ""
       }`}
     >
@@ -169,9 +169,9 @@ function DumpRow({
           disabled={isPending}
           onChange={(e) => onAssignSection(e.target.value || null)}
           title="Move to section"
-          className="max-w-24 truncate rounded-md border border-border-subtle bg-white px-1.5 py-1 text-xs text-ink-muted disabled:opacity-50"
+          className="max-w-20 shrink-0 truncate border-none bg-transparent p-0 text-xs text-ink-faint opacity-0 outline-none transition-opacity group-hover:opacity-100 hover:text-ink focus:opacity-100 disabled:opacity-50"
         >
-          <option value="">No section</option>
+          <option value="">—</option>
           {sections.map((s) => (
             <option key={s.id} value={s.id}>
               {s.name}
