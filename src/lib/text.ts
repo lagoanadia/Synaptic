@@ -8,7 +8,15 @@ const LEADING_MARKER = /^(?:!|-|\d+\.|[a-zA-Z]\.)\s+/;
 // paragraph follows on the next line.
 export function autoTitle(content: string | null, maxWords = 8): string {
   if (!content || content.trim() === "") return "Untitled";
-  const trimmed = content.trim();
+  // An image marker is one unbroken run with no spaces of its own
+  // (`![image](https://...)`) — left in, it either becomes the entire
+  // title verbatim (when it's the first line) or eats one whole slot out
+  // of the maxWords budget as a single giant "word". Strip every one of
+  // them before picking words, so the title is always built from actual
+  // written text.
+  const withoutImages = content.replace(/!\[image\]\([^)]*\)/g, " ").trim();
+  if (withoutImages === "") return "Untitled";
+  const trimmed = withoutImages;
   const firstLine = trimmed.split("\n")[0].trim();
 
   const heading = LEADING_HEADING.exec(firstLine);

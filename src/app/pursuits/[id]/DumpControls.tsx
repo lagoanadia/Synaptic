@@ -85,6 +85,8 @@ function DumpRow({
   onDragEnd,
   onDragOverRow,
   onDropOnRow,
+  sections,
+  onAssignSection,
 }: {
   pursuitId: string;
   d: DumpForDisplay;
@@ -98,6 +100,12 @@ function DumpRow({
   onDragEnd: () => void;
   onDragOverRow: (e: React.DragEvent) => void;
   onDropOnRow: (e: React.DragEvent) => void;
+  // A non-drag way to move a page into a section — same result as
+  // dragging it there, for when a section is off-screen or dragging just
+  // isn't convenient (e.g. on a touch screen, which HTML5 drag-and-drop
+  // doesn't support at all).
+  sections: SectionForDisplay[];
+  onAssignSection: (sectionId: string | null) => void;
 }) {
   return (
     <div
@@ -154,6 +162,22 @@ function DumpRow({
         >
           Finalize
         </button>
+      )}
+      {sections.length > 0 && (
+        <select
+          value={d.sectionId ?? ""}
+          disabled={isPending}
+          onChange={(e) => onAssignSection(e.target.value || null)}
+          title="Move to section"
+          className="max-w-24 truncate rounded-md border border-border-subtle bg-white px-1.5 py-1 text-xs text-ink-muted disabled:opacity-50"
+        >
+          <option value="">No section</option>
+          {sections.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.name}
+            </option>
+          ))}
+        </select>
       )}
       <DeleteButton
         action={deleteBrainDump.bind(null, pursuitId, d.id)}
@@ -253,6 +277,15 @@ export function DumpControls({
 
   const { unsectioned, bySection } = groupBySection(dumps, sections);
 
+  // Same end result as dropping a page onto a section (append to that
+  // group's current list) — the non-drag path from the row's own
+  // "move to section" select.
+  function assignToSection(d: DumpForDisplay, sectionId: string | null) {
+    const list = sectionId === null ? unsectioned : (bySection.get(sectionId) ?? []);
+    const ids = [...list.filter((x) => x.id !== d.id).map((x) => x.id), d.id];
+    startTransition(() => reorderDumpSection(pursuitId, sectionId, ids));
+  }
+
   function renderRows(list: DumpForDisplay[], sectionId: string | null) {
     return list.map((d) => (
       <div key={d.id}>
@@ -281,6 +314,8 @@ export function DumpControls({
             setDropTarget({ id: d.id, position });
           }}
           onDropOnRow={(e) => handleRowDrop(sectionId, list, d.id, e)}
+          sections={sections}
+          onAssignSection={(newSectionId) => assignToSection(d, newSectionId)}
         />
         {dropTarget?.id === d.id && dropTarget.position === "after" && (
           <div className="mx-2 h-0.5 rounded-full bg-accent" />

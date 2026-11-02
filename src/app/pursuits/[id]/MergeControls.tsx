@@ -168,6 +168,17 @@ export function MergeControls({
     startTransition(() => reorderNoteSection(pursuitId, sectionId, ids));
   }
 
+  // Same end result as dropping a note onto a section (append to that
+  // group's current list) — the non-drag path from the card's own "move
+  // to section" select. Reads bySection/unsectioned from below — safe
+  // since this only ever runs once the component's render has already
+  // computed them (see groupBySection below), never at definition time.
+  function assignToSection(n: NoteForDisplay, sectionId: string | null) {
+    const list = sectionId === null ? unsectioned : (bySection.get(sectionId) ?? []);
+    const ids = [...list.filter((x) => x.id !== n.id).map((x) => x.id), n.id];
+    startTransition(() => reorderNoteSection(pursuitId, sectionId, ids));
+  }
+
   function renderCard(n: NoteForDisplay, sectionId: string | null, list: NoteForDisplay[]) {
     const isExpanded = expandedIds.has(n.id) || editingId === n.id;
     return (
@@ -229,6 +240,22 @@ export function MergeControls({
             >
               Export PDF
             </a>
+            {sections.length > 0 && (
+              <select
+                value={n.sectionId ?? ""}
+                disabled={isPending}
+                onChange={(e) => assignToSection(n, e.target.value || null)}
+                title="Move to section"
+                className="max-w-24 truncate rounded-md border border-border-subtle bg-white px-1.5 py-1 text-xs text-ink-muted disabled:opacity-50"
+              >
+                <option value="">No section</option>
+                {sections.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
 
           {isExpanded && (

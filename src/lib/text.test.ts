@@ -39,6 +39,22 @@ describe("autoTitle", () => {
   it("doesn't add an ellipsis when content fits within maxWords", () => {
     expect(autoTitle("short title", 8)).toBe("short title");
   });
+
+  it("skips a leading image marker instead of using it as the title", () => {
+    expect(autoTitle("![image](https://blob.example/photo.jpg)\nReal title here")).toBe(
+      "Real title here",
+    );
+  });
+
+  it("doesn't let an inline image marker eat a word slot from the budget", () => {
+    expect(
+      autoTitle("First ![image](https://blob.example/a.jpg) second third fourth", 3),
+    ).toBe("First second third…");
+  });
+
+  it("returns 'Untitled' when the content is only image markers", () => {
+    expect(autoTitle("![image](https://blob.example/a.jpg)")).toBe("Untitled");
+  });
 });
 
 describe("parseContent", () => {
