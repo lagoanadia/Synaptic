@@ -45,28 +45,11 @@ const CARD_BG_SOFT = [
 // consecutive rows land on a different start color for 10 rows straight
 // before the pattern repeats.
 const ROW_COLOR_STEP = 3;
-// Which text color actually clears WCAG AA on each CARD_BG entry above —
-// measured against the real hex values, not assumed. A flat "always
-// white" rule (the previous behavior) turns out to fail outright on
-// gold/rose (the lightest hues: ~1.5:1) and is marginal on flame/crimson;
-// ink wins clearly there instead. Gradients take whichever color performs
-// better across both of their stops. cobalt→rose is the one combination
-// with no single text color clearing 4.5:1 at both ends — a mid
-// saturation blue next to a very pale pink — so it gets the closer of
-// the two (ink) rather than a false "fixed" claim; everything else here
-// is fully AA-compliant.
-const CARD_TEXT: ("ink" | "white")[] = [
-  "ink", // flame
-  "ink", // crimson
-  "white", // cobalt
-  "ink", // gold
-  "ink", // rose
-  "white", // forest
-  "ink", // flame -> crimson
-  "ink", // cobalt -> rose (no fully AA-safe option; ink is the closer one)
-  "ink", // crimson -> flame
-  "white", // forest -> cobalt
-];
+// White on every card, by explicit design choice — not WCAG AA-safe on
+// gold/rose (~1.5:1, measured against the real hex values) or marginal on
+// flame/crimson (~3.4-4.3:1), but that tradeoff was made deliberately:
+// dark text on these cards was rejected on sight as "feo" (ugly) in favor
+// of a single uniform white treatment across the whole palette.
 
 export type PursuitForDisplay = {
   id: string;
@@ -95,13 +78,12 @@ function PursuitCard({
 }) {
   const canSelect = selectMode && p.ownerId === viewerId;
 
-  // Full-saturation cards (active, unselected) use whichever text color
-  // actually clears WCAG AA against THIS card's specific color (see
-  // CARD_TEXT above) — not a blanket "white" assumption. Softened/selected
-  // cards are pale washes, so they keep the app's usual dark ink text.
+  // Full-saturation cards (active, unselected) always carry white text, by
+  // explicit design choice (see the comment above ROW_COLOR_STEP) —
+  // softened/selected cards are pale washes, so they keep the app's usual
+  // dark ink text, since white there would be unreadable regardless.
   const vivid = !selected && p.status === "ACTIVE";
-  const textOn: "ink" | "white" = vivid ? CARD_TEXT[colorIndex % CARD_TEXT.length] : "ink";
-  const isWhite = textOn === "white";
+  const isWhite = vivid;
 
   // No opacity on any of this text — a translucent white/ink was the
   // actual contrast failure the rebranding task flagged (text-white/70
