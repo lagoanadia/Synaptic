@@ -32,7 +32,8 @@ export const metadata: Metadata = {
 // themeColor used to live on `metadata` — Next.js 14 split it out into
 // this separate `viewport` export instead.
 export const viewport: Viewport = {
-  themeColor: "#0d0d0d",
+  // Matches the icon's own blue, kept on purpose (see Logo.tsx).
+  themeColor: "#2383e2",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

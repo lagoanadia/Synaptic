@@ -91,11 +91,11 @@ function PursuitCard({
   // hierarchy comes from size/weight instead.
   const cardBody = (
     <div className="flex flex-1 flex-col gap-3">
-      <span className={`truncate text-xs font-medium ${isWhite ? "text-white" : "text-ink"}`}>
+      <span className={`truncate pr-14 text-xs font-medium ${isWhite ? "text-white" : "text-ink"}`}>
         {p.type ? `${p.type} · ` : ""}
         {p.status.toLowerCase()}
       </span>
-      <div className={`text-base font-semibold ${isWhite ? "text-white" : "text-ink"}`}>{p.title}</div>
+      <div className={`pr-14 text-base font-semibold ${isWhite ? "text-white" : "text-ink"}`}>{p.title}</div>
       {p.pursuitTags.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {p.pursuitTags.map((t) => (

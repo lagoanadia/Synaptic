@@ -13,7 +13,7 @@ export default function manifest(): MetadataRoute.Manifest {
     start_url: "/pursuits",
     display: "standalone",
     background_color: "#ffffff",
-    theme_color: "#0d0d0d",
+    theme_color: "#2383e2",
     // Filenames carry a "-v3" suffix (not a version field — the manifest
     // spec has none) specifically so an already-installed PWA is forced to
     // fetch a new URL instead of keeping whatever icon bytes it cached at
