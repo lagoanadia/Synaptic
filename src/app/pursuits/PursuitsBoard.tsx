@@ -3,6 +3,7 @@
 import { useRef, useState, useTransition } from "react";
 import { assignSection, deletePursuit } from "./actions";
 import { DeleteButton } from "./DeleteButton";
+import { ConnectionEmptyState } from "../ConnectionMotif";
 
 // All 10 colors from nadia-lagoa.vercel.app's own "Things I've built"
 // section, in the same order as its 10 project cards (Synaptic, Larder,
@@ -44,6 +45,28 @@ const CARD_BG_SOFT = [
 // consecutive rows land on a different start color for 10 rows straight
 // before the pattern repeats.
 const ROW_COLOR_STEP = 3;
+// Which text color actually clears WCAG AA on each CARD_BG entry above —
+// measured against the real hex values, not assumed. A flat "always
+// white" rule (the previous behavior) turns out to fail outright on
+// gold/rose (the lightest hues: ~1.5:1) and is marginal on flame/crimson;
+// ink wins clearly there instead. Gradients take whichever color performs
+// better across both of their stops. cobalt→rose is the one combination
+// with no single text color clearing 4.5:1 at both ends — a mid
+// saturation blue next to a very pale pink — so it gets the closer of
+// the two (ink) rather than a false "fixed" claim; everything else here
+// is fully AA-compliant.
+const CARD_TEXT: ("ink" | "white")[] = [
+  "ink", // flame
+  "ink", // crimson
+  "white", // cobalt
+  "ink", // gold
+  "ink", // rose
+  "white", // forest
+  "ink", // flame -> crimson
+  "ink", // cobalt -> rose (no fully AA-safe option; ink is the closer one)
+  "ink", // crimson -> flame
+  "white", // forest -> cobalt
+];
 
 export type PursuitForDisplay = {
   id: string;
@@ -72,31 +95,38 @@ function PursuitCard({
 }) {
   const canSelect = selectMode && p.ownerId === viewerId;
 
-  // Full-saturation cards (active, unselected) carry white text like the
-  // source project cards do; softened/selected cards are pale washes, so
-  // they keep the app's usual dark ink text.
+  // Full-saturation cards (active, unselected) use whichever text color
+  // actually clears WCAG AA against THIS card's specific color (see
+  // CARD_TEXT above) — not a blanket "white" assumption. Softened/selected
+  // cards are pale washes, so they keep the app's usual dark ink text.
   const vivid = !selected && p.status === "ACTIVE";
+  const textOn: "ink" | "white" = vivid ? CARD_TEXT[colorIndex % CARD_TEXT.length] : "ink";
+  const isWhite = textOn === "white";
 
+  // No opacity on any of this text — a translucent white/ink was the
+  // actual contrast failure the rebranding task flagged (text-white/70
+  // etc. reads as 70% of an already-tight ratio). Full opacity throughout;
+  // hierarchy comes from size/weight instead.
   const cardBody = (
     <div className="flex flex-1 flex-col gap-3">
-      <span className={`truncate text-xs font-medium ${vivid ? "text-white/80" : "text-ink/80"}`}>
+      <span className={`truncate text-xs font-medium ${isWhite ? "text-white" : "text-ink"}`}>
         {p.type ? `${p.type} · ` : ""}
         {p.status.toLowerCase()}
       </span>
-      <div className={`text-base font-semibold ${vivid ? "text-white" : "text-ink"}`}>{p.title}</div>
+      <div className={`text-base font-semibold ${isWhite ? "text-white" : "text-ink"}`}>{p.title}</div>
       {p.pursuitTags.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {p.pursuitTags.map((t) => (
             <span
               key={t.id}
-              className={`rounded-full px-2 py-0.5 text-xs ${vivid ? "bg-white/20 text-white" : "bg-black/10 text-ink"}`}
+              className={`rounded-full px-2 py-0.5 text-xs ${isWhite ? "bg-white/20 text-white" : "bg-black/10 text-ink"}`}
             >
               {t.name}
             </span>
           ))}
         </div>
       )}
-      <div className={`text-xs ${vivid ? "text-white/70" : "text-ink/70"}`}>
+      <div className={`text-xs ${isWhite ? "text-white" : "text-ink"}`}>
         last touched {p.timeAgoLabel}
       </div>
     </div>
@@ -113,8 +143,19 @@ function PursuitCard({
 
   return (
     <div
-      className={`flex w-56 flex-shrink-0 flex-col gap-3 rounded-2xl p-5 shadow-[0_1px_2px_rgba(13,13,13,0.06)] transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-[0_8px_24px_rgba(13,13,13,0.08),0_2px_6px_rgba(13,13,13,0.06)] ${bg}`}
+      className={`group relative flex w-56 flex-shrink-0 flex-col gap-3 rounded-2xl p-5 shadow-[0_1px_2px_rgba(13,13,13,0.06)] transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-[0_8px_24px_rgba(13,13,13,0.08),0_2px_6px_rgba(13,13,13,0.06)] ${bg}`}
     >
+      {!selectMode && p.ownerId === viewerId && (
+        <DeleteButton
+          action={deletePursuit.bind(null, p.id)}
+          confirmMessage={`Delete "${p.title}"? This deletes everything inside it and can't be undone.`}
+          className={`absolute top-3 right-3 rounded-full px-2 py-1 text-xs opacity-0 transition-opacity group-hover:opacity-100 focus:opacity-100 ${
+            isWhite ? "bg-black/20 text-white hover:bg-black/30" : "bg-white/60 text-ink hover:bg-white/90 hover:text-red-600"
+          }`}
+        >
+          Delete
+        </DeleteButton>
+      )}
       <div className="flex flex-1 items-start gap-2">
         {canSelect && (
           <input
@@ -134,15 +175,6 @@ function PursuitCard({
           </a>
         )}
       </div>
-      {!selectMode && p.ownerId === viewerId && (
-        <DeleteButton
-          action={deletePursuit.bind(null, p.id)}
-          confirmMessage={`Delete "${p.title}"? This deletes everything inside it and can't be undone.`}
-          className={`self-start text-xs ${vivid ? "text-white/70 hover:text-white" : "text-ink/70 hover:text-red-600"}`}
-        >
-          Delete
-        </DeleteButton>
-      )}
     </div>
   );
 }
@@ -317,9 +349,7 @@ export function PursuitsBoard({
         />
       )}
       {sectionRows.length === 0 && shared.length === 0 && unsectioned.length === 0 && (
-        <p className="text-sm text-ink-muted">
-          No pursuits yet — create your first one above.
-        </p>
+        <ConnectionEmptyState title="No pursuits yet — create your first one above." />
       )}
     </div>
   );

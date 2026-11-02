@@ -13,6 +13,8 @@ import {
 import { DeleteButton } from "../DeleteButton";
 import { RichContent } from "./RichContent";
 import { autoTitle } from "@/lib/text";
+import { ConnectionEmptyState, NotesGraph } from "../../ConnectionMotif";
+import { pursuitDotColor } from "@/lib/pursuitColor";
 
 type NoteForDisplay = {
   id: string;
@@ -399,9 +401,15 @@ export function MergeControls({
   }
 
   const { unsectioned, bySection } = groupBySection(notes, sections);
+  const graphNodes = sections
+    .filter((s) => bySection.has(s.id))
+    .map((s) => ({ label: s.name, count: bySection.get(s.id)!.length }));
 
   return (
     <div className="flex flex-col gap-4">
+      {graphNodes.length >= 2 && (
+        <NotesGraph nodes={graphNodes} colorClassName={pursuitDotColor(pursuitId).replace("bg-", "text-")} />
+      )}
       <div className="flex items-center gap-2">
         {selected.length >= 2 && (
           <button
@@ -501,9 +509,7 @@ export function MergeControls({
         );
       })}
 
-      {notes.length === 0 && (
-        <p className="text-sm text-ink-muted">No organized notes yet.</p>
-      )}
+      {notes.length === 0 && <ConnectionEmptyState title="No organized notes yet." />}
     </div>
   );
 }

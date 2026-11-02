@@ -13,6 +13,7 @@ import {
 import { DeleteButton } from "../DeleteButton";
 import { AuthorBadge } from "./AuthorBadge";
 import { autoTitle } from "@/lib/text";
+import { ConnectionEmptyState } from "../../ConnectionMotif";
 
 type DumpForDisplay = {
   id: string;
@@ -437,7 +438,7 @@ export function DumpControls({
       })}
 
       {dumps.length === 0 && (
-        <p className="text-sm text-ink-muted">Nothing dumped yet — start above.</p>
+        <ConnectionEmptyState title="Nothing dumped yet — start above." />
       )}
     </div>
   );
