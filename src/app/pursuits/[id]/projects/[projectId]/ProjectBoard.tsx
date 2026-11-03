@@ -3,11 +3,13 @@
 import { useRef, useState, useTransition } from "react";
 import { upload } from "@vercel/blob/client";
 import { pdfToImagePages } from "@/lib/pdfToImages";
+import { MAX_VISION_IMAGES } from "@/lib/visionLimits";
 import {
   createProjectCard,
   deleteProjectCard,
-  proposeProjectCards,
+  readAssignmentPages,
   reorderProjectCards,
+  saveProposedCards,
   updateProjectCard,
   updateProjectDueDate,
 } from "../../actions";
@@ -233,41 +235,102 @@ export function ProjectBoard({
     startTransition(() => reorderProjectCards(pursuitId, projectId, status, ids));
   }
 
+  // Runs `worker` over every item with at most `limit` running at once,
+  // keeping results in the original order. Uploading 14 pages one by one
+  // wastes time; firing all of them at once can trip rate limits.
+  async function mapWithLimit<T, R>(
+    items: T[],
+    limit: number,
+    worker: (item: T, index: number) => Promise<R>,
+  ): Promise<R[]> {
+    const results = new Array<R>(items.length);
+    let next = 0;
+    async function lane() {
+      while (next < items.length) {
+        const index = next++;
+        results[index] = await worker(items[index], index);
+      }
+    }
+    await Promise.all(Array.from({ length: Math.min(limit, items.length) }, lane));
+    return results;
+  }
+
   async function handleEnunciadoFile(file: File) {
     setUploadError(null);
     setIsUploading(true);
+    // Which step we're on, so an error says WHERE it broke instead of a
+    // generic "couldn't read that file".
+    let stage = "preparing the file";
     try {
       const isPdf = file.type === "application/pdf";
-      const urls: string[] = [];
+      let pageFiles: File[];
       if (isPdf) {
+        setUploadStatus("Converting PDF pages…");
         const pages = await pdfToImagePages(file);
-        for (let i = 0; i < pages.length; i++) {
-          setUploadStatus(`Uploading page ${i + 1} of ${pages.length}…`);
-          const pageFile = new File([pages[i]], `${file.name}-page-${i + 1}.jpg`, {
-            type: "image/jpeg",
-          });
-          const blob = await upload(`projects/${projectId}/${pageFile.name}`, pageFile, {
-            access: "public",
-            handleUploadUrl: "/api/blob-upload",
-            clientPayload: JSON.stringify({ pursuitId, kind: "image" }),
-          });
-          urls.push(blob.url);
-        }
+        pageFiles = pages.map(
+          (page, i) =>
+            new File([page], `${file.name}-page-${i + 1}.jpg`, { type: "image/jpeg" }),
+        );
       } else {
-        setUploadStatus("Uploading…");
-        const blob = await upload(`projects/${projectId}/${file.name}`, file, {
+        pageFiles = [file];
+      }
+      if (pageFiles.length === 0) {
+        setUploadError("That PDF has no pages");
+        return;
+      }
+
+      stage = "uploading the pages";
+      let uploaded = 0;
+      setUploadStatus(`Uploading 0 of ${pageFiles.length}…`);
+      const urls = await mapWithLimit(pageFiles, 4, async (pageFile) => {
+        const blob = await upload(`projects/${projectId}/${pageFile.name}`, pageFile, {
           access: "public",
           handleUploadUrl: "/api/blob-upload",
           clientPayload: JSON.stringify({ pursuitId, kind: "image" }),
         });
-        urls.push(blob.url);
+        uploaded++;
+        setUploadStatus(`Uploading ${uploaded} of ${pageFiles.length}…`);
+        return blob.url;
+      });
+
+      // One short server call per chunk of pages, one after another —
+      // see readAssignmentPages for why this isn't one big call.
+      stage = "reading the assignment";
+      const allCards: { title: string; description?: string }[] = [];
+      let anySucceeded = false;
+      let lastError: string | null = null;
+      for (let start = 0; start < urls.length; start += MAX_VISION_IMAGES) {
+        const chunk = urls.slice(start, start + MAX_VISION_IMAGES);
+        const first = start + 1;
+        const last = start + chunk.length;
+        setUploadStatus(
+          urls.length > 1
+            ? `Reading pages ${first}–${last} of ${urls.length}…`
+            : "Reading the assignment…",
+        );
+        const result = await readAssignmentPages(pursuitId, chunk, first, urls.length);
+        if (result.error) {
+          lastError = result.error;
+          // The daily limit won't go away on the next chunk — stop early.
+          if (result.error.includes("limit")) break;
+          continue;
+        }
+        anySucceeded = true;
+        allCards.push(...result.cards);
       }
 
-      setUploadStatus("Reading the assignment…");
-      const result = await proposeProjectCards(pursuitId, projectId, urls);
-      if (result.error) setUploadError(result.error);
-    } catch {
-      setUploadError("Couldn't read that file — try again");
+      if (!anySucceeded) {
+        setUploadError(lastError ?? "Couldn't reach the AI right now. Try again in a few minutes.");
+        return;
+      }
+
+      stage = "saving the cards";
+      setUploadStatus("Saving cards…");
+      const saved = await saveProposedCards(pursuitId, projectId, allCards);
+      if (saved.error) setUploadError(saved.error);
+    } catch (err) {
+      console.error(`Assignment upload failed while ${stage}`, err);
+      setUploadError(`Something went wrong while ${stage} — try again`);
     } finally {
       setIsUploading(false);
       setUploadStatus(null);
