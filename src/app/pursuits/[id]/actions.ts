@@ -13,6 +13,7 @@ import { upsertSection, upsertContentSection } from "@/lib/sections";
 import { HEADLINE_OPTIONS, buildOrTsQuery } from "@/lib/search";
 import { parseOrganizeResponse } from "@/lib/organize";
 import { parseJsonLoosely } from "@/lib/json";
+import { MAX_VISION_IMAGES } from "@/lib/visionLimits";
 import { parseFlashcardsResponse } from "@/lib/flashcards";
 import { computeNextReview, dueDateAfter } from "@/lib/sm2";
 import {
@@ -399,14 +400,6 @@ const TEXT_MODEL = "openai/gpt-oss-120b";
 // that docs page directly (or the Playground's model list with an image
 // attached) for whatever's current, and swap it in here again.
 const VISION_MODEL = "qwen/qwen3.8-27b";
-// Was 5 — confirmed wrong from a live Groq error: "Too many images
-// provided. This model supports up to 3 images" (invalid_request_error),
-// hit in production via proposeProjectCards with a multi-page assignment.
-// Previously documented as a Groq-wide "vision models cap at 5
-// images/request" rule, which doesn't hold for qwen/qwen3.8-27b
-// specifically — if this model changes again, re-check the real cap from
-// an actual error rather than trusting that number.
-const MAX_VISION_IMAGES = 3;
 
 // Groq's own JSON mode occasionally rejects its own generation with a
 // "json_validate_failed" error -- a one-off sampling hiccup, not an
@@ -1459,118 +1452,132 @@ export async function reorderProjectCards(
 // from an uploaded assignment description ("enunciado") instead of
 // writing them by hand. Cards come back as TODO; the user edits/deletes
 // before — or after — ever dragging anything.
-export async function proposeProjectCards(
+type ProposedCard = { title: string; description?: string };
+
+// Reading an assignment is split into TWO kinds of call, driven from the
+// browser (ProjectBoard), instead of one action that loops over every
+// page itself:
+//
+//   1. readAssignmentPages — ONE Groq vision call for at most
+//      MAX_VISION_IMAGES pages. The client calls it once per chunk.
+//   2. saveProposedCards — writes the collected cards in one go.
+//
+// Why: the old single action made one sequential Groq call per 3 pages
+// (each with a retry on failure) inside a single request. A 14-page PDF
+// is 5 calls x ~10-20s — past the page's 60s maxDuration, so Vercel
+// killed the Function mid-way and the browser only saw a generic
+// "Couldn't read that file". Now every request is a single short call,
+// so the document's length no longer matters to the time limit.
+export async function readAssignmentPages(
   pursuitId: string,
-  projectId: string,
   imageUrls: string[],
-): Promise<{ error: string | null; count?: number }> {
+  firstPage: number,
+  totalPages: number,
+): Promise<{ error: string | null; cards: ProposedCard[] }> {
   const { session } = await requireAccess(pursuitId);
   const unlimited = await hasUnlimitedAccess(session.user.id, session.user.email);
 
+  // Only checked, not incremented: the whole document counts as ONE use,
+  // charged in saveProposedCards once the reading is done.
   if (!unlimited) {
     const usedToday = await getOrganizeUsageToday(session.user.id);
     if (usedToday >= DAILY_ORGANIZE_LIMIT) {
       return {
         error: `You've hit the limit of ${DAILY_ORGANIZE_LIMIT} AI organizes for today. Try again tomorrow.`,
+        cards: [],
       };
     }
   }
 
-  if (imageUrls.length === 0) {
-    return { error: "No pages to read" };
+  if (imageUrls.length === 0) return { error: "No pages to read", cards: [] };
+  if (imageUrls.length > MAX_VISION_IMAGES) {
+    return { error: `At most ${MAX_VISION_IMAGES} pages per call`, cards: [] };
   }
 
-  // The vision model caps out at MAX_VISION_IMAGES per call (confirmed
-  // from a live Groq invalid_request_error, not just assumed) — a
-  // multi-page PDF (a real assignment easily runs 10+ pages) has to be
-  // read in several sequential calls instead of one, or every page past
-  // the cap is silently dropped. Each chunk's prompt says which pages it
-  // is so the model doesn't assume it's seeing the whole document.
-  const chunks: string[][] = [];
-  for (let i = 0; i < imageUrls.length; i += MAX_VISION_IMAGES) {
-    chunks.push(imageUrls.slice(i, i + MAX_VISION_IMAGES));
-  }
-
-  type ProposedCard = { title: string; description?: string };
-  const allCards: ProposedCard[] = [];
-  let anySucceeded = false;
-
-  for (let i = 0; i < chunks.length; i++) {
-    const chunk = chunks[i];
-    const pageRange =
-      chunks.length > 1
-        ? ` (pages ${i * MAX_VISION_IMAGES + 1}-${i * MAX_VISION_IMAGES + chunk.length} of ${imageUrls.length} — other pages are sent in separate calls, propose cards for ONLY what's visible here)`
-        : "";
-    const prompt = `The attached image(s) are pages from an assignment description ("enunciado")${pageRange}. Read them and break the assignment down into a short list of concrete to-do cards — one per distinct task/activity/section/deliverable it asks for. Each card's title should be short (a few words); the description can restate that specific task in a bit more detail.
+  const lastPage = firstPage + imageUrls.length - 1;
+  const pageRange =
+    totalPages > imageUrls.length
+      ? ` (pages ${firstPage}-${lastPage} of ${totalPages} — other pages are sent in separate calls, propose cards for ONLY what's visible here)`
+      : "";
+  const prompt = `The attached image(s) are pages from an assignment description ("enunciado")${pageRange}. Read them and break the assignment down into a short list of concrete to-do cards — one per distinct task/activity/section/deliverable it asks for. Each card's title should be short (a few words); the description can restate that specific task in a bit more detail.
 
 Respond with ONLY a JSON object, no other text: {"cards": [{"title": "...", "description": "..."}, ...]}. Write in the same language as the assignment. Never invent tasks the assignment doesn't actually ask for — an empty {"cards": []} is fine if this page has none.`;
 
-    try {
-      const completion = await createJsonCompletion({
-        model: VISION_MODEL,
-        messages: [
-          {
-            role: "user",
-            content: [
-              { type: "text", text: prompt },
-              ...chunk.map(
-                (url): ChatCompletionContentPartImage => ({
-                  type: "image_url",
-                  image_url: { url },
-                }),
-              ),
-            ],
-          },
-        ],
-        response_format: { type: "json_object" },
-        // Was 4000 — too tight for a page with several tasks: Groq's
-        // json_object mode throws json_validate_failed when
-        // max_completion_tokens cuts the response off mid-string, which
-        // is indistinguishable from a real outage here (the exact bug
-        // organizeDumps hit before it got its own explicit 16000 cap).
-        max_completion_tokens: 8000,
-      });
-      const text = completion.choices[0]?.message?.content;
-      if (!text) continue;
+  try {
+    const completion = await createJsonCompletion({
+      model: VISION_MODEL,
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: prompt },
+            ...imageUrls.map(
+              (url): ChatCompletionContentPartImage => ({
+                type: "image_url",
+                image_url: { url },
+              }),
+            ),
+          ],
+        },
+      ],
+      response_format: { type: "json_object" },
+      // Was 4000 — too tight for a page with several tasks: Groq's
+      // json_object mode throws json_validate_failed when
+      // max_completion_tokens cuts the response off mid-string.
+      max_completion_tokens: 8000,
+    });
+    const text = completion.choices[0]?.message?.content;
+    if (!text) return { error: "Empty answer from the AI", cards: [] };
 
-      anySucceeded = true;
-      const parsed = parseJsonLoosely(text);
-      const rawCards =
-        parsed && typeof parsed === "object" && Array.isArray((parsed as { cards?: unknown }).cards)
-          ? (parsed as { cards: unknown[] }).cards
-          : [];
-      allCards.push(
-        ...rawCards.filter(
-          (c): c is ProposedCard =>
-            !!c && typeof c === "object" && typeof (c as { title?: unknown }).title === "string",
-        ),
-      );
-    } catch (err) {
-      // One bad chunk (a transient Groq error, a page it couldn't parse)
-      // shouldn't throw away every other page's cards — log it and keep
-      // going. Unlike organizeDumps, there's no text-model fallback worth
-      // trying per chunk: the prompt has nothing but "the attached
-      // image(s)" — no inline "![image](url)" markers with real
-      // surrounding material the way a Brain Dump's content has — so a
-      // text-only retry would have nothing to read from and only
-      // fabricate cards.
-      console.error(`proposeProjectCards: chunk ${i + 1}/${chunks.length} failed`, err);
-    }
+    const parsed = parseJsonLoosely(text);
+    const rawCards =
+      parsed && typeof parsed === "object" && Array.isArray((parsed as { cards?: unknown }).cards)
+        ? (parsed as { cards: unknown[] }).cards
+        : [];
+    const cards = rawCards.filter(
+      (c): c is ProposedCard =>
+        !!c && typeof c === "object" && typeof (c as { title?: unknown }).title === "string",
+    );
+    return { error: null, cards };
+  } catch (err) {
+    // Returned, not thrown — the client keeps reading the remaining
+    // chunks so one bad page doesn't throw away every other page's cards.
+    console.error(`readAssignmentPages: pages ${firstPage}-${lastPage} failed`, err);
+    return { error: "Couldn't reach the AI right now. Try again in a few minutes.", cards: [] };
   }
+}
 
-  if (!anySucceeded) {
-    return { error: "Couldn't reach the AI right now. Try again in a few minutes." };
-  }
+export async function saveProposedCards(
+  pursuitId: string,
+  projectId: string,
+  proposed: ProposedCard[],
+): Promise<{ error: string | null; count?: number }> {
+  const { session } = await requireAccess(pursuitId);
+  const unlimited = await hasUnlimitedAccess(session.user.id, session.user.email);
+
+  // requireAccess only proves access to the PURSUIT — make sure this
+  // project actually belongs to it, or anyone could write cards into
+  // another pursuit's board by passing its projectId.
+  const project = await prisma.project.findFirst({
+    where: { id: projectId, pursuitId },
+    select: { id: true },
+  });
+  if (!project) return { error: "Project not found" };
+
+  // The cards come back from the browser, so they're re-validated here
+  // rather than trusted as-is.
+  const valid = proposed.filter(
+    (c) => !!c && typeof c.title === "string" && c.title.trim() !== "",
+  );
+
+  // A thorough multi-page read can legitimately propose more cards than
+  // a single short assignment — capped generously, but still bounded so
+  // one odd document can't flood the board.
+  const cards = valid.slice(0, 40);
 
   if (!unlimited) {
     await incrementOrganizeUsage(session.user.id);
   }
-
-  // A thorough multi-page read can legitimately propose more cards than
-  // a single short assignment — capped generously rather than to a
-  // single page's worth, but still bounded so one odd document can't
-  // flood the board.
-  const cards = allCards.slice(0, 40);
 
   if (cards.length === 0) {
     return { error: "Couldn't find any tasks in that — try a clearer page or add cards by hand" };
@@ -1588,7 +1595,7 @@ Respond with ONLY a JSON object, no other text: {"cards": [{"title": "...", "des
       projectId,
       status: "TODO" as const,
       title: c.title.trim().slice(0, 200),
-      description: typeof c.description === "string" ? c.description : null,
+      description: typeof c.description === "string" ? c.description.slice(0, 2000) : null,
       order: nextOrder++,
     })),
   });

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getValidAccessToken, listCourseDeadlines } from "@/lib/googleClassroom";
-import { sendPush } from "@/lib/webPush";
+import { isPushConfigured, sendPush } from "@/lib/webPush";
 
 // Fires once a day (see vercel.json) — checks every Classroom-linked
 // Pursuit for deadlines due in the next 48h and pushes a reminder to
@@ -14,6 +14,14 @@ export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Checked up front, not left to sendPush to throw: each deadline is
+  // "claimed" in SentDeadlineNotification BEFORE sending, so without keys
+  // every claim would succeed, every send would fail, and those reminders
+  // would be marked as sent forever without anyone getting them.
+  if (!isPushConfigured()) {
+    return NextResponse.json({ error: "Web push isn't configured" }, { status: 500 });
   }
 
   const pursuits = await prisma.pursuit.findMany({
