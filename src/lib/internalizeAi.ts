@@ -1,3 +1,4 @@
+import "server-only";
 import { arr, askJson, obj, str } from "@/lib/ai";
 import { excerptInSource, parseRepoUrl, pickRepoFiles, type Verdict } from "@/lib/internalize";
 

@@ -1,3 +1,4 @@
+import "server-only";
 import Groq from "groq-sdk";
 
 // Must not throw at import (next build imports every route): a placeholder
