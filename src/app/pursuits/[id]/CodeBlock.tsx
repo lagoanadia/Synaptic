@@ -1,10 +1,7 @@
 import { Highlight, themes, type Language } from "prism-react-renderer";
 import { CopyButton } from "./CopyButton";
 
-// What `<js`/`<python`/etc. in a note maps to, plus the label shown in the
-// header — only the 5 the composer's language picker offers (see
-// NewDumpForm's insertCodeBlockAtActiveBlock), so a stray/unrecognized tag
-// just falls back to plain, unhighlighted text instead of guessing.
+// Languages a `<lang` code block can use; anything else renders plain.
 const LANGUAGES: Record<string, { prism: Language; label: string }> = {
   js: { prism: "javascript", label: "JavaScript" },
   javascript: { prism: "javascript", label: "JavaScript" },
@@ -16,16 +13,8 @@ const LANGUAGES: Record<string, { prism: Language; label: string }> = {
   sql: { prism: "sql", label: "SQL" },
 };
 
-// A long line wraps to fit the note's own width instead of forcing
-// horizontal scroll — a note card is often narrower than a comfortable
-// line of code, and scrolling sideways to read it is worse than a wrapped
-// line. The block also bleeds slightly past its container's own padding
-// (-mx-5, matching the padding every place this renders in) to claim a
-// bit more width back, since code needs it more than prose does.
-//
-// <details open> gives the collapse/expand for free, with no JS and full
-// keyboard/screen-reader support — only the Copy button needs a client
-// component at all.
+// Long lines wrap instead of scrolling sideways. <details open> gives
+// collapse/expand without JS.
 export function CodeBlock({ code, language }: { code: string; language: string }) {
   const lang = LANGUAGES[language.toLowerCase()];
   const lines = code.split("\n");

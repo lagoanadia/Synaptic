@@ -1,10 +1,7 @@
 import type { MetadataRoute } from "next";
 
-// Next.js serves this at /manifest.webmanifest automatically and injects
-// the <link rel="manifest"> tag itself — no manual <head> edit needed.
-// This, plus HTTPS (Vercel gives that for free) and the service worker
-// registered in RegisterServiceWorker, is what makes a browser offer
-// "Add to Home Screen" / actually install the app.
+// Served at /manifest.webmanifest; with HTTPS and the service worker it makes
+// the app installable.
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Synaptic",
@@ -14,11 +11,8 @@ export default function manifest(): MetadataRoute.Manifest {
     display: "standalone",
     background_color: "#ffffff",
     theme_color: "#2383e2",
-    // Filenames carry a "-v3" suffix (not a version field — the manifest
-    // spec has none) specifically so an already-installed PWA is forced to
-    // fetch a new URL instead of keeping whatever icon bytes it cached at
-    // install time under the old filename. Bump the suffix again next time
-    // the artwork changes, rather than overwriting these files in place.
+    // The -v3 suffix forces installed apps to fetch new icons. Bump it when the
+    // artwork changes.
     icons: [
       {
         src: "/icon-192-v3.png",

@@ -5,11 +5,7 @@ type TimelineEntry =
   | { type: "dump"; id: string; createdAt: Date; content: string | null }
   | { type: "note"; id: string; createdAt: Date; content: string };
 
-// Purely derived from data this page already loads (BrainDump/Note
-// createdAt) — no new table, no new query. A dedicated "event log" table
-// would need every Server Action that touches a pursuit to remember to
-// write to it too, which is a lot more to keep in sync for what's so far
-// just "when did these two kinds of things happen".
+// Derived from page and note dates; no event table.
 export function Timeline({
   pursuitId,
   dumps,
@@ -36,7 +32,7 @@ export function Timeline({
           href={
             entry.type === "dump"
               ? `/pursuits/${pursuitId}/dump/${entry.id}`
-              : `/pursuits/${pursuitId}?tab=organized#${entry.id}`
+              : `/pursuits/${pursuitId}?tab=pages#${entry.id}`
           }
           className="flex items-center gap-3 border-b border-dashed border-border-subtle py-3 last:border-0 hover:bg-chip"
         >

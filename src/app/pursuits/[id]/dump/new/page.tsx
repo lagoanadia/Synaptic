@@ -2,6 +2,8 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { isSlideFile } from "@/lib/slides";
+import { SlidePanel } from "../../SlidePanel";
 import { NewDumpForm } from "./NewDumpForm";
 
 export default async function NewDumpPage({
@@ -24,7 +26,13 @@ export default async function NewDumpPage({
         { members: { some: { userId: session.user.id } } },
       ],
     },
-    select: { id: true, title: true },
+    select: {
+      id: true,
+      title: true,
+      classroomCourseId: true,
+      classroomEnabled: true,
+      attachments: { orderBy: { createdAt: "desc" }, select: { name: true, url: true } },
+    },
   });
 
   if (!pursuit) {
@@ -32,13 +40,18 @@ export default async function NewDumpPage({
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-6 py-9">
+    <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-6 py-9">
       <Link
-        href={`/pursuits/${id}?tab=dump`}
+        href={`/pursuits/${id}?tab=pages`}
         className="text-sm text-ink-muted hover:underline"
       >
         ← {pursuit.title}
       </Link>
+      <SlidePanel
+        pursuitId={pursuit.id}
+        decks={pursuit.attachments.filter((a) => isSlideFile(a.url))}
+        classroomCourseId={pursuit.classroomEnabled ? pursuit.classroomCourseId : null}
+      />
       <NewDumpForm pursuitId={pursuit.id} />
     </div>
   );

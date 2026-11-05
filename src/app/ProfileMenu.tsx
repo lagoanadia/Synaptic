@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
@@ -26,10 +27,7 @@ export function ProfileMenu({
   email: string | null | undefined;
   image: string | null | undefined;
   plan: string;
-  // Only the onboarding tour's text actually changes with this today —
-  // see src/lib/i18n.ts. Optional so existing callers that don't fetch a
-  // viewer's locale (there are none left, but nothing requires it) don't
-  // break; defaults to English.
+  // Defaults to English.
   locale?: Locale;
 }) {
   const router = useRouter();
@@ -127,18 +125,18 @@ export function ProfileMenu({
             >
               Billing
             </a>
-            <a
+            <Link
               href="/settings/api-keys"
               className="block w-full rounded-lg px-3.5 py-2.5 text-left text-sm font-medium text-[#0d0d0d] transition-colors hover:bg-[#f2f1ee]"
             >
               API keys
-            </a>
-            <a
+            </Link>
+            <Link
               href="/"
               className="block w-full rounded-lg px-3.5 py-2.5 text-left text-sm font-medium text-[#0d0d0d] transition-colors hover:bg-[#f2f1ee]"
             >
               Landing page
-            </a>
+            </Link>
             <div className="my-1 h-px bg-black/5" />
             <form action={signOutAction}>
               <button

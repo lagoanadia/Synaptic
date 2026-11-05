@@ -3,23 +3,17 @@ import { prisma } from "@/lib/prisma";
 import { getValidAccessToken, listCourseDeadlines } from "@/lib/googleClassroom";
 import { isPushConfigured, sendPush } from "@/lib/webPush";
 
-// Fires once a day (see vercel.json) — checks every Classroom-linked
-// Pursuit for deadlines due in the next 48h and pushes a reminder to
-// whoever's subscribed. The 48h window (not 24h) is deliberate slack
-// against a daily cron's own timing drift, so a deadline can never fall
-// through the gap between two runs; SentDeadlineNotification's unique
-// constraint on (userId, courseWorkId) is what actually guarantees each
-// deadline is only ever pushed once, regardless of how many runs see it.
+// Daily (vercel.json): push reminders for Classroom deadlines in the next 48h.
+// 48h covers cron drift; the unique (userId, courseWorkId) row guarantees one
+// push per deadline.
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Checked up front, not left to sendPush to throw: each deadline is
-  // "claimed" in SentDeadlineNotification BEFORE sending, so without keys
-  // every claim would succeed, every send would fail, and those reminders
-  // would be marked as sent forever without anyone getting them.
+  // Deadlines are claimed before sending, so without keys they'd be marked
+  // sent and never delivered.
   if (!isPushConfigured()) {
     return NextResponse.json({ error: "Web push isn't configured" }, { status: 500 });
   }
@@ -74,7 +68,7 @@ export async function GET(request: Request) {
           await sendPush(sub, {
             title: `Due soon: ${pursuit.title}`,
             body: deadline.title,
-            url: `/pursuits/${pursuit.id}?tab=files`,
+            url: `/pursuits/${pursuit.id}?tab=pages`,
           });
           sent++;
         } catch (e) {

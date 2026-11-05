@@ -1,111 +1,124 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { createPursuit, deleteSection, reorderSection } from "./actions";
-import { TypeSelect } from "./TypeSelect";
-import { DeleteButton } from "./DeleteButton";
-import { PursuitsBoard, type PursuitForDisplay } from "./PursuitsBoard";
 import { ProfileMenu } from "../ProfileMenu";
 import { Logo } from "../Logo";
-import { Tour } from "../Tour";
-import { TOUR_COPY, TOUR_UI, isLocale } from "@/lib/i18n";
+import { isLocale } from "@/lib/i18n";
+import { Onboarding } from "../onboarding/Onboarding";
+import { SectionTiles, type Tile } from "./SectionTiles";
+import { tileColor } from "@/lib/tileColor";
+import { SHARED, UNSORTED, accessiblePursuits, getConcepts } from "@/lib/reviewData";
+import { sample } from "@/lib/review";
 
-function timeAgo(date: Date) {
-  const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
-  const days = Math.floor(seconds / 86400);
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor(seconds / 60);
-  if (days > 0) return `${days}d ago`;
-  if (hours > 0) return `${hours}h ago`;
-  if (minutes > 0) return `${minutes}m ago`;
-  return "just now";
-}
-
-export default async function PursuitsPage() {
+// Home: your Sections as big tiles + a "Cross exam" panel that pulls random
+// concepts from everything you've written, so old stuff keeps coming back
+// instead of being forgotten. Each Section opens /pursuits/s/[sectionId].
+export default async function HomePage() {
   const session = await auth();
   if (!session?.user?.id) {
     redirect("/");
   }
+  const userId = session.user.id;
 
-  const [pursuits, sections, viewer] = await Promise.all([
+  const [pursuits, sections, viewer, concepts] = await Promise.all([
     prisma.pursuit.findMany({
-      where: {
-        OR: [
-          { ownerId: session.user.id },
-          { members: { some: { userId: session.user.id } } },
-        ],
+      where: accessiblePursuits(userId),
+      select: {
+        id: true,
+        ownerId: true,
+        sectionId: true,
+        _count: { select: { flashcards: { where: { dueDate: { lte: new Date() } } } } },
       },
-      include: { pursuitTags: true, section: true },
-      orderBy: { lastTouchedAt: "desc" },
     }),
-    prisma.section.findMany({
-      where: { userId: session.user.id },
-      orderBy: { order: "asc" },
-    }),
+    prisma.section.findMany({ where: { userId }, orderBy: { order: "asc" } }),
     prisma.user.findUniqueOrThrow({
-      where: { id: session.user.id },
+      where: { id: userId },
       select: { plan: true, onboardedAt: true, locale: true },
     }),
+    getConcepts(userId, { kind: "all" }),
   ]);
 
   const locale = isLocale(viewer.locale) ? viewer.locale : "en";
-  const tourCopy = TOUR_COPY[locale];
 
-  // Sections are free-typed and stored per user (see Section in the
-  // schema) — grouped here from whichever pursuits already carry one,
-  // rather than from a fixed preset list. Anything without a section
-  // falls into its own row at the end instead of being hidden. A pursuit
-  // someone else owns and shared with you carries THEIR section, not
-  // yours — showing it under their private category name would be
-  // confusing, so anything not owned by the viewer goes in its own
-  // "Shared with me" row instead, regardless of its actual sectionId.
-  const grouped = new Map<string, PursuitForDisplay[]>();
-  const unsectioned: PursuitForDisplay[] = [];
-  const shared: PursuitForDisplay[] = [];
-  const typeOptions = new Set<string>();
-  for (const p of pursuits) {
-    const display: PursuitForDisplay = {
-      id: p.id,
-      title: p.title,
-      type: p.type,
-      status: p.status,
-      timeAgoLabel: timeAgo(p.lastTouchedAt),
-      ownerId: p.ownerId,
-      pursuitTags: p.pursuitTags,
-    };
-    if (p.ownerId !== session.user.id) {
-      shared.push(display);
-      continue;
-    }
-    if (p.type) typeOptions.add(p.type);
-    const name = p.section?.name;
-    if (!name) {
-      unsectioned.push(display);
-      continue;
-    }
-    if (!grouped.has(name)) grouped.set(name, []);
-    grouped.get(name)!.push(display);
+  // First visit: quick questions instead of an empty screen. Anyone who
+  // already has subjects (accounts from before this existed) skips it.
+  if (viewer.onboardedAt === null && pursuits.length === 0) {
+    return <Onboarding name={session.user.name ?? null} />;
   }
-  // Rows follow each section's stored `order` (see reorderSection) instead
-  // of alphabetical, so dragging — well, clicking ↑/↓ — actually sticks.
-  const sectionRows: [string, PursuitForDisplay[]][] = sections
-    .filter((s) => grouped.has(s.name))
-    .map((s) => [s.name, grouped.get(s.name)!]);
+
+  // Tally subjects and due cards per bucket in one pass. A pursuit someone
+  // shared with you goes in "Shared" whatever section its owner put it in
+  // — their private section names mean nothing on your home screen.
+  const stats = new Map<string, { subjects: number; due: number }>();
+  const bump = (key: string, due: number) => {
+    const s = stats.get(key) ?? { subjects: 0, due: 0 };
+    s.subjects++;
+    s.due += due;
+    stats.set(key, s);
+  };
+  for (const p of pursuits) {
+    const key = p.ownerId !== userId ? SHARED : (p.sectionId ?? UNSORTED);
+    bump(key, p._count.flashcards);
+  }
+  const totalDue = pursuits.reduce((n, p) => n + p._count.flashcards, 0);
+
+  const describe = (key: string) => {
+    const s = stats.get(key) ?? { subjects: 0, due: 0 };
+    return {
+      subtitle: `${s.subjects} subject${s.subjects === 1 ? "" : "s"}`,
+      badge: s.due > 0 ? `${s.due} to review` : undefined,
+    };
+  };
+
+  const tiles: Tile[] = sections.map((s, i) => ({
+    id: s.id,
+    href: `/pursuits/s/${s.id}`,
+    name: s.name,
+    colorClass: tileColor(i),
+    ...describe(s.id),
+  }));
+  if (stats.has(UNSORTED)) {
+    tiles.push({
+      id: UNSORTED,
+      href: `/pursuits/s/${UNSORTED}`,
+      name: "Unsorted",
+      colorClass: "bg-ink-muted",
+      ...describe(UNSORTED),
+    });
+  }
+  if (stats.has(SHARED)) {
+    tiles.push({
+      id: SHARED,
+      href: `/pursuits/s/${SHARED}`,
+      name: "Shared",
+      colorClass: "bg-tile-deep",
+      ...describe(SHARED),
+    });
+  }
+
+  const picks = sample(concepts, 3);
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-6 py-12">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-5">
+    <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-10 px-6 py-10 lg:px-10">
+      <header className="flex items-center justify-between">
+        <div className="flex items-baseline gap-3">
           <Logo href="/pursuits" />
-          <div className="flex items-center gap-2.5">
-            <h1 className="text-2xl font-semibold">Pursuits</h1>
-            {viewer.plan !== "FREE" && (
-              <span className="rounded-full bg-accent-soft px-2.5 py-1 text-xs font-semibold text-accent">
-                {viewer.plan === "PRO" ? "Student Pro" : "Team"}
-              </span>
-            )}
-          </div>
+          <span className="hidden text-sm text-ink-faint sm:inline">Think it. Dump it.</span>
+          {viewer.plan !== "FREE" && (
+            <span className="rounded-full bg-accent-soft px-2.5 py-1 text-xs font-semibold text-accent">
+              {viewer.plan === "PRO" ? "Student Pro" : "Team"}
+            </span>
+          )}
         </div>
+        <nav className="ml-auto mr-3 flex items-center gap-1.5" aria-label="Practice">
+          <Link href="/challenges" className="rounded-full bg-chip px-3.5 py-1.5 text-sm font-semibold text-ink-muted hover:text-mint">
+            {"</>"} Challenges
+          </Link>
+          <Link href="/arena" className="rounded-full bg-chip px-3.5 py-1.5 text-sm font-semibold text-ink-muted hover:text-orchid">
+            ⚔ Arena
+          </Link>
+        </nav>
         <ProfileMenu
           name={session.user.name}
           email={session.user.email}
@@ -113,109 +126,51 @@ export default async function PursuitsPage() {
           plan={viewer.plan}
           locale={locale}
         />
+      </header>
+
+      <div className="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <section aria-label="Sections">
+          <SectionTiles tiles={tiles} />
+        </section>
+
+        <aside className="flex flex-col gap-4 self-start rounded-3xl bg-white p-6 shadow-[0_1px_2px_rgba(13,13,13,0.06)]">
+          <div className="flex items-baseline justify-between">
+            <h2 className="text-xl font-extrabold text-tile-sky">Cross exam</h2>
+            {totalDue > 0 && (
+              <span className="text-xs font-semibold text-ink-muted">{totalDue} cards due</span>
+            )}
+          </div>
+          <p className="text-sm text-ink-muted">
+            Three random concepts from everything you&apos;ve written. Still remember them?
+          </p>
+          {picks.length === 0 ? (
+            <p className="rounded-2xl bg-callout px-4 py-5 text-sm text-ink-muted">
+              Organize a few Brain Dumps into notes and they&apos;ll start showing up here.
+            </p>
+          ) : (
+            <ul className="flex flex-col gap-2.5">
+              {picks.map((c) => (
+                <li key={c.id}>
+                  <Link
+                    href={`/review?mode=recall&concept=${c.id}`}
+                    className="flex flex-col rounded-2xl bg-tile-blue px-4 py-3 text-white transition-transform hover:-translate-y-0.5"
+                  >
+                    <span className="truncate text-sm font-semibold">{c.title}</span>
+                    <span className="text-xs">{c.pursuitTitle}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+          <Link
+            href="/review?mode=challenge"
+            className="mt-1 rounded-full bg-ink px-4 py-2.5 text-center text-sm font-semibold text-white transition-transform hover:-translate-y-0.5"
+          >
+            Take the cross exam →
+          </Link>
+        </aside>
       </div>
 
-      <form
-        action={createPursuit}
-        data-tour="new-pursuit-form"
-        className="flex flex-wrap gap-2"
-      >
-        <input
-          type="text"
-          name="title"
-          placeholder="New pursuit title"
-          required
-          className="flex-1 rounded-xl border border-border-subtle bg-white px-3.5 py-2.5 text-sm"
-        />
-        <TypeSelect options={Array.from(typeOptions)} />
-        <input
-          type="text"
-          name="section"
-          list="pursuit-sections"
-          placeholder="Section (optional)"
-          className="rounded-xl border border-border-subtle bg-white px-3.5 py-2.5 text-sm"
-        />
-        <datalist id="pursuit-sections">
-          {sections.map((s) => (
-            <option key={s.id} value={s.name} />
-          ))}
-        </datalist>
-        <button
-          type="submit"
-          className="rounded-full bg-ink px-5 py-2.5 text-sm font-semibold whitespace-nowrap text-white transition-transform hover:-translate-y-0.5 hover:shadow-lg"
-        >
-          + New
-        </button>
-      </form>
-
-      {sections.length > 0 && (
-        <div className="-mt-4 flex flex-wrap items-center gap-1.5">
-          <span className="text-xs text-ink-faint">Your sections</span>
-          {sections.map((s, i) => (
-            <span
-              key={s.id}
-              className="flex items-center gap-1 rounded bg-chip px-2 py-0.5 text-xs text-ink-muted"
-            >
-              <form action={reorderSection.bind(null, s.id, "up")}>
-                <button
-                  type="submit"
-                  disabled={i === 0}
-                  title="Move row up"
-                  className="text-ink-faint hover:text-ink disabled:opacity-30"
-                >
-                  ↑
-                </button>
-              </form>
-              <form action={reorderSection.bind(null, s.id, "down")}>
-                <button
-                  type="submit"
-                  disabled={i === sections.length - 1}
-                  title="Move row down"
-                  className="text-ink-faint hover:text-ink disabled:opacity-30"
-                >
-                  ↓
-                </button>
-              </form>
-              {s.name}
-              <DeleteButton
-                action={deleteSection.bind(null, s.id)}
-                confirmMessage={`Delete section "${s.name}"? Pursuits in it become unsectioned — this can't be undone.`}
-                className="text-ink-faint hover:text-red-500"
-              >
-                ×
-              </DeleteButton>
-            </span>
-          ))}
-        </div>
-      )}
-
-      <div data-tour="pursuits-list">
-        <PursuitsBoard
-          sectionRows={sectionRows}
-          shared={shared}
-          unsectioned={unsectioned}
-          sectionNames={sections.map((s) => s.name)}
-          viewerId={session.user.id}
-        />
-      </div>
-
-      {viewer.onboardedAt === null && (
-        <Tour
-          labels={TOUR_UI[locale]}
-          steps={[
-            {
-              target: '[data-tour="new-pursuit-form"]',
-              title: tourCopy.list.newProject.title,
-              body: tourCopy.list.newProject.body,
-            },
-            {
-              target: '[data-tour="pursuits-list"]',
-              title: tourCopy.list.openExample.title,
-              body: tourCopy.list.openExample.body,
-            },
-          ]}
-        />
-      )}
     </div>
   );
 }

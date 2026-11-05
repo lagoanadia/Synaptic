@@ -3,20 +3,12 @@ import GitHub from "next-auth/providers/github";
 import Google from "next-auth/providers/google";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
-import { seedWelcomePursuit } from "@/lib/onboarding";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
   providers: [
-    // Both GitHub and Google verify the email before handing it to us, so
-    // it's safe to link a sign-in from either provider to the same account
-    // when the email matches, instead of erroring with
-    // "OAuthAccountNotLinked" the first time someone uses the other one.
-    // Missing on GitHub specifically was the actual bug: anyone who
-    // originally signed up with Google and then tried GitHub (or whose
-    // account only had GitHub linked and the UI nudged them to "sign in
-    // the same way" with no indication which provider that was) got
-    // immediately bounced before the callback ever ran.
+    // Both providers verify emails, so a matching email links accounts instead
+    // of failing with OAuthAccountNotLinked.
     GitHub({ allowDangerousEmailAccountLinking: true }),
     Google({ allowDangerousEmailAccountLinking: true }),
   ],
@@ -25,15 +17,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     session({ session, user }) {
       session.user.id = user.id;
       return session;
-    },
-  },
-  events: {
-    // Fires exactly once, right after the adapter inserts the User row —
-    // i.e. the very first sign-in ever for this account, never on a
-    // returning user's sign-in. That's what makes it safe as a one-shot
-    // seed instead of needing its own "already seeded" flag.
-    async createUser({ user }) {
-      if (user.id) await seedWelcomePursuit(user.id);
     },
   },
 });

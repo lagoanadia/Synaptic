@@ -102,7 +102,7 @@ export function SearchBar({ pursuitId }: { pursuitId: string }) {
               <ResultGroup
                 label="Organized notes"
                 hits={results.notes}
-                hrefFor={(hit) => `/pursuits/${pursuitId}?tab=organized#${hit.id}`}
+                hrefFor={(hit) => `/pursuits/${pursuitId}?tab=pages#${hit.id}`}
               />
             </>
           )}

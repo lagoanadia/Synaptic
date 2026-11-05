@@ -1,11 +1,5 @@
-// Shared by anything that parses a Groq JSON response (Organize,
-// flashcard generation, …). response_format: "json_object" is supposed
-// to guarantee pure JSON, but models occasionally wrap it in prose
-// anyway ("Here's the result:\n{...}\nHope that helps!") — a plain
-// JSON.parse would throw on that. Falling back to slicing out the
-// outermost {...} recovers the JSON in that case instead of discarding
-// the whole response. Returns null (never throws) if nothing parseable
-// is found.
+// JSON from an AI reply. JSON mode still sometimes adds prose around it, so
+// fall back to the outermost {...}. Null if nothing parses.
 export function parseJsonLoosely(text: string): unknown {
   try {
     return JSON.parse(text);

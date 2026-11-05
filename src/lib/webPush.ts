@@ -1,15 +1,7 @@
 import webpush from "web-push";
 
-// VAPID identifies this app to the push services (Chrome's, Mozilla's,
-// etc.) it sends through — same keypair for every subscription, generated
-// once and stored as env vars (see .env), never per-user.
-//
-// Configured lazily, on the first send, NOT at the top of this module:
-// `next build` imports every route module while "collecting page data",
-// so a top-level setVapidDetails ran at BUILD time and threw "No key set
-// vapidDetails.publicKey" wherever the env vars weren't available to the
-// build (e.g. a Preview deployment without them) — failing the whole
-// deploy over a feature that only matters when a cron actually fires.
+// VAPID keys identify the app to browser push services. Configured on first
+// send, not at import, so builds without the keys still work.
 let configured = false;
 
 export function isPushConfigured() {

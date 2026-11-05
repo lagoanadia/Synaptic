@@ -1,13 +1,8 @@
 import Stripe from "stripe";
 import { Plan } from "@/generated/prisma/client";
 
-// Constructing this needs to never throw, even with STRIPE_SECRET_KEY
-// unset, so importing this file stays safe before Stripe is configured —
-// but the SDK itself throws immediately for a falsy key ("" included),
-// not just a wrong one, so an empty env var isn't enough on its own. A
-// placeholder that's merely the wrong shape gets past construction and
-// only fails once a call site actually hits the network, which every
-// caller here already wraps in try/catch.
+// Must not throw at import when unconfigured; the SDK rejects an empty key,
+// so a placeholder is used and calls fail later, where they're caught.
 export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "sk_test_not_configured", {
   apiVersion: "2026-08-26.dahlia",
 });

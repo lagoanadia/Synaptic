@@ -77,12 +77,8 @@ function ProjectCardTile({ pursuitId, project }: { pursuitId: string; project: P
   );
 }
 
-// A Project is a different axis from Brain Dump/Organized — one concrete
-// deliverable with a deadline, tracked on its own Kanban board (see
-// projects/[projectId]/ProjectBoard.tsx), not raw capture. The template
-// picker only has one real option today (Kanban); it's still shown as its
-// own badge, not silently assumed, so a second template later (a plain
-// checklist, say) is just another option here instead of a new concept.
+// One deliverable with a deadline and its own Kanban board
+// (projects/[projectId]/ProjectBoard.tsx).
 export function ProjectsBoard({
   pursuitId,
   projects,

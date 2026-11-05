@@ -60,7 +60,7 @@ export default async function DumpPage({
     <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-6 py-9">
       <div className="flex items-center justify-between">
         <Link
-          href={`/pursuits/${id}?tab=dump`}
+          href={`/pursuits/${id}?tab=pages`}
           className="text-sm text-ink-muted hover:underline"
         >
           ← {dump.pursuit.title}

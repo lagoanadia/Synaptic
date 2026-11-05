@@ -17,14 +17,8 @@ async function getBaseUrl() {
   return `${proto}://${host}`;
 }
 
-// Sends the signed-in user to Stripe's hosted Checkout for a subscription
-// to the given plan. Reuses their existing Stripe customer if the webhook
-// has already created one (e.g. they downgraded and are upgrading again)
-// so their payment history stays under one customer instead of forking.
-//
-// Returns void, not a { error } result, so it can be used directly as a
-// plain <form action={...}> — every failure path redirects back to
-// /billing?error=... instead, which the page reads and displays.
+// Stripe Checkout for a subscription, reusing the customer if one exists.
+// Returns void (usable as a form action); failures redirect to /billing?error=.
 export async function createCheckoutSession(plan: Plan): Promise<void> {
   const session = await auth();
   if (!session?.user?.id) {
@@ -60,11 +54,7 @@ export async function createCheckoutSession(plan: Plan): Promise<void> {
   redirect(checkoutSession.url);
 }
 
-// Stripe's Billing Portal — lets a subscriber update their card, see past
-// invoices, or cancel, without this app building any of that UI itself.
-// Only reachable once a stripeCustomerId exists (set by the webhook after
-// a first successful checkout), so there's always something for Stripe to
-// show a portal for.
+// Stripe's portal for card, invoices and cancelling. Needs a customer id.
 export async function createPortalSession(): Promise<void> {
   const session = await auth();
   if (!session?.user?.id) {

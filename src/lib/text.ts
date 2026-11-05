@@ -1,19 +1,10 @@
 const LEADING_HEADING = /^#{1,3}\s*(.+)$/;
 const LEADING_MARKER = /^(?:!|-|\d+\.|[a-zA-Z]\.)\s+/;
 
-// Notion-style auto-title: the first few words of the content, so a raw
-// capture reads as a page title instead of a wall of text in a list. If the
-// content opens with a `#` heading, that line names the whole note — use it
-// as-is (minus the `#`) instead of letting the title bleed into whatever
-// paragraph follows on the next line.
+// First few words of the content, or the opening `#` heading if there is one.
 export function autoTitle(content: string | null, maxWords = 8): string {
   if (!content || content.trim() === "") return "Untitled";
-  // An image marker is one unbroken run with no spaces of its own
-  // (`![image](https://...)`) — left in, it either becomes the entire
-  // title verbatim (when it's the first line) or eats one whole slot out
-  // of the maxWords budget as a single giant "word". Strip every one of
-  // them before picking words, so the title is always built from actual
-  // written text.
+  // Image markers have no spaces, so left in they'd become one giant "word".
   const withoutImages = content.replace(/!\[image\]\([^)]*\)/g, " ").trim();
   if (withoutImages === "") return "Untitled";
   const trimmed = withoutImages;
@@ -31,10 +22,7 @@ export type ContentSegment =
   | { type: "text"; value: string }
   | { type: "image"; url: string };
 
-// Content is stored as plain text with inline `![image](url)` markers
-// (inserted at the cursor when a picture is added) — this splits it back
-// into ordered text/image segments so a page can render them interleaved
-// instead of dumping all images after the text.
+// Splits stored content into text and image segments, in order.
 export function parseContent(content: string): ContentSegment[] {
   const segments: ContentSegment[] = [];
   const pattern = /!\[image\]\(([^)]+)\)/g;
@@ -60,11 +48,7 @@ export type InlineNode =
   | { type: "underline"; value: string }
   | { type: "link"; text: string; url: string };
 
-// A list item can carry its own nested list(s) — a numbered item Tab'd in
-// the composer becomes a lettered sub-item, a bullet Tab'd becomes a
-// hollow-circle one, same idea as any outliner's sub-points. Only lists
-// nest inside a list item, never a heading/table/etc., which is what
-// ListBlock (rather than the wider NoteBlock) enforces here.
+// Only lists nest inside a list item (lettered under numbered, ○ under -).
 export type ListItem = { inline: InlineNode[]; children: ListBlock[] };
 
 export type ListBlock =
@@ -81,13 +65,8 @@ export type NoteBlock =
   | { type: "table"; header: InlineNode[][]; rows: InlineNode[][][] }
   | { type: "codeBlock"; code: string; language: string };
 
-// `**bold**`, `__underline__`, `[text](url)`, `*italic*` — matches what
-// Ctrl/Cmd+B, +U and +I wrap a selection in, plus the "Insert link" button,
-// inside the composer (NewDumpForm). The alternation tries the two-character
-// markers (and the link, which always starts with `[`) before the
-// single-character one, so `**bold**` is never misread as two stray
-// `*italic*` runs. A link never collides with `![image](url)` — that
-// pattern is stripped out earlier, by parseContent, before this ever runs.
+// Two-character markers and links are tried before `*`, so **bold** isn't read
+// as two *italics*. Image markers were already removed by parseContent.
 function parseInline(line: string): InlineNode[] {
   const nodes: InlineNode[] = [];
   const pattern = /\*\*(.+?)\*\*|__(.+?)__|\[(.+?)\]\((.+?)\)|\*(.+?)\*/g;
@@ -114,32 +93,16 @@ function parseInline(line: string): InlineNode[] {
   return nodes;
 }
 
-// Matches any run of #s, not just 1-3 — the AI is told to stay within
-// that range, but a heading with more (or a line someone typed by hand)
-// still becomes a heading instead of leaking literal "####" text; the
-// level is clamped to 3 wherever it's used below.
-// The space after the #s is optional — "#02 Licencias" and "#Title" both
-// count as headings, not just "# Title", since typing straight into the
-// next word (no space) is a very easy habit to fall into and shouldn't
-// silently produce a literal "#02 Licencias" paragraph instead.
+// Any number of #s (level clamped to 3), space optional: "#02 Licencias" counts.
 const HEADING = /^(#+)\s*(.*)$/;
 const CALLOUT = /^!\s+(.*)$/;
-// A list line, its leading indentation captured separately from the
-// marker — indentation (spaces only, not tabs) is what nests it, see
-// parseListBlocks below. ○/▪ are the composer's Tab-nested bullet markers
-// (- → ○ → ▪, see NewDumpForm's handleListIndent) — they're still the
-// same "bulletList" block type as a plain "-", just visually distinct at
-// a glance.
+// Indentation (spaces) sets nesting. ○ and ▪ are nested bullet markers.
 const LIST_LINE = /^( *)(-|○|▪|\d+\.|[a-zA-Z]\.)\s+(.*)$/;
 // A table row is typed as `| cell | cell | cell |` — leading and trailing
 // pipes required, so a line that just happens to contain a "|" mid-sentence
 // isn't mistaken for a table.
 const TABLE_ROW = /^\|(.+)\|$/;
-// A code block opens with `<` alone (optionally followed by a language
-// name, e.g. `<js` or `<python` — same idea as a fenced ```js block in
-// standard Markdown) on its own line, then any number of lines verbatim
-// (no inline **bold**/list parsing inside — it's code, not prose), until a
-// `>` alone on its own line closes it.
+// A code block: `<` or `<lang` on its own line, verbatim lines, then `>` alone.
 const CODE_FENCE_START = /^<\s*([a-zA-Z0-9+#.]*)\s*$/;
 const CODE_FENCE_END = /^>\s*$/;
 
@@ -165,13 +128,8 @@ function parseListLine(
   return { indent: m[1].length, type, text: m[3] };
 }
 
-// Parses a contiguous run of list lines (bullet/numbered/lettered, at any
-// depth) starting at lines[i.pos] into a tree of ListBlocks. A line
-// indented further than the one before it nests as a sub-list of that
-// item (one nested ListBlock per indent jump); a line indented less than
-// `minIndent` hands control back to the caller — its own parent level.
-// Mirrors how Tab/Shift+Tab in the composer (NewDumpForm) indent/outdent a
-// list line by adding/removing two spaces before its marker.
+// One contiguous run of list lines → a tree of lists. A deeper indent nests
+// under the previous item; a shallower one returns to the caller.
 function parseListBlocks(lines: string[], i: { pos: number }, minIndent: number): ListBlock[] {
   const blocks: ListBlock[] = [];
 
@@ -199,11 +157,7 @@ function parseListBlocks(lines: string[], i: { pos: number }, minIndent: number)
   return blocks;
 }
 
-// Splits a plain-text run into paragraph/heading/callout/list blocks using
-// a small set of Notion-style shortcuts: `#`/`##`/`###` for headings, `!`
-// for a callout, `-` for a bullet list, `1.` for a numbered list, and `a.`
-// for a lettered one — typed as literal characters at the start of a line,
-// same idea as the `![image](url)` markers this builds on top of.
+// Plain text → blocks, using the line-start shortcuts (#, !, -, 1., a., |, <).
 function parseTextBlocks(text: string): NoteBlock[] {
   const blocks: NoteBlock[] = [];
   const lines = text.split("\n");
@@ -267,19 +221,9 @@ function parseTextBlocks(text: string): NoteBlock[] {
       continue;
     }
 
-    // A plain paragraph: fold in every following line up to the next blank
-    // line or shortcut, so they render as one block — joined with "\n"
-    // (not " ") so each Enter the user typed stays a real line break
-    // (RichContent's paragraph <p> is whitespace-pre-wrap, so \n shows up
-    // as a break instead of being swallowed). A fully blank line is still
-    // what starts a new paragraph block; this only preserves line breaks
-    // *within* one.
-    // Checking LIST_LINE against the RAW line (not trimmed) here matters —
-    // it has to agree exactly with the dispatch check above it, or a line
-    // that LOOKS like a list marker once trimmed (e.g. a tab, not spaces,
-    // before it) can break out of this loop on its very first iteration
-    // without ever advancing `i`, freezing the whole parse in an infinite
-    // loop instead of just treating it as an ordinary paragraph line.
+    // Paragraph: following lines until a blank line or shortcut, joined with \n so
+    // line breaks survive. LIST_LINE must test the raw line (same as the dispatch
+    // above), or a tab-indented "- x" would never advance `i` and loop forever.
     const paraLines: string[] = [];
     while (i < lines.length) {
       const t = lines[i].trim();

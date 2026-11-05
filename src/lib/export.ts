@@ -8,11 +8,7 @@ function inlineToMarkdown(nodes: InlineNode[]): string {
           return `**${n.value}**`;
         case "italic":
           return `*${n.value}*`;
-        // Standard/GFM Markdown reads __text__ as BOLD, not underline —
-        // passing our own __text__ through unchanged would silently
-        // change what the exported file means. <u> is plain HTML, which
-        // GitHub, Obsidian and VS Code's preview all render inline
-        // inside Markdown.
+        // Markdown reads __text__ as bold, so underline exports as <u>.
         case "underline":
           return `<u>${n.value}</u>`;
         case "link":
@@ -26,10 +22,7 @@ function inlineToMarkdown(nodes: InlineNode[]): string {
     .join("");
 }
 
-// A nested item's children are indented two more spaces than their parent
-// — not GFM's most rigorous nesting rule (which wants indent matched to
-// the parent marker's own width), but tolerant enough for GitHub/Obsidian
-// to render correctly, and simpler than tracking marker width per line.
+// Nested items indent two spaces; GitHub and Obsidian render that fine.
 function listItemsToMarkdown(
   items: ListItem[],
   markerFor: (index: number) => string,
@@ -59,12 +52,8 @@ function listBlockToMarkdown(block: ListBlock, indent = ""): string {
   }
 }
 
-// Re-serializes our own parsed blocks into standard/GFM Markdown, fixing
-// the three places our shortcut syntax isn't quite standard Markdown:
-// "!" callouts (not a Markdown thing) become "> " blockquotes, lettered
-// lists (no alphabetic list syntax in Markdown) become bullets, and
-// tables gain the "|---|---|" separator row GFM requires to render as an
-// actual table instead of plain piped text.
+// Our blocks → standard Markdown: callouts become quotes, lettered lists
+// bullets, and tables get the |---| row.
 function blockToMarkdown(block: NoteBlock): string {
   switch (block.type) {
     case "heading":

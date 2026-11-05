@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { upsertSection } from "@/lib/sections";
@@ -37,7 +38,7 @@ export async function createPursuit(formData: FormData) {
     },
   });
 
-  revalidatePath("/pursuits");
+  revalidatePath("/pursuits", "layout");
 }
 
 export async function deleteSection(sectionId: string) {
@@ -46,15 +47,14 @@ export async function deleteSection(sectionId: string) {
     throw new Error("Not signed in");
   }
 
-  // Deletes only this user's own section (deleteMany rather than delete so
-  // a mismatched userId is silently a no-op instead of a Prisma error).
-  // Any pursuit in it falls back to sectionId: null automatically — see
-  // the ON DELETE SET NULL on Pursuit.sectionId in the schema.
+  // Only this user's section; its subjects become unsectioned (ON DELETE SET NULL).
   await prisma.section.deleteMany({
     where: { id: sectionId, userId: session.user.id },
   });
 
-  revalidatePath("/pursuits");
+  revalidatePath("/pursuits", "layout");
+  // Called from the section's own page, which no longer exists after this.
+  redirect("/pursuits");
 }
 
 export async function deletePursuit(pursuitId: string) {
@@ -73,15 +73,14 @@ export async function deletePursuit(pursuitId: string) {
     throw new Error("Only the owner can delete this pursuit");
   }
 
-  // Notes reference BrainDumps and Tags through join tables, and Flashcards
-  // reference Notes, so clear them first — deleting the Pursuit itself
-  // would otherwise fail on the straightforward one-to-many foreign keys
-  // below (this is exactly what broke once Flashcard shipped without this
-  // list being updated to match).
+  // Children first: the foreign keys to Pursuit don't cascade.
   await prisma.$transaction([
     prisma.flashcard.deleteMany({ where: { pursuitId } }),
     prisma.note.deleteMany({ where: { pursuitId } }),
     prisma.brainDump.deleteMany({ where: { pursuitId } }),
+    // Has a plain (no-cascade) FK to Pursuit too — left out of this list,
+    // any pursuit with a U1/U2-style content section failed to delete.
+    prisma.pursuitContentSection.deleteMany({ where: { pursuitId } }),
     prisma.tag.deleteMany({ where: { pursuitId } }),
     prisma.attachment.deleteMany({ where: { pursuitId } }),
     prisma.pursuitMember.deleteMany({ where: { pursuitId } }),
@@ -90,7 +89,7 @@ export async function deletePursuit(pursuitId: string) {
     prisma.pursuit.delete({ where: { id: pursuitId } }),
   ]);
 
-  revalidatePath("/pursuits");
+  revalidatePath("/pursuits", "layout");
 }
 
 // Moves a section's row up or down among the user's other sections by
@@ -119,27 +118,7 @@ export async function reorderSection(sectionId: string, direction: "up" | "down"
     prisma.section.update({ where: { id: neighbor.id }, data: { order: current.order } }),
   ]);
 
-  revalidatePath("/pursuits");
-}
-
-// Bulk-assigns a (possibly new) section to several of the user's own
-// pursuits at once — for cleaning up after a deleted section scattered
-// pursuits back into "No section", without re-typing the name on each one.
-export async function assignSection(pursuitIds: string[], sectionName: string) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    throw new Error("Not signed in");
-  }
-  if (pursuitIds.length === 0 || sectionName.trim() === "") return;
-
-  const section = await upsertSection(session.user.id, sectionName);
-
-  await prisma.pursuit.updateMany({
-    where: { id: { in: pursuitIds }, ownerId: session.user.id },
-    data: { sectionId: section.id },
-  });
-
-  revalidatePath("/pursuits");
+  revalidatePath("/pursuits", "layout");
 }
 
 export type PushSubscriptionInput = {
@@ -178,35 +157,28 @@ export async function unsubscribeFromPush(endpoint: string) {
   await prisma.pushSubscription.deleteMany({ where: { endpoint, userId: session.user.id } });
 }
 
-// Called by the onboarding tour's last step (or its "skip" link) — once
-// set, neither the list-page nor the detail-page tour renders again. See
-// src/components/Tour.tsx and src/lib/onboarding.ts.
-// The "little button" to switch language — see ProfileMenu.tsx. Only the
-// onboarding tour's own text actually reads this today (src/lib/i18n.ts);
-// stored on User so it survives switching devices, same as onboardedAt.
+// The language switch in ProfileMenu. Stored on the user so it follows
+// them across devices.
 export async function setLocale(locale: string) {
   const session = await auth();
   if (!session?.user?.id) return;
   if (!isLocale(locale)) return;
   await prisma.user.update({ where: { id: session.user.id }, data: { locale } });
-  revalidatePath("/pursuits");
+  revalidatePath("/pursuits", "layout");
 }
 
-export async function completeOnboarding() {
+// The round "+" on the home screen. Returns { error } instead of throwing
+// so the inline input can show a message in place.
+export async function createSection(name: string): Promise<{ error: string | null; id?: string }> {
   const session = await auth();
-  if (!session?.user?.id) return;
-  await prisma.user.update({
-    where: { id: session.user.id },
-    data: { onboardedAt: new Date() },
-  });
-}
+  if (!session?.user?.id) {
+    return { error: "Not signed in" };
+  }
+  const trimmed = name.trim();
+  if (trimmed === "") return { error: "Give it a name" };
+  if (trimmed.length > 40) return { error: "Keep it under 40 characters" };
 
-export async function hasPushSubscription(endpoint: string): Promise<boolean> {
-  const session = await auth();
-  if (!session?.user?.id) return false;
-  const sub = await prisma.pushSubscription.findFirst({
-    where: { endpoint, userId: session.user.id },
-    select: { id: true },
-  });
-  return !!sub;
+  const section = await upsertSection(session.user.id, trimmed);
+  revalidatePath("/pursuits", "layout");
+  return { error: null, id: section.id };
 }

@@ -3,16 +3,15 @@
 import { useState, useTransition } from "react";
 import { renamePursuit } from "./actions";
 
-// Same click-to-edit idea as PursuitMeta (type/status/section) — the
-// title just wasn't wired up for it yet, even though it's stored the
-// same way and only the owner/members who can already edit everything
-// else here can touch it (renamePursuit reuses requireAccess).
+// Click to rename.
 export function PursuitTitle({
   pursuitId,
   title,
+  className = "text-2xl font-semibold",
 }: {
   pursuitId: string;
   title: string;
+  className?: string;
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [value, setValue] = useState(title);
@@ -45,7 +44,7 @@ export function PursuitTitle({
       <button
         type="button"
         onClick={startEditing}
-        className="text-left text-2xl font-semibold hover:underline"
+        className={`text-left hover:underline ${className}`}
       >
         {title}
       </button>

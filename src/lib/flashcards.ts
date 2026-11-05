@@ -2,10 +2,7 @@ import { parseJsonLoosely } from "@/lib/json";
 
 export type FlashcardDraft = { question: string; answer: string };
 
-// Turns Groq's raw completion text into a list of question/answer pairs.
-// Never throws — invalid JSON, a missing "cards" array, or individual
-// cards missing a question/answer just get dropped rather than crashing
-// the whole generation for the pursuit.
+// AI text → question/answer pairs. Never throws; bad cards are dropped.
 export function parseFlashcardsResponse(rawText: string): FlashcardDraft[] {
   const parsed = parseJsonLoosely(rawText);
   const obj =

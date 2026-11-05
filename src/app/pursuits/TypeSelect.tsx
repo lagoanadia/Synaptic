@@ -1,7 +1,4 @@
-// Free-typed and optional, same pattern as the Section input — no "use
-// client" needed since a plain text input + datalist needs no local
-// state, unlike the old fixed dropdown (which had to reveal a custom-name
-// field when "Other" was picked).
+// Free-typed with suggestions from existing types.
 export function TypeSelect({
   options,
   defaultValue = "",

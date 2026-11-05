@@ -1,12 +1,7 @@
 "use client";
 
-// Client-only: renders each page of a PDF to a PNG Blob in the browser,
-// using <canvas> — so a PDF can flow through the exact same "it's an
-// image" pipeline the app already has (Blob upload, `![image](url)`
-// markers, the Groq vision call in organizeDumps) with no server-side
-// PDF handling or schema changes at all. Groq's vision models don't
-// accept a PDF as a native input, so turning each page into a picture is
-// what actually lets the AI "see" it.
+// Renders each PDF page to an image in the browser, so PDFs go through the
+// image pipeline (the vision model can't read PDFs).
 export async function pdfToImagePages(file: File): Promise<Blob[]> {
   const pdfjsLib = await import("pdfjs-dist");
   // Must match the installed pdfjs-dist version exactly, or every PDF
@@ -36,12 +31,7 @@ export async function pdfToImagePages(file: File): Promise<Blob[]> {
 
     await page.render({ canvasContext: context, viewport }).promise;
 
-    // JPEG, not PNG: a scanned/lecture-slide page is mostly a white
-    // background under text, which PNG (lossless) compresses far worse
-    // than a photo — a multi-page PDF at PNG quickly produces several
-    // multi-MB uploads, each of which Groq's vision endpoint has to fetch
-    // and decode within its own timeout. 0.85 quality keeps text legible
-    // at a fraction of the size.
+    // JPEG at 0.85: text stays legible and pages stay small.
     const blob = await new Promise<Blob | null>((resolve) =>
       canvas.toBlob(resolve, "image/jpeg", 0.85),
     );

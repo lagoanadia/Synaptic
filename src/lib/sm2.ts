@@ -5,12 +5,7 @@ export type SM2State = { interval: number; easeFactor: number; repetitions: numb
 // never space out, showing up every single day forever.
 export const MIN_EASE_FACTOR = 1.3;
 
-// Nothing capped the ease factor's upper end, so a card rated "Easy" over
-// and over keeps compounding its own interval multiplier forever — after
-// enough reviews the interval balloons into millions of days, and
-// setDate() with a number that large produces an Invalid Date, which
-// then fails to save at all. A cap this far out (~27 years) is well
-// past any interval a spaced-repetition schedule is actually useful at.
+// Without a cap, repeated "Easy" grows the interval until setDate overflows.
 export const MAX_INTERVAL_DAYS = 10000;
 
 export const DEFAULT_SM2_STATE: SM2State = {
@@ -19,14 +14,8 @@ export const DEFAULT_SM2_STATE: SM2State = {
   repetitions: 0,
 };
 
-// The SM-2 algorithm (as used by Anki and the original SuperMemo) — given
-// the card's current state and a 0-5 self-rated recall quality, decides
-// how many days to wait before showing it again. It only needs the last
-// state, not full review history, which is what makes it "simple" enough
-// to store as three numbers per card.
-//
-// quality: 0-2 means "forgotten" (restart the spacing), 3-5 means
-// "recalled it" (space it out further, more so the higher the quality).
+// SM-2 (Anki's algorithm): from the card's last state and a 0-5 recall rating,
+// the days until the next review. 0-2 restarts the spacing, 3-5 extends it.
 export function computeNextReview(state: SM2State, quality: number): SM2State {
   // Updated on every review, pass or fail — a card that's been hard to
   // recall before should keep ramping up more slowly even after it's

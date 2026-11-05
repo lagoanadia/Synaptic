@@ -3,10 +3,7 @@ import Stripe from "stripe";
 import { prisma } from "@/lib/prisma";
 import { stripe, planForPriceId } from "@/lib/stripe";
 
-// Reads the item's price/period-end rather than the subscription's own
-// (removed from Subscription itself in recent Stripe API versions, now
-// per-item to support multiple prices on one subscription) — this app
-// only ever puts one price on a subscription, so the first item is it.
+// Price and period end live on the subscription item now; we use one item.
 function planFromSubscription(sub: Stripe.Subscription) {
   const item = sub.items.data[0];
   const plan = item ? planForPriceId(item.price.id) : null;
@@ -14,10 +11,7 @@ function planFromSubscription(sub: Stripe.Subscription) {
   return { plan, periodEnd };
 }
 
-// Stripe calls this after checkout, and again on every renewal, plan
-// change, or cancellation — the source of truth for User.plan is always
-// what Stripe reports here, never anything set optimistically from a
-// page or Server Action right after a checkout redirect.
+// Called on checkout, renewal, plan change and cancellation: the only writer of User.plan.
 export async function POST(request: Request) {
   const body = await request.text();
   const signature = request.headers.get("stripe-signature");

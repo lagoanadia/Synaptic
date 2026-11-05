@@ -31,10 +31,7 @@ const COLUMNS: { key: Status; label: string }[] = [
   { key: "DONE", label: "Done" },
 ];
 
-// Same "whole-column resync" idiom as DumpControls' withDraggedInsertedAt —
-// remove the dragged card from wherever it was, splice it back in right
-// before/after targetId, return the resulting id list for reorderProjectCards
-// to write in one trip.
+// Same idea as DumpControls' withDraggedInsertedAt.
 function withDraggedInsertedAt(
   list: CardForDisplay[],
   draggedId: string,

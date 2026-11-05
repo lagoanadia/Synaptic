@@ -5,10 +5,7 @@ import { askPursuit } from "./actions";
 
 type Turn = { question: string; answer: string };
 
-// Local-only chat history (not saved to the database) — each question is
-// answered fresh from a full-text search over this pursuit's content, see
-// askPursuit's comment in actions.ts for why full-text search instead of
-// embeddings for now.
+// Chat history lives in memory only.
 export function AskPursuit({ pursuitId }: { pursuitId: string }) {
   const [question, setQuestion] = useState("");
   const [turns, setTurns] = useState<Turn[]>([]);

@@ -14,10 +14,7 @@ export const metadata: Metadata = {
   title: "Synaptic",
   description: "Capture things learned by doing, then organize them later.",
   manifest: "/manifest.webmanifest",
-  // Without this, an iPhone/iPad that adds Synaptic to the home screen
-  // opens it in a plain Safari tab instead of the standalone, app-like
-  // window the manifest already gives Android/desktop Chrome — iOS
-  // ignores most of the Web Manifest spec and wants its own meta tags.
+  // iOS ignores most of the web manifest and needs this to open standalone.
   appleWebApp: {
     title: "Synaptic",
     statusBarStyle: "default",

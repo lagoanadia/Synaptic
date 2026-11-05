@@ -4,10 +4,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { ProjectBoard } from "./ProjectBoard";
 
-// Server Actions run in this page's own Function, so this limit applies
-// to each readAssignmentPages / saveProposedCards call. Each one is a
-// single short request now (the browser reads a long PDF chunk by chunk),
-// so 60s is plenty per call no matter how many pages the PDF has.
+// Applies to each Server Action call from this page (all short now).
 export const maxDuration = 60;
 
 export default async function ProjectPage({

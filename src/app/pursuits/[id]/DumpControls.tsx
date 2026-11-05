@@ -28,15 +28,8 @@ type DumpForDisplay = {
 
 type SectionForDisplay = { id: string; name: string };
 
-// Groups dumps by sectionId — within a group, sorted by sectionOrder
-// (set to its index in the list every time something's dragged into or
-// reordered within that group — see reorderDumpSection) rather than
-// createdAt, which would otherwise put whatever's newest on top
-// regardless of where it was actually dropped. A dump that's never been
-// touched keeps sectionOrder 0, and the sort is stable, so untouched
-// groups still read in their original createdAt-desc order. Dumps whose
-// sectionId doesn't match any current section (one just got deleted
-// elsewhere) fall back into unsectioned rather than disappearing.
+// Sorted by sectionOrder within a section (stable, so untouched ones keep
+// creation order). Pages whose section was deleted fall back to unsectioned.
 function groupBySection(dumps: DumpForDisplay[], sections: SectionForDisplay[]) {
   const bySection = new Map<string, DumpForDisplay[]>();
   const unsectioned: DumpForDisplay[] = [];
@@ -55,11 +48,7 @@ function groupBySection(dumps: DumpForDisplay[], sections: SectionForDisplay[]) 
   return { unsectioned, bySection };
 }
 
-// Builds the full ordered id list a group should have after dragging
-// draggedId onto targetId within it — draggedId is removed first (a
-// no-op if it wasn't already in this group, i.e. it's arriving from
-// somewhere else) then spliced back in right before or after targetId
-// depending which half of targetId's row the cursor is over.
+// The section's id list after dropping draggedId before/after targetId.
 function withDraggedInsertedAt(
   list: DumpForDisplay[],
   draggedId: string,
@@ -101,10 +90,7 @@ function DumpRow({
   onDragEnd: () => void;
   onDragOverRow: (e: React.DragEvent) => void;
   onDropOnRow: (e: React.DragEvent) => void;
-  // A non-drag way to move a page into a section — same result as
-  // dragging it there, for when a section is off-screen or dragging just
-  // isn't convenient (e.g. on a touch screen, which HTML5 drag-and-drop
-  // doesn't support at all).
+  // Move to a section without dragging (touch screens can't drag).
   sections: SectionForDisplay[];
   onAssignSection: (sectionId: string | null) => void;
 }) {
