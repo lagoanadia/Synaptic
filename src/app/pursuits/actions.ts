@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { upsertSection } from "@/lib/sections";
@@ -37,7 +38,7 @@ export async function createPursuit(formData: FormData) {
     },
   });
 
-  revalidatePath("/pursuits");
+  revalidatePath("/pursuits", "layout");
 }
 
 export async function deleteSection(sectionId: string) {
@@ -54,7 +55,9 @@ export async function deleteSection(sectionId: string) {
     where: { id: sectionId, userId: session.user.id },
   });
 
-  revalidatePath("/pursuits");
+  revalidatePath("/pursuits", "layout");
+  // Called from the section's own page, which no longer exists after this.
+  redirect("/pursuits");
 }
 
 export async function deletePursuit(pursuitId: string) {
@@ -82,6 +85,9 @@ export async function deletePursuit(pursuitId: string) {
     prisma.flashcard.deleteMany({ where: { pursuitId } }),
     prisma.note.deleteMany({ where: { pursuitId } }),
     prisma.brainDump.deleteMany({ where: { pursuitId } }),
+    // Has a plain (no-cascade) FK to Pursuit too — left out of this list,
+    // any pursuit with a U1/U2-style content section failed to delete.
+    prisma.pursuitContentSection.deleteMany({ where: { pursuitId } }),
     prisma.tag.deleteMany({ where: { pursuitId } }),
     prisma.attachment.deleteMany({ where: { pursuitId } }),
     prisma.pursuitMember.deleteMany({ where: { pursuitId } }),
@@ -90,7 +96,7 @@ export async function deletePursuit(pursuitId: string) {
     prisma.pursuit.delete({ where: { id: pursuitId } }),
   ]);
 
-  revalidatePath("/pursuits");
+  revalidatePath("/pursuits", "layout");
 }
 
 // Moves a section's row up or down among the user's other sections by
@@ -119,7 +125,7 @@ export async function reorderSection(sectionId: string, direction: "up" | "down"
     prisma.section.update({ where: { id: neighbor.id }, data: { order: current.order } }),
   ]);
 
-  revalidatePath("/pursuits");
+  revalidatePath("/pursuits", "layout");
 }
 
 // Bulk-assigns a (possibly new) section to several of the user's own
@@ -139,7 +145,7 @@ export async function assignSection(pursuitIds: string[], sectionName: string) {
     data: { sectionId: section.id },
   });
 
-  revalidatePath("/pursuits");
+  revalidatePath("/pursuits", "layout");
 }
 
 export type PushSubscriptionInput = {
@@ -189,7 +195,7 @@ export async function setLocale(locale: string) {
   if (!session?.user?.id) return;
   if (!isLocale(locale)) return;
   await prisma.user.update({ where: { id: session.user.id }, data: { locale } });
-  revalidatePath("/pursuits");
+  revalidatePath("/pursuits", "layout");
 }
 
 export async function completeOnboarding() {
@@ -209,4 +215,20 @@ export async function hasPushSubscription(endpoint: string): Promise<boolean> {
     select: { id: true },
   });
   return !!sub;
+}
+
+// The round "+" on the home screen. Returns { error } instead of throwing
+// so the inline input can show a message in place.
+export async function createSection(name: string): Promise<{ error: string | null; id?: string }> {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { error: "Not signed in" };
+  }
+  const trimmed = name.trim();
+  if (trimmed === "") return { error: "Give it a name" };
+  if (trimmed.length > 40) return { error: "Keep it under 40 characters" };
+
+  const section = await upsertSection(session.user.id, trimmed);
+  revalidatePath("/pursuits", "layout");
+  return { error: null, id: section.id };
 }

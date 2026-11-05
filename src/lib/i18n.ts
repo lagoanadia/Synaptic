@@ -38,12 +38,12 @@ export const TOUR_COPY: Record<Locale, TourCopy> = {
   en: {
     list: {
       newProject: {
-        title: "Create your first Pursuit",
-        body: "A Pursuit is a subject, a project, or anything you want to track — give it a title here and click + New.",
+        title: "Make your first section",
+        body: "Sections group what you're working on — School, Work, Habits… Tap + to add one, then add subjects inside it.",
       },
       openExample: {
         title: "We already made you an example",
-        body: 'Open it — "👋 Welcome to Synaptic" — to see what a raw page looks like next to the organized note the AI turns it into.',
+        body: 'It\'s in "Unsorted" — open it, then "👋 Welcome to Synaptic", to see a raw page next to the organized note the AI turns it into.',
       },
     },
     detail: {
@@ -68,12 +68,12 @@ export const TOUR_COPY: Record<Locale, TourCopy> = {
   de: {
     list: {
       newProject: {
-        title: "Erstelle deine erste Pursuit",
-        body: "Eine Pursuit ist ein Fach, ein Projekt oder alles, was du verfolgen möchtest — gib ihr hier einen Titel und klicke auf + New.",
+        title: "Erstelle deinen ersten Bereich",
+        body: "Bereiche gruppieren, woran du arbeitest — Schule, Arbeit, Gewohnheiten… Tippe auf +, um einen hinzuzufügen, und lege darin deine Fächer an.",
       },
       openExample: {
         title: "Wir haben dir schon ein Beispiel erstellt",
-        body: 'Öffne es — "👋 Welcome to Synaptic" — um zu sehen, wie eine rohe Seite neben der von der KI organisierten Notiz aussieht.',
+        body: 'Es liegt unter „Unsorted" — öffne es und dann „👋 Welcome to Synaptic", um eine rohe Seite neben der von der KI organisierten Notiz zu sehen.',
       },
     },
     detail: {
@@ -98,12 +98,12 @@ export const TOUR_COPY: Record<Locale, TourCopy> = {
   fr: {
     list: {
       newProject: {
-        title: "Crée ta première Pursuit",
-        body: "Une Pursuit est une matière, un projet, ou tout ce que tu veux suivre — donne-lui un titre ici et clique sur + New.",
+        title: "Crée ta première section",
+        body: "Les sections regroupent ce sur quoi tu travailles — École, Travail, Habitudes… Touche + pour en ajouter une, puis ajoute tes matières dedans.",
       },
       openExample: {
         title: "On t'a déjà créé un exemple",
-        body: 'Ouvre-le — "👋 Welcome to Synaptic" — pour voir à quoi ressemble une page brute à côté de la note organisée que l\'IA en tire.',
+        body: "Il est dans « Unsorted » — ouvre-le, puis « 👋 Welcome to Synaptic », pour voir une page brute à côté de la note organisée par l'IA.",
       },
     },
     detail: {
@@ -128,12 +128,12 @@ export const TOUR_COPY: Record<Locale, TourCopy> = {
   es: {
     list: {
       newProject: {
-        title: "Crea tu primera Pursuit",
-        body: "Una Pursuit es una asignatura, un proyecto o cualquier cosa que quieras seguir — ponle un título aquí y pulsa + New.",
+        title: "Crea tu primera sección",
+        body: "Las secciones agrupan en lo que estás — Clase, Trabajo, Hábitos… Pulsa + para añadir una y luego crea tus asignaturas dentro.",
       },
       openExample: {
         title: "Ya te hemos creado un ejemplo",
-        body: 'Ábrela — "👋 Welcome to Synaptic" — para ver cómo es un apunte en bruto junto a la nota ya organizada que genera la IA.',
+        body: 'Está en "Unsorted" — ábrelo y luego "👋 Welcome to Synaptic" para ver un apunte en bruto junto a la nota que organiza la IA.',
       },
     },
     detail: {

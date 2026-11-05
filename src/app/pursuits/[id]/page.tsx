@@ -26,6 +26,9 @@ import { completeOnboarding } from "../actions";
 import { Tour } from "../../Tour";
 import { ProjectsBoard } from "./ProjectsBoard";
 import { TOUR_COPY, TOUR_UI, isLocale } from "@/lib/i18n";
+import { GameTiles } from "../../review/GameTiles";
+import { SectionGrid } from "./SectionGrid";
+import { UNSORTED, SHARED } from "@/lib/reviewData";
 
 const CLASSROOM_ERROR_COPY: Record<string, string> = {
   denied: "Google Classroom connection canceled.",
@@ -38,11 +41,18 @@ export default async function PursuitPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ tab?: string; classroomConnected?: string; classroomError?: string }>;
+  searchParams: Promise<{
+    tab?: string;
+    section?: string;
+    classroomConnected?: string;
+    classroomError?: string;
+  }>;
 }) {
   const { id } = await params;
-  const { tab: rawTab, classroomConnected, classroomError } = await searchParams;
+  const { tab: rawTab, section: sectionFilter, classroomConnected, classroomError } =
+    await searchParams;
   const tab =
+    rawTab === "dump" ||
     rawTab === "organized" ||
     rawTab === "files" ||
     rawTab === "ask" ||
@@ -50,7 +60,7 @@ export default async function PursuitPage({
     rawTab === "timeline" ||
     rawTab === "projects"
       ? rawTab
-      : "dump";
+      : "overview";
 
   const session = await auth();
   if (!session?.user?.id) {
@@ -142,22 +152,41 @@ export default async function PursuitPage({
     ask: "border-flame",
   };
   const tabClass = (name: string) =>
-    `pb-2 text-sm font-semibold border-b-2 ${
+    `pb-2 text-sm font-semibold border-b-2 whitespace-nowrap ${
       tab === name
         ? `${TAB_ACCENT[name] ?? "border-accent"} text-ink`
-        : "border-transparent text-ink-faint"
+        : "border-transparent text-ink-faint hover:text-ink"
     }`;
 
+  // ?section= narrows Brain Dump and Organized to one content section
+  // (U1, U2…), so clicking a tile on the overview shows just that.
+  const activeSection =
+    sectionFilter === UNSORTED
+      ? { id: UNSORTED, name: "Unsorted" }
+      : (pursuit.contentSections.find((s) => s.id === sectionFilter) ?? null);
+  const inActiveSection = (sectionId: string | null) =>
+    !activeSection ||
+    (activeSection.id === UNSORTED ? sectionId === null : sectionId === activeSection.id);
+  const visibleSections = activeSection
+    ? pursuit.contentSections.filter((s) => s.id === activeSection.id)
+    : pursuit.contentSections;
+  const sectionQuery = activeSection ? `&section=${activeSection.id}` : "";
+
+  // Where "back" goes: the Section this subject lives in on the new home.
+  const backHref =
+    pursuit.owner.id !== session.user.id
+      ? `/pursuits/s/${SHARED}`
+      : `/pursuits/s/${pursuit.section?.id ?? UNSORTED}`;
+  const backLabel =
+    pursuit.owner.id !== session.user.id ? "Shared" : (pursuit.section?.name ?? "Unsorted");
+
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-5 px-6 py-9">
-      <div className="flex items-center justify-between">
+    <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-6 py-9 lg:px-10">
+      <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <Logo href="/pursuits" withWordmark={false} size={20} />
-          <Link
-            href="/pursuits"
-            className="text-sm text-ink-muted hover:underline"
-          >
-            ← Exit
+          <Link href={backHref} className="text-sm text-ink-muted hover:underline">
+            ← {backLabel}
           </Link>
         </div>
         <div className="flex items-center gap-4">
@@ -170,69 +199,85 @@ export default async function PursuitPage({
           {pursuit.owner.id !== session.user.id && (
             <LeaveButton pursuitId={pursuit.id} />
           )}
-          <span className="text-xs text-ink-faint">Focus mode</span>
         </div>
       </div>
 
-      <div className="flex flex-col gap-2">
-        <PursuitTitle pursuitId={pursuit.id} title={pursuit.title} />
-        <PursuitMeta
+      <div className="flex flex-col gap-1.5">
+        <PursuitTitle
           pursuitId={pursuit.id}
-          type={pursuit.type}
-          status={pursuit.status}
-          sectionName={pursuit.section?.name ?? null}
-          availableTypes={distinctTypes.map((p) => p.type).filter((t) => t !== null)}
-          availableSections={sections.map((s) => s.name)}
+          title={pursuit.title}
+          className="text-3xl font-extrabold text-tile-sky italic"
         />
-        <div className="flex flex-wrap items-center gap-1.5">
-          {pursuit.pursuitTags.map((t) => (
-            <span
-              key={t.id}
-              className="flex items-center gap-1 rounded bg-chip px-2 py-0.5 text-xs text-ink-muted"
-            >
-              {t.name}
-              <DeleteButton
-                action={removePursuitTag.bind(null, pursuit.id, t.id)}
-                className="text-ink-faint hover:text-red-500"
-              >
-                ×
-              </DeleteButton>
-            </span>
-          ))}
-          <TagForm pursuitId={pursuit.id} />
-        </div>
-        <div className="flex flex-wrap items-center gap-2 pt-1">
-          <span className="text-xs text-ink-faint">Shared with</span>
-          <span className="text-xs text-ink-muted">
-            {pursuit.owner.name ?? pursuit.owner.email} (owner)
-          </span>
-          {pursuit.members.map((m) =>
-            pursuit.owner.id === session.user.id ? (
-              <MemberRow
-                key={m.id}
-                pursuitId={pursuit.id}
-                memberId={m.id}
-                name={m.user.name ?? m.user.email}
-                role={m.role}
-              />
-            ) : (
-              <span key={m.id} className="text-xs text-ink-muted">
-                · {m.user.name ?? m.user.email} ({m.role.toLowerCase()})
+        {/* Type, status, tags and sharing: useful, but not every visit —
+            folded away so the page opens on the content itself. */}
+        <details className="group text-sm">
+          <summary className="cursor-pointer text-xs text-ink-faint select-none hover:text-ink">
+            {[pursuit.type, pursuit.status.toLowerCase(), pursuit.members.length > 0 ? `shared with ${pursuit.members.length}` : null]
+              .filter(Boolean)
+              .join(" · ")}{" "}
+            · details
+          </summary>
+          <div className="mt-3 flex flex-col gap-2">
+            <PursuitMeta
+              pursuitId={pursuit.id}
+              type={pursuit.type}
+              status={pursuit.status}
+              sectionName={pursuit.section?.name ?? null}
+              availableTypes={distinctTypes.map((p) => p.type).filter((t) => t !== null)}
+              availableSections={sections.map((s) => s.name)}
+            />
+            <div className="flex flex-wrap items-center gap-1.5">
+              {pursuit.pursuitTags.map((t) => (
+                <span
+                  key={t.id}
+                  className="flex items-center gap-1 rounded bg-chip px-2 py-0.5 text-xs text-ink-muted"
+                >
+                  {t.name}
+                  <DeleteButton
+                    action={removePursuitTag.bind(null, pursuit.id, t.id)}
+                    className="text-ink-faint hover:text-red-500"
+                  >
+                    ×
+                  </DeleteButton>
+                </span>
+              ))}
+              <TagForm pursuitId={pursuit.id} />
+            </div>
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              <span className="text-xs text-ink-faint">Shared with</span>
+              <span className="text-xs text-ink-muted">
+                {pursuit.owner.name ?? pursuit.owner.email} (owner)
               </span>
-            ),
-          )}
-          {pursuit.owner.id === session.user.id && (
-            <MemberForm pursuitId={pursuit.id} />
-          )}
+              {pursuit.members.map((m) =>
+                pursuit.owner.id === session.user.id ? (
+                  <MemberRow
+                    key={m.id}
+                    pursuitId={pursuit.id}
+                    memberId={m.id}
+                    name={m.user.name ?? m.user.email}
+                    role={m.role}
+                  />
+                ) : (
+                  <span key={m.id} className="text-xs text-ink-muted">
+                    · {m.user.name ?? m.user.email} ({m.role.toLowerCase()})
+                  </span>
+                ),
+              )}
+              {pursuit.owner.id === session.user.id && (
+                <MemberForm pursuitId={pursuit.id} />
+              )}
+            </div>
+          </div>
+        </details>
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+        <div data-tour="status-note">
+          <StatusNote pursuitId={pursuit.id} initialNote={pursuit.statusNote} />
         </div>
-      </div>
-
-      <div data-tour="status-note">
-        <StatusNote pursuitId={pursuit.id} initialNote={pursuit.statusNote} />
-      </div>
-
-      <div data-tour="search-bar">
-        <SearchBar pursuitId={pursuit.id} />
+        <div data-tour="search-bar">
+          <SearchBar pursuitId={pursuit.id} />
+        </div>
       </div>
 
       <UpcomingDeadlines
@@ -240,12 +285,18 @@ export default async function PursuitPage({
         hasCourse={pursuit.classroomEnabled && !!pursuit.classroomCourseId}
       />
 
-      <div data-tour="tab-bar" className="flex gap-7 border-b border-border-subtle">
-        <Link href={`/pursuits/${pursuit.id}?tab=dump`} className={tabClass("dump")}>
+      <div
+        data-tour="tab-bar"
+        className="flex gap-7 overflow-x-auto border-b border-border-subtle"
+      >
+        <Link href={`/pursuits/${pursuit.id}`} className={tabClass("overview")}>
+          Sections
+        </Link>
+        <Link href={`/pursuits/${pursuit.id}?tab=dump${sectionQuery}`} className={tabClass("dump")}>
           Brain Dump
         </Link>
         <Link
-          href={`/pursuits/${pursuit.id}?tab=organized`}
+          href={`/pursuits/${pursuit.id}?tab=organized${sectionQuery}`}
           className={tabClass("organized")}
         >
           Organized
@@ -267,12 +318,63 @@ export default async function PursuitPage({
         </Link>
       </div>
 
+      {activeSection && (tab === "dump" || tab === "organized") && (
+        <div className="-mt-2 flex items-center gap-2 text-sm">
+          <span className="text-ink-muted">Showing</span>
+          <span className="flex items-center gap-1.5 rounded-full bg-tile-sky px-3 py-1 text-xs font-semibold text-white">
+            {activeSection.name}
+            <Link
+              href={`/pursuits/${pursuit.id}?tab=${tab}`}
+              aria-label="Show all sections"
+              className="hover:opacity-80"
+            >
+              ×
+            </Link>
+          </span>
+        </div>
+      )}
+
+      {tab === "overview" && (
+        <div className="grid grid-cols-1 gap-10 xl:grid-cols-[minmax(0,1fr)_340px]">
+          <SectionGrid
+            pursuitId={pursuit.id}
+            tiles={[
+              ...pursuit.contentSections.map((s) => ({
+                id: s.id,
+                name: s.name,
+                pages: pursuit.brainDumps.filter((d) => d.sectionId === s.id).length,
+                notes: pursuit.notes.filter((n) => n.sectionId === s.id).length,
+              })),
+              ...(pursuit.brainDumps.some((d) => d.sectionId === null) ||
+              pursuit.notes.some((n) => n.sectionId === null)
+                ? [
+                    {
+                      id: UNSORTED,
+                      name: "Unsorted",
+                      pages: pursuit.brainDumps.filter((d) => d.sectionId === null).length,
+                      notes: pursuit.notes.filter((n) => n.sectionId === null).length,
+                    },
+                  ]
+                : []),
+            ]}
+          />
+          <div className="flex flex-col gap-6">
+            <GameTiles
+              scopeQuery={`pursuit=${pursuit.id}`}
+              cardCount={dueFlashcards.length + upcomingFlashcardCount}
+              dueCount={dueFlashcards.length}
+              conceptCount={pursuit.notes.length}
+            />
+          </div>
+        </div>
+      )}
+
       {tab === "dump" && (
         <DumpControls
           pursuitId={pursuit.id}
           showAuthors={showAuthors}
-          sections={pursuit.contentSections.map((s) => ({ id: s.id, name: s.name }))}
-          dumps={pursuit.brainDumps.map((d) => ({
+          sections={visibleSections.map((s) => ({ id: s.id, name: s.name }))}
+          dumps={pursuit.brainDumps.filter((d) => inActiveSection(d.sectionId)).map((d) => ({
             id: d.id,
             content: d.content,
             images: d.images,
@@ -292,8 +394,8 @@ export default async function PursuitPage({
       {tab === "organized" && (
         <MergeControls
           pursuitId={pursuit.id}
-          sections={pursuit.contentSections.map((s) => ({ id: s.id, name: s.name }))}
-          notes={pursuit.notes.map((n) => ({
+          sections={visibleSections.map((s) => ({ id: s.id, name: s.name }))}
+          notes={pursuit.notes.filter((n) => inActiveSection(n.sectionId)).map((n) => ({
             id: n.id,
             content: n.content,
             createdAt: n.createdAt.toISOString(),
@@ -423,7 +525,7 @@ export default async function PursuitPage({
         />
       )}
 
-      {viewer.onboardedAt === null && tab === "dump" && (
+      {viewer.onboardedAt === null && tab === "overview" && (
         <Tour
           labels={TOUR_UI[locale]}
           steps={[
@@ -441,11 +543,6 @@ export default async function PursuitPage({
               target: '[data-tour="search-bar"]',
               title: tourCopy.detail.searchBar.title,
               body: tourCopy.detail.searchBar.body,
-            },
-            {
-              target: '[data-tour="dump-area"]',
-              title: tourCopy.detail.dumpArea.title,
-              body: tourCopy.detail.dumpArea.body,
             },
           ]}
           onFinish={completeOnboarding}

@@ -71,6 +71,16 @@
   --color-amber: #eda100;
   --color-orchid: #e87ba4;
   --color-moss: #008300;
+  /* Section tiles on the home screen — the teal → sky → blue family from
+     the rebrand prototype, all close cousins of the brand accent so the
+     grid reads as one calm block instead of a rainbow. White text on all
+     of them (same call as the pursuit cards). */
+  --color-tile-teal: #0e8aa8;
+  --color-tile-aqua: #2fb8c9;
+  --color-tile-sky: #3aa6ee;
+  --color-tile-cyan: #0fa8c9;
+  --color-tile-blue: #2383e2;
+  --color-tile-deep: #1d5fc4;
   --font-sans: var(--font-app);
 }
 

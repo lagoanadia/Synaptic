@@ -10,9 +10,11 @@ import { renamePursuit } from "./actions";
 export function PursuitTitle({
   pursuitId,
   title,
+  className = "text-2xl font-semibold",
 }: {
   pursuitId: string;
   title: string;
+  className?: string;
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [value, setValue] = useState(title);
@@ -45,7 +47,7 @@ export function PursuitTitle({
       <button
         type="button"
         onClick={startEditing}
-        className="text-left text-2xl font-semibold hover:underline"
+        className={`text-left hover:underline ${className}`}
       >
         {title}
       </button>
