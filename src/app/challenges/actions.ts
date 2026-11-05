@@ -9,10 +9,9 @@ import { shuffle } from "@/lib/review";
 import { parseChallenge, type ChallengeDraft, type ChallengeTest, type Language } from "@/lib/challenge";
 import { accessiblePursuits } from "@/lib/reviewData";
 
-// No code ever runs on the server. Generation is two steps: the server
-// asks the AI for a draft (with a reference solution); the browser runs
-// that solution against the tests in its sandbox and saves only the
-// tests it passes — so a wrong expected value never reaches you.
+// No code ever runs on the server. The server drafts a challenge (with a
+// reference solution); the browser checks that solution in its sandbox and
+// saves only the tests it passes.
 
 async function signedIn() {
   const session = await auth();

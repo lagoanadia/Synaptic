@@ -20,10 +20,7 @@ model User {
   image         String?
   createdAt     DateTime  @default(now())
 
-  // Billing — set from the Stripe webhook (src/app/api/webhooks/stripe),
-  // never written directly from a page or action, so this always reflects
-  // what Stripe itself thinks the subscription state is rather than
-  // something the app guessed right after a checkout redirect.
+  // Billing: written only by the Stripe webhook, so it mirrors Stripe.
   plan                   Plan      @default(FREE)
   stripeCustomerId       String?   @unique
   stripeSubscriptionId   String?   @unique
@@ -34,11 +31,7 @@ model User {
   // it". See src/lib/onboarding.ts.
   onboardedAt DateTime?
 
-  // "en" | "de" | "fr" | "es" — see src/lib/i18n.ts. Only the onboarding
-  // tour actually reads this today; the rest of the app's copy is plain
-  // English text in the JSX, not yet routed through any translation
-  // table. Stored per-user (not a cookie) so it survives switching
-  // devices, same reasoning as onboardedAt.
+  // "en" | "de" | "fr" | "es" (lib/i18n.ts).
   locale String @default("en")
 
   accounts Account[]
@@ -59,14 +52,8 @@ model User {
   debates             Debate[]
 }
 
-// A personal access token for the MCP server (src/app/api/mcp) — lets an
-// external tool (Claude Desktop, another agent, a script) read and write
-// this user's own Pursuits over the Model Context Protocol, the same way
-// an OAuth app would, but with a token the user generates and revokes
-// themselves instead of a sign-in flow. Only the hash is stored; the raw
-// key is shown once, at creation, same as GitHub/Stripe's own API keys.
-// prefix is kept in the clear purely so the list UI can show "syn_a1b2…"
-// without needing the hash reversed.
+// Personal access token for the MCP server (src/app/api/mcp). Only the hash
+// is stored; the raw key is shown once.
 model ApiKey {
   id         String    @id @default(cuid())
   name       String
@@ -85,13 +72,9 @@ enum Plan {
   TEAM
 }
 
-// A separate OAuth connection from the NextAuth Google sign-in Account
-// row on purpose — logging in with Google and connecting Classroom are
-// different consents (this one asks for Classroom/Drive read access,
-// which most sign-ins never need), and someone who signs in with GitHub
-// can still connect Classroom. accessToken is short-lived and refreshed
-// via refreshToken on demand (see lib/googleClassroom.ts) rather than on
-// a schedule, since it's only needed when the Files tab actually asks.
+// Separate from the Google sign-in Account: a different consent (Classroom
+// read access), and GitHub users can connect it too. Access tokens are
+// refreshed on demand (lib/googleClassroom.ts).
 model GoogleClassroomConnection {
   id           String   @id @default(cuid())
   accessToken  String
@@ -103,10 +86,7 @@ model GoogleClassroomConnection {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-// One row per browser/device a user enabled deadline reminders on (the
-// Web Push standard ties a subscription to a specific browser push
-// endpoint, not to an account) — a user signed in on phone and laptop
-// gets two rows, and both receive the reminder.
+// One per browser that enabled reminders (Web Push is per browser, not per account).
 model PushSubscription {
   id        String   @id @default(cuid())
   endpoint  String   @unique
@@ -118,10 +98,7 @@ model PushSubscription {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-// Dedupes the deadline-reminder cron: courseWorkId is Classroom's own id
-// for the assignment, so the unique constraint means "already notified
-// this user about this specific deadline" without needing to compare
-// dates/titles across runs.
+// Dedupes the deadline cron: one push per user per assignment.
 model SentDeadlineNotification {
   id           String   @id @default(cuid())
   courseWorkId String
@@ -186,16 +163,10 @@ enum MemberRole {
 model Pursuit {
   id            String        @id @default(cuid())
   title         String
-  // Free-typed and optional, same as Section — a fixed Project/Book/
-  // Language/Skill/Other dropdown was one more required, rigid axis of
-  // categorization alongside Section and PursuitTag, which are both
-  // already free-typed and optional.
+  // Free-typed and optional, like Section.
   type          String?
   status        PursuitStatus @default(ACTIVE)
-  // A free-form scratchpad for this Pursuit ("current status", "pending:
-  // ...") — just text, no structure, no history, shown above the search
-  // bar. Separate from everything else here (BrainDump/Note) since it's
-  // not part of the capture-then-organize pipeline, just a sticky note.
+  // Sticky note on the subject ("current status, pending…"). Plain text.
   statusNote    String?
   artifactUrl   String?
   lastTouchedAt DateTime      @default(now())
@@ -207,18 +178,10 @@ model Pursuit {
   sectionId String?
   section   Section? @relation(fields: [sectionId], references: [id])
 
-  // Which Google Classroom course (if any) this Pursuit is linked to, set
-  // by picking a course in the Files tab's Classroom import — lets the
-  // upcoming-deadlines widget know which course's courseWork to read
-  // without asking the user to pick it again every visit. courseName is
-  // cached alongside the id purely so the UI has something to show before
-  // the Classroom API round trip resolves.
+  // The linked Classroom course; the name is cached for display.
   classroomCourseId   String?
   classroomCourseName String?
-  // Opt-in per Pursuit, off by default — Classroom only makes sense for
-  // a school subject, not a book/project/language pursuit, and type is
-  // free-typed text (not a fixed enum), so this can't be inferred from
-  // it reliably. Toggled from the Files tab.
+  // Opt-in per subject: Classroom only makes sense for school subjects.
   classroomEnabled    Boolean @default(false)
 
   members         PursuitMember[]
@@ -234,14 +197,8 @@ model Pursuit {
   challenges      Challenge[]
 }
 
-// Groups a Pursuit's OWN Brain Dump pages and Organized notes into
-// named buckets (e.g. "U1", "U2") by dragging a page/note onto one —
-// a different axis from Section above, which groups whole Pursuits for
-// one user across all of them, not what's inside a single Pursuit.
-// Shared between BrainDump and Note (not two separate lists) so
-// Organizing a dump that's already in a section carries that same
-// grouping over to the note it becomes, instead of starting
-// unsectioned every time (see organizeDumps).
+// Units inside one subject ("UD1", "UD2"), shared by its pages and notes so
+// organizing a page keeps its unit. Section, by contrast, groups subjects.
 model PursuitContentSection {
   id        String   @id @default(cuid())
   name      String
@@ -257,24 +214,15 @@ model PursuitContentSection {
   @@unique([pursuitId, name])
 }
 
-// A separate thing from Pursuit itself — a Pursuit is "Calculus" or "Learn
-// Spanish"; a Project inside it is a single deliverable with a deadline,
-// like "Activity booklet, unit 3", tracked on its own Kanban board rather
-// than mixed into the capture-then-organize BrainDump/Note pipeline. The
-// "template" the UI asks for on creation (Kanban today) isn't stored here
-// — there's only ever been one board shape (fixed TODO/IN_PROGRESS/DONE
-// columns via ProjectCardStatus below), so there's nothing yet to persist
-// about which one was picked.
+// A deliverable inside a subject ("Activity booklet, unit 3") with its own
+// Kanban board.
 model Project {
-  id          String    @id @default(cuid())
-  title       String
-  // The assignment description/"enunciado" text, if one was uploaded —
-  // kept verbatim as a reference a card's own description can point back
-  // to, separate from any single card. Not required: a Project can start
-  // from an empty board.
-  briefText   String?
-  dueDate     DateTime?
-  createdAt   DateTime  @default(now())
+  id        String    @id @default(cuid())
+  title     String
+  // The assignment text, if one was uploaded.
+  briefText String?
+  dueDate   DateTime?
+  createdAt DateTime  @default(now())
 
   pursuitId String
   pursuit   Pursuit @relation(fields: [pursuitId], references: [id])
@@ -293,13 +241,9 @@ model ProjectCard {
   title       String
   description String?
   status      ProjectCardStatus @default(TODO)
-  // Position within its OWN status column, same role as
-  // BrainDump/Note.sectionOrder — set past the current max whenever a
-  // card is dragged into a column, rewritten in full (via
-  // reorderProjectCards' bulk unnest UPDATE) whenever the column's order
-  // changes.
-  order     Int      @default(0)
-  createdAt DateTime @default(now())
+  // Position within its status column (see reorderProjectCards).
+  order       Int               @default(0)
+  createdAt   DateTime          @default(now())
 
   projectId String
   project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
@@ -320,11 +264,8 @@ model PursuitMember {
   @@unique([pursuitId, userId])
 }
 
-// A user-created grouping for the Pursuits list ("Projects", "Trabajo"…),
-// shown as a horizontally-scrollable row. Unlike PursuitTag (many tags per
-// Pursuit), a Pursuit sits in at most one Section at a time — it's a bucket,
-// not a label. Global to the user and free-typed, same as PursuitTag, so
-// there's no fixed preset list to pick from.
+// A user's grouping of subjects ("School", "Work"), shown as home tiles.
+// A subject is in at most one Section.
 model Section {
   id    String @id @default(cuid())
   name  String
@@ -359,17 +300,11 @@ model BrainDump {
   images    String[] @default([])
   processed Boolean  @default(false)
   createdAt DateTime @default(now())
-  // @updatedAt so Prisma bumps it on every write — updateBrainDump checks
-  // this against what the editor last loaded before saving, so two people
-  // editing the same dump at once get a conflict instead of one silently
-  // erasing the other's save.
+  // Optimistic concurrency for simultaneous editors (see updateBrainDump).
   updatedAt DateTime @updatedAt
 
-  // Postgres-generated column (see the hand-written migration): recomputed
-  // automatically by the database whenever `content` changes, so full-text
-  // search never has to re-tokenize the text at query time. Prisma doesn't
-  // model tsvector natively, hence Unsupported — it's read only through
-  // $queryRaw in lib/search.ts, never through the normal Client API.
+  // Generated by Postgres from `content` (hand-written migration); read only
+  // through $queryRaw in lib/search.ts.
   searchVector Unsupported("tsvector")?
 
   pursuitId String
@@ -378,22 +313,14 @@ model BrainDump {
   authorId String
   author   User   @relation(fields: [authorId], references: [id])
 
-  // Index-aligned with content.split("\n") — who last touched each line,
-  // so a shared Pursuit's editor can show a per-line color/avatar instead
-  // of just one author for the whole page. Recomputed on every save by
-  // diffing old vs new content line-by-line (see lib/lineAuthors.ts):
-  // unchanged lines keep their existing author, changed/added lines
-  // become whoever just saved. Defaults to [] for dumps created before
-  // this existed — callers fall back to `authorId` for every line then.
+  // Who last touched each line, aligned with content.split("\n"). Recomputed on
+  // save (lib/lineAuthors.ts); [] for old pages.
   lineAuthorIds String[] @default([])
 
-  sectionId String?
-  section   PursuitContentSection? @relation(fields: [sectionId], references: [id])
-  // Where this dump sits within its section, set past the current max
-  // whenever it's dragged into one (see assignDumpSection) — so the last
-  // thing dragged in lands at the bottom, not wherever its createdAt
-  // would otherwise sort it.
-  sectionOrder Int @default(0)
+  sectionId    String?
+  section      PursuitContentSection? @relation(fields: [sectionId], references: [id])
+  // Position within its section (see reorderDumpSection).
+  sectionOrder Int                    @default(0)
 
   notes Note[]
 
@@ -415,15 +342,12 @@ model Note {
   pursuitId String
   pursuit   Pursuit @relation(fields: [pursuitId], references: [id])
 
-  // Inherited from its source dumps when Organized (see organizeDumps):
-  // if every dump going in shared the same section, the note that comes
-  // out keeps it; otherwise it starts unsectioned, same as a note
-  // Organized from scratch.
-  sectionId String?
-  section   PursuitContentSection? @relation(fields: [sectionId], references: [id])
+  // Kept from its source pages when they all shared one section.
+  sectionId    String?
+  section      PursuitContentSection? @relation(fields: [sectionId], references: [id])
   // Same idea as BrainDump.sectionOrder — set past the current max
   // whenever this note is dragged into a section.
-  sectionOrder Int @default(0)
+  sectionOrder Int                    @default(0)
 
   sourceDumps BrainDump[]
   tags        Tag[]
@@ -446,10 +370,7 @@ model Tag {
   @@unique([pursuitId, name])
 }
 
-// One row per (user, UTC day) — tracks how many times Organize has
-// actually called the AI that day, to cap Groq usage per user without
-// any external rate-limiting service. See lib/organizeLimit.ts for the
-// check-then-increment logic that reads/writes this.
+// AI calls per user per UTC day (lib/organizeLimit.ts).
 model OrganizeUsage {
   id    String   @id @default(cuid())
   date  DateTime
@@ -461,11 +382,7 @@ model OrganizeUsage {
   @@unique([userId, date])
 }
 
-// A generated question/answer pair with its own SM-2 spaced-repetition
-// state (see lib/sm2.ts for the algorithm) — interval/easeFactor/
-// repetitions are the three numbers SM-2 needs to remember between
-// reviews, and dueDate is just interval days added to the last review
-// (or creation, before the first one).
+// A question/answer pair with SM-2 spaced-repetition state (lib/sm2.ts).
 model Flashcard {
   id          String   @id @default(cuid())
   question    String
@@ -500,11 +417,10 @@ model Attachment {
   pursuit   Pursuit @relation(fields: [pursuitId], references: [id])
 }
 
-// ─── Internalize ──────────────────────────────────────────────────────
-// A source (pasted text/code, a PDF, a subject's notes, a GitHub repo)
-// broken into small concepts you can walk through in any order, explain
-// back, and track. Concepts link to each other (the graph) and can be
-// split further on demand ("go deeper" creates children).
+// ─── Internalize ───
+// A source (text/code, PDF, PowerPoint, notes, GitHub repo) broken into small
+// concepts you explore in any order, explain back, and track. Concepts link
+// to each other and can be split further ("go deeper" creates children).
 
 enum ConceptStatus {
   NEW
@@ -610,10 +526,9 @@ model Challenge {
   @@index([userId, createdAt])
 }
 
-// ─── Arena ────────────────────────────────────────────────────────────
-// A debate about a tech/AI headline with an AI that takes the other
-// side. messages: [{ role: "user" | "ai", text }]; verdict: the judge's
-// scores and notes once you end it.
+// ─── Arena ───
+// A debate about a headline with an AI on the other side.
+// messages: [{ role: "user" | "ai", text, fallacies? }].
 
 model Debate {
   id        String   @id @default(cuid())

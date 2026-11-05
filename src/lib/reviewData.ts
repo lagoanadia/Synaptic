@@ -3,10 +3,8 @@ import type { Prisma } from "@/generated/prisma/client";
 import type { ReviewCard, ReviewConcept } from "@/lib/review";
 import { autoTitle } from "@/lib/text";
 
-// Which part of your stuff a review/home view looks at: everything, one
-// Section (or the two virtual ones: "unsorted" = your pursuits with no
-// section, "shared" = pursuits other people shared with you), or a single
-// Pursuit.
+// What a review view covers: everything, one Section (or "unsorted" /
+// "shared"), or one subject.
 export type ReviewScope =
   | { kind: "all" }
   | { kind: "section"; sectionId: string }

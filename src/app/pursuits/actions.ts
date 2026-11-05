@@ -47,10 +47,7 @@ export async function deleteSection(sectionId: string) {
     throw new Error("Not signed in");
   }
 
-  // Deletes only this user's own section (deleteMany rather than delete so
-  // a mismatched userId is silently a no-op instead of a Prisma error).
-  // Any pursuit in it falls back to sectionId: null automatically — see
-  // the ON DELETE SET NULL on Pursuit.sectionId in the schema.
+  // Only this user's section; its subjects become unsectioned (ON DELETE SET NULL).
   await prisma.section.deleteMany({
     where: { id: sectionId, userId: session.user.id },
   });
@@ -76,11 +73,7 @@ export async function deletePursuit(pursuitId: string) {
     throw new Error("Only the owner can delete this pursuit");
   }
 
-  // Notes reference BrainDumps and Tags through join tables, and Flashcards
-  // reference Notes, so clear them first — deleting the Pursuit itself
-  // would otherwise fail on the straightforward one-to-many foreign keys
-  // below (this is exactly what broke once Flashcard shipped without this
-  // list being updated to match).
+  // Children first: the foreign keys to Pursuit don't cascade.
   await prisma.$transaction([
     prisma.flashcard.deleteMany({ where: { pursuitId } }),
     prisma.note.deleteMany({ where: { pursuitId } }),
@@ -124,26 +117,6 @@ export async function reorderSection(sectionId: string, direction: "up" | "down"
     prisma.section.update({ where: { id: current.id }, data: { order: neighbor.order } }),
     prisma.section.update({ where: { id: neighbor.id }, data: { order: current.order } }),
   ]);
-
-  revalidatePath("/pursuits", "layout");
-}
-
-// Bulk-assigns a (possibly new) section to several of the user's own
-// pursuits at once — for cleaning up after a deleted section scattered
-// pursuits back into "No section", without re-typing the name on each one.
-export async function assignSection(pursuitIds: string[], sectionName: string) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    throw new Error("Not signed in");
-  }
-  if (pursuitIds.length === 0 || sectionName.trim() === "") return;
-
-  const section = await upsertSection(session.user.id, sectionName);
-
-  await prisma.pursuit.updateMany({
-    where: { id: { in: pursuitIds }, ownerId: session.user.id },
-    data: { sectionId: section.id },
-  });
 
   revalidatePath("/pursuits", "layout");
 }
@@ -192,16 +165,6 @@ export async function setLocale(locale: string) {
   if (!isLocale(locale)) return;
   await prisma.user.update({ where: { id: session.user.id }, data: { locale } });
   revalidatePath("/pursuits", "layout");
-}
-
-export async function hasPushSubscription(endpoint: string): Promise<boolean> {
-  const session = await auth();
-  if (!session?.user?.id) return false;
-  const sub = await prisma.pushSubscription.findFirst({
-    where: { endpoint, userId: session.user.id },
-    select: { id: true },
-  });
-  return !!sub;
 }
 
 // The round "+" on the home screen. Returns { error } instead of throwing

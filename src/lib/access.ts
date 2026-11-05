@@ -26,6 +26,7 @@ export async function requirePursuitAccess(pursuitId: string) {
 export async function aiBudget(userId: string, email: string | null | undefined) {
   const unlimited = await hasUnlimitedAccess(userId, email);
   return {
+    unlimited,
     async check(): Promise<string | null> {
       if (unlimited) return null;
       const used = await getOrganizeUsageToday(userId);

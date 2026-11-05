@@ -3,10 +3,7 @@
 import { useState, useTransition } from "react";
 import { renamePursuit } from "./actions";
 
-// Same click-to-edit idea as PursuitMeta (type/status/section) — the
-// title just wasn't wired up for it yet, even though it's stored the
-// same way and only the owner/members who can already edit everything
-// else here can touch it (renamePursuit reuses requireAccess).
+// Click to rename.
 export function PursuitTitle({
   pursuitId,
   title,

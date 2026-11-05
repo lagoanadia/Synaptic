@@ -6,14 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { RichContent } from "../RichContent";
 import { PrintButton } from "./PrintButton";
 
-// A real page (not the /export route, which streams a .md file) because a
-// PDF here means "use the browser's own Print → Save as PDF" — that needs
-// an actual rendered page to print, reusing RichContent so a code block,
-// table, etc. looks exactly like it does everywhere else in the app.
-//
-// With ?note=<id> or ?dump=<id> it prints just that one note/dump (what
-// the per-card "Export PDF" links use) — without either, it falls back to
-// printing everything in the Pursuit.
+// Print view for the browser's Save as PDF. ?note=<id> or ?dump=<id> prints one.
 export default async function PrintPage({
   params,
   searchParams,

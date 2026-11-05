@@ -1,7 +1,4 @@
-// Sentinel control characters, not real HTML tags — see splitHighlighted
-// below for why. They're vanishingly unlikely to appear in typed content,
-// and even if one did, the worst case is a slightly wrong highlight, never
-// broken markup or injected HTML.
+// Control characters as highlight markers instead of HTML; see splitHighlighted.
 const HL_START = "\u0001";
 const HL_END = "\u0002";
 
@@ -12,19 +9,8 @@ export const HEADLINE_OPTIONS = `StartSel=${HL_START}, StopSel=${HL_END}, MaxFra
 
 export type HighlightSegment = { text: string; highlighted: boolean };
 
-// Both the stored searchVector and this query use the 'simple' text search
-// config (see the add_search_vectors migration), never 'english' or
-// 'spanish' — pursuit content mixes both languages, and either language's
-// stemming/stopword rules would mangle the other's words. But 'simple'
-// keeps EVERY token, including function words ("is", "a", "el", "qué"...),
-// as a real lexeme. For a natural-language question that's a problem
-// buildOrTsQuery's OR-matching makes worse, not better: a document that
-// only shares "is"/"a"/"la" with the question ranks right alongside one
-// that shares the actual topic word, so a vaguely-phrased question's
-// results get drowned in noise unless you happen to reuse the exact
-// content words from the note. Filtering this small stopword list out
-// before building the query is what actually gets "best overlap" to mean
-// overlap on meaningful words.
+// Search uses Postgres' 'simple' config (content mixes English and Spanish),
+// which keeps function words. Dropping them keeps OR-ranking about real words.
 const STOPWORDS = new Set([
   // English
   "a", "an", "and", "are", "as", "at", "be", "by", "can", "could", "did",
@@ -43,22 +29,9 @@ const STOPWORDS = new Set([
   "tus", "un", "una", "unas", "unos", "y",
 ]);
 
-// Builds a Postgres to_tsquery string that matches ANY of the input's
-// words (OR), not all of them like plainto_tsquery does (AND). That's
-// fine for the search bar's short keyword queries, but a full natural-
-// language question ("Ask your Pursuit") rarely has every single word
-// land together in one dump — requiring a strict AND match would almost
-// always return nothing. ts_rank still scores a document with MORE
-// matching words higher, so OR + ranking behaves like "best overlap"
-// instead of an all-or-nothing filter.
-//
-// Only word-like tokens are extracted (Postgres's tsquery syntax uses
-// &, |, !, (), : as operators) — pulling those out instead of handing
-// the raw question straight to to_tsquery sidesteps ever having to
-// escape that syntax ourselves. Stopwords are then dropped so ranking
-// reflects overlap on content words, not "is"/"a"/"la" noise — unless
-// the input turns out to be nothing BUT stopwords, in which case we fall
-// back to matching them anyway rather than returning no query at all.
+// OR of the input's words (plainto_tsquery would AND them, and a natural
+// question almost never matches every word). ts_rank still favors more
+// overlap. Extracting words avoids escaping tsquery operators.
 export function buildOrTsQuery(text: string): string | null {
   const words = text.match(/[\p{L}\p{N}]+/gu) ?? [];
   if (words.length === 0) return null;
@@ -67,16 +40,8 @@ export function buildOrTsQuery(text: string): string | null {
   return (meaningful.length > 0 ? meaningful : lowered).join(" | ");
 }
 
-// Postgres's ts_headline() marks matches by wrapping them in whatever
-// StartSel/StopSel strings we give it — normally people use it to build
-// HTML directly (StartSel="<mark>"). We don't: content is free-typed by
-// pursuit members, so if we ever rendered that HTML with
-// dangerouslySetInnerHTML, a dump containing something like "<img
-// onerror=...>" would execute for anyone who searched and matched it
-// (stored XSS). Using plain sentinel characters instead, then splitting on
-// them here and rendering each piece as normal React text (escaped
-// automatically) with real <mark> elements around the highlighted ones,
-// gets the same visual result with no HTML ever passing through raw.
+// Highlights come back as plain text split on sentinels, never as HTML:
+// rendering ts_headline HTML would let a page's content inject markup (XSS).
 export function splitHighlighted(headline: string): HighlightSegment[] {
   const segments: HighlightSegment[] = [];
   let rest = headline;

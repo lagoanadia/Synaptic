@@ -1,28 +1,12 @@
 import { prisma } from "@/lib/prisma";
 
-// Reuses the same Google OAuth Client as NextAuth's own Google sign-in
-// (AUTH_GOOGLE_ID/SECRET — see auth.ts) rather than a second Client, since
-// it's the same Google Cloud project either way; only the requested scopes
-// and redirect URI differ, which is why this is a separate hand-rolled
-// flow instead of adding these scopes to the NextAuth provider (that would
-// force every Google sign-in, even people who never touch Classroom, to
-// consent to reading their Classroom/Drive data).
-//
-// Read-only on purpose: Classroom's write methods for a student's own
-// submission (modifyAttachments, turnIn, reclaim, return) are gated by
-// Google to apps allowlisted through their Workspace Marketplace/add-on
-// program — a plain OAuth client in Testing mode gets a hard
-// "@ProjectPermissionDenied" 403 no matter what scope it requests, so
-// there was never a way to submit work through the API from here. The
-// app only reads course/assignment/submission-status data.
+// Same Google OAuth client as sign-in, but a separate flow, so signing in with
+// Google never asks for Classroom access. Read-only: Google only lets
+// allowlisted Marketplace apps write submissions.
 const CLASSROOM_SCOPES = [
   "https://www.googleapis.com/auth/classroom.courses.readonly",
   "https://www.googleapis.com/auth/classroom.coursework.me.readonly",
-  // courseWorkMaterials is a distinct resource from courseWork (a plain
-  // resource a teacher posts vs. a gradeable assignment) with its own
-  // scope — without this, courseWorkMaterials.list 403s even though
-  // courseWork.list succeeds on the scope above, which is exactly what
-  // was failing "load files" for every course.
+  // Posted materials (not assignments) need their own scope.
   "https://www.googleapis.com/auth/classroom.courseworkmaterials.readonly",
 ];
 
@@ -30,10 +14,7 @@ function redirectUri(baseUrl: string) {
   return `${baseUrl}/api/classroom/callback`;
 }
 
-// state carries the pursuitId (to redirect back to the right Files tab)
-// plus the userId, both signed implicitly by being read back from the
-// same server that issued them — Google returns state verbatim, it
-// doesn't need to be a JWT for a single-server round trip like this.
+// state = pursuitId + userId, read back by the same server; no signing needed.
 export function buildAuthUrl(baseUrl: string, pursuitId: string): string {
   const params = new URLSearchParams({
     client_id: process.env.AUTH_GOOGLE_ID ?? "",
@@ -116,10 +97,7 @@ export async function getValidAccessToken(userId: string): Promise<string | null
     });
     return refreshed.access_token;
   } catch {
-    // Refresh token rejected (revoked at myaccount.google.com/permissions,
-    // or invalidated by re-consenting after a scope change) — drop the
-    // dead connection so callers see "not connected" and can prompt to
-    // reconnect, instead of this throwing all the way up to a page crash.
+    // Refresh token revoked: drop the connection so the UI offers to reconnect.
     await prisma.googleClassroomConnection.deleteMany({ where: { userId } });
     return null;
   }
@@ -157,10 +135,7 @@ type CourseWorkItem = {
   materials?: Material[];
 };
 
-// Materials live on two different endpoints depending on whether a
-// teacher posted them as an assignment (courseWork) or a plain resource
-// (courseWorkMaterials) — a PDF of lecture slides is usually the latter,
-// but fetching both covers either case a teacher might use.
+// Teachers post files as assignments or as plain materials; fetch both.
 async function listMaterials(
   accessToken: string,
   courseId: string,
@@ -172,21 +147,12 @@ async function listMaterials(
   );
   if (!res.ok) throw new Error(`Classroom ${kind}.list failed: ${await res.text()}`);
   const data = await res.json();
-  // Classroom names the list-response field after the singular resource
-  // type, not the plural endpoint path: courseWorkMaterials.list returns
-  // { courseWorkMaterial: [...] } — no trailing "s" — while courseWork's
-  // own field is already an unpluralized mass noun, so it does match its
-  // path. Using `kind` as the key here silently returned [] for every
-  // courseWorkMaterials item that ever existed, since day one.
+  // The response field is singular ("courseWorkMaterial"), not the path name.
   const responseKey = kind === "courseWorkMaterials" ? "courseWorkMaterial" : "courseWork";
   return data[responseKey] ?? [];
 }
 
-// Any Drive-backed attachment (PDF, PowerPoint, Word doc, spreadsheet...)
-// or plain link a teacher attached — not just PDFs, since teachers post
-// slides and worksheets in whatever format just as often as a PDF. Only
-// YouTube videos and Forms are skipped, since those aren't "a file" to
-// import as an Attachment pointing at a URL.
+// Any Drive file or link; YouTube videos and Forms are skipped.
 export async function listCourseFiles(
   accessToken: string,
   courseId: string,
@@ -250,11 +216,7 @@ type StudentSubmissionRaw = {
   late?: boolean;
 };
 
-// courseWorkId "-" is Classroom's wildcard for "every courseWork item in
-// this course" — one call here instead of one studentSubmissions.list per
-// assignment. userId "me" scopes it to the signed-in student's own
-// submissions, which is all classroom.coursework.me(.readonly) can see
-// anyway.
+// courseWorkId "-" = every assignment, in one call.
 async function listOwnSubmissionStates(
   accessToken: string,
   courseId: string,
@@ -275,12 +237,8 @@ async function listOwnSubmissionStates(
   return map;
 }
 
-// Only courseWork (assignments) carries a due date — courseWorkMaterials
-// never does — so this hits just that one endpoint, filtered to published
-// work a student would actually see. dueDate/dueTime have no timezone of
-// their own; treating them as server-local time can be off by a few hours
-// from the student's actual local time, which is fine for a "this is
-// roughly when it's due" widget but not for anything more precise.
+// Only assignments have due dates. They carry no timezone, so times can be
+// off by a few hours, which is fine for a reminder.
 export async function listCourseDeadlines(
   accessToken: string,
   courseId: string,
@@ -290,10 +248,7 @@ export async function listCourseDeadlines(
       `https://classroom.googleapis.com/v1/courses/${courseId}/courseWork?pageSize=100&courseWorkStates=PUBLISHED`,
       { headers: { Authorization: `Bearer ${accessToken}` } },
     ),
-    // Turn-in status is an overlay on top of the deadlines list, not
-    // essential to it — if this one call fails (a scope hiccup, a
-    // transient error), fall back to "no status for anyone" rather than
-    // losing the whole deadlines list over it.
+    // Turn-in status is a nice-to-have: a failure here mustn't lose the deadlines.
     listOwnSubmissionStates(accessToken, courseId).catch(() => new Map<string, { state: string; late: boolean }>()),
   ]);
   if (!res.ok) throw new Error(`Classroom courseWork.list failed: ${await res.text()}`);

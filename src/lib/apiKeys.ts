@@ -1,12 +1,8 @@
 import { randomBytes, createHash } from "crypto";
 import { prisma } from "@/lib/prisma";
 
-// Shown once, at creation, never again — same as GitHub/Stripe's own API
-// keys. Only the SHA-256 hash lives in the database (ApiKey.keyHash), so
-// a leaked database dump doesn't hand out usable keys. The prefix (first
-// 10 chars after "syn_") is kept in the clear alongside the hash purely
-// so the settings UI can show "syn_a1b2c3d4…" in the list without ever
-// needing the real key again.
+// Shown once. Only the SHA-256 hash is stored; a short prefix is kept so the
+// settings page can tell keys apart.
 const PREFIX = "syn_";
 
 export function generateApiKey(): { raw: string; hash: string; prefix: string } {
@@ -20,10 +16,7 @@ export function hashApiKey(raw: string): string {
   return createHash("sha256").update(raw).digest("hex");
 }
 
-// Resolves a raw bearer token (as handed to the MCP endpoint by a
-// connecting client) to the user it belongs to — or null if it's missing,
-// malformed, or revoked. Bumps lastUsedAt on every successful call so the
-// settings page can show "last used" without needing separate telemetry.
+// Bearer token → user (or null). Updates lastUsedAt.
 export async function resolveApiKey(raw: string | null): Promise<{ userId: string } | null> {
   if (!raw || !raw.startsWith(PREFIX)) return null;
 

@@ -30,11 +30,7 @@ export function UpcomingDeadlines({
           setNow(Date.now());
         }
       })
-      // Defense in depth: listPursuitDeadlines itself never throws (it
-      // catches internally), but a network-level failure calling the
-      // action at all would otherwise reject here — swallow it the same
-      // way, rather than let this passive background fetch ever surface
-      // as a crash.
+      // Background fetch: never surface a failure.
       .catch(() => {
         if (!cancelled) {
           setDeadlines([]);
@@ -46,16 +42,10 @@ export function UpcomingDeadlines({
     };
   }, [pursuitId, hasCourse]);
 
-  // Silent by default: no course linked at all — nothing to remind about,
-  // so no point offering the reminders toggle either. Once a course is
-  // linked, the box stays (even with zero deadlines right now) so the
-  // toggle has somewhere to live.
+  // Hidden until a course is linked; then it stays to hold the reminders toggle.
   if (!hasCourse || !deadlines || now === null) return null;
 
-  // Pending work first (soonest due first within that group, same as
-  // already-turned-in work) — that's the whole point of an "overview of
-  // what's pending" widget: what still needs doing floats to the top
-  // instead of getting buried under stuff that's already handled.
+  // Pending work first, soonest due first.
   const pending = deadlines.filter((d) => !d.turnedIn);
   const done = deadlines.filter((d) => d.turnedIn);
   const ordered = [...pending, ...done].slice(0, 5);

@@ -2,18 +2,14 @@
 
 import { jsHarness, PY_HARNESS, type ChallengeTest, type Language, type RunOutput } from "@/lib/challenge";
 
-// Where solutions run: a sandboxed iframe (allow-scripts only → an opaque
-// origin with no cookies, so code can't act as your account or touch the
-// page), and inside it a Web Worker, so an infinite loop can be killed by
-// a timeout without freezing anything. Python is real CPython compiled to
-// WebAssembly (Pyodide), loaded once and kept warm.
+// Solutions run in a sandboxed iframe (allow-scripts only: opaque origin, no
+// cookies) inside a Web Worker, so a loop can be killed by a timeout.
+// Python is Pyodide (CPython in WebAssembly), loaded once.
 
 const PYODIDE = "https://cdn.jsdelivr.net/pyodide/v0.27.2/full/pyodide.js";
 
-// Inside the frame: a JS worker is always kept warm (spawning one can
-// take seconds on a cold page), and the time limit only starts once the
-// worker has said it's alive — so a slow start is never mistaken for an
-// infinite loop.
+// A JS worker is kept warm, and the time limit starts only once a worker is
+// alive, so a slow start isn't mistaken for an infinite loop.
 const FRAME = `<!doctype html><script>
 const JS_SRC = 'postMessage("ready");onmessage=(e)=>{try{postMessage(new Function(e.data)())}catch(err){postMessage({results:[],logs:[],error:String(err&&err.message||err)})}}';
 const PY_SRC = 'importScripts(${JSON.stringify(PYODIDE)});let py=null;postMessage("ready");onmessage=async(e)=>{try{py=py||await loadPyodide();py.globals.set("USER_CODE",e.data.code);py.globals.set("ENTRY",e.data.entry);py.globals.set("TESTS_JSON",e.data.tests);postMessage(JSON.parse(py.runPython(e.data.harness)))}catch(err){postMessage({results:[],logs:[],error:String(err&&err.message||err)})}}';

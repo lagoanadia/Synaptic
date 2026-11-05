@@ -11,11 +11,7 @@ function autoResize(el: HTMLTextAreaElement) {
   el.style.height = `${el.scrollHeight}px`;
 }
 
-// A quick scratchpad right on the Pursuit itself — current status,
-// pending items, whatever doesn't belong in a Brain Dump page — saved
-// as plain text with no markup, no history, just a sticky note. Saves
-// on blur (clicking away), not on every keystroke, so it doesn't fight
-// the drafting rhythm of actually writing a few lines.
+// Sticky note on the subject. Saves on blur.
 export function StatusNote({
   pursuitId,
   initialNote,

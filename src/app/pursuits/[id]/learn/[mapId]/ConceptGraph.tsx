@@ -17,11 +17,9 @@ type P = { x: number; y: number; vx: number; vy: number; pinned: boolean };
 const W = 1000;
 const H = 460;
 
-// An Obsidian-style map you can drag around, but with jobs to do:
-// color = how well you know it, the pulsing ring = what to study next,
-// hover = what it connects to, "weak spots" = everything you know fades.
-// Physics is a tiny hand-rolled force simulation (repel + springs +
-// gravity), plenty for the ~10-80 nodes a map has.
+// Draggable map: color = how well you know it, pulsing ring = next up,
+// hover = connections, "weak spots" fades what you know. Tiny hand-rolled
+// force simulation (repel, springs, gravity).
 export function ConceptGraph({
   concepts,
   links,

@@ -45,7 +45,7 @@ export function parseFeed(xml: string, source: string, limit = 15): Headline[] {
       const url = tag(block, "link") || (atomLink ? decode(atomLink[1]) : "");
       const summary = stripTags(decode(tag(block, "description") || tag(block, "summary") || tag(block, "content")))
         // Hacker News "descriptions" are just link/points metadata.
-        .replace(/^Article URL:.*$/s, "");
+        .replace(/^Article URL:[\s\S]*$/, "");
       const date = tag(block, "pubDate") || tag(block, "published") || tag(block, "updated");
       const parsed = date ? new Date(date) : null;
       return {

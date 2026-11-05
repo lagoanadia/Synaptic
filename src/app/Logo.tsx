@@ -1,9 +1,6 @@
 import Link from "next/link";
 
-// The original blue node/circuit mark (public/logo-mark.png) — already
-// used on the landing page's own nav before this rebranding pass. Kept
-// as-is rather than replaced by a new monochrome mark: asked for back by
-// name ("el azulito") after the monochrome version was tried.
+// The blue node mark (public/logo-mark.png).
 export function LogoMark({ size = 22 }: { size?: number }) {
   return (
     // eslint-disable-next-line @next/next/no-img-element

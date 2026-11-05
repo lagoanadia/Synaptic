@@ -14,12 +14,7 @@ import { MAX_VISION_IMAGES } from "@/lib/visionLimits";
 import { TEXT_MODEL, VISION_MODEL, createJsonCompletion } from "@/lib/ai";
 import { parseFlashcardsResponse } from "@/lib/flashcards";
 import { computeNextReview, dueDateAfter } from "@/lib/sm2";
-import {
-  DAILY_ORGANIZE_LIMIT,
-  getOrganizeUsageToday,
-  hasUnlimitedAccess,
-  incrementOrganizeUsage,
-} from "@/lib/organizeLimit";
+import { aiBudget, requirePursuitAccess } from "@/lib/access";
 import { FREE_MONTHLY_FLASHCARD_LIMIT, getFlashcardsThisMonth } from "@/lib/flashcardLimit";
 import {
   getValidAccessToken,
@@ -32,34 +27,12 @@ import {
 } from "@/lib/googleClassroom";
 import { diffLineAuthors, normalizeLineAuthors } from "@/lib/lineAuthors";
 
-async function requireAccess(pursuitId: string) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    throw new Error("Not signed in");
-  }
-  const pursuit = await prisma.pursuit.findFirst({
-    where: {
-      id: pursuitId,
-      OR: [
-        { ownerId: session.user.id },
-        { members: { some: { userId: session.user.id } } },
-      ],
-    },
-  });
-  if (!pursuit) {
-    throw new Error("Pursuit not found or access denied");
-  }
-  return { session, pursuit };
-}
+const requireAccess = requirePursuitAccess;
 
 export type FormState = { error: string | null; success?: boolean };
 
-// These two take (pursuitId, prevState, formData) instead of just
-// (pursuitId, formData) so they can be bound to a pursuitId and still fit
-// useActionState's (state, formData) => state shape on the client — see
-// TagForm.tsx / MemberForm.tsx. They return a friendly error instead of
-// throwing, so expected validation failures (empty field, unknown email)
-// show inline instead of crashing to the generic error page.
+// (pursuitId, prevState, formData) to fit useActionState once bound. They return
+// errors instead of throwing so validation shows inline.
 export async function addMember(
   pursuitId: string,
   _prevState: FormState,
@@ -96,10 +69,7 @@ export async function addMember(
   const existingMember = await prisma.pursuitMember.findUnique({
     where: { pursuitId_userId: { pursuitId, userId: invitedUser.id } },
   });
-  // Free plan caps sharing at 1 collaborator per pursuit — Pro/Team get
-  // unlimited. Only checked for a genuinely NEW collaborator, so changing
-  // an existing one's role never gets blocked by a cap they're already
-  // inside of.
+  // Free plan: one collaborator per pursuit. Role changes are never blocked.
   if (!existingMember) {
     const owner = await prisma.user.findUniqueOrThrow({ where: { id: session.user.id } });
     if (owner.plan === "FREE") {
@@ -191,21 +161,9 @@ export async function deleteContentSection(pursuitId: string, sectionId: string)
   revalidatePath(`/pursuits/${pursuitId}`);
 }
 
-// Drag-and-drop target for a Brain Dump page — one call handles both
-// moving a page into (or out of, with sectionId null) a section AND
-// reordering within one, since both are really the same operation: "this
-// exact list, in this exact order, is what the target group looks like
-// now." orderedIds is the WHOLE resulting list for that group (dropped
-// on empty space, that's everything already there plus the dragged page
-// appended at the end; dropped on a specific page, that's everything
-// with the dragged page spliced in before/after it) — every id in it
-// gets written to this sectionId at its index in the array.
-// One UPDATE instead of N separate ones (previously $transaction'd
-// together) — a transaction still opens a connection per statement, so
-// reordering a 10-page section meant 10 round trips every single drag.
-// unnest(...) WITH ORDINALITY zips the array with its own 1-based index
-// so the whole list becomes one set of (id, position) rows to join
-// against in a single UPDATE.
+// Drop target for pages: orderedIds is the whole resulting list for that section
+// (null = unsectioned). One UPDATE … unnest WITH ORDINALITY instead of N updates,
+// which exhausted the connection pool before.
 export async function reorderDumpSection(
   pursuitId: string,
   sectionId: string | null,
@@ -311,10 +269,7 @@ export async function updateBrainDump(
   const oldLineAuthorIds = normalizeLineAuthors(oldLines, dump.lineAuthorIds, dump.authorId);
   const lineAuthorIds = diffLineAuthors(oldLines, oldLineAuthorIds, text.split("\n"), session.user.id);
 
-  // expectedUpdatedAt is a hidden field carrying the updatedAt this editor
-  // loaded the page with — same optimistic-concurrency guard as
-  // updateNote. A shared Pursuit's dump can just as easily be open in two
-  // people's editors at once as an Organized note can.
+  // Optimistic concurrency: the version this editor loaded (see updateNote).
   const expectedUpdatedAt = formData.get("expectedUpdatedAt");
   const result = await prisma.brainDump.updateMany({
     where: {
@@ -388,26 +343,15 @@ export async function finalizeBrainDump(pursuitId: string, dumpId: string) {
   revalidatePath(`/pursuits/${pursuitId}`);
 }
 
-// Returns { error } instead of throwing — DumpControls calls this from a
-// plain onClick/startTransition, not a <form>, so an uncaught throw here
-// would bubble up to Next's generic error boundary (the same crash we've
-// hit before from other bugs) instead of showing a message next to the
-// button.
+// Returns { error } instead of throwing: it's called from a button, not a form.
 export async function organizeDumps(
   pursuitId: string,
   dumpIds?: string[],
 ): Promise<{ error: string | null }> {
   const { session } = await requireAccess(pursuitId);
-  const unlimited = await hasUnlimitedAccess(session.user.id, session.user.email);
-
-  if (!unlimited) {
-    const usedToday = await getOrganizeUsageToday(session.user.id);
-    if (usedToday >= DAILY_ORGANIZE_LIMIT) {
-      return {
-        error: `You've hit the limit of ${DAILY_ORGANIZE_LIMIT} AI organizes for today. Try again tomorrow.`,
-      };
-    }
-  }
+  const budget = await aiBudget(session.user.id, session.user.email);
+  const limited = await budget.check();
+  if (limited) return { error: limited };
 
   const dumps = await prisma.brainDump.findMany({
     where: {
@@ -432,10 +376,7 @@ export async function organizeDumps(
   // separately in the prompt text, that would just duplicate the same URL.
   const rawMaterial = dumps.map((dump) => dump.content ?? "").join("\n---\n");
 
-  // Groq caps these vision models at 5 images per request — taking them in
-  // the same chronological order as the dumps themselves (oldest first)
-  // rather than, say, the largest ones, since there's no way to know which
-  // pictures matter most without asking the model in the first place.
+  // The vision model takes a few images per call; oldest first.
   const imageUrls = dumps.flatMap((dump) => dump.images).slice(0, MAX_VISION_IMAGES);
   const hasImages = imageUrls.length > 0;
 
@@ -530,24 +471,13 @@ JSON object, no other text: {"content": "...", "tags": ["...", "..."]}`;
         },
       ],
       response_format: { type: "json_object" },
-      // Left unset, Groq's own default completion cap can land well under
-      // what a long source note needs to come back out again — the
-      // response then gets cut off mid-string, and invalid JSON up to the
-      // cut is indistinguishable from json_validate_failed on Groq's side.
-      // A generous explicit ceiling (comfortably under both models' real
-      // max) costs nothing for a short note and saves a long one.
+      // Explicit cap: Groq's default cuts long notes off mid-JSON.
       max_completion_tokens: 16000,
     });
   } catch {
     if (hasImages) {
-      // The vision model itself is the thing most likely to break here —
-      // Groq can rename/retire it at any point (as just happened), and
-      // this dev sandbox has no way to verify it live before shipping.
-      // Rather than fail Organize entirely over that, fall back to the
-      // text model on the same prompt (still describing where each image
-      // sits via the "![image](url)" markers already in the text) — the
-      // note comes out without the model actually having looked at the
-      // pictures this once, but Organize still works.
+      // If the vision model fails (Groq retires models without warning), retry with
+      // the text model; the image markers still say where pictures were.
       try {
         completion = await createJsonCompletion({
           model: TEXT_MODEL,
@@ -575,9 +505,7 @@ JSON object, no other text: {"content": "...", "tags": ["...", "..."]}`;
     return { error: "AI did not return a usable response" };
   }
 
-  if (!unlimited) {
-    await incrementOrganizeUsage(session.user.id);
-  }
+  await budget.charge();
 
   // Extracted to lib/organize.ts as a pure function — see its tests for
   // the broken-response cases this handles (invalid JSON, missing
@@ -674,13 +602,8 @@ export async function mergeNotes(pursuitId: string, noteIds: string[]) {
   revalidatePath(`/pursuits/${pursuitId}`);
 }
 
-// expectedUpdatedAt is the updatedAt the editor last loaded — an
-// optimistic-concurrency check. Two people (or two tabs) can open the same
-// note; without this, whoever calls Save second just silently overwrites
-// the first save with whatever stale content their editor still had open.
-// The updateMany's where clause only matches if the row is still exactly
-// as this editor last saw it, so a stale save touches 0 rows instead of
-// clobbering someone else's newer one.
+// Optimistic concurrency: only updates if the note is still the version this
+// editor loaded, so a stale save can't overwrite a newer one.
 export async function updateNote(
   pursuitId: string,
   noteId: string,
@@ -723,11 +646,7 @@ export async function deleteNote(pursuitId: string, noteId: string) {
 
   await prisma.note.deleteMany({ where: { id: noteId, pursuitId } });
 
-  // A dump only counts as "organized" while some note still references it
-  // — deleting its one note left it processed:true forever with nothing
-  // pointing to it, so it could never be picked up by Organize again.
-  // (A dump could in principle still be referenced by another note, so
-  // check rather than assume.)
+  // A page is "organized" only while some note still references it.
   for (const dump of note?.sourceDumps ?? []) {
     const stillReferenced = await prisma.note.findFirst({
       where: { sourceDumps: { some: { id: dump.id } } },
@@ -780,11 +699,8 @@ export async function isClassroomConnected(): Promise<boolean> {
   return !!connection;
 }
 
-// Per-Pursuit opt-in — off by default so a Book/Project/whatever Pursuit
-// never shows the Classroom box, only one you deliberately turn it on
-// for. Turning it off again does NOT disconnect the account-wide Google
-// Classroom connection or forget the linked course — it just hides the
-// section, so turning it back on later picks up right where it left off.
+// Per-subject opt-in. Turning it off only hides it; the connection and linked
+// course stay.
 export async function setClassroomEnabled(pursuitId: string, enabled: boolean) {
   await requireAccess(pursuitId);
   await prisma.pursuit.update({ where: { id: pursuitId }, data: { classroomEnabled: enabled } });
@@ -830,10 +746,7 @@ export async function listClassroomFiles(
   }
 }
 
-// Remembers which course this Pursuit is about, so the upcoming-deadlines
-// widget (and reopening the Files tab later) doesn't need the course
-// re-picked every visit. courseName is denormalized here purely for
-// display before/without a fresh Classroom API round trip.
+// Remembers the course for this subject; the name is cached for display.
 export async function setClassroomCourse(
   pursuitId: string,
   courseId: string,
@@ -847,13 +760,8 @@ export async function setClassroomCourse(
   revalidatePath(`/pursuits/${pursuitId}`);
 }
 
-// Unlike every other Classroom action here, this one fires on its own on
-// every page load (see UpcomingDeadlines' effect) rather than from a
-// user's click — so it's wrapped in one try/catch around everything,
-// requireAccess included. A click-triggered action can afford to let an
-// unexpected throw crash to the error boundary since the user can just
-// retry; a passive background fetch can't, since there's nothing for
-// them to retry.
+// Runs on every page load, not on a click, so every failure (access included)
+// becomes an empty result instead of an error page.
 export async function listPursuitDeadlines(
   pursuitId: string,
 ): Promise<{ error: string | null; deadlines?: ClassroomDeadline[] }> {
@@ -873,10 +781,7 @@ export async function listPursuitDeadlines(
   }
 }
 
-// Imports a Classroom file the same way a manually-pasted link would be —
-// as a plain Attachment pointing at its Drive URL, not a downloaded copy.
-// Opening it later relies on the viewer's own Google session having
-// access, same as clicking the file inside Classroom itself would.
+// Stored as a link to the Drive file, not a copy.
 export async function importClassroomFile(pursuitId: string, name: string, url: string) {
   await requireAccess(pursuitId);
   await prisma.attachment.create({
@@ -943,10 +848,7 @@ export async function renamePursuit(pursuitId: string, title: string) {
   revalidatePath("/pursuits");
 }
 
-// A quick scratchpad note on the Pursuit itself — current status,
-// pending stuff — saved as plain text, no history, no markup. Empty
-// string is saved as null so an emptied-out note goes back to not
-// showing the box's placeholder as "saved content".
+// Empty saves as null.
 export async function updateStatusNote(pursuitId: string, note: string) {
   await requireAccess(pursuitId);
 
@@ -994,10 +896,7 @@ export async function updatePursuitMeta(pursuitId: string, formData: FormData) {
 export type SearchHit = { id: string; createdAt: string; snippet: string };
 export type SearchResults = { dumps: SearchHit[]; notes: SearchHit[] };
 
-// Full-text search across this pursuit's brain dumps and organized notes.
-// requireAccess() is the same owner-or-member check every other action
-// here uses — a search action is still an action, and search results
-// would otherwise leak content from pursuits you don't have access to.
+// Full-text search over this subject's pages and notes.
 export async function searchPursuit(
   pursuitId: string,
   query: string,
@@ -1007,10 +906,7 @@ export async function searchPursuit(
   const q = query.trim();
   if (!q) return { dumps: [], notes: [] };
 
-  // $queryRaw's tagged template parameterizes every ${...} value (q,
-  // pursuitId, the options string) the same way Prisma's normal query
-  // builder does — this is not string concatenation, so it's not
-  // SQL-injectable despite being raw SQL text.
+  // Tagged-template $queryRaw parameterizes every ${}: not injectable.
   const dumps = await prisma.$queryRaw<
     { id: string; createdAt: Date; snippet: string }[]
   >`
@@ -1051,36 +947,20 @@ export async function searchPursuit(
 
 const ASK_CONTEXT_LIMIT = 6;
 
-// "Ask your Pursuit" — retrieval-augmented generation, starting from the
-// simplest possible retrieval step: full-text search (lib/search.ts's
-// buildOrTsQuery) instead of embeddings/pgvector. It finds pursuit content
-// that shares WORDS with the question, ranked by how many/how well they
-// match (ts_rank) — good enough for a personal pursuit's dump/note volume,
-// and it's infrastructure this app already has from Phase 1. Embeddings
-// would find content that shares MEANING even with zero shared words
-// (e.g. asking "how do plants make energy" would still surface a dump
-// that only ever says "photosynthesis"), at the cost of an embeddings API
-// call per dump/note and a pgvector column to maintain — worth it once
-// full-text search demonstrably misses relevant content for how you
-// actually phrase questions, not before.
+// "Ask your subject": retrieval with full-text search (shared words) instead of
+// embeddings (shared meaning). Enough at personal scale; switch when searches
+// clearly miss.
 export async function askPursuit(
   pursuitId: string,
   question: string,
 ): Promise<{ error: string | null; answer?: string }> {
   const { session } = await requireAccess(pursuitId);
-  const unlimited = await hasUnlimitedAccess(session.user.id, session.user.email);
-
   const q = question.trim();
   if (!q) return { error: "Write a question first" };
 
-  if (!unlimited) {
-    const usedToday = await getOrganizeUsageToday(session.user.id);
-    if (usedToday >= DAILY_ORGANIZE_LIMIT) {
-      return {
-        error: `You've hit the limit of ${DAILY_ORGANIZE_LIMIT} AI uses for today (Organize and Ask share the same limit). Try again tomorrow.`,
-      };
-    }
-  }
+  const budget = await aiBudget(session.user.id, session.user.email);
+  const limited = await budget.check();
+  if (limited) return { error: limited };
 
   const tsQuery = buildOrTsQuery(q);
   if (!tsQuery) return { error: "Write a question first" };
@@ -1134,36 +1014,22 @@ export async function askPursuit(
     return { error: "AI did not return a usable response" };
   }
 
-  if (!unlimited) {
-    await incrementOrganizeUsage(session.user.id);
-  }
+  await budget.charge();
 
   return { error: null, answer };
 }
 
 const WHISPER_MODEL = "whisper-large-v3-turbo";
 
-// Voice notes: the composer already uploaded the recording to Blob
-// storage (same client-side upload as images, for the same reason —
-// Server Actions cap request bodies at 1MB, easily blown past by
-// audio). This only has to hand Groq the URL, not the bytes themselves.
-// Shares the same daily AI quota as Organize/Ask — transcription is
-// another Groq call this app is trying to keep bounded per user per day.
+// Voice notes: the browser already uploaded the audio; Groq gets the URL.
 export async function transcribeAudio(
   pursuitId: string,
   audioUrl: string,
 ): Promise<{ error: string | null; text?: string }> {
   const { session } = await requireAccess(pursuitId);
-  const unlimited = await hasUnlimitedAccess(session.user.id, session.user.email);
-
-  if (!unlimited) {
-    const usedToday = await getOrganizeUsageToday(session.user.id);
-    if (usedToday >= DAILY_ORGANIZE_LIMIT) {
-      return {
-        error: `You've hit the limit of ${DAILY_ORGANIZE_LIMIT} AI uses for today (Organize, Ask and voice notes share the same limit). Try again tomorrow.`,
-      };
-    }
-  }
+  const budget = await aiBudget(session.user.id, session.user.email);
+  const limited = await budget.check();
+  if (limited) return { error: limited };
 
   let transcription;
   try {
@@ -1181,9 +1047,7 @@ export async function transcribeAudio(
     return { error: "Didn't catch any speech in that recording" };
   }
 
-  if (!unlimited) {
-    await incrementOrganizeUsage(session.user.id);
-  }
+  await budget.charge();
 
   return { error: null, text: transcription.text };
 }
@@ -1195,22 +1059,12 @@ export async function generateFlashcards(
   noteId: string,
 ): Promise<{ error: string | null; count?: number }> {
   const { session } = await requireAccess(pursuitId);
-  const unlimited = await hasUnlimitedAccess(session.user.id, session.user.email);
+  const budget = await aiBudget(session.user.id, session.user.email);
+  const limited = await budget.check();
+  if (limited) return { error: limited };
 
-  if (!unlimited) {
-    const usedToday = await getOrganizeUsageToday(session.user.id);
-    if (usedToday >= DAILY_ORGANIZE_LIMIT) {
-      return {
-        error: `You've hit the limit of ${DAILY_ORGANIZE_LIMIT} AI uses for today. Try again tomorrow.`,
-      };
-    }
-  }
-
-  // Counted across pursuits the caller owns, same soft-cap spirit as
-  // OrganizeUsage above — generating into a pursuit someone else shared
-  // with you counts against their cap in this simplified version, not a
-  // gap worth its own "who generated this card" column yet.
-  if (!unlimited) {
+  // Monthly flashcard cap for free accounts, counted on owned pursuits.
+  if (!budget.unlimited) {
     const generatedThisMonth = await getFlashcardsThisMonth(session.user.id);
     if (generatedThisMonth >= FREE_MONTHLY_FLASHCARD_LIMIT) {
       return {
@@ -1258,9 +1112,7 @@ export async function generateFlashcards(
     })),
   });
 
-  if (!unlimited) {
-    await incrementOrganizeUsage(session.user.id);
-  }
+  await budget.charge();
 
   revalidatePath(`/pursuits/${pursuitId}`);
   return { error: null, count: cards.length };
@@ -1396,13 +1248,8 @@ export async function deleteProjectCard(pursuitId: string, projectId: string, ca
   revalidatePath(`/pursuits/${pursuitId}/projects/${projectId}`);
 }
 
-// Moves a card into (or within) one column in one trip — same bulk
-// UPDATE...unnest...WITH ORDINALITY idiom as reorderDumpSection /
-// reorderNoteSection, for the same reason: a per-item loop here is exactly
-// the pattern that previously caused a "failed to connect to upstream
-// database" outage under connection-pool pressure (see that fix's commit).
-// Callers always pass the WHOLE resulting ordered id list for the target
-// column, not just the one card that moved.
+// Whole ordered id list for one column, written in one UPDATE (see
+// reorderDumpSection).
 export async function reorderProjectCards(
   pursuitId: string,
   projectId: string,
@@ -1420,27 +1267,12 @@ export async function reorderProjectCards(
   revalidatePath(`/pursuits/${pursuitId}/projects/${projectId}`);
 }
 
-// Same vision/text-fallback pattern as organizeDumps, reusing the same
-// daily Groq quota (it's the same cost surface) — proposes starting cards
-// from an uploaded assignment description ("enunciado") instead of
-// writing them by hand. Cards come back as TODO; the user edits/deletes
-// before — or after — ever dragging anything.
+// Starter Kanban cards from an assignment's pages.
 type ProposedCard = { title: string; description?: string };
 
-// Reading an assignment is split into TWO kinds of call, driven from the
-// browser (ProjectBoard), instead of one action that loops over every
-// page itself:
-//
-//   1. readAssignmentPages — ONE Groq vision call for at most
-//      MAX_VISION_IMAGES pages. The client calls it once per chunk.
-//   2. saveProposedCards — writes the collected cards in one go.
-//
-// Why: the old single action made one sequential Groq call per 3 pages
-// (each with a retry on failure) inside a single request. A 14-page PDF
-// is 5 calls x ~10-20s — past the page's 60s maxDuration, so Vercel
-// killed the Function mid-way and the browser only saw a generic
-// "Couldn't read that file". Now every request is a single short call,
-// so the document's length no longer matters to the time limit.
+// Two calls driven by the browser: readAssignmentPages (one vision call, at
+// most MAX_VISION_IMAGES pages) per chunk, then saveProposedCards once. One
+// server call looping over every page timed out on long PDFs.
 export async function readAssignmentPages(
   pursuitId: string,
   imageUrls: string[],
@@ -1448,19 +1280,9 @@ export async function readAssignmentPages(
   totalPages: number,
 ): Promise<{ error: string | null; cards: ProposedCard[] }> {
   const { session } = await requireAccess(pursuitId);
-  const unlimited = await hasUnlimitedAccess(session.user.id, session.user.email);
-
-  // Only checked, not incremented: the whole document counts as ONE use,
-  // charged in saveProposedCards once the reading is done.
-  if (!unlimited) {
-    const usedToday = await getOrganizeUsageToday(session.user.id);
-    if (usedToday >= DAILY_ORGANIZE_LIMIT) {
-      return {
-        error: `You've hit the limit of ${DAILY_ORGANIZE_LIMIT} AI organizes for today. Try again tomorrow.`,
-        cards: [],
-      };
-    }
-  }
+  const budget = await aiBudget(session.user.id, session.user.email);
+  const limited = await budget.check();
+  if (limited) return { error: limited, cards: [] };
 
   if (imageUrls.length === 0) return { error: "No pages to read", cards: [] };
   if (imageUrls.length > MAX_VISION_IMAGES) {
@@ -1526,7 +1348,7 @@ export async function saveProposedCards(
   proposed: ProposedCard[],
 ): Promise<{ error: string | null; count?: number }> {
   const { session } = await requireAccess(pursuitId);
-  const unlimited = await hasUnlimitedAccess(session.user.id, session.user.email);
+  const budget = await aiBudget(session.user.id, session.user.email);
 
   // requireAccess only proves access to the PURSUIT — make sure this
   // project actually belongs to it, or anyone could write cards into
@@ -1548,9 +1370,7 @@ export async function saveProposedCards(
   // one odd document can't flood the board.
   const cards = valid.slice(0, 40);
 
-  if (!unlimited) {
-    await incrementOrganizeUsage(session.user.id);
-  }
+  await budget.charge();
 
   if (cards.length === 0) {
     return { error: "Couldn't find any tasks in that — try a clearer page or add cards by hand" };
@@ -1577,10 +1397,8 @@ export async function saveProposedCards(
   return { error: null, count: cards.length };
 }
 
-// A PowerPoint (already read into text in the browser) → a new page in
-// the section you're looking at, then straight into Organize so you get
-// the summary without another click. The page itself is kept as the
-// "Original" behind the organized note.
+// A .pptx (read to text in the browser) → a page in the current section,
+// then Organize, so the summary appears with the original kept behind it.
 export async function importSlides(
   pursuitId: string,
   sectionId: string | null,

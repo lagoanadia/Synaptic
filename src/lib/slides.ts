@@ -1,10 +1,5 @@
-// What to show in the slide panel for a given link or file URL.
-// - Google Slides → its own embed player (one slide at a time)
-// - Drive files (what Classroom links point to) → Drive's preview,
-//   which renders .pptx/.pdf with your Google login, no download
-// - an uploaded .pptx → Microsoft's Office viewer (needs a public URL;
-//   Blob URLs are public but unguessable)
-// - a PDF → rendered by the app itself (pdf.js)
+// What the slide panel shows for a URL: Google Slides embed, Drive preview
+// (Classroom files), Office viewer for an uploaded .pptx, pdf.js for PDFs.
 
 export type SlideSource = { kind: "iframe"; src: string } | { kind: "pdf"; src: string };
 

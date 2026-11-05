@@ -213,10 +213,9 @@ function verdict(ratio: number) {
   return "Rough one. Good thing you checked now and not in the exam.";
 }
 
-// ─── Challenge ────────────────────────────────────────────────────────
-// 60 seconds, as many right answers as you can. A sprint, so it doesn't
-// touch spaced repetition (rushed guesses would mess up the schedule).
-// Best score lives in this browser only.
+// ─── Challenge ───
+// 60 seconds, as many right answers as possible. Doesn't touch spaced
+// repetition (rushed guesses would skew it). Best score per browser.
 const CHALLENGE_SECONDS = 60;
 
 function readBest(key: string): number {
@@ -355,10 +354,8 @@ function ChallengeGame({ questions, scopeKey }: { questions: QuizQuestion[]; sco
   );
 }
 
-// ─── Recall ───────────────────────────────────────────────────────────
-// Active recall on a random concept: see the title, try to remember what
-// it was about, then check. Nothing typed here is saved — it's a thinking
-// space, not a test.
+// ─── Recall ───
+// See a title, recall it, check. What you type isn't saved.
 function RecallGame({ items }: { items: RecallItem[] }) {
   const router = useRouter();
   const [index, setIndex] = useState(0);

@@ -1,9 +1,6 @@
 @import "tailwindcss";
 
-/* Synaptic's app palette now matches the marketing landing page's own
-   (Plus Jakarta Sans, near-black ink on a warm cream page background,
-   white cards) instead of the old Notion-style off-black-on-white —
-   see src/app/landing for the reference. */
+/* Warm cream page, near-black ink, white cards. */
 :root {
   --background: #f2f1ee;
   --foreground: #0d0d0d;
@@ -14,34 +11,17 @@
   --color-foreground: var(--foreground);
   --color-ink: #0d0d0d;
   --color-ink-muted: #6b6b6b;
-  /* Was #9a9a9a — only 2.49:1 against this page's cream background
-     (--background #f2f1ee), failing WCAG AA's 4.5:1 floor for normal
-     text. On this specific background, 4.5:1 caps out around #6e6e6e, so
-     ink-faint ends up only one shade lighter than ink-muted (#6b6b6b) —
-     there isn't room for a third distinct gray tier and AA compliance at
-     the same time on a background this light. */
+  /* The lightest gray that still passes WCAG AA (4.5:1) on this background. */
   --color-ink-faint: #6c6c6c;
   --color-border-subtle: rgba(13, 13, 13, 0.08);
-  /* Back to the original blue — the neutral ink accent tried during the
-     rebranding pass was rejected outright ("hate this black"), so this
-     reverts to Synaptic's actual brand color. accent-fg is the text/icon
-     color to put ON TOP of a solid accent fill; accent-soft is the pale
-     tint for a hover state or a soft fill (e.g. a selected card). */
+  /* Brand blue. accent-fg = text on a solid accent; accent-soft = pale tint. */
   --color-accent: #2383e2;
   --color-accent-fg: #ffffff;
   --color-accent-soft: #eaf3fd;
   --color-chip: #f1f1ef;
   --color-callout: #f7f6f3;
-  /* The card color set, pulled directly from nadia-lagoa.vercel.app's own
-     "Things I've built" section: all 10 project cards there reduce to 6
-     solid anchor colors (Synaptic/Larder/Kook/Proyecto X/Twitter
-     Replica/Profile Upload Demo) — the remaining 4 cards there are just
-     two-color gradients built from pairs of these same 6 anchors, so
-     Synaptic's 10-color cycle mirrors that: 6 solids + 4 gradients, not
-     10 independently-invented hues. Each card is filled at full
-     saturation like the source cards, with white text on top (soft
-     variants keep dark ink text since they're pale washes, same as
-     before). */
+  /* Card colors (from nadia-lagoa.vercel.app's project cards), each with a pale
+     "-soft" wash. White text on the solid ones, by design. */
   --color-flame: #ff4a1c;
   --color-flame-soft: #ffe8e0;
   --color-crimson: #e23b3b;
@@ -54,27 +34,15 @@
   --color-rose-soft: #f2eeec;
   --color-forest: #0f3d2e;
   --color-forest-soft: #e4e6e2;
-  /* A separate 6-color set for "who wrote this" identity (per-collaborator
-     avatar rings and editor highlights) — NOT the card palette above.
-     Those 6 anchors were picked to match a portfolio site's project
-     cards, each always paired with a text label, and running them
-     through a colorblind-safe categorical check (see the `dataviz`
-     skill's validate_palette.js) showed flame/crimson sit only ~7 apart
-     in OKLab ΔE — indistinguishable to a colorblind reader, and still
-     hard to tell apart with full color vision (the ΔE>=15 floor).
-     Identity-by-color-alone needs a stricter set, so this one instead:
-     the skill's own validated reference categorical palette, which
-     passes every check (worst adjacent pair ΔE 9.1 CVD / 19.6 normal). */
+  /* Collaborator identity colors: a colorblind-safe categorical palette (the card
+     colors aren't distinguishable by color alone). */
   --color-ocean: #2a78d6;
   --color-tangerine: #eb6834;
   --color-mint: #1baf7a;
   --color-amber: #eda100;
   --color-orchid: #e87ba4;
   --color-moss: #008300;
-  /* Section tiles on the home screen — the teal → sky → blue family from
-     the rebrand prototype, all close cousins of the brand accent so the
-     grid reads as one calm block instead of a rainbow. White text on all
-     of them (same call as the pursuit cards). */
+  /* Home-screen section tiles: one teal-to-blue family. */
   --color-tile-teal: #0e8aa8;
   --color-tile-aqua: #2fb8c9;
   --color-tile-sky: #3aa6ee;
@@ -89,8 +57,7 @@ body {
   color: var(--foreground);
 }
 
-/* Landing page's hero cards — a slow constant bob, referenced via
-   Tailwind's animate-[float_...] arbitrary value in HeroCards.tsx. */
+/* Landing hero cards' slow bob (HeroCards.tsx). */
 @keyframes float {
   0%,
   100% {

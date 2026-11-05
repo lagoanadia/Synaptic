@@ -1,9 +1,6 @@
 import { prisma } from "@/lib/prisma";
 
-// Sections are free-typed and stored per user — reuse an existing one by
-// name, or create it appended at the end of that user's section order
-// (rather than defaulting everyone new to 0, which would fight with
-// reorderSection's swapped-order values).
+// Reuse a section by name, or append one at the end of the user's order.
 export async function upsertSection(userId: string, name: string) {
   const trimmed = name.trim();
 

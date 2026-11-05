@@ -9,19 +9,9 @@ const providerButtonClass =
 
 const MENU_WIDTH = 240;
 
-// A single trigger that opens a small "choose a provider" popover, reused
-// for every CTA on the landing page — one component instead of repeating
-// a two-button choice at each of the six places a CTA appears.
-//
-// The menu is rendered through a portal straight into <body>, positioned
-// with `fixed` from the trigger's own bounding box. Several triggers sit
-// inside a Reveal wrapper, whose scroll-in animation applies a CSS
-// `transform` — and `transform` on an ancestor creates a new stacking
-// context that traps any z-index set on a normal-flow descendant, so a
-// plain `position: absolute` dropdown nested in the tree kept rendering
-// underneath later siblings (the hero's floating cards) no matter how
-// high its own z-index was set. Escaping to the body sidesteps that
-// entirely instead of fighting it with more z-index values.
+// One "choose a provider" popover for every CTA. Rendered in a portal with
+// fixed positioning: some triggers sit in a transformed (animated) ancestor,
+// which would trap a normal popover.
 export function AuthMenu({
   children,
   triggerClassName,

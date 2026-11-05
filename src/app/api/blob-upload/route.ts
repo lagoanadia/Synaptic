@@ -7,23 +7,15 @@ type UploadPayload = { pursuitId: string; kind: "image" | "audio" | "slides" };
 
 const ALLOWED_CONTENT_TYPES: Record<UploadPayload["kind"], string[]> = {
   image: ["image/png", "image/jpeg", "image/gif", "image/webp"],
-  // Whatever MediaRecorder actually produces varies by browser (Chrome/
-  // Firefox: webm; Safari: mp4) — Groq's Whisper endpoint accepts all of
-  // these anyway, so there's no need to pin it down to one. video/webm is
-  // deliberately included here too: Vercel Blob's own content-type check
-  // sniffs the actual file bytes rather than trusting whatever the client
-  // declares, and a WebM container recorded from an audio-only stream
-  // (this upload flow only ever calls getUserMedia({ audio: true })) still
-  // gets sniffed as "video/webm" — WebM's container format doesn't
-  // distinguish "audio-only" from "video" the way MP4 does. It's audio in
-  // every case that reaches this route; the label is just misleading.
-  // Slide decks for the slide panel. A .pptx is a zip inside, and Blob
-  // sniffs the real bytes, so it can come back labeled application/zip.
+  // Slide decks. A .pptx is a zip, and Blob sniffs real bytes, so it can come
+  // back as application/zip.
   slides: [
     "application/vnd.openxmlformats-officedocument.presentationml.presentation",
     "application/pdf",
     "application/zip",
   ],
+  // Browsers record different containers (Chrome webm, Safari mp4); Whisper
+  // takes them all. Blob sniffs audio-only WebM as video/webm.
   audio: [
     "audio/webm",
     "video/webm",
@@ -34,12 +26,8 @@ const ALLOWED_CONTENT_TYPES: Record<UploadPayload["kind"], string[]> = {
   ],
 };
 
-// Brain Dump images (and now voice note recordings) upload straight from
-// the browser to Blob storage instead of going through a Server Action —
-// Next.js caps a Server Action's request body at 1MB, which a phone photo
-// or a voice recording both blow past easily. This route only hands out a
-// short-lived upload token; the file itself never passes through our
-// server.
+// Uploads go straight from the browser to Blob (Server Actions cap bodies at
+// 1MB). This route only hands out a short-lived upload token.
 export async function POST(request: Request): Promise<NextResponse> {
   const body = (await request.json()) as HandleUploadBody;
 

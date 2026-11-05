@@ -1,12 +1,8 @@
 import type { JSONContent } from "@tiptap/core";
 import { parseNoteBlocks, type InlineNode, type ListBlock, type NoteBlock } from "@/lib/text";
 
-// Converts between the app's stored text format (the markdown-ish
-// shortcuts in lib/text.ts: `#`, `-`, `1.`, `a.`, `!`, `| |`, `<js … >`,
-// `**b**`, `*i*`, `__u__`, `[t](u)`, `![image](u)`) and the visual
-// editor's document tree. Storage doesn't change, so search, Organize,
-// export and every existing page keep working; only the editing surface
-// is visual now.
+// Stored text format (lib/text.ts shortcuts) ⇄ the editor's document tree.
+// Storage is unchanged; only editing is visual.
 
 // ─── text → editor ─────────────────────────────────────────────────────
 

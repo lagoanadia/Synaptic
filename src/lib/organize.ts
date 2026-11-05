@@ -2,10 +2,7 @@ import { parseJsonLoosely } from "@/lib/json";
 
 export type OrganizeResult = { content: string; tags: string[] };
 
-// Turns Groq's raw completion text into a note's content + tags. Never
-// throws: broken JSON, a missing/empty "content" field, or a missing
-// "tags" field all fall back to something renderable rather than
-// crashing the Organize action for the whole pursuit.
+// AI text → note content + tags. Never throws; falls back to something renderable.
 export function parseOrganizeResponse(rawText: string): OrganizeResult {
   const parsed = parseJsonLoosely(rawText);
   const obj =

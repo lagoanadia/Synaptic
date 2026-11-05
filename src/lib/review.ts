@@ -41,10 +41,7 @@ export function sample<T>(items: readonly T[], n: number, rand: Rand = Math.rand
 
 const normalize = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
 
-// Multiple choice built only from cards you already have: each question's
-// wrong options are OTHER cards' answers. No AI call, so it's instant and
-// free — and the distractors come from the same subject, which makes them
-// plausible instead of obviously silly.
+// Wrong options are other cards' answers: no AI call, and plausible.
 export function buildQuiz(
   cards: readonly ReviewCard[],
   count: number,

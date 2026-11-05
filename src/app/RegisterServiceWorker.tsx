@@ -2,10 +2,7 @@
 
 import { useEffect } from "react";
 
-// Renders nothing — its only job is the side effect of registering
-// /sw.js once the page has loaded, which is what a service worker needs
-// (alongside the manifest) for a browser to treat this as an installable
-// app instead of just a bookmark.
+// Registers /sw.js, which (with the manifest) makes the app installable.
 export function RegisterServiceWorker() {
   useEffect(() => {
     if ("serviceWorker" in navigator) {

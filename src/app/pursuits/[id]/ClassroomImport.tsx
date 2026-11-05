@@ -60,9 +60,7 @@ export function ClassroomImport({
         else setFiles(filesResult.files ?? []);
       }
     });
-    // Only ever runs once on mount (and if `connected` flips true) —
-    // linkedCourseId is read once here on purpose, not tracked as a
-    // dependency, since pickCourse below is what changes it afterwards.
+    // Once on mount (and when `connected` flips); pickCourse changes the course after.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [connected]);
 

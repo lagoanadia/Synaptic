@@ -12,10 +12,7 @@ type KeyForDisplay = {
   lastUsedAt: string | null;
 };
 
-// The raw key only ever exists here, in memory, between the moment
-// createApiKey returns it and the moment this component unmounts or the
-// user dismisses the banner — it's never stored, logged, or shown again
-// after that, same as GitHub/Stripe's own "copy this now" key reveal.
+// The raw key exists only here, until dismissed. Never stored or shown again.
 export function ApiKeyManager({ keys }: { keys: KeyForDisplay[] }) {
   const [isPending, startTransition] = useTransition();
   const [revealedKey, setRevealedKey] = useState<string | null>(null);

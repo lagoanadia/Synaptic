@@ -6,13 +6,7 @@ import { DeleteButton } from "../DeleteButton";
 
 type Attachment = { id: string; name: string; url: string };
 
-// Turns a Drive "view"/"edit" link into Drive's own embeddable viewer —
-// the same /preview endpoint Drive uses for its own share-embed widget.
-// Handles a raw file link (/file/d/{id}/...), the older ?id={id} share
-// format, and native Docs/Sheets/Slides editor links. Returns null for
-// anything that isn't a recognized Google Drive/Docs URL, since a random
-// pasted link has no such embeddable form and most sites block framing
-// via X-Frame-Options anyway — those stay a plain external link.
+// Drive/Docs links → Drive's embeddable /preview. Null for anything else.
 function toEmbedUrl(url: string): string | null {
   const fileId =
     url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/)?.[1] ??

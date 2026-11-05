@@ -2,10 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { upsertSection } from "@/lib/sections";
 import { arr, askJson, obj, str } from "@/lib/ai";
 
-// First-run setup: instead of a tutorial and a generic example, a few
-// quick questions on the first visit, and the starter content is built
-// FROM the answers — your sections, your subjects, and a real note +
-// flashcards + practice tasks about the thing you said you're learning.
+// First visit: a few questions, and the answers become the starter content
+// (sections, subjects, a note, flashcards, practice tasks).
 
 export type OnboardingAnswers = {
   areas: { name: string; items: string[] }[];

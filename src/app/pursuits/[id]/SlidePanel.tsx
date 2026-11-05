@@ -24,10 +24,8 @@ const store = {
   },
 };
 
-// Slides docked above whatever you're writing: pick a deck (this
-// subject's files, Classroom, an upload, or a link), flip through it,
-// drag the bottom edge to resize, shrink it to a bar, or close it.
-// Remembers the open deck and size per subject.
+// Slides docked above the editor: pick a deck (this subject's files,
+// Classroom, an upload, a link), resize, hide or close it. Remembered per subject.
 export function SlidePanel({
   pursuitId,
   decks,

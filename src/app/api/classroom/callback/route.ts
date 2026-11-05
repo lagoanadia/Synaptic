@@ -3,10 +3,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { exchangeCodeForTokens } from "@/lib/googleClassroom";
 
-// GET /api/classroom/callback — where Google sends the user back after
-// they approve (or deny) Classroom access. `state` is the pursuitId we
-// stashed in connect/route.ts, so this always lands back on the same
-// pursuit's Files tab, whether it succeeded or not.
+// Google's redirect after the Classroom consent; `state` is the pursuitId.
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const pursuitId = url.searchParams.get("state");

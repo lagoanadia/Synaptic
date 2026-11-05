@@ -1,9 +1,6 @@
 "use client";
 
-// A plain button instead of auto-calling window.print() on mount — some
-// browsers block or delay a print dialog triggered without a direct user
-// gesture, and an unexpected dialog popping up on page load is jarring
-// anyway.
+// A button, because browsers block print dialogs without a user gesture.
 export function PrintButton() {
   return (
     <button

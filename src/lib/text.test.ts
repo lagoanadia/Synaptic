@@ -273,11 +273,7 @@ describe("parseNoteBlocks", () => {
   });
 
   it("treats a tab-indented dash as plain text, not an infinite loop", () => {
-    // Regression test: a line whose TRIMMED form looks like a list marker
-    // but whose actual indentation isn't plain spaces (a tab here) used to
-    // desync the paragraph-continuation check from the list dispatch
-    // check, breaking out of the paragraph loop without ever advancing
-    // past that line -- an infinite loop that hung the whole parse.
+    // Regression: a tab-indented "- " line used to loop forever.
     const blocks = parseNoteBlocks("\t- tab indented, not a real list item");
     expect(blocks).toEqual([
       {

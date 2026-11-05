@@ -43,10 +43,8 @@ const CODE_LANGUAGES = [
   { value: "sql", label: "SQL" },
 ];
 
-// A Notion-style editor: what you type is what you see — bold is bold, a
-// table is a table. Markdown shortcuts still work as you type ("# ",
-// "- ", "1. ", "! ", "**bold**", "```"). Reads and writes the app's
-// plain-text format (lib/richText.ts), so storage never changes.
+// WYSIWYG editor with markdown shortcuts ("# ", "- ", "1. ", "! ", "**b**").
+// Reads and writes the stored text format (lib/richText.ts).
 export function RichEditor({
   initialText,
   onChange,

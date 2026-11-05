@@ -36,11 +36,7 @@ function Inline({ nodes }: { nodes: InlineNode[] }) {
   );
 }
 
-// A nested bullet list cycles disc → circle → square by depth (the
-// classic outliner convention) so a Tab-indented sub-point is visually
-// distinct without needing a legend; numbered/lettered stay their own
-// style at any depth since the marker CHARACTER itself already changes
-// when a line gets nested (1. → a.).
+// Nested bullets cycle disc → circle → square by depth.
 function bulletStyleForDepth(depth: number): string {
   return depth === 0 ? "disc" : depth === 1 ? "circle" : "square";
 }
@@ -96,11 +92,7 @@ const HEADING_CLASS = {
   3: "text-base font-semibold",
 } as const;
 
-// Renders the Notion-style shortcuts typed into a Brain Dump (or produced
-// by Organize): `#`/`##`/`###` headings, `!` callouts, `-` bullets, `1.`
-// numbered lists, `a.` lettered lists, `**bold**`, and inline images —
-// used on both the Brain Dump detail page and Organized note cards so the
-// same raw content renders the same way in both places.
+// Renders stored content (headings, callouts, lists, tables, code, images).
 export function RichContent({
   content,
   paragraphClassName = "text-base leading-relaxed whitespace-pre-wrap",

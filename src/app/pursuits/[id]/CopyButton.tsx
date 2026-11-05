@@ -2,10 +2,7 @@
 
 import { useState } from "react";
 
-// Sits inside a <summary> (the code block's header) — stopPropagation
-// keeps a click here from also toggling the parent <details> open/closed,
-// since a native <summary> treats any click inside it as a toggle unless
-// told otherwise.
+// Inside a <summary>: stop the click from toggling the <details>.
 export function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
 

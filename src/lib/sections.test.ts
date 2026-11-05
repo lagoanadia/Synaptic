@@ -1,11 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-// upsertSection isn't a pure function — it talks to the database — so
-// instead of running it against a real Postgres, we replace `prisma`
-// with a fake object whose methods are just vi.fn() spies we control.
-// This tests the function's *logic* (reuse an existing section vs.
-// append a new one at the end of the order) without needing Postgres
-// running at all.
+// upsertSection talks to the database, so prisma is replaced with spies.
 const findUnique = vi.fn();
 const aggregate = vi.fn();
 const create = vi.fn();

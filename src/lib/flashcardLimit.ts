@@ -8,10 +8,7 @@ function startOfUtcMonth(d: Date): Date {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1));
 }
 
-// Counted straight from the Flashcard table instead of a separate usage
-// counter (unlike OrganizeUsage) — flashcards aren't deleted often enough
-// for that count to need its own running tally, and this stays correct
-// even if some get deleted mid-month.
+// Counted from the table directly; stays right if cards get deleted.
 export async function getFlashcardsThisMonth(userId: string): Promise<number> {
   return prisma.flashcard.count({
     where: {

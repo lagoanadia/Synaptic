@@ -1,7 +1,4 @@
-// The app's "connection" visual motif: thin monochrome node/line
-// drawings, reused across empty states and the Organized tab's note
-// graph. No gradients or glows anywhere — just strokes and dots, same
-// restraint as the Logo mark.
+// The "connection" motif: thin node-and-line drawings for empty states.
 
 export function ConnectionMotifIcon({
   size = 64,
@@ -32,11 +29,7 @@ export function ConnectionMotifIcon({
   );
 }
 
-// A small hub-and-spoke diagram: one "Notes" hub connected to one node
-// per content section, node size nodding at how many notes live there.
-// Purely illustrative — it mirrors the section grouping already visible
-// below it, not a new source of truth. Caps at 8 spokes so it never
-// degrades into unreadable clutter on a pursuit with many sections.
+// Hub-and-spoke: one node per content section, sized by note count (max 8).
 export function NotesGraph({
   nodes,
   colorClassName = "text-accent",
