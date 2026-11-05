@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { endDebate, sendArgument } from "../actions";
-import { MAX_TURNS, type DebateMessage, type Verdict } from "@/lib/debate";
+import { MAX_TURNS, type DebateMessage, type Verdict } from "@/lib/debateTypes";
 
 export function DebateRoom({
   debate,

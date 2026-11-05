@@ -1,3 +1,4 @@
+import "server-only";
 import { groq } from "@/lib/groq";
 import type { ChatCompletionCreateParamsNonStreaming } from "groq-sdk/resources/chat/completions";
 import { parseJsonLoosely } from "@/lib/json";

@@ -1,24 +1,9 @@
+import "server-only";
 import { arr, askJson, obj, str } from "@/lib/ai";
 
-export type DebateMessage = {
-  role: "user" | "ai";
-  text: string;
-  // Fallacies the AI spotted in the USER message it was replying to.
-  fallacies?: { name: string; quote: string }[];
-};
+import { MAX_TURNS, type DebateMessage, type Verdict } from "@/lib/debateTypes";
 
-export type Verdict = {
-  winner: "you" | "ai" | "draw";
-  scores: { clarity: number; evidence: number; logic: number; responsiveness: number };
-  strongest: string;
-  weakest: string;
-  fallacies: { name: string; quote: string }[];
-  steelman: string;
-  rethink: string;
-  readMore: string[];
-};
-
-export const MAX_TURNS = 8;
+export { MAX_TURNS, type DebateMessage, type Verdict };
 
 // Turns a headline into something worth arguing about.
 export async function frameDebate(h: { title: string; summary: string; source: string }, language: string) {

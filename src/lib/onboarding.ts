@@ -1,3 +1,4 @@
+import "server-only";
 import { prisma } from "@/lib/prisma";
 import { upsertSection } from "@/lib/sections";
 import { arr, askJson, obj, str } from "@/lib/ai";
