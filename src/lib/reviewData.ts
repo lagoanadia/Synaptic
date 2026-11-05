@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@/generated/prisma/client";
-import type { ReviewCard } from "@/lib/review";
+import type { ReviewCard, ReviewConcept } from "@/lib/review";
 import { autoTitle } from "@/lib/text";
 
 // Which part of your stuff a review/home view looks at: everything, one
@@ -99,4 +99,32 @@ export async function getCards(
     question: c.question,
     answer: c.answer,
   }));
+}
+
+// Internalize concepts in scope, rereads first.
+export async function getLearnConcepts(userId: string, scope: ReviewScope): Promise<(ReviewConcept & { explanation: string })[]> {
+  const rows = await prisma.concept.findMany({
+    where: { map: { pursuit: pursuitWhere(userId, scope) } },
+    take: 400,
+    select: {
+      id: true,
+      title: true,
+      summary: true,
+      explanation: true,
+      status: true,
+      map: { select: { pursuit: { select: { id: true, title: true } } } },
+    },
+  });
+  const rank: Record<string, number> = { REREAD: 0, SEEN: 1, NEW: 2, UNDERSTOOD: 3, MASTERED: 4 };
+  return rows
+    .map((r) => ({
+      id: r.id,
+      title: r.title,
+      summary: r.summary,
+      explanation: r.explanation,
+      status: r.status,
+      pursuitId: r.map.pursuit.id,
+      pursuitTitle: r.map.pursuit.title,
+    }))
+    .sort((a, b) => rank[a.status] - rank[b.status]);
 }

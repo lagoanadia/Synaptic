@@ -81,6 +81,16 @@ export function GameTiles({
             </div>
           ),
         )}
+        <Link
+          href={`/challenges${scopeQuery.startsWith("pursuit=") ? `?${scopeQuery}` : ""}`}
+          className="col-span-2 flex items-center gap-3 rounded-2xl bg-mint px-4 py-3.5 text-white transition-transform hover:-translate-y-0.5"
+        >
+          <span className="font-mono text-lg font-bold">{"</>"}</span>
+          <span className="flex flex-col">
+            <span className="text-sm font-bold">Code challenge</span>
+            <span className="text-xs">Built from your notes — you code, the AI only nudges</span>
+          </span>
+        </Link>
       </div>
     </div>
   );

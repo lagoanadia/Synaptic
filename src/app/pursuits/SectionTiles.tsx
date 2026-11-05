@@ -97,7 +97,6 @@ function AddSectionTile() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        data-tour="new-pursuit-form"
         className="flex aspect-square flex-col items-center justify-center gap-2 rounded-3xl border-2 border-dashed border-border-subtle text-ink-muted transition-colors hover:border-tile-aqua hover:text-tile-teal"
       >
         <span className="flex h-12 w-12 items-center justify-center rounded-full bg-tile-aqua text-2xl font-bold text-white">

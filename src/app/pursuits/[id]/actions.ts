@@ -4,16 +4,14 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { groq } from "@/lib/groq";
-import type {
-  ChatCompletionContentPartImage,
-  ChatCompletionCreateParamsNonStreaming,
-} from "groq-sdk/resources/chat/completions";
+import type { ChatCompletionContentPartImage } from "groq-sdk/resources/chat/completions";
 import { PursuitStatus, MemberRole, ProjectCardStatus } from "@/generated/prisma/client";
 import { upsertSection, upsertContentSection } from "@/lib/sections";
 import { HEADLINE_OPTIONS, buildOrTsQuery } from "@/lib/search";
 import { parseOrganizeResponse } from "@/lib/organize";
 import { parseJsonLoosely } from "@/lib/json";
 import { MAX_VISION_IMAGES } from "@/lib/visionLimits";
+import { TEXT_MODEL, VISION_MODEL, createJsonCompletion } from "@/lib/ai";
 import { parseFlashcardsResponse } from "@/lib/flashcards";
 import { computeNextReview, dueDateAfter } from "@/lib/sm2";
 import {
@@ -388,31 +386,6 @@ export async function finalizeBrainDump(pursuitId: string, dumpId: string) {
   });
 
   revalidatePath(`/pursuits/${pursuitId}`);
-}
-
-const TEXT_MODEL = "openai/gpt-oss-120b";
-// meta-llama/llama-4-scout-17b-16e-instruct (the previous value here) was
-// confirmed 404 model_not_found in Groq's own request logs on 2026-09-24
-// — Groq had dropped it from the free tier. This replacement is a
-// best-effort pick from web research, still NOT verified with a live
-// call (console.groq.com/docs/models and the API itself are both
-// unreachable from this dev sandbox's network) — if it 404s too, check
-// that docs page directly (or the Playground's model list with an image
-// attached) for whatever's current, and swap it in here again.
-const VISION_MODEL = "qwen/qwen3.8-27b";
-
-// Groq's own JSON mode occasionally rejects its own generation with a
-// "json_validate_failed" error -- a one-off sampling hiccup, not an
-// outage, that a second attempt with the exact same prompt very often
-// just doesn't repeat. One retry here saves a manual "click Organize
-// again" for what's usually transient, before this falls through to the
-// model-swap/error-message handling below.
-async function createJsonCompletion(params: ChatCompletionCreateParamsNonStreaming) {
-  try {
-    return await groq.chat.completions.create(params);
-  } catch {
-    return await groq.chat.completions.create(params);
-  }
 }
 
 // Returns { error } instead of throwing — DumpControls calls this from a
@@ -1602,4 +1575,47 @@ export async function saveProposedCards(
 
   revalidatePath(`/pursuits/${pursuitId}/projects/${projectId}`);
   return { error: null, count: cards.length };
+}
+
+// A PowerPoint (already read into text in the browser) → a new page in
+// the section you're looking at, then straight into Organize so you get
+// the summary without another click. The page itself is kept as the
+// "Original" behind the organized note.
+export async function importSlides(
+  pursuitId: string,
+  sectionId: string | null,
+  text: string,
+): Promise<{ error: string | null }> {
+  const { session } = await requireAccess(pursuitId);
+  const content = text.trim().slice(0, 60000);
+  if (content.length < 20) return { error: "Couldn't find any text in those slides" };
+  const section = sectionId
+    ? await prisma.pursuitContentSection.findFirst({ where: { id: sectionId, pursuitId }, select: { id: true } })
+    : null;
+  const dump = await prisma.brainDump.create({
+    data: {
+      pursuitId,
+      authorId: session.user.id,
+      content,
+      lineAuthorIds: content.split("\n").map(() => session.user.id),
+      sectionId: section?.id ?? null,
+    },
+  });
+  await prisma.pursuit.update({ where: { id: pursuitId }, data: { lastTouchedAt: new Date() } });
+  const organized = await organizeDumps(pursuitId, [dump.id]);
+  revalidatePath(`/pursuits/${pursuitId}`);
+  // The page exists either way; an Organize failure just means no summary yet.
+  return { error: organized.error ? `Slides imported, but the summary failed: ${organized.error}` : null };
+}
+
+// A deck uploaded from the slide panel is also kept in this subject's
+// Files, so it's one click away next time.
+export async function saveSlideDeck(pursuitId: string, name: string, url: string, size: number) {
+  await requireAccess(pursuitId);
+  if (!/^https:\/\/[\w.-]+\.public\.blob\.vercel-storage\.com\//.test(url)) return null;
+  const a = await prisma.attachment.create({
+    data: { pursuitId, name: name.trim().slice(0, 200) || "Slides", url, size: Math.max(0, Math.round(size)) },
+  });
+  revalidatePath(`/pursuits/${pursuitId}`);
+  return a.id;
 }

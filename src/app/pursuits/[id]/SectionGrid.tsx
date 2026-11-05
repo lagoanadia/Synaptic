@@ -16,7 +16,7 @@ export function SectionGrid({ pursuitId, tiles }: { pursuitId: string; tiles: Se
         {tiles.map((t) => (
           <Link
             key={t.id}
-            href={`/pursuits/${pursuitId}?tab=dump&section=${t.id}`}
+            href={`/pursuits/${pursuitId}?tab=pages&section=${t.id}`}
             className={`flex aspect-[4/3] flex-col justify-between rounded-3xl p-4 text-white transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_12px_28px_rgba(13,13,13,0.12)] ${
               t.id === "unsorted" ? "bg-ink-muted" : "bg-tile-blue"
             }`}
@@ -32,8 +32,8 @@ export function SectionGrid({ pursuitId, tiles }: { pursuitId: string; tiles: Se
       {tiles.length === 0 && (
         <p className="text-sm text-ink-muted">
           Nothing here yet — open{" "}
-          <Link href={`/pursuits/${pursuitId}?tab=dump`} className="font-semibold text-accent hover:underline">
-            Brain Dump
+          <Link href={`/pursuits/${pursuitId}?tab=pages`} className="font-semibold text-accent hover:underline">
+            Pages
           </Link>{" "}
           and write your first page, or make a section for each unit.
         </p>

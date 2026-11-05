@@ -55,6 +55,8 @@ model User {
   pushSubscriptions   PushSubscription[]
   sentNotifications   SentDeadlineNotification[]
   apiKeys             ApiKey[]
+  challenges          Challenge[]
+  debates             Debate[]
 }
 
 // A personal access token for the MCP server (src/app/api/mcp) — lets an
@@ -228,6 +230,8 @@ model Pursuit {
   flashcards      Flashcard[]
   contentSections PursuitContentSection[]
   projects        Project[]
+  conceptMaps     ConceptMap[]
+  challenges      Challenge[]
 }
 
 // Groups a Pursuit's OWN Brain Dump pages and Organized notes into
@@ -494,4 +498,140 @@ model Attachment {
 
   pursuitId String
   pursuit   Pursuit @relation(fields: [pursuitId], references: [id])
+}
+
+// ─── Internalize ──────────────────────────────────────────────────────
+// A source (pasted text/code, a PDF, a subject's notes, a GitHub repo)
+// broken into small concepts you can walk through in any order, explain
+// back, and track. Concepts link to each other (the graph) and can be
+// split further on demand ("go deeper" creates children).
+
+enum ConceptStatus {
+  NEW
+  SEEN
+  REREAD
+  UNDERSTOOD
+  MASTERED
+}
+
+model ConceptMap {
+  id         String   @id @default(cuid())
+  title      String
+  // "text" | "pdf" | "notes" | "repo" — where the material came from.
+  sourceKind String
+  // Repo URL / file name, for display.
+  sourceRef  String?
+  // The material itself, capped, so "go deeper" and "ask" can answer
+  // from the real source instead of from memory.
+  sourceText String
+  language   String   @default("English")
+  createdAt  DateTime @default(now())
+
+  pursuitId String
+  pursuit   Pursuit @relation(fields: [pursuitId], references: [id], onDelete: Cascade)
+
+  concepts Concept[]
+}
+
+model Concept {
+  id          String        @id @default(cuid())
+  title       String
+  summary     String
+  explanation String
+  // A verbatim piece of the source this concept is about (code or text),
+  // and where it's from (file path, page). Only kept when it really
+  // appears in the source.
+  excerpt     String?
+  excerptFrom String?
+  // Learning-path position among its siblings.
+  order       Int           @default(0)
+  depth       Int           @default(0)
+  status      ConceptStatus @default(NEW)
+  statusAt    DateTime?
+  // Your last "explain it back" attempt and what the AI said about it.
+  attempt     String?
+  feedback    String?
+  createdAt   DateTime      @default(now())
+
+  mapId String
+  map   ConceptMap @relation(fields: [mapId], references: [id], onDelete: Cascade)
+
+  parentId String?
+  parent   Concept?  @relation("ConceptTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children Concept[] @relation("ConceptTree")
+
+  linksOut ConceptLink[] @relation("LinkFrom")
+  linksIn  ConceptLink[] @relation("LinkTo")
+
+  @@index([mapId, order])
+}
+
+// "from" is needed to understand "to" (a prerequisite), unless label
+// says otherwise ("related", "uses"…).
+model ConceptLink {
+  id    String  @id @default(cuid())
+  label String?
+
+  fromId String
+  from   Concept @relation("LinkFrom", fields: [fromId], references: [id], onDelete: Cascade)
+  toId   String
+  to     Concept @relation("LinkTo", fields: [toId], references: [id], onDelete: Cascade)
+
+  @@unique([fromId, toId])
+}
+
+// ─── Coding challenges ────────────────────────────────────────────────
+// A small exercise with tests that run in the browser. Optional subject.
+
+model Challenge {
+  id          String    @id @default(cuid())
+  title       String
+  prompt      String
+  // "javascript" | "python"
+  language    String
+  // Name of the function the tests call.
+  entry       String
+  starterCode String
+  // JSON: [{ "args": [...], "expected": ... }]
+  tests       Json
+  difficulty  String    @default("easy")
+  code        String?
+  passed      Boolean   @default(false)
+  solvedAt    DateTime?
+  review      String?
+  createdAt   DateTime  @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  pursuitId String?
+  pursuit   Pursuit? @relation(fields: [pursuitId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+}
+
+// ─── Arena ────────────────────────────────────────────────────────────
+// A debate about a tech/AI headline with an AI that takes the other
+// side. messages: [{ role: "user" | "ai", text }]; verdict: the judge's
+// scores and notes once you end it.
+
+model Debate {
+  id        String   @id @default(cuid())
+  headline  String
+  url       String?
+  source    String?
+  motion    String
+  brief     String
+  // "for" | "against" — the side YOU argue.
+  side      String
+  language  String   @default("English")
+  messages  Json     @default("[]")
+  verdict   Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
 }

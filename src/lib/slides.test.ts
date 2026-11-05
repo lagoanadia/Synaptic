@@ -1,0 +1,30 @@
+import { describe, expect, it } from "vitest";
+import { slideSourceFor } from "./slides";
+
+describe("slideSourceFor", () => {
+  it("embeds Google Slides", () => {
+    expect(slideSourceFor("https://docs.google.com/presentation/d/abc-123_X/edit#slide=id.p")).toEqual({
+      kind: "iframe",
+      src: "https://docs.google.com/presentation/d/abc-123_X/embed?rm=minimal",
+    });
+  });
+  it("previews Drive files from Classroom links", () => {
+    expect(slideSourceFor("https://drive.google.com/file/d/1AbC/view?usp=drive_web")?.src).toBe(
+      "https://drive.google.com/file/d/1AbC/preview",
+    );
+    expect(slideSourceFor("https://drive.google.com/open?id=XyZ")?.src).toBe("https://drive.google.com/file/d/XyZ/preview");
+  });
+  it("uses the Office viewer for pptx and pdf.js for pdf", () => {
+    const pptx = slideSourceFor("https://x.public.blob.vercel-storage.com/ud1-abc.pptx");
+    expect(pptx?.src).toBe(
+      "https://view.officeapps.live.com/op/embed.aspx?src=https%3A%2F%2Fx.public.blob.vercel-storage.com%2Fud1-abc.pptx",
+    );
+    expect(slideSourceFor("https://x.dev/deck.PDF")).toEqual({ kind: "pdf", src: "https://x.dev/deck.PDF" });
+  });
+  it("rejects anything else", () => {
+    expect(slideSourceFor("http://drive.google.com/file/d/1/view")).toBeNull();
+    expect(slideSourceFor("javascript:alert(1)")).toBeNull();
+    expect(slideSourceFor("https://example.com/page")).toBeNull();
+    expect(slideSourceFor("not a url")).toBeNull();
+  });
+});

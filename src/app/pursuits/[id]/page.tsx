@@ -22,12 +22,11 @@ import { Logo } from "../../Logo";
 import { UpcomingDeadlines } from "./UpcomingDeadlines";
 import { StatusNote } from "./StatusNote";
 import { collaboratorOrder, colorIndexById } from "@/lib/authorColor";
-import { completeOnboarding } from "../actions";
-import { Tour } from "../../Tour";
 import { ProjectsBoard } from "./ProjectsBoard";
-import { TOUR_COPY, TOUR_UI, isLocale } from "@/lib/i18n";
 import { GameTiles } from "../../review/GameTiles";
 import { SectionGrid } from "./SectionGrid";
+import { LearnTab } from "./learn/LearnTab";
+import { ImportSlides } from "./ImportSlides";
 import { UNSORTED, SHARED } from "@/lib/reviewData";
 
 const CLASSROOM_ERROR_COPY: Record<string, string> = {
@@ -52,22 +51,25 @@ export default async function PursuitPage({
   const { tab: rawTab, section: sectionFilter, classroomConnected, classroomError } =
     await searchParams;
   const tab =
-    rawTab === "dump" ||
-    rawTab === "organized" ||
-    rawTab === "files" ||
+    rawTab === "pages" ||
+    rawTab === "learn" ||
     rawTab === "ask" ||
     rawTab === "cards" ||
     rawTab === "timeline" ||
     rawTab === "projects"
       ? rawTab
-      : "overview";
+      : // Brain Dump, Organized and Files used to be three tabs; old links
+        // to any of them land on the merged Pages tab.
+        rawTab === "dump" || rawTab === "organized" || rawTab === "files"
+        ? "pages"
+        : "overview";
 
   const session = await auth();
   if (!session?.user?.id) {
     redirect("/");
   }
 
-  const [pursuit, sections, distinctTypes, dueFlashcards, upcomingFlashcardCount, classroomConnection, viewer] =
+  const [pursuit, sections, distinctTypes, dueFlashcards, upcomingFlashcardCount, classroomConnection] =
     await Promise.all([
       prisma.pursuit.findFirst({
         where: {
@@ -91,7 +93,7 @@ export default async function PursuitPage({
           },
           notes: {
             orderBy: { createdAt: "desc" },
-            include: { tags: true, sourceDumps: { select: { id: true } } },
+            include: { tags: true, sourceDumps: { select: { id: true, content: true } } },
           },
           contentSections: { orderBy: { order: "asc" } },
           attachments: { orderBy: { createdAt: "desc" } },
@@ -121,18 +123,12 @@ export default async function PursuitPage({
         where: { userId: session.user.id },
         select: { id: true },
       }),
-      prisma.user.findUniqueOrThrow({
-        where: { id: session.user.id },
-        select: { onboardedAt: true, locale: true },
-      }),
     ]);
 
   if (!pursuit) {
     notFound();
   }
 
-  const locale = isLocale(viewer.locale) ? viewer.locale : "en";
-  const tourCopy = TOUR_COPY[locale];
 
   // Only shown once a Pursuit actually has someone besides the owner —
   // no point coloring who-wrote-what when there's only ever been one
@@ -171,6 +167,7 @@ export default async function PursuitPage({
     ? pursuit.contentSections.filter((s) => s.id === activeSection.id)
     : pursuit.contentSections;
   const sectionQuery = activeSection ? `&section=${activeSection.id}` : "";
+  const organizedDumpIds = new Set(pursuit.notes.flatMap((n) => n.sourceDumps.map((d) => d.id)));
 
   // Where "back" goes: the Section this subject lives in on the new home.
   const backHref =
@@ -272,10 +269,10 @@ export default async function PursuitPage({
       </div>
 
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-        <div data-tour="status-note">
+        <div>
           <StatusNote pursuitId={pursuit.id} initialNote={pursuit.statusNote} />
         </div>
-        <div data-tour="search-bar">
+        <div>
           <SearchBar pursuitId={pursuit.id} />
         </div>
       </div>
@@ -285,52 +282,44 @@ export default async function PursuitPage({
         hasCourse={pursuit.classroomEnabled && !!pursuit.classroomCourseId}
       />
 
-      <div
-        data-tour="tab-bar"
-        className="flex gap-7 overflow-x-auto border-b border-border-subtle"
-      >
-        <Link href={`/pursuits/${pursuit.id}`} className={tabClass("overview")}>
-          Sections
-        </Link>
-        <Link href={`/pursuits/${pursuit.id}?tab=dump${sectionQuery}`} className={tabClass("dump")}>
-          Brain Dump
-        </Link>
-        <Link
-          href={`/pursuits/${pursuit.id}?tab=organized${sectionQuery}`}
-          className={tabClass("organized")}
-        >
-          Organized
-        </Link>
-        <Link href={`/pursuits/${pursuit.id}?tab=files`} className={tabClass("files")}>
-          Files
-        </Link>
-        <Link href={`/pursuits/${pursuit.id}?tab=ask`} className={tabClass("ask")}>
-          Ask
-        </Link>
-        <Link href={`/pursuits/${pursuit.id}?tab=cards`} className={tabClass("cards")}>
-          Cards
-        </Link>
-        <Link href={`/pursuits/${pursuit.id}?tab=timeline`} className={tabClass("timeline")}>
-          Timeline
-        </Link>
-        <Link href={`/pursuits/${pursuit.id}?tab=projects`} className={tabClass("projects")}>
-          Projects
-        </Link>
-      </div>
+      <nav className="flex gap-7 overflow-x-auto border-b border-border-subtle" aria-label="Subject">
+        {(
+          [
+            ["overview", "Sections"],
+            ["pages", "Pages"],
+            ["learn", "Learn"],
+            ["cards", "Cards"],
+            ["projects", "Projects"],
+            ["ask", "Ask"],
+            ["timeline", "Timeline"],
+          ] as const
+        ).map(([key, label]) => (
+          <Link
+            key={key}
+            href={`/pursuits/${pursuit.id}${key === "overview" ? "" : `?tab=${key}`}${key === "pages" ? sectionQuery : ""}`}
+            className={tabClass(key)}
+          >
+            {label}
+          </Link>
+        ))}
+      </nav>
 
-      {activeSection && (tab === "dump" || tab === "organized") && (
-        <div className="-mt-2 flex items-center gap-2 text-sm">
-          <span className="text-ink-muted">Showing</span>
-          <span className="flex items-center gap-1.5 rounded-full bg-tile-sky px-3 py-1 text-xs font-semibold text-white">
-            {activeSection.name}
-            <Link
-              href={`/pursuits/${pursuit.id}?tab=${tab}`}
-              aria-label="Show all sections"
-              className="hover:opacity-80"
-            >
-              ×
-            </Link>
-          </span>
+      {tab === "pages" && (
+        <div className="-mt-2 flex flex-wrap items-center gap-1.5">
+          {[{ id: "", name: "All" }, ...pursuit.contentSections, { id: UNSORTED, name: "Unsorted" }].map((s) => {
+            const active = (activeSection?.id ?? "") === s.id;
+            return (
+              <Link
+                key={s.id || "all"}
+                href={`/pursuits/${pursuit.id}?tab=pages${s.id ? `&section=${s.id}` : ""}`}
+                className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
+                  active ? "bg-tile-sky text-white" : "bg-chip text-ink-muted hover:text-ink"
+                }`}
+              >
+                {s.name}
+              </Link>
+            );
+          })}
         </div>
       )}
 
@@ -369,12 +358,22 @@ export default async function PursuitPage({
         </div>
       )}
 
-      {tab === "dump" && (
+      {tab === "pages" && (
+        <section className="flex flex-col gap-3" aria-label="Pages">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-sm font-bold text-ink-muted">Pages</h2>
+          <ImportSlides
+            pursuitId={pursuit.id}
+            sectionId={activeSection && activeSection.id !== UNSORTED ? activeSection.id : null}
+          />
+        </div>
         <DumpControls
           pursuitId={pursuit.id}
           showAuthors={showAuthors}
           sections={visibleSections.map((s) => ({ id: s.id, name: s.name }))}
-          dumps={pursuit.brainDumps.filter((d) => inActiveSection(d.sectionId)).map((d) => ({
+          dumps={pursuit.brainDumps
+            .filter((d) => inActiveSection(d.sectionId) && !(d.processed && organizedDumpIds.has(d.id)))
+            .map((d) => ({
             id: d.id,
             content: d.content,
             images: d.images,
@@ -389,9 +388,12 @@ export default async function PursuitPage({
             },
           }))}
         />
+        </section>
       )}
 
-      {tab === "organized" && (
+      {tab === "pages" && (
+        <section className="flex flex-col gap-3" aria-label="Organized notes">
+        <h2 className="text-sm font-bold text-ink-muted">Organized</h2>
         <MergeControls
           pursuitId={pursuit.id}
           sections={visibleSections.map((s) => ({ id: s.id, name: s.name }))}
@@ -401,12 +403,16 @@ export default async function PursuitPage({
             createdAt: n.createdAt.toISOString(),
             updatedAt: n.updatedAt.toISOString(),
             tags: n.tags,
-            sourceDumps: n.sourceDumps,
+            sourceDumps: n.sourceDumps.map((d) => ({ id: d.id })),
             sectionId: n.sectionId,
             sectionOrder: n.sectionOrder,
           }))}
+          originals={Object.fromEntries(pursuit.notes.map((n) => [n.id, n.sourceDumps]))}
         />
+        </section>
       )}
+
+      {tab === "learn" && <LearnTab pursuitId={pursuit.id} hasNotes={pursuit.notes.length > 0} />}
 
       {tab === "ask" && <AskPursuit pursuitId={pursuit.id} />}
 
@@ -438,8 +444,9 @@ export default async function PursuitPage({
         />
       )}
 
-      {tab === "files" && (
-        <div className="flex flex-col gap-4">
+      {tab === "pages" && !activeSection && (
+        <section className="flex flex-col gap-4" aria-label="Files">
+          <h2 className="text-sm font-bold text-ink-muted">Files</h2>
           {classroomConnected && (
             <p className="rounded-xl bg-forest-soft px-4 py-3 text-sm text-ink">
               Connected to Google Classroom.
@@ -509,7 +516,7 @@ export default async function PursuitPage({
               url: a.url,
             }))}
           />
-        </div>
+        </section>
       )}
 
       {tab === "projects" && (
@@ -525,29 +532,6 @@ export default async function PursuitPage({
         />
       )}
 
-      {viewer.onboardedAt === null && tab === "overview" && (
-        <Tour
-          labels={TOUR_UI[locale]}
-          steps={[
-            {
-              target: '[data-tour="tab-bar"]',
-              title: tourCopy.detail.tabs.title,
-              body: tourCopy.detail.tabs.body,
-            },
-            {
-              target: '[data-tour="status-note"]',
-              title: tourCopy.detail.statusNote.title,
-              body: tourCopy.detail.statusNote.body,
-            },
-            {
-              target: '[data-tour="search-bar"]',
-              title: tourCopy.detail.searchBar.title,
-              body: tourCopy.detail.searchBar.body,
-            },
-          ]}
-          onFinish={completeOnboarding}
-        />
-      )}
     </div>
   );
 }

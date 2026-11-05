@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 
-type UploadPayload = { pursuitId: string; kind: "image" | "audio" };
+type UploadPayload = { pursuitId: string; kind: "image" | "audio" | "slides" };
 
 const ALLOWED_CONTENT_TYPES: Record<UploadPayload["kind"], string[]> = {
   image: ["image/png", "image/jpeg", "image/gif", "image/webp"],
@@ -17,6 +17,13 @@ const ALLOWED_CONTENT_TYPES: Record<UploadPayload["kind"], string[]> = {
   // gets sniffed as "video/webm" — WebM's container format doesn't
   // distinguish "audio-only" from "video" the way MP4 does. It's audio in
   // every case that reaches this route; the label is just misleading.
+  // Slide decks for the slide panel. A .pptx is a zip inside, and Blob
+  // sniffs the real bytes, so it can come back labeled application/zip.
+  slides: [
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    "application/pdf",
+    "application/zip",
+  ],
   audio: [
     "audio/webm",
     "video/webm",
@@ -50,7 +57,7 @@ export async function POST(request: Request): Promise<NextResponse> {
           throw new Error("Missing upload details");
         }
         const { pursuitId, kind }: UploadPayload = JSON.parse(clientPayload);
-        if (!pursuitId || (kind !== "image" && kind !== "audio")) {
+        if (!pursuitId || !Object.hasOwn(ALLOWED_CONTENT_TYPES, kind)) {
           throw new Error("Missing upload details");
         }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildQuiz, conceptExcerpt, sample, shuffle, startOfWeek, type ReviewCard } from "./review";
+import { buildConceptQuiz, buildQuiz, conceptExcerpt, sample, shuffle, startOfWeek, type ReviewCard } from "./review";
 
 // Deterministic "random" so tests don't flake.
 function seeded(seed = 1) {
@@ -40,7 +40,8 @@ describe("buildQuiz", () => {
 
   it("puts the right answer at correctIndex", () => {
     for (const q of buildQuiz(cards, 4, seeded(7))) {
-      const original = cards.find((c) => c.id === q.cardId)!;
+      const original = cards.find((c) => c.id === q.refId)!;
+      expect(q.kind).toBe("card");
       expect(q.options[q.correctIndex]).toBe(original.answer);
       expect(q.options).toHaveLength(4);
       expect(new Set(q.options).size).toBe(4);
@@ -80,5 +81,22 @@ describe("startOfWeek", () => {
   });
   it("treats Sunday as the end of the week, not the start", () => {
     expect(startOfWeek(new Date(2026, 10, 8)).getDate()).toBe(2);
+  });
+});
+
+describe("buildConceptQuiz", () => {
+  const c = (id: string, title: string, summary = `about ${title}`) => ({
+    id, pursuitId: "p", pursuitTitle: "AD", title, summary, status: "SEEN",
+  });
+  it("asks for the title from the summary", () => {
+    const qs = buildConceptQuiz([c("a", "Fichero"), c("b", "Seek"), c("c", "Buffer")], 3, seeded(3));
+    expect(qs).toHaveLength(3);
+    for (const q of qs) {
+      expect(q.kind).toBe("concept");
+      expect(q.question).toContain("about");
+    }
+  });
+  it("ignores concepts without a summary", () => {
+    expect(buildConceptQuiz([c("a", "A", ""), c("b", "B"), c("c", "C")], 3, seeded())).toEqual([]);
   });
 });

@@ -11,7 +11,7 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const pursuitId = url.searchParams.get("state");
   const backToFiles = pursuitId
-    ? new URL(`/pursuits/${pursuitId}?tab=files`, url.origin)
+    ? new URL(`/pursuits/${pursuitId}?tab=pages`, url.origin)
     : new URL("/pursuits", url.origin);
 
   const session = await auth();

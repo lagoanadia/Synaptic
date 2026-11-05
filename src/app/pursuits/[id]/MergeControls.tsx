@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRef, useState, useTransition } from "react";
 import {
   createContentSection,
@@ -12,6 +13,7 @@ import {
 } from "./actions";
 import { DeleteButton } from "../DeleteButton";
 import { RichContent } from "./RichContent";
+import { RichEditor } from "../../editor/RichEditor";
 import { autoTitle } from "@/lib/text";
 import { ConnectionEmptyState, NotesGraph } from "../../ConnectionMotif";
 import { pursuitDotColor } from "@/lib/pursuitColor";
@@ -73,11 +75,16 @@ export function MergeControls({
   pursuitId,
   notes,
   sections,
+  originals = {},
 }: {
   pursuitId: string;
   notes: NoteForDisplay[];
   sections: SectionForDisplay[];
+  // The raw Brain Dump page(s) each note was organized from, by note id —
+  // the AI version never replaces what you actually wrote.
+  originals?: Record<string, { id: string; content: string | null }[]>;
 }) {
+  const [showingOriginal, setShowingOriginal] = useState<Set<string>>(new Set());
   const [selected, setSelected] = useState<string[]>([]);
   const [isPending, startTransition] = useTransition();
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -364,18 +371,59 @@ export function MergeControls({
                       copy it before reloading.
                     </p>
                   )}
-                  <textarea
-                    value={draft}
-                    onChange={(e) => setDraft(e.target.value)}
-                    rows={6}
-                    className="w-full resize-y rounded border border-border-subtle bg-white p-2 text-sm leading-relaxed outline-none"
-                  />
+                  <RichEditor initialText={draft} onChange={setDraft} autofocus />
                 </>
               ) : (
-                <RichContent
-                  content={n.content}
-                  paragraphClassName="text-sm leading-relaxed whitespace-pre-line"
-                />
+                <>
+                  {(originals[n.id]?.length ?? 0) > 0 && (
+                    <div className="flex gap-1 self-start rounded-full bg-chip p-0.5 text-xs font-semibold">
+                      {(["Organized", "Original"] as const).map((label) => {
+                        const active = (label === "Original") === showingOriginal.has(n.id);
+                        return (
+                          <button
+                            key={label}
+                            type="button"
+                            aria-pressed={active}
+                            onClick={() =>
+                              setShowingOriginal((cur) => {
+                                const next = new Set(cur);
+                                if (label === "Original") next.add(n.id);
+                                else next.delete(n.id);
+                                return next;
+                              })
+                            }
+                            className={`rounded-full px-3 py-1 ${active ? "bg-white text-ink shadow-sm" : "text-ink-muted"}`}
+                          >
+                            {label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {showingOriginal.has(n.id) ? (
+                    <div className="flex flex-col gap-4">
+                      {originals[n.id].map((o) => (
+                        <div key={o.id} className="flex flex-col gap-1.5 border-l-2 border-border-subtle pl-3">
+                          <RichContent
+                            content={o.content ?? ""}
+                            paragraphClassName="text-sm leading-relaxed whitespace-pre-line"
+                          />
+                          <Link
+                            href={`/pursuits/${pursuitId}/dump/${o.id}`}
+                            className="self-start text-xs font-semibold text-accent hover:underline"
+                          >
+                            Open original page →
+                          </Link>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <RichContent
+                      content={n.content}
+                      paragraphClassName="text-sm leading-relaxed whitespace-pre-line"
+                    />
+                  )}
+                </>
               )}
               {n.tags.length > 0 && (
                 <div className="flex flex-wrap gap-1.5">

@@ -10,8 +10,11 @@ export type ReviewCard = {
   answer: string;
 };
 
+// A quiz question is about either a flashcard or an Internalize concept;
+// `kind` + `refId` say which, so the answer can update the right thing.
 export type QuizQuestion = {
-  cardId: string;
+  kind: "card" | "concept";
+  refId: string;
   pursuitId: string;
   pursuitTitle: string;
   question: string;
@@ -65,7 +68,8 @@ export function buildQuiz(
     if (distractors.length < 2) continue;
     const options = shuffle([card.answer, ...distractors], rand);
     questions.push({
-      cardId: card.id,
+      kind: "card",
+      refId: card.id,
       pursuitId: card.pursuitId,
       pursuitTitle: card.pursuitTitle,
       question: card.question,
@@ -110,4 +114,31 @@ export function startOfWeek(date: Date): Date {
   const daysSinceMonday = (d.getDay() + 6) % 7;
   d.setDate(d.getDate() - daysSinceMonday);
   return d;
+}
+
+export type ReviewConcept = {
+  id: string;
+  pursuitId: string;
+  pursuitTitle: string;
+  title: string;
+  summary: string;
+  status: string;
+};
+
+// "Which concept is this?" — the summary is the question, concept titles
+// from the same pool are the options.
+export function buildConceptQuiz(
+  concepts: readonly ReviewConcept[],
+  count: number,
+  rand: Rand = Math.random,
+): QuizQuestion[] {
+  const withSummary = concepts.filter((c) => c.summary.trim() !== "");
+  const asCards: ReviewCard[] = withSummary.map((c) => ({
+    id: c.id,
+    pursuitId: c.pursuitId,
+    pursuitTitle: c.pursuitTitle,
+    question: `Which concept is this? “${c.summary}”`,
+    answer: c.title,
+  }));
+  return buildQuiz(asCards, count, rand).map((q) => ({ ...q, kind: "concept" as const }));
 }

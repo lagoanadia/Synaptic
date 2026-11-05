@@ -17,7 +17,7 @@ export function DeleteDumpButton({
     <DeleteButton
       action={deleteBrainDump.bind(null, pursuitId, dumpId)}
       confirmMessage="Delete this page? This can't be undone."
-      onSuccess={() => router.push(`/pursuits/${pursuitId}?tab=dump`)}
+      onSuccess={() => router.push(`/pursuits/${pursuitId}?tab=pages`)}
       className="text-sm text-ink-muted hover:text-red-500"
     >
       Delete

@@ -36,7 +36,7 @@ export function Timeline({
           href={
             entry.type === "dump"
               ? `/pursuits/${pursuitId}/dump/${entry.id}`
-              : `/pursuits/${pursuitId}?tab=organized#${entry.id}`
+              : `/pursuits/${pursuitId}?tab=pages#${entry.id}`
           }
           className="flex items-center gap-3 border-b border-dashed border-border-subtle py-3 last:border-0 hover:bg-chip"
         >

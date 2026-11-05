@@ -74,7 +74,7 @@ export async function GET(request: Request) {
           await sendPush(sub, {
             title: `Due soon: ${pursuit.title}`,
             body: deadline.title,
-            url: `/pursuits/${pursuit.id}?tab=files`,
+            url: `/pursuits/${pursuit.id}?tab=pages`,
           });
           sent++;
         } catch (e) {

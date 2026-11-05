@@ -4,11 +4,14 @@ import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { reviewFlashcard } from "../pursuits/[id]/actions";
+import { reviewConcept } from "../pursuits/[id]/learn/actions";
 import type { QuizQuestion, ReviewCard } from "@/lib/review";
 
 export type Mode = "quiz" | "recall" | "flash" | "challenge";
 
 type RecallItem = {
+  // "note": an organized note; "concept": an Internalize concept.
+  kind: "note" | "concept";
   id: string;
   pursuitId: string;
   pursuitTitle: string;
@@ -106,7 +109,7 @@ function QuizGame({ questions, cardCount }: { questions: QuizQuestion[]; cardCou
     return (
       <Empty>
         {cardCount < 3
-          ? "A quiz needs at least 3 flashcards with different answers. Generate some from a note in a subject's Cards tab."
+          ? "A quiz needs at least 3 flashcards or concepts. Generate flashcards from a note, or make a concept map in a subject's Learn tab."
           : "Your cards' answers are too similar to make multiple choice out of — try Flashcards instead."}
       </Empty>
     );
@@ -138,7 +141,11 @@ function QuizGame({ questions, cardCount }: { questions: QuizQuestion[]; cardCou
     setPicked(i);
     const correct = i === q.correctIndex;
     if (correct) setScore((s) => s + 1);
-    startTransition(() => reviewFlashcard(q.pursuitId, q.cardId, correct ? 4 : 1));
+    startTransition(() =>
+      q.kind === "card"
+        ? reviewFlashcard(q.pursuitId, q.refId, correct ? 4 : 1)
+        : reviewConcept(q.refId, correct),
+    );
   }
 
   return (
@@ -385,6 +392,7 @@ function RecallGame({ items }: { items: RecallItem[] }) {
   const item = items[index];
   const next = (gotIt: boolean) => {
     if (gotIt) setRemembered((n) => n + 1);
+    if (item.kind === "concept") reviewConcept(item.id, gotIt).catch(() => {});
     setIndex((i) => i + 1);
     setRevealed(false);
     setAttempt("");
@@ -426,10 +434,10 @@ function RecallGame({ items }: { items: RecallItem[] }) {
             {item.excerpt || "(This note is mostly images — open it to check.)"}
           </p>
           <Link
-            href={`/pursuits/${item.pursuitId}?tab=organized`}
+            href={`/pursuits/${item.pursuitId}?tab=${item.kind === "concept" ? "learn" : "pages"}`}
             className="self-start text-xs font-semibold text-accent hover:underline"
           >
-            Open the full note →
+            {item.kind === "concept" ? "Open its concept map →" : "Open the full note →"}
           </Link>
           <div className="flex gap-2">
             <button

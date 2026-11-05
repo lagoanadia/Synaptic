@@ -110,7 +110,7 @@ export default async function SectionPage({
                 {concepts.map((c) => (
                   <li key={c.id}>
                     <Link
-                      href={`/pursuits/${c.pursuitId}?tab=organized`}
+                      href={`/pursuits/${c.pursuitId}?tab=pages`}
                       className="flex items-center justify-between gap-3 rounded-2xl bg-tile-sky px-4 py-3 text-white transition-transform hover:-translate-y-0.5"
                     >
                       <span className="truncate text-sm font-semibold">{c.title}</span>

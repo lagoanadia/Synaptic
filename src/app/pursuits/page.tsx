@@ -4,8 +4,8 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { ProfileMenu } from "../ProfileMenu";
 import { Logo } from "../Logo";
-import { Tour } from "../Tour";
-import { TOUR_COPY, TOUR_UI, isLocale } from "@/lib/i18n";
+import { isLocale } from "@/lib/i18n";
+import { Onboarding } from "../onboarding/Onboarding";
 import { SectionTiles, type Tile } from "./SectionTiles";
 import { tileColor } from "@/lib/tileColor";
 import { SHARED, UNSORTED, accessiblePursuits, getConcepts } from "@/lib/reviewData";
@@ -40,7 +40,12 @@ export default async function HomePage() {
   ]);
 
   const locale = isLocale(viewer.locale) ? viewer.locale : "en";
-  const tourCopy = TOUR_COPY[locale];
+
+  // First visit: quick questions instead of an empty screen. Anyone who
+  // already has subjects (accounts from before this existed) skips it.
+  if (viewer.onboardedAt === null && pursuits.length === 0) {
+    return <Onboarding name={session.user.name ?? null} />;
+  }
 
   // Tally subjects and due cards per bucket in one pass. A pursuit someone
   // shared with you goes in "Shared" whatever section its owner put it in
@@ -106,6 +111,14 @@ export default async function HomePage() {
             </span>
           )}
         </div>
+        <nav className="ml-auto mr-3 flex items-center gap-1.5" aria-label="Practice">
+          <Link href="/challenges" className="rounded-full bg-chip px-3.5 py-1.5 text-sm font-semibold text-ink-muted hover:text-mint">
+            {"</>"} Challenges
+          </Link>
+          <Link href="/arena" className="rounded-full bg-chip px-3.5 py-1.5 text-sm font-semibold text-ink-muted hover:text-orchid">
+            ⚔ Arena
+          </Link>
+        </nav>
         <ProfileMenu
           name={session.user.name}
           email={session.user.email}
@@ -116,7 +129,7 @@ export default async function HomePage() {
       </header>
 
       <div className="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <section data-tour="pursuits-list" aria-label="Sections">
+        <section aria-label="Sections">
           <SectionTiles tiles={tiles} />
         </section>
 
@@ -158,23 +171,6 @@ export default async function HomePage() {
         </aside>
       </div>
 
-      {viewer.onboardedAt === null && (
-        <Tour
-          labels={TOUR_UI[locale]}
-          steps={[
-            {
-              target: '[data-tour="new-pursuit-form"]',
-              title: tourCopy.list.newProject.title,
-              body: tourCopy.list.newProject.body,
-            },
-            {
-              target: '[data-tour="pursuits-list"]',
-              title: tourCopy.list.openExample.title,
-              body: tourCopy.list.openExample.body,
-            },
-          ]}
-        />
-      )}
     </div>
   );
 }

@@ -3,8 +3,8 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { Logo } from "../Logo";
-import { SHARED, UNSORTED, getCards, getConcepts, type ReviewScope } from "@/lib/reviewData";
-import { buildQuiz, conceptExcerpt, sample } from "@/lib/review";
+import { SHARED, UNSORTED, getCards, getConcepts, getLearnConcepts, type ReviewScope } from "@/lib/reviewData";
+import { buildConceptQuiz, buildQuiz, conceptExcerpt, sample, shuffle } from "@/lib/review";
 import { ReviewGames, type Mode } from "./ReviewGames";
 
 const MODES: Mode[] = ["quiz", "recall", "flash", "challenge"];
@@ -57,10 +57,11 @@ export default async function ReviewPage({
     backHref = `/pursuits/s/${scope.sectionId}`;
   }
 
-  const [cards, dueCards, concepts] = await Promise.all([
+  const [cards, dueCards, concepts, learn] = await Promise.all([
     getCards(userId, scope),
     getCards(userId, scope, { dueOnly: true, take: 30 }),
     getConcepts(userId, scope),
+    getLearnConcepts(userId, scope),
   ]);
 
   // A concept clicked on the home screen goes first; the rest are random.
@@ -72,12 +73,26 @@ export default async function ReviewPage({
       10 - chosen.length,
     ),
   ].map((c) => ({
+    kind: "note" as const,
     id: c.id,
     pursuitId: c.pursuitId,
     pursuitTitle: c.pursuitTitle,
     title: c.title,
     excerpt: conceptExcerpt(c.content),
   }));
+  // Internalize concepts join the recall round — the ones you flagged
+  // "reread" first (getLearnConcepts sorts them to the front).
+  const learnRecall = learn
+    .filter((c) => c.status !== "MASTERED")
+    .slice(0, 5)
+    .map((c) => ({
+      kind: "concept" as const,
+      id: c.id,
+      pursuitId: c.pursuitId,
+      pursuitTitle: c.pursuitTitle,
+      title: c.title,
+      excerpt: c.explanation.slice(0, 600),
+    }));
 
   const scopeQuery =
     scope.kind === "pursuit"
@@ -104,11 +119,11 @@ export default async function ReviewPage({
         mode={mode}
         scopeQuery={scopeQuery}
         scopeKey={scopeQuery || "all"}
-        quiz={buildQuiz(cards, 10)}
-        challenge={buildQuiz(cards, 60)}
-        recall={recallPool}
+        quiz={shuffle([...buildQuiz(cards, 7), ...buildConceptQuiz(learn, 5)]).slice(0, 10)}
+        challenge={shuffle([...buildQuiz(cards, 40), ...buildConceptQuiz(learn, 30)])}
+        recall={[...recallPool.slice(0, chosen.length), ...shuffle([...recallPool.slice(chosen.length), ...learnRecall])].slice(0, 12)}
         flash={dueCards}
-        cardCount={cards.length}
+        cardCount={cards.length + learn.filter((c) => c.summary).length}
       />
     </div>
   );

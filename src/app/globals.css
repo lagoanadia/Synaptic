@@ -100,3 +100,55 @@ body {
     translate: 0 -8px;
   }
 }
+
+/* The visual editor (src/app/editor/RichEditor.tsx). Matches how
+   RichContent renders a saved page, so editing looks like reading. */
+.rich-editor {
+  outline: none;
+  min-height: 16rem;
+  font-size: 0.95rem;
+  line-height: 1.65;
+}
+.rich-editor > * + * { margin-top: 0.6em; }
+.rich-editor h1 { font-size: 1.75rem; font-weight: 800; line-height: 1.2; margin-top: 0.8em; }
+.rich-editor h2 { font-size: 1.35rem; font-weight: 700; margin-top: 0.7em; }
+.rich-editor h3 { font-size: 1.1rem; font-weight: 700; margin-top: 0.6em; }
+.rich-editor ul { list-style: disc; padding-left: 1.4em; }
+.rich-editor ul ul { list-style: circle; }
+.rich-editor ol { list-style: decimal; padding-left: 1.6em; }
+.rich-editor ol[type="a"] { list-style: lower-alpha; }
+.rich-editor li > p { margin: 0.1em 0; }
+.rich-editor a { color: var(--color-accent); text-decoration: underline; }
+.rich-editor blockquote {
+  background: var(--color-callout);
+  border-left: 3px solid var(--color-accent);
+  border-radius: 0.75rem;
+  padding: 0.6em 0.9em;
+}
+.rich-editor pre {
+  background: #0d0d0d;
+  color: #f2f1ee;
+  border-radius: 0.75rem;
+  padding: 0.8em 1em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.85rem;
+  white-space: pre-wrap;
+}
+.rich-editor img { max-width: 100%; border-radius: 0.75rem; }
+.rich-editor img.ProseMirror-selectednode { outline: 3px solid var(--color-accent); }
+.rich-editor table { border-collapse: collapse; width: 100%; table-layout: fixed; }
+.rich-editor th,
+.rich-editor td {
+  border: 1px solid rgba(13, 13, 13, 0.12);
+  padding: 0.4em 0.6em;
+  vertical-align: top;
+}
+.rich-editor th { background: var(--color-chip); font-weight: 600; text-align: left; }
+.rich-editor .selectedCell { background: var(--color-accent-soft); }
+.rich-editor p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: var(--color-ink-faint);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
