@@ -1,5 +1,6 @@
 "use client";
 
+import { ArrowLeft, CheckIcon, XIcon } from "@/app/icons";
 import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
 import { CodeEditor } from "../CodeEditor";
@@ -65,12 +66,12 @@ export function ChallengeIDE({
       <header className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-2.5">
         <div className="flex min-w-0 items-center gap-3">
           <Link href="/challenges" className="text-sm text-white/60 hover:text-white">
-            ← Challenges
+            <ArrowLeft /> Challenges
           </Link>
           <span className="truncate font-semibold text-white">{challenge.title}</span>
           <span className="rounded bg-white/10 px-2 py-0.5 text-xs">{challenge.language === "python" ? "Python" : "JavaScript"}</span>
           <span className="rounded bg-white/10 px-2 py-0.5 text-xs">{challenge.difficulty}</span>
-          {solved && <span className="rounded bg-mint px-2 py-0.5 text-xs font-bold text-white">Solved ✓</span>}
+          {solved && <span className="rounded bg-mint px-2 py-0.5 text-xs font-bold text-white">Solved</span>}
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -111,7 +112,7 @@ export function ChallengeIDE({
                   key={i}
                   className={`rounded px-3 py-2 ${r ? (r.ok ? "bg-mint/15" : "bg-crimson/20") : "bg-white/5"}`}
                 >
-                  <span className="mr-2">{r ? (r.ok ? "✓" : "✗") : "·"}</span>
+                  <span className="mr-2">{r ? (r.ok ? <CheckIcon size={13} /> : <XIcon size={13} />) : "·"}</span>
                   {challenge.entry}({t.args.map(show).join(", ")}) → {show(t.expected)}
                 </li>
               );
@@ -139,7 +140,7 @@ export function ChallengeIDE({
                 }
                 className="self-start rounded border border-amber/50 px-3 py-1.5 text-sm text-amber hover:bg-amber/10 disabled:opacity-50"
               >
-                {isHinting ? "Thinking…" : hints.length === 0 ? "I'm stuck — hint" : "Another hint"}
+                {isHinting ? "Thinking…" : "Hint"}
               </button>
             )}
             <button
@@ -155,7 +156,7 @@ export function ChallengeIDE({
               }
               className="self-start rounded border border-white/20 px-3 py-1.5 text-sm hover:bg-white/10 disabled:opacity-50"
             >
-              {isReviewing ? "Reviewing…" : "Get a code review"}
+              {isReviewing ? "Reviewing…" : "Code review"}
             </button>
             {reviewError && <p className="text-xs text-crimson">{reviewError}</p>}
             {review && (
@@ -172,8 +173,7 @@ export function ChallengeIDE({
           <div className="h-56 shrink-0 overflow-y-auto border-t border-white/10 bg-[#16181d] p-4 font-mono text-xs" aria-live="polite">
             {!output && !running && (
               <p className="text-white/40">
-                Press Run to test your code.
-                {challenge.language === "python" && " The first Python run downloads the interpreter (a few seconds)."}
+                Ctrl+Enter to run
               </p>
             )}
             {running && <p className="text-white/60">Running…</p>}
@@ -190,7 +190,7 @@ export function ChallengeIDE({
                 {output.results.map((r, i) =>
                   r.ok ? null : (
                     <p key={i} className="mt-1.5 text-white/80">
-                      ✗ test {i + 1}: {r.error ? <span className="text-crimson">{r.error}</span> : <>got {show(r.got)}, expected {show(challenge.tests[i].expected)}</>}
+                      <XIcon size={12} /> test {i + 1}: {r.error ? <span className="text-crimson">{r.error}</span> : <>got {show(r.got)}, expected {show(challenge.tests[i].expected)}</>}
                     </p>
                   ),
                 )}

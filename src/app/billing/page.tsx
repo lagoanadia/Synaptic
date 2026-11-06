@@ -1,3 +1,4 @@
+import { ArrowLeft } from "@/app/icons";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
@@ -36,7 +37,7 @@ export default async function BillingPage({
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Billing</h1>
         <Link href="/pursuits" className="text-sm text-ink-muted hover:underline">
-          ← Back to Pursuits
+          <ArrowLeft /> Back to Pursuits
         </Link>
       </div>
 

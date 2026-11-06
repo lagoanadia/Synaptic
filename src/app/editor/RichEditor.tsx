@@ -1,5 +1,6 @@
 "use client";
 
+import { ImageIcon, LinkIcon, QuoteIcon, XIcon } from "@/app/icons";
 import { useEffect, useRef, useState } from "react";
 import { EditorContent, useEditor, useEditorState, type Editor } from "@tiptap/react";
 import { Extension, wrappingInputRule } from "@tiptap/core";
@@ -212,12 +213,12 @@ function Toolbar({
       <Btn on={s.bold} onClick={() => c().toggleBold().run()} title="Bold (Ctrl+B)"><b>B</b></Btn>
       <Btn on={s.italic} onClick={() => c().toggleItalic().run()} title="Italic (Ctrl+I)"><i>I</i></Btn>
       <Btn on={s.underline} onClick={() => c().toggleUnderline().run()} title="Underline (Ctrl+U)"><u>U</u></Btn>
-      <Btn on={s.link} onClick={setLink} title="Link">🔗</Btn>
+      <Btn on={s.link} onClick={setLink} title="Link"><LinkIcon /></Btn>
       <Sep />
       <Btn on={s.bullet} onClick={() => c().toggleBulletList().run()} title="Bullet list (- )">•</Btn>
       <Btn on={s.numbered} onClick={toggleNumbered} title="Numbered list (1. )">1.</Btn>
       <Btn on={s.lettered} onClick={toggleLettered} title="Lettered list">a.</Btn>
-      <Btn on={s.callout} onClick={() => c().toggleBlockquote().run()} title="Callout (! )">❕</Btn>
+      <Btn on={s.callout} onClick={() => c().toggleBlockquote().run()} title="Callout (! )"><QuoteIcon /></Btn>
       <Btn on={s.code} onClick={() => c().toggleCodeBlock().run()} title="Code block (```)">{"</>"}</Btn>
       {s.code && (
         <select
@@ -238,11 +239,11 @@ function Toolbar({
           <Btn onClick={() => c().addColumnAfter().run()} title="Add column">+col</Btn>
           <Btn onClick={() => c().deleteRow().run()} title="Delete row">−row</Btn>
           <Btn onClick={() => c().deleteColumn().run()} title="Delete column">−col</Btn>
-          <Btn onClick={() => c().deleteTable().run()} title="Delete table">✕</Btn>
+          <Btn onClick={() => c().deleteTable().run()} title="Delete table"><XIcon /></Btn>
         </span>
       )}
       {onImage && (
-        <Btn onClick={onImage} title="Insert image (or paste/drop one)">{uploading ? "…" : "🖼"}</Btn>
+        <Btn onClick={onImage} title="Insert image (or paste/drop one)">{uploading ? "…" : <ImageIcon />}</Btn>
       )}
       {extras && (
         <>

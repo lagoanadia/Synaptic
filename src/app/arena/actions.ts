@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { aiBudget } from "@/lib/access";
 import { MAX_TURNS, frameDebate, judge, opponentTurn, type DebateMessage } from "@/lib/debate";
+import { INTENTS, type Intent } from "@/lib/debateTypes";
 
 async function signedIn() {
   const session = await auth();
@@ -28,7 +29,7 @@ export async function frameHeadline(h: { title: string; summary: string; source:
   return { error: null, ...framed };
 }
 
-// You picked a side. The opponent's first move: make you steelman it.
+// You picked a side and a style; the AI opens.
 export async function startDebate(input: {
   headline: string;
   url: string | null;
@@ -36,19 +37,24 @@ export async function startDebate(input: {
   motion: string;
   brief: string;
   side: "for" | "against";
+  style: "opponent" | "socratic";
   language: string;
 }): Promise<{ error: string | null; id?: string }> {
-  const { userId } = await signedIn();
+  const { userId, email } = await signedIn();
   const side = input.side === "against" ? "against" : "for";
+  const style = input.style === "socratic" ? "socratic" : "opponent";
   const language = LANGUAGES.includes(input.language) ? input.language : "English";
-  const aiSide = side === "for" ? "against" : "for";
-  const opener: DebateMessage = {
+  const motion = input.motion.slice(0, 300);
+  const brief = input.brief.slice(0, 1500);
+
+  const budget = await aiBudget(userId, email);
+  const aiOpening = (await budget.check()) ? null : await opponentTurn({ motion, brief, side, style, language }, []);
+  if (aiOpening) await budget.charge();
+  const opener: DebateMessage = aiOpening ?? {
     role: "ai",
-    text:
-      language === "Español"
-        ? `Vas a defender que estás a ${side === "for" ? "favor" : "en contra"}. Yo defiendo lo contrario. Antes de discutir: dame la versión MÁS FUERTE de mi postura (${aiSide === "for" ? "a favor" : "en contra"}). Si no puedes explicar bien lo que piensa el otro lado, todavía no sabes por qué no estás de acuerdo.`
-        : `You're arguing ${side.toUpperCase()}. I'll take the other side. Before we fight: give me the STRONGEST version of my position (${aiSide.toUpperCase()}). If you can't state the other side well, you don't yet know why you disagree with it.`,
+    text: language === "Español" ? "Tu turno: defiende tu postura." : "Your move: make your case.",
   };
+
   const url = input.url && /^https?:\/\//.test(input.url) ? input.url.slice(0, 500) : null;
   const debate = await prisma.debate.create({
     data: {
@@ -56,10 +62,11 @@ export async function startDebate(input: {
       headline: input.headline.slice(0, 300),
       url,
       source: input.source?.slice(0, 60) ?? null,
-      motion: input.motion.slice(0, 300),
-      brief: input.brief.slice(0, 1500),
-      language,
+      motion,
+      brief,
       side,
+      style,
+      language,
       messages: [opener],
     },
   });
@@ -67,10 +74,16 @@ export async function startDebate(input: {
   return { error: null, id: debate.id };
 }
 
-export async function sendArgument(id: string, text: string): Promise<{ error: string | null; messages?: DebateMessage[] }> {
+// A typed message, or a one-tap move (intent) like "show me evidence".
+export async function sendArgument(
+  id: string,
+  text: string,
+  intent?: Intent,
+): Promise<{ error: string | null; messages?: DebateMessage[]; side?: string }> {
   const { userId, email } = await signedIn();
-  const argument = text.trim().slice(0, 3000);
-  if (argument.length < 15) return { error: "Make an actual argument — a sentence or two at least" };
+  const move = intent && intent in INTENTS ? INTENTS[intent] : null;
+  const message = move ? move.label : text.trim().slice(0, 3000);
+  if (!message) return { error: "Write something first" };
   const debate = await prisma.debate.findFirst({ where: { id, userId } });
   if (!debate) return { error: "Debate not found" };
   if (debate.verdict) return { error: "This debate is over" };
@@ -80,16 +93,18 @@ export async function sendArgument(id: string, text: string): Promise<{ error: s
   const budget = await aiBudget(userId, email);
   const limited = await budget.check();
   if (limited) return { error: limited };
-  const withMine: DebateMessage[] = [...messages, { role: "user", text: argument }];
+  const side = intent === "switch" ? (debate.side === "for" ? "against" : "for") : debate.side;
+  const withMine: DebateMessage[] = [...messages, { role: "user", text: message, ...(move ? { intent } : {}) }];
   const reply = await opponentTurn(
-    { motion: debate.motion, brief: debate.brief, side: debate.side, language: debate.language },
+    { motion: debate.motion, brief: debate.brief, side, style: debate.style, language: debate.language },
     withMine,
+    move?.prompt,
   );
   if (!reply) return { error: "Your opponent went quiet (AI unreachable) — send it again" };
   await budget.charge();
   const all = [...withMine, reply];
-  await prisma.debate.update({ where: { id }, data: { messages: all } });
-  return { error: null, messages: all };
+  await prisma.debate.update({ where: { id }, data: { messages: all, side } });
+  return { error: null, messages: all, side };
 }
 
 export async function endDebate(id: string): Promise<{ error: string | null }> {
@@ -98,7 +113,7 @@ export async function endDebate(id: string): Promise<{ error: string | null }> {
   if (!debate) return { error: "Debate not found" };
   if (debate.verdict) return { error: null };
   const messages = debate.messages as DebateMessage[];
-  if (messages.filter((m) => m.role === "user").length < 2) return { error: "Argue at least two rounds first" };
+  if (messages.filter((m) => m.role === "user" && !m.intent).length < 2) return { error: "Make at least two arguments first" };
   const budget = await aiBudget(userId, email);
   const limited = await budget.check();
   if (limited) return { error: limited };

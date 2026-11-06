@@ -1,3 +1,4 @@
+import { ArrowLeft } from "@/app/icons";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
@@ -57,13 +58,13 @@ export default async function DumpPage({
   const authorColorIndex = colorIndexById(collaborators).get(dump.author.id) ?? 0;
 
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-6 py-9">
+    <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-6 py-9">
       <div className="flex items-center justify-between">
         <Link
           href={`/pursuits/${id}?tab=pages`}
           className="text-sm text-ink-muted hover:underline"
         >
-          ← {dump.pursuit.title}
+          <ArrowLeft /> {dump.pursuit.title}
         </Link>
         <div className="flex items-center gap-4">
           <Link

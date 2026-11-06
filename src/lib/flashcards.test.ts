@@ -5,7 +5,7 @@ describe("parseFlashcardsResponse", () => {
   it("parses a well-formed response", () => {
     const raw = '{"cards": [{"question": "What is RGB?", "answer": "An additive color model"}]}';
     expect(parseFlashcardsResponse(raw)).toEqual([
-      { question: "What is RGB?", answer: "An additive color model" },
+      { question: "What is RGB?", answer: "An additive color model", distractors: [] },
     ]);
   });
 
@@ -20,17 +20,22 @@ describe("parseFlashcardsResponse", () => {
   it("drops cards missing a question or answer", () => {
     const raw = JSON.stringify({
       cards: [
-        { question: "Q1", answer: "A1" },
+        { question: "Q1", answer: "A1", distractors: [] },
         { question: "Q2 with no answer" },
         { answer: "A3 with no question" },
-        { question: "", answer: "" },
+        { question: "", answer: "", distractors: [] },
       ],
     });
-    expect(parseFlashcardsResponse(raw)).toEqual([{ question: "Q1", answer: "A1" }]);
+    expect(parseFlashcardsResponse(raw)).toEqual([{ question: "Q1", answer: "A1", distractors: [] }]);
   });
 
   it("extracts JSON wrapped in prose", () => {
     const raw = 'Here are the cards:\n{"cards": [{"question": "Q", "answer": "A"}]}\nEnjoy!';
-    expect(parseFlashcardsResponse(raw)).toEqual([{ question: "Q", answer: "A" }]);
+    expect(parseFlashcardsResponse(raw)).toEqual([{ question: "Q", answer: "A", distractors: [] }]);
+  });
+
+  it("keeps up to three wrong answers", () => {
+    const raw = JSON.stringify({ cards: [{ question: "Q", answer: "A", wrong: ["x", " y ", "", 5, "z", "w"] }] });
+    expect(parseFlashcardsResponse(raw)).toEqual([{ question: "Q", answer: "A", distractors: ["x", "y", "z"] }]);
   });
 });

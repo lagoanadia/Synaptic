@@ -30,13 +30,12 @@ export function SectionGrid({ pursuitId, tiles }: { pursuitId: string; tiles: Se
         <NewSectionTile pursuitId={pursuitId} />
       </div>
       {tiles.length === 0 && (
-        <p className="text-sm text-ink-muted">
-          Nothing here yet — open{" "}
-          <Link href={`/pursuits/${pursuitId}?tab=pages`} className="font-semibold text-accent hover:underline">
-            Pages
-          </Link>{" "}
-          and write your first page, or make a section for each unit.
-        </p>
+        <Link
+          href={`/pursuits/${pursuitId}/dump/new`}
+          className="self-start rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-white"
+        >
+          + First page
+        </Link>
       )}
     </section>
   );

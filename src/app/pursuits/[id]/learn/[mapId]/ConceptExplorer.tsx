@@ -1,5 +1,6 @@
 "use client";
 
+import { ArrowLeft, ArrowRight, ChevronRight } from "@/app/icons";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -192,7 +193,7 @@ export function ConceptExplorer({
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex min-w-0 flex-col gap-1">
           <Link href={`/pursuits/${pursuitId}?tab=learn`} className="text-sm text-ink-muted hover:underline">
-            ← {pursuitTitle}
+            <ArrowLeft /> {pursuitTitle}
           </Link>
           <h1 className="truncate text-2xl font-extrabold text-tile-sky italic">{map.title}</h1>
         </div>
@@ -213,7 +214,7 @@ export function ConceptExplorer({
             aria-pressed={weakOnly}
             className={`rounded-full px-3 py-1.5 text-xs font-semibold ${weakOnly ? "bg-amber text-white" : "bg-chip text-ink-muted hover:text-ink"}`}
           >
-            Weak spots only
+            Weak spots
           </button>
           <button
             type="button"
@@ -221,7 +222,7 @@ export function ConceptExplorer({
             aria-pressed={showGraph}
             className={`rounded-full px-3 py-1.5 text-xs font-semibold ${showGraph ? "bg-ink text-white" : "bg-chip text-ink-muted hover:text-ink"}`}
           >
-            {showGraph ? "Hide map" : "Show map"} <kbd className="ml-1 opacity-60">g</kbd>
+            Map <kbd className="ml-1 opacity-60">g</kbd>
           </button>
         </div>
       </header>
@@ -480,7 +481,7 @@ function ConceptCard({
                 <button type="button" onClick={() => onGo(p.id)} className="hover:text-ink hover:underline">
                   {p.title}
                 </button>
-                <span>›</span>
+                <ChevronRight size={12} />
               </span>
             ))}
           </nav>
@@ -546,7 +547,7 @@ function ConceptCard({
           <ActionButton onClick={actions.deeper} disabled={isPending} primary kbd="d">
             {children.length > 0 ? `Go deeper (${children.length})` : isPending ? "Splitting…" : "Go deeper"}
           </ActionButton>
-          <ActionButton onClick={actions.skip} kbd="→">
+          <ActionButton onClick={actions.skip} kbd={<ArrowRight size={12} />}>
             {upNextTitle ? `Next: ${upNextTitle}` : "Skip"}
           </ActionButton>
           <ActionButton onClick={actions.random} kbd="j">
@@ -556,7 +557,7 @@ function ConceptCard({
             I don&apos;t know
           </ActionButton>
           {canGoBack && (
-            <ActionButton onClick={onBack} kbd="←">
+            <ActionButton onClick={onBack} kbd={<ArrowLeft size={12} />}>
               Back
             </ActionButton>
           )}
@@ -576,28 +577,21 @@ function ConceptCard({
 
       {/* Explain it back */}
       <section className="flex flex-col gap-3 rounded-3xl bg-white p-6 shadow-[0_1px_2px_rgba(13,13,13,0.06)]" aria-label="Explain it back">
-        <div className="flex items-baseline justify-between">
-          <h3 className="font-bold">Explain it back</h3>
-          <kbd className="text-xs text-ink-faint">e</kbd>
-        </div>
-        <p className="text-sm text-ink-muted">
-          In your own words, as if to a friend. You get a nudge, not the answer.
-        </p>
         <textarea
           ref={explainRef}
           value={attempt}
           onChange={(e) => setAttempt(e.target.value)}
           rows={4}
-          placeholder={concept.attempt ?? "So basically…"}
+          placeholder={concept.attempt ?? "Explain it in your own words…  (e)"}
           aria-label="Your explanation"
           className="rounded-2xl border border-border-subtle px-4 py-3 text-sm"
         />
         <div className="flex gap-2">
           <button type="button" onClick={explain} disabled={busy !== null} className="rounded-full bg-tile-sky px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50">
-            {busy === "explain" ? "Checking…" : "Check my explanation"}
+            {busy === "explain" ? "Checking…" : "Check"}
           </button>
           <button type="button" onClick={actions.reread} className="rounded-full px-4 py-2.5 text-sm text-ink-muted hover:bg-chip">
-            I don&apos;t know yet
+            Don&apos;t know
           </button>
         </div>
         {verdict && (
@@ -610,10 +604,6 @@ function ConceptCard({
 
       {/* Ask */}
       <section className="flex flex-col gap-3 rounded-3xl bg-white p-6 shadow-[0_1px_2px_rgba(13,13,13,0.06)]" aria-label="Ask">
-        <div className="flex items-baseline justify-between">
-          <h3 className="font-bold">Ask about this</h3>
-          <kbd className="text-xs text-ink-faint">a</kbd>
-        </div>
         {answers.map((x, i) => (
           <div key={i} className="flex flex-col gap-1 text-sm">
             <span className="font-semibold">{x.q}</span>
@@ -631,7 +621,7 @@ function ConceptCard({
             ref={askRef}
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
-            placeholder="Why is it done this way? What if…?"
+            placeholder="Ask anything about this…  (a)"
             aria-label="Your question"
             className="flex-1 rounded-2xl border border-border-subtle px-4 py-2.5 text-sm"
           />
@@ -715,7 +705,7 @@ function ActionButton({
   onClick: () => void;
   disabled?: boolean;
   primary?: boolean;
-  kbd?: string;
+  kbd?: React.ReactNode;
 }) {
   return (
     <button

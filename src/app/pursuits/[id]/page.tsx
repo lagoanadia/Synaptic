@@ -1,3 +1,4 @@
+import { ArrowLeft, ArrowDown } from "@/app/icons";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
@@ -178,12 +179,12 @@ export default async function PursuitPage({
     pursuit.owner.id !== session.user.id ? "Shared" : (pursuit.section?.name ?? "Unsorted");
 
   return (
-    <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-6 py-9 lg:px-10">
+    <div className="mx-auto flex w-full max-w-[1800px] flex-1 flex-col gap-6 px-6 py-9 lg:px-14">
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <Logo href="/pursuits" withWordmark={false} size={20} />
           <Link href={backHref} className="text-sm text-ink-muted hover:underline">
-            ← {backLabel}
+            <ArrowLeft /> {backLabel}
           </Link>
         </div>
         <div className="flex items-center gap-4">
@@ -191,7 +192,7 @@ export default async function PursuitPage({
             href={`/api/pursuits/${pursuit.id}/export`}
             className="text-sm text-ink-muted hover:underline"
           >
-            ↓ Export
+            <ArrowDown /> Export
           </a>
           {pursuit.owner.id !== session.user.id && (
             <LeaveButton pursuitId={pursuit.id} />
@@ -360,8 +361,7 @@ export default async function PursuitPage({
 
       {tab === "pages" && (
         <section className="flex flex-col gap-3" aria-label="Pages">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-sm font-bold text-ink-muted">Pages</h2>
+        <div className="flex flex-wrap items-center justify-end gap-3">
           <ImportSlides
             pursuitId={pursuit.id}
             sectionId={activeSection && activeSection.id !== UNSORTED ? activeSection.id : null}
@@ -393,7 +393,6 @@ export default async function PursuitPage({
 
       {tab === "pages" && (
         <section className="flex flex-col gap-3" aria-label="Organized notes">
-        <h2 className="text-sm font-bold text-ink-muted">Organized</h2>
         <MergeControls
           pursuitId={pursuit.id}
           sections={visibleSections.map((s) => ({ id: s.id, name: s.name }))}
@@ -446,7 +445,6 @@ export default async function PursuitPage({
 
       {tab === "pages" && !activeSection && (
         <section className="flex flex-col gap-4" aria-label="Files">
-          <h2 className="text-sm font-bold text-ink-muted">Files</h2>
           {classroomConnected && (
             <p className="rounded-xl bg-forest-soft px-4 py-3 text-sm text-ink">
               Connected to Google Classroom.

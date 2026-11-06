@@ -11,14 +11,10 @@ export async function LearnTab({ pursuitId, hasNotes }: { pursuitId: string; has
   });
 
   return (
-    <div className="grid grid-cols-1 gap-8 xl:grid-cols-[minmax(0,1fr)_420px]">
+    <div className={maps.length ? "grid grid-cols-1 gap-8 xl:grid-cols-[minmax(0,1fr)_460px]" : "mx-auto w-full max-w-2xl"}>
+      {maps.length > 0 && (
       <section className="flex flex-col gap-3" aria-label="Concept maps">
-        {maps.length === 0 && (
-          <p className="rounded-3xl bg-callout px-6 py-10 text-center text-sm text-ink-muted">
-            No concept maps yet. Make one from anything you want to really understand, not just store.
-          </p>
-        )}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 2xl:grid-cols-3">
           {maps.map((m) => {
             const p = progress(m.concepts.map((c) => c.status as Status));
             const pct = (n: number) => `${p.total ? (n / p.total) * 100 : 0}%`;
@@ -40,14 +36,16 @@ export async function LearnTab({ pursuitId, hasNotes }: { pursuitId: string; has
                   <span className="bg-tile-sky" style={{ width: pct(p.understood) }} />
                   <span className="bg-amber" style={{ width: pct(p.reread) }} />
                 </div>
-                <span className="text-xs text-ink-muted">
-                  {p.mastered} mastered · {p.understood} understood · {p.reread} to reread · {p.total} concepts
+                <span className="text-xs font-semibold text-ink-muted">
+                  {p.mastered + p.understood}/{p.total}
+                  {p.reread > 0 && <span className="text-amber"> · {p.reread} to reread</span>}
                 </span>
               </Link>
             );
           })}
         </div>
       </section>
+      )}
       <NewMapForm pursuitId={pursuitId} hasNotes={hasNotes} />
     </div>
   );

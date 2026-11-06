@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { aiBudget } from "@/lib/access";
-import { askJson, obj, str } from "@/lib/ai";
+import { arr, askJson, obj, str } from "@/lib/ai";
 import { shuffle } from "@/lib/review";
 import { parseChallenge, type ChallengeDraft, type ChallengeTest, type Language } from "@/lib/challenge";
 import { accessiblePursuits } from "@/lib/reviewData";
@@ -30,7 +30,7 @@ export async function draftChallenge(input: {
   difficulty: "easy" | "medium" | "hard";
   pursuitId: string | null;
   topic: string;
-}): Promise<{ error: string | null; draft?: DraftForBrowser }> {
+}): Promise<{ error: string | null; drafts?: DraftForBrowser[] }> {
   const { userId, email } = await signedIn();
   const budget = await aiBudget(userId, email);
   const limited = await budget.check();
@@ -60,33 +60,57 @@ ${picked.map((n, i) => `--- NOTE ${i + 1} (${n.pursuit.title}) ---\n${n.content.
     : "The learner has no notes yet: make a general exercise.";
   const topic = input.topic.trim().slice(0, 200);
 
-  const raw = await askJson(
-    `Create ONE small coding challenge in ${language === "python" ? "Python" : "JavaScript"} for someone getting back into coding after a break. Difficulty: ${difficulty} (easy = 5-15 lines, medium = loops/conditions/data structures, hard = a small algorithm).
+  // Everything already made, so nothing repeats.
+  const existing = await prisma.challenge.findMany({
+    where: { userId },
+    orderBy: { createdAt: "desc" },
+    take: 60,
+    select: { title: true },
+  });
+  const taken = existing.map((c) => c.title);
+
+  const data = obj(
+    await askJson(
+      `Create THREE different small coding challenges in ${language === "python" ? "Python" : "JavaScript"} for someone getting back into coding after a break. Difficulty: ${difficulty} (easy = 5-15 lines, medium = loops/conditions/data structures, hard = a small algorithm).
 ${context}
 ${topic ? `Topic requested: ${topic}.` : ""}
+Each of the three must practice a DIFFERENT idea (ideally from a different note), and none may be the same as or a variant of these existing challenges: ${taken.length ? taken.map((t) => `"${t}"`).join(", ") : "(none yet)"}.
 
-It must be solvable as ONE pure function (no input(), files, network or randomness), tested by calling it with arguments and comparing the JSON-serializable return value.
+Each must be solvable as ONE pure function (no input(), files, network or randomness), tested by calling it with arguments and comparing the JSON-serializable return value.
 
-Respond with ONLY JSON:
-{
-  "title": "short title",
-  "prompt": "the task in plain language: what the function receives and returns, 1-2 examples. Write it in the learner's language if the topic/context isn't English.",
-  "entry": "functionName",
-  "starter_code": "the function signature with a placeholder body and a short comment",
-  "tests": [{"args": [...], "expected": ...}],
-  "solution": "a correct reference solution",
-  "based_on": "title of the note it practices, or null"
-}
-Include 5-8 tests covering normal and edge cases. Only JSON values in args/expected.`,
-    { maxTokens: 4000 },
+Respond with ONLY JSON: {"challenges": [
+  {
+    "title": "short title",
+    "prompt": "the task in plain language: what the function receives and returns, 1-2 examples. In the learner's language if the notes aren't English.",
+    "entry": "functionName",
+    "starter_code": "the function signature with a placeholder body and a short comment",
+    "tests": [{"args": [...], "expected": ...}],
+    "solution": "a correct reference solution",
+    "based_on": "title of the note it practices, or null"
+  }
+]}
+5-8 tests each, normal and edge cases. Only JSON values in args/expected.`,
+      { maxTokens: 9000 },
+    ),
   );
-  const draft = parseChallenge(raw);
-  if (!draft) return { error: "The AI made a broken challenge — try again" };
+  const seen = new Set(taken.map(titleKey));
+  const drafts: DraftForBrowser[] = [];
+  for (const raw of arr(data.challenges)) {
+    const draft = parseChallenge(raw);
+    if (!draft || seen.has(titleKey(draft.title))) continue;
+    seen.add(titleKey(draft.title));
+    const basedOn = str(obj(raw).based_on, 120);
+    const prompt = basedOn ? `From your note “${basedOn}”\n\n${draft.prompt}` : draft.prompt;
+    drafts.push({ ...draft, prompt, language, difficulty, pursuitId });
+  }
+  if (drafts.length === 0) return { error: "The AI made broken challenges — try again" };
   await budget.charge();
-  const basedOn = str(obj(raw).based_on, 120);
-  const prompt = basedOn ? `From your note “${basedOn}”\n\n${draft.prompt}` : draft.prompt;
-  return { error: null, draft: { ...draft, prompt, language, difficulty, pursuitId } };
+  return { error: null, drafts };
 }
+
+// "Mezcla de colores (RGB)" and "Mezcla de colores RGB" are the same challenge.
+const titleKey = (t: string) =>
+  t.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
 
 export async function saveChallenge(
   draft: DraftForBrowser,

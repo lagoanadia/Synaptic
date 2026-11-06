@@ -1,5 +1,6 @@
 "use client";
 
+import { KanbanIcon } from "@/app/icons";
 import { useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -131,7 +132,7 @@ export function ProjectsBoard({
           title="The only board template today — more can be added later"
           className="rounded-full bg-accent-soft px-3 py-2 text-xs font-semibold text-accent whitespace-nowrap"
         >
-          📋 Kanban
+          <KanbanIcon size={14} /> Kanban
         </span>
         <button
           type="submit"
@@ -144,9 +145,7 @@ export function ProjectsBoard({
       {error && <p className="text-xs text-red-500">{error}</p>}
 
       {projects.length === 0 ? (
-        <p className="text-sm text-ink-muted">
-          No projects yet — give one a title above to start its board.
-        </p>
+null
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {projects.map((p) => (

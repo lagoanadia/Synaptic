@@ -72,7 +72,7 @@ body {
    RichContent renders a saved page, so editing looks like reading. */
 .rich-editor {
   outline: none;
-  min-height: 16rem;
+  min-height: calc(100vh - 16rem);
   font-size: 0.95rem;
   line-height: 1.65;
 }

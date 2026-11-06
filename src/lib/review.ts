@@ -8,6 +8,10 @@ export type ReviewCard = {
   pursuitTitle: string;
   question: string;
   answer: string;
+  // Title of the note the card came from, shown as context.
+  context?: string | null;
+  // AI-written wrong answers; used before any drawn from other cards.
+  distractors?: string[];
 };
 
 // A quiz question is about either a flashcard or an Internalize concept;
@@ -17,6 +21,7 @@ export type QuizQuestion = {
   refId: string;
   pursuitId: string;
   pursuitTitle: string;
+  context: string | null;
   question: string;
   options: string[];
   correctIndex: number;
@@ -41,7 +46,9 @@ export function sample<T>(items: readonly T[], n: number, rand: Rand = Math.rand
 
 const normalize = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
 
-// Wrong options are other cards' answers: no AI call, and plausible.
+// Multiple choice. Wrong options are the card's own AI-written distractors
+// when it has them, otherwise other answers from the SAME subject only
+// (mixing subjects produced absurd options).
 export function buildQuiz(
   cards: readonly ReviewCard[],
   count: number,
@@ -51,17 +58,20 @@ export function buildQuiz(
   const questions: QuizQuestion[] = [];
   for (const card of shuffle(cards, rand)) {
     if (questions.length >= count) break;
-    const correct = normalize(card.answer);
-    const seen = new Set([correct]);
+    const seen = new Set([normalize(card.answer)]);
     const distractors: string[] = [];
-    for (const other of shuffle(cards, rand)) {
+    const candidates = [
+      ...shuffle(card.distractors ?? [], rand),
+      ...shuffle(cards.filter((c) => c.pursuitId === card.pursuitId).map((c) => c.answer), rand),
+    ];
+    for (const option of candidates) {
       if (distractors.length >= optionsPerQuestion - 1) break;
-      const key = normalize(other.answer);
-      if (seen.has(key)) continue;
+      const key = normalize(option);
+      if (!key || seen.has(key)) continue;
       seen.add(key);
-      distractors.push(other.answer);
+      distractors.push(option);
     }
-    // Fewer than 2 wrong options isn't a real choice — skip this card.
+    // Fewer than 2 wrong options isn't a real choice.
     if (distractors.length < 2) continue;
     const options = shuffle([card.answer, ...distractors], rand);
     questions.push({
@@ -69,6 +79,7 @@ export function buildQuiz(
       refId: card.id,
       pursuitId: card.pursuitId,
       pursuitTitle: card.pursuitTitle,
+      context: card.context ?? null,
       question: card.question,
       options,
       correctIndex: options.indexOf(card.answer),

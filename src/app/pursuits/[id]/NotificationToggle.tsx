@@ -1,5 +1,6 @@
 "use client";
 
+import { BellIcon, BellOffIcon } from "@/app/icons";
 import { useEffect, useState } from "react";
 import { subscribeToPush, unsubscribeFromPush } from "../actions";
 
@@ -85,7 +86,7 @@ export function NotificationToggle() {
       disabled={busy}
       className="shrink-0 text-xs text-ink-faint hover:text-ink disabled:opacity-50"
     >
-      {subscribed ? "🔔 Reminders on" : "🔕 Get reminders"}
+      {subscribed ? <><BellIcon size={14} className="inline-block align-[-2px]" /> Reminders on</> : <><BellOffIcon size={14} /> Reminders</>}
     </button>
   );
 }

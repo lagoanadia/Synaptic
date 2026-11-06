@@ -2,27 +2,28 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { Logo } from "../Logo";
-import { SHARED, UNSORTED, getCards, getConcepts, getLearnConcepts, type ReviewScope } from "@/lib/reviewData";
-import { buildConceptQuiz, buildQuiz, conceptExcerpt, sample, shuffle } from "@/lib/review";
+import { ArrowLeft } from "@/app/icons";
+import { SHARED, UNSORTED, getCards, getLearnConcepts, type ReviewScope } from "@/lib/reviewData";
+import { shuffle } from "@/lib/review";
+import type { LearnItem } from "@/lib/learn";
+import { withDistractors } from "@/lib/quizDistractors";
+import { aiBudget } from "@/lib/access";
 import { ReviewGames, type Mode } from "./ReviewGames";
 
-const MODES: Mode[] = ["quiz", "recall", "flash", "challenge"];
+// Old links (?mode=quiz/recall/challenge) still land somewhere sensible.
+const MODE_ALIASES: Record<string, Mode> = { learn: "learn", quiz: "learn", recall: "learn", match: "match", challenge: "match", flash: "flash" };
 
-// One page for every review game. ?mode= picks the game; ?section= or
-// ?pursuit= narrows what it draws from (default: everything you can see).
+// Review for one scope: ?section= or ?pursuit= (default: everything).
 export default async function ReviewPage({
   searchParams,
 }: {
-  searchParams: Promise<{ mode?: string; section?: string; pursuit?: string; concept?: string }>;
+  searchParams: Promise<{ mode?: string; section?: string; pursuit?: string }>;
 }) {
   const session = await auth();
-  if (!session?.user?.id) {
-    redirect("/");
-  }
+  if (!session?.user?.id) redirect("/");
   const userId = session.user.id;
   const params = await searchParams;
-  const mode: Mode = MODES.includes(params.mode as Mode) ? (params.mode as Mode) : "quiz";
+  const mode = MODE_ALIASES[params.mode ?? ""] ?? "learn";
 
   const scope: ReviewScope = params.pursuit
     ? { kind: "pursuit", pursuitId: params.pursuit }
@@ -30,100 +31,87 @@ export default async function ReviewPage({
       ? { kind: "section", sectionId: params.section }
       : { kind: "all" };
 
-  // Only for the heading and the back link — the data queries below
-  // already filter by access on their own.
   let scopeLabel = "Everything";
   let backHref = "/pursuits";
   if (scope.kind === "pursuit") {
     const p = await prisma.pursuit.findFirst({
-      where: {
-        id: scope.pursuitId,
-        OR: [{ ownerId: userId }, { members: { some: { userId } } }],
-      },
+      where: { id: scope.pursuitId, OR: [{ ownerId: userId }, { members: { some: { userId } } }] },
       select: { title: true },
     });
     scopeLabel = p?.title ?? "Subject";
     backHref = `/pursuits/${scope.pursuitId}`;
   } else if (scope.kind === "section") {
-    if (scope.sectionId === UNSORTED) scopeLabel = "Unsorted";
-    else if (scope.sectionId === SHARED) scopeLabel = "Shared";
-    else {
-      const s = await prisma.section.findFirst({
-        where: { id: scope.sectionId, userId },
-        select: { name: true },
-      });
-      scopeLabel = s?.name ?? "Section";
-    }
+    const s =
+      scope.sectionId === UNSORTED || scope.sectionId === SHARED
+        ? null
+        : await prisma.section.findFirst({ where: { id: scope.sectionId, userId }, select: { name: true } });
+    scopeLabel = s?.name ?? (scope.sectionId === SHARED ? "Shared" : "Unsorted");
     backHref = `/pursuits/s/${scope.sectionId}`;
   }
 
-  const [cards, dueCards, concepts, learn] = await Promise.all([
+  const [allCards, dueCards, concepts] = await Promise.all([
     getCards(userId, scope),
-    getCards(userId, scope, { dueOnly: true, take: 30 }),
-    getConcepts(userId, scope),
+    getCards(userId, scope, { dueOnly: true, take: 40 }),
     getLearnConcepts(userId, scope),
   ]);
 
-  // A concept clicked on the home screen goes first; the rest are random.
-  const chosen = params.concept ? concepts.filter((c) => c.id === params.concept) : [];
-  const recallPool = [
-    ...chosen,
-    ...sample(
-      concepts.filter((c) => c.id !== params.concept),
-      10 - chosen.length,
-    ),
-  ].map((c) => ({
-    kind: "note" as const,
+  // A Learn session: due cards first, then the rest, plus concepts you
+  // flagged to reread. Missing wrong answers are written once by the AI.
+  const dueIds = new Set(dueCards.map((c) => c.id));
+  let pool = [...allCards.filter((c) => dueIds.has(c.id)), ...shuffle(allCards.filter((c) => !dueIds.has(c.id)))].slice(0, 16);
+  if (mode === "learn" && pool.some((c) => (c.distractors?.length ?? 0) < 3)) {
+    const budget = await aiBudget(userId, session.user.email);
+    if (!(await budget.check())) {
+      const filled = await withDistractors(pool);
+      if (filled !== pool) await budget.charge();
+      pool = filled;
+    }
+  }
+  const cardItems: LearnItem[] = pool.map((c) => ({
     id: c.id,
+    kind: "card",
     pursuitId: c.pursuitId,
     pursuitTitle: c.pursuitTitle,
-    title: c.title,
-    excerpt: conceptExcerpt(c.content),
+    context: c.context ?? null,
+    prompt: c.question,
+    answer: c.answer,
+    distractors: c.distractors ?? [],
   }));
-  // Internalize concepts join the recall round — the ones you flagged
-  // "reread" first (getLearnConcepts sorts them to the front).
-  const learnRecall = learn
-    .filter((c) => c.status !== "MASTERED")
-    .slice(0, 5)
+  const conceptItems: LearnItem[] = concepts
+    .filter((c) => c.summary && c.status !== "MASTERED")
+    .slice(0, 6)
     .map((c) => ({
-      kind: "concept" as const,
       id: c.id,
+      kind: "concept",
       pursuitId: c.pursuitId,
       pursuitTitle: c.pursuitTitle,
-      title: c.title,
-      excerpt: c.explanation.slice(0, 600),
+      context: null,
+      prompt: c.summary,
+      answer: c.title,
+      distractors: shuffle(concepts.filter((o) => o.pursuitId === c.pursuitId && o.id !== c.id).map((o) => o.title)).slice(0, 3),
     }));
+  const items = [...cardItems, ...conceptItems];
+  const matchItems = shuffle(items.filter((i) => i.answer.length <= 70 && i.prompt.length <= 120)).slice(0, 6);
 
   const scopeQuery =
-    scope.kind === "pursuit"
-      ? `pursuit=${scope.pursuitId}`
-      : scope.kind === "section"
-        ? `section=${scope.sectionId}`
-        : "";
+    scope.kind === "pursuit" ? `pursuit=${scope.pursuitId}` : scope.kind === "section" ? `section=${scope.sectionId}` : "";
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-6 py-10">
-      <header className="flex items-center justify-between">
-        <div className="flex items-baseline gap-2">
-          <Logo href="/pursuits" />
-          <span className="text-ink-faint">·</span>
-          <span className="text-lg font-extrabold text-tile-cyan italic">{scopeLabel}</span>
-        </div>
-        <Link href={backHref} className="text-sm text-ink-muted hover:underline">
-          ← Back
+    <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-6 py-8">
+      <header className="flex items-center gap-3">
+        <Link href={backHref} aria-label="Back" className="rounded-full p-2 text-ink-muted hover:bg-chip hover:text-ink">
+          <ArrowLeft size={18} className="block" />
         </Link>
+        <h1 className="text-2xl font-extrabold">{scopeLabel}</h1>
       </header>
-
       <ReviewGames
-        key={`${mode}-${scopeQuery}-${params.concept ?? ""}`}
+        key={`${mode}-${scopeQuery}`}
         mode={mode}
         scopeQuery={scopeQuery}
         scopeKey={scopeQuery || "all"}
-        quiz={shuffle([...buildQuiz(cards, 7), ...buildConceptQuiz(learn, 5)]).slice(0, 10)}
-        challenge={shuffle([...buildQuiz(cards, 40), ...buildConceptQuiz(learn, 30)])}
-        recall={[...recallPool.slice(0, chosen.length), ...shuffle([...recallPool.slice(chosen.length), ...learnRecall])].slice(0, 12)}
-        flash={dueCards}
-        cardCount={cards.length + learn.filter((c) => c.summary).length}
+        items={items}
+        matchItems={matchItems}
+        flash={dueCards.slice(0, 30)}
       />
     </div>
   );

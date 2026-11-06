@@ -1,5 +1,6 @@
 "use client";
 
+import { ArrowRight, ImageIcon } from "@/app/icons";
 import { useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import {
@@ -130,13 +131,13 @@ function DumpRow({
             colorIndex={d.author.colorIndex}
           />
         )}
-        {d.images.length > 0 && <span>🖼</span>}
+        {d.images.length > 0 && <ImageIcon size={14} />}
         <span className="flex-1 truncate text-sm">{autoTitle(d.content)}</span>
         <span className="text-xs whitespace-nowrap text-ink-faint">
           {new Date(d.createdAt).toLocaleDateString("en-US", { timeZone: "UTC" })}
         </span>
         {d.processed && (
-          <span className="text-xs whitespace-nowrap text-ink-faint">→ in note</span>
+          <span className="text-xs whitespace-nowrap text-ink-faint"><ArrowRight /> in note</span>
         )}
       </Link>
       {!d.processed && (
@@ -364,7 +365,7 @@ export function DumpControls({
             }
             className="self-start rounded-full border border-accent px-3.5 py-1.5 text-xs font-semibold text-accent transition-colors hover:bg-accent-soft disabled:opacity-50"
           >
-            ✦ Organize {effectiveSelected.length} selected →
+            Organize {effectiveSelected.length} selected <ArrowRight />
           </button>
           {organizeError && <p className="text-xs text-red-500">{organizeError}</p>}
         </div>

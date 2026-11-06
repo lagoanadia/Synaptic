@@ -1,5 +1,6 @@
 "use client";
 
+import { ChevronLeft, ChevronRight } from "@/app/icons";
 import { useEffect, useRef, useState } from "react";
 import type { PDFDocumentProxy } from "pdfjs-dist";
 
@@ -78,9 +79,9 @@ export function PdfSlides({ src }: { src: string }) {
       </div>
       {total > 0 && (
         <div className="flex items-center justify-center gap-3 bg-[#2a2a2a] pb-2 text-sm text-white">
-          <button type="button" onClick={() => go(-1)} disabled={page === 1} className="rounded px-3 py-1 hover:bg-white/10 disabled:opacity-30" aria-label="Previous slide">‹</button>
+          <button type="button" onClick={() => go(-1)} disabled={page === 1} className="rounded px-3 py-1 hover:bg-white/10 disabled:opacity-30" aria-label="Previous slide"><ChevronLeft size={18} /></button>
           <span className="tabular-nums">{page} / {total}</span>
-          <button type="button" onClick={() => go(1)} disabled={page === total} className="rounded px-3 py-1 hover:bg-white/10 disabled:opacity-30" aria-label="Next slide">›</button>
+          <button type="button" onClick={() => go(1)} disabled={page === total} className="rounded px-3 py-1 hover:bg-white/10 disabled:opacity-30" aria-label="Next slide"><ChevronRight size={18} /></button>
         </div>
       )}
     </div>

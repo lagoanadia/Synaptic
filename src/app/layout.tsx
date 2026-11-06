@@ -3,6 +3,9 @@ import { Plus_Jakarta_Sans } from "next/font/google";
 import Link from "next/link";
 import "./globals.css";
 import { RegisterServiceWorker } from "./RegisterServiceWorker";
+import { NavDrawer } from "./NavDrawer";
+import { auth } from "@/auth";
+import { prisma } from "@/lib/prisma";
 
 const appFont = Plus_Jakarta_Sans({
   variable: "--font-app",
@@ -33,12 +36,29 @@ export const viewport: Viewport = {
   themeColor: "#2383e2",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const session = await auth();
+  const userId = session?.user?.id;
+  const [user, sections] = userId
+    ? await Promise.all([
+        prisma.user.findUnique({ where: { id: userId }, select: { plan: true, locale: true } }),
+        prisma.section.findMany({ where: { userId }, orderBy: { order: "asc" }, select: { id: true, name: true } }),
+      ])
+    : [null, []];
+
   return (
     <html lang="en" className={`${appFont.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
         <RegisterServiceWorker />
-        {children}
+        {session?.user && user && (
+          <NavDrawer
+            user={{ name: session.user.name ?? null, email: session.user.email ?? null, image: session.user.image ?? null }}
+            plan={user.plan}
+            locale={user.locale}
+            sections={sections}
+          />
+        )}
+        <div className={`flex flex-1 flex-col ${session?.user ? "pl-12 sm:pl-14" : ""}`}>{children}</div>
         <footer className="px-6 py-4 text-center text-xs text-ink-faint">
           Built by{" "}
           <a

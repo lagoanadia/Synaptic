@@ -1,3 +1,4 @@
+import { ArrowLeft } from "@/app/icons";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
@@ -35,12 +36,12 @@ export default async function ProjectPage({
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-5 px-6 py-9">
+    <div className="mx-auto flex w-full max-w-[1800px] lg:px-10 flex-1 flex-col gap-5 px-6 py-9">
       <Link
         href={`/pursuits/${pursuitId}?tab=projects`}
         className="text-sm text-ink-muted hover:underline"
       >
-        ← Projects
+        <ArrowLeft /> Projects
       </Link>
       <ProjectBoard
         pursuitId={pursuitId}

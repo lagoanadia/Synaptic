@@ -1,5 +1,6 @@
 "use client";
 
+import { ArrowRight } from "@/app/icons";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createConceptMap } from "./actions";
@@ -8,19 +9,19 @@ import { readPptx, slidesToText } from "@/lib/pptx";
 
 type Kind = "text" | "pdf" | "pptx" | "notes" | "repo";
 
-const KINDS: { kind: Kind; label: string; hint: string }[] = [
-  { kind: "text", label: "Paste", hint: "Text, code, a long AI answer…" },
-  { kind: "pptx", label: "PowerPoint", hint: "Your teacher's slides (.pptx)" },
-  { kind: "pdf", label: "PDF", hint: "A chapter, an assignment" },
-  { kind: "notes", label: "My notes", hint: "Everything organized in this subject" },
-  { kind: "repo", label: "GitHub repo", hint: "A public repository" },
+const KINDS: { kind: Kind; label: string }[] = [
+  { kind: "pptx", label: "PowerPoint" },
+  { kind: "pdf", label: "PDF" },
+  { kind: "text", label: "Paste" },
+  { kind: "notes", label: "My notes" },
+  { kind: "repo", label: "GitHub" },
 ];
 
 const LANGUAGES = ["English", "Español", "Deutsch", "Français"];
 
 export function NewMapForm({ pursuitId, hasNotes }: { pursuitId: string; hasNotes: boolean }) {
   const router = useRouter();
-  const [kind, setKind] = useState<Kind>("text");
+  const [kind, setKind] = useState<Kind>("pptx");
   const [text, setText] = useState("");
   const [ref, setRef] = useState("");
   const [file, setFile] = useState<File | null>(null);
@@ -81,28 +82,26 @@ export function NewMapForm({ pursuitId, hasNotes }: { pursuitId: string; hasNote
 
   return (
     <div className="flex flex-col gap-4 rounded-3xl bg-white p-6 shadow-[0_1px_2px_rgba(13,13,13,0.06)]">
-      <div>
-        <h2 className="text-lg font-extrabold">New concept map</h2>
-        <p className="text-sm text-ink-muted">
-          Give it something you want to actually understand. It gets split into small concepts you can
-          explore in any order.
-        </p>
-      </div>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-        {KINDS.map((k) => (
-          <button
-            key={k.kind}
-            type="button"
-            onClick={() => setKind(k.kind)}
-            aria-pressed={kind === k.kind}
-            className={`flex flex-col rounded-2xl border-2 px-3 py-2.5 text-left transition-colors ${
-              kind === k.kind ? "border-tile-sky bg-accent-soft" : "border-border-subtle hover:border-tile-sky"
-            }`}
-          >
-            <span className="text-sm font-bold">{k.label}</span>
-            <span className="text-xs text-ink-muted">{k.hint}</span>
-          </button>
-        ))}
+      <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Source">
+        {KINDS.map((k) => {
+          const disabled = k.kind === "notes" && !hasNotes;
+          return (
+            <button
+              key={k.kind}
+              type="button"
+              role="radio"
+              aria-checked={kind === k.kind}
+              disabled={disabled}
+              title={disabled ? "No organized notes in this subject yet" : undefined}
+              onClick={() => setKind(k.kind)}
+              className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors disabled:opacity-40 ${
+                kind === k.kind ? "bg-ink text-white" : "bg-chip text-ink-muted hover:text-ink"
+              }`}
+            >
+              {k.label}
+            </button>
+          );
+        })}
       </div>
 
       {kind === "text" && (
@@ -110,7 +109,7 @@ export function NewMapForm({ pursuitId, hasNotes }: { pursuitId: string; hasNote
           value={text}
           onChange={(e) => setText(e.target.value)}
           rows={8}
-          placeholder="Paste anything here…"
+          placeholder="Paste text, code or a long AI answer…"
           aria-label="Material to break down"
           className="rounded-2xl border border-border-subtle px-4 py-3 font-mono text-xs"
         />
@@ -125,18 +124,11 @@ export function NewMapForm({ pursuitId, hasNotes }: { pursuitId: string; hasNote
           className="rounded-2xl border border-dashed border-border-subtle px-4 py-6 text-sm"
         />
       )}
-      {kind === "notes" && (
-        <p className="rounded-2xl bg-callout px-4 py-3 text-sm text-ink-muted">
-          {hasNotes
-            ? "Uses every organized note in this subject."
-            : "This subject has no organized notes yet — write and Organize a page first."}
-        </p>
-      )}
       {kind === "repo" && (
         <input
           value={ref}
           onChange={(e) => setRef(e.target.value)}
-          placeholder="github.com/owner/repo"
+          placeholder="github.com/owner/repo (public)"
           aria-label="GitHub repository"
           className="rounded-2xl border border-border-subtle px-4 py-3 text-sm"
         />
@@ -161,7 +153,7 @@ export function NewMapForm({ pursuitId, hasNotes }: { pursuitId: string; hasNote
           disabled={!ready || isPending}
           className="rounded-full bg-ink px-6 py-3 text-sm font-bold text-white transition-transform hover:-translate-y-0.5 disabled:opacity-40 disabled:hover:translate-y-0"
         >
-          {isPending ? (status ?? "Working…") : "Map it →"}
+          {isPending ? (status ?? "Working…") : <>Map it <ArrowRight /></>}
         </button>
       </div>
       {error && <p className="text-sm text-red-500">{error}</p>}

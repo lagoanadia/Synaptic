@@ -52,6 +52,19 @@ describe("buildQuiz", () => {
     expect(buildQuiz(cards, 2, seeded())).toHaveLength(2);
   });
 
+  it("never mixes subjects when drawing wrong options", () => {
+    const other = { ...card("z", "Zeta"), pursuitId: "p2" };
+    for (const q of buildQuiz([card("a", "Alpha"), card("b", "Beta"), card("c", "Gamma"), other], 4, seeded(5))) {
+      if (q.pursuitId === "p1") expect(q.options).not.toContain("Zeta");
+    }
+  });
+
+  it("prefers the card's own distractors", () => {
+    const c = { ...card("a", "Right"), distractors: ["W1", "W2", "W3"] };
+    const [q] = buildQuiz([c], 1, seeded(2));
+    expect([...q.options].sort()).toEqual(["Right", "W1", "W2", "W3"]);
+  });
+
   it("skips questions without at least 2 distinct wrong options", () => {
     expect(buildQuiz([card("a", "Same"), card("b", "same "), card("c", "Other")], 5, seeded())).toEqual([]);
     expect(buildQuiz([card("a", "X"), card("b", "Y")], 5, seeded())).toEqual([]);

@@ -40,12 +40,6 @@ export function AskPursuit({ pursuitId }: { pursuitId: string }) {
             </p>
           </div>
         ))}
-        {turns.length === 0 && (
-          <p className="text-sm text-ink-muted">
-            Ask something about this pursuit — the answer is based only on your brain
-            dumps and organized notes.
-          </p>
-        )}
       </div>
 
       <div className="flex gap-2 border-t border-border-subtle pt-4">

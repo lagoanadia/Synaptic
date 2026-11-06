@@ -1,5 +1,6 @@
 "use client";
 
+import { XIcon } from "@/app/icons";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { frameHeadline, startDebate } from "./actions";
@@ -18,6 +19,7 @@ export function HeadlinePicker({ headlines }: { headlines: Headline[] }) {
   const sources = [...new Set(headlines.map((h) => h.source))];
   const [source, setSource] = useState<string | null>(null);
   const [language, setLanguage] = useState("English");
+  const [style, setStyle] = useState<"opponent" | "socratic">("opponent");
   const [selected, setSelected] = useState<Headline | null>(null);
   const [framed, setFramed] = useState<Framed | null>(null);
   const [own, setOwn] = useState("");
@@ -45,6 +47,7 @@ export function HeadlinePicker({ headlines }: { headlines: Headline[] }) {
         motion: framed.motion,
         brief: framed.brief,
         side,
+        style,
         language,
       });
       if (r.error || !r.id) return setError(r.error ?? "Try again");
@@ -134,7 +137,7 @@ export function HeadlinePicker({ headlines }: { headlines: Headline[] }) {
           <div className="mx-auto flex max-w-3xl flex-col gap-3">
             <div className="flex items-start justify-between gap-3">
               <p className="text-xs text-ink-muted">{selected.title}</p>
-              <button type="button" onClick={() => setSelected(null)} aria-label="Close" className="text-ink-muted hover:text-ink">✕</button>
+              <button type="button" onClick={() => setSelected(null)} aria-label="Close" className="text-ink-muted hover:text-ink"><XIcon /></button>
             </div>
             {!framed && !error && <p className="text-sm font-semibold">Finding the real argument in this…</p>}
             {error && <p className="text-sm text-red-500">{error}</p>}
@@ -142,6 +145,23 @@ export function HeadlinePicker({ headlines }: { headlines: Headline[] }) {
               <>
                 <p className="text-xl font-extrabold">“{framed.motion}”</p>
                 <p className="text-sm leading-relaxed text-ink-muted">{framed.brief}</p>
+                <div className="flex gap-1 self-start rounded-full bg-chip p-1 text-xs font-semibold" role="radiogroup" aria-label="Style">
+                  {([
+                    ["opponent", "Argue with me"],
+                    ["socratic", "Only ask me questions"],
+                  ] as const).map(([value, label]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      role="radio"
+                      aria-checked={style === value}
+                      onClick={() => setStyle(value)}
+                      className={`rounded-full px-3 py-1.5 ${style === value ? "bg-white text-ink shadow-sm" : "text-ink-muted"}`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
                 <div className="grid gap-2 sm:grid-cols-2">
                   <button type="button" disabled={isPending} onClick={() => pick("for")} className="flex flex-col items-start gap-1 rounded-2xl border-2 border-mint p-3 text-left hover:bg-mint/10 disabled:opacity-50">
                     <span className="text-sm font-bold">I&apos;m FOR</span>
@@ -152,7 +172,6 @@ export function HeadlinePicker({ headlines }: { headlines: Headline[] }) {
                     <span className="text-xs text-ink-muted">{framed.againstCase}</span>
                   </button>
                 </div>
-                <p className="text-xs text-ink-faint">Pick the side you actually believe — or the one you find harder, if you want a real workout.</p>
               </>
             )}
           </div>

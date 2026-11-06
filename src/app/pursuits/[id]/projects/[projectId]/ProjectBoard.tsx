@@ -381,7 +381,7 @@ export function ProjectBoard({
             onClick={() => fileInputRef.current?.click()}
             className="rounded-full border border-accent px-3.5 py-2 text-xs font-semibold text-accent transition-colors hover:bg-accent-soft disabled:opacity-50"
           >
-            {isUploading ? (uploadStatus ?? "Uploading…") : "📄 Upload assignment → propose cards"}
+            {isUploading ? (uploadStatus ?? "Uploading…") : <>From assignment</>}
           </button>
         </div>
       </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import { MicIcon, StopIcon } from "@/app/icons";
 import { useActionState, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { upload } from "@vercel/blob/client";
@@ -193,7 +194,7 @@ export function NewDumpForm({
         title={recordingSince ? "Stop and transcribe" : "Record a voice note"}
         className={`rounded-md px-2 py-1 text-sm ${recordingSince ? "bg-crimson text-white" : "text-ink-muted hover:bg-chip hover:text-ink"}`}
       >
-        {recordingSince ? "■ Stop" : "🎙"}
+        {recordingSince ? <><StopIcon size={14} /> Stop</> : <MicIcon />}
       </button>
     </>
   );

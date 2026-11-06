@@ -1,3 +1,4 @@
+import { ArrowLeft } from "@/app/icons";
 import Link from "next/link";
 
 export const metadata = { title: "Terms of Service — Synaptic" };
@@ -7,7 +8,7 @@ export default function TermsPage() {
     <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-6 py-12">
       <div>
         <Link href="/" className="text-sm text-ink-muted hover:underline">
-          ← Synaptic
+          <ArrowLeft /> Synaptic
         </Link>
         <h1 className="mt-2 text-2xl font-semibold">Terms of Service</h1>
         <p className="mt-1 text-sm text-ink-faint">Last updated September 2026</p>
@@ -104,7 +105,7 @@ export default function TermsPage() {
             side project running on standard hosting, not a service with an SLA. To
             the extent the law allows it, Synaptic and its developer aren’t liable for
             lost data, lost coursework, or any indirect damages from using or being
-            unable to use the app. Export anything important (the “↓ Export” link) if
+            unable to use the app. Export anything important (the “Export” link) if
             you’d be upset to lose it.
           </p>
         </section>

@@ -1,5 +1,6 @@
 "use client";
 
+import { ArrowUpRight } from "@/app/icons";
 import { useState } from "react";
 import { removeAttachment } from "./actions";
 import { DeleteButton } from "../DeleteButton";
@@ -85,7 +86,7 @@ export function AttachmentList({
                   rel="noopener noreferrer"
                   className="self-end text-xs text-ink-faint hover:underline"
                 >
-                  Open in new tab ↗
+                  Open in new tab <ArrowUpRight />
                 </a>
               </div>
             )}

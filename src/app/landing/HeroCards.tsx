@@ -1,5 +1,6 @@
 "use client";
 
+import { ArrowRight } from "@/app/icons";
 import { useEffect, useRef } from "react";
 import { Reveal } from "./Reveal";
 
@@ -89,7 +90,7 @@ export function HeroCards() {
         <div data-tilt-card style={tiltStyle} className={`${cardBase} bg-[#b5502e] text-white`}>
           <span className="text-[0.75rem] font-bold opacity-85">Ask</span>
           <p className="mt-2 text-[0.95rem] font-bold leading-tight">
-            &quot;What&apos;s the Krebs cycle?&quot; → answered from your notes
+            &quot;What&apos;s the Krebs cycle?&quot; <ArrowRight /> answered from your notes
           </p>
         </div>
       </Reveal>

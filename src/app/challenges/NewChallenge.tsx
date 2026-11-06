@@ -1,5 +1,6 @@
 "use client";
 
+import { ArrowRight } from "@/app/icons";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { draftChallenge, saveChallenge } from "./actions";
@@ -25,35 +26,34 @@ export function NewChallenge({
   function create() {
     setError(null);
     startTransition(async () => {
-      setStatus("Writing a challenge…");
+      setStatus("Writing challenges…");
       const r = await draftChallenge({ language, difficulty, pursuitId: subject || null, topic });
-      if (r.error || !r.draft) {
+      if (r.error || !r.drafts) {
         setStatus(null);
         return setError(r.error ?? "Try again");
       }
-      // Check the AI's own answer key in the sandbox; keep only the tests
-      // its reference solution actually passes.
-      setStatus(language === "python" ? "Checking the tests (loading Python)…" : "Checking the tests…");
-      const check = await runInSandbox(language, r.draft.solution, r.draft.entry, r.draft.tests);
-      const passing = check.error ? [] : r.draft.tests.filter((_, i) => check.results[i]?.ok);
-      if (passing.length < 2) {
-        setStatus(null);
-        return setError("The AI's challenge didn't check out — try again");
+      // Check each answer key in the sandbox; keep only tests its reference
+      // solution actually passes, and only challenges with 2+ of them.
+      setStatus(language === "python" ? "Checking (loading Python)…" : "Checking…");
+      let saved = 0;
+      for (const draft of r.drafts) {
+        const check = await runInSandbox(language, draft.solution, draft.entry, draft.tests);
+        const passing = check.error ? [] : draft.tests.filter((_, i) => check.results[i]?.ok);
+        if (passing.length < 2) continue;
+        if (!(await saveChallenge(draft, passing)).error) saved++;
       }
-      setStatus("Saving…");
-      const saved = await saveChallenge(r.draft, passing);
       setStatus(null);
-      if (saved.error || !saved.id) return setError(saved.error ?? "Try again");
-      router.push(`/challenges/${saved.id}`);
+      if (saved === 0) return setError("Those didn't check out — try again");
+      router.refresh();
     });
   }
+
 
   const pill = (active: boolean) =>
     `rounded-full px-3.5 py-1.5 text-sm font-semibold transition-colors ${active ? "bg-ink text-white" : "bg-chip text-ink-muted hover:text-ink"}`;
 
   return (
     <div className="flex flex-col gap-4 rounded-3xl bg-white p-6 shadow-[0_1px_2px_rgba(13,13,13,0.06)]">
-      <h2 className="text-lg font-extrabold">Hand me a challenge</h2>
       <div className="flex flex-wrap gap-2">
         {(["javascript", "python"] as const).map((l) => (
           <button key={l} type="button" onClick={() => setLanguage(l)} className={pill(language === l)} aria-pressed={language === l}>
@@ -89,7 +89,7 @@ export function NewChallenge({
         disabled={isPending}
         className="self-start rounded-full bg-mint px-6 py-3 text-sm font-bold text-white transition-transform hover:-translate-y-0.5 disabled:opacity-60"
       >
-        {isPending ? (status ?? "Working…") : "Give me one →"}
+        {isPending ? (status ?? "Working…") : <>Give me 3 <ArrowRight /></>}
       </button>
       {error && <p className="text-sm text-red-500">{error}</p>}
     </div>

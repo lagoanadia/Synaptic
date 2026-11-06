@@ -392,6 +392,9 @@ model Flashcard {
   easeFactor  Float    @default(2.5)
   repetitions Int      @default(0)
   dueDate     DateTime @default(now())
+  // Three plausible wrong answers for multiple choice, written by the AI in
+  // the same style as the answer. [] until generated.
+  distractors String[] @default([])
 
   pursuitId String
   pursuit   Pursuit @relation(fields: [pursuitId], references: [id])
@@ -540,6 +543,8 @@ model Debate {
   // "for" | "against" — the side YOU argue.
   side      String
   language  String   @default("English")
+  // "opponent" argues the other side; "socratic" only asks questions.
+  style     String   @default("opponent")
   messages  Json     @default("[]")
   verdict   Json?
   createdAt DateTime @default(now())

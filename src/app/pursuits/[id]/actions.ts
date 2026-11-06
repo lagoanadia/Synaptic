@@ -1078,7 +1078,7 @@ export async function generateFlashcards(
     return { error: "Note not found" };
   }
 
-  const prompt = `${note.content}\n\n---\n\nGenerate 5-10 flashcards (question + answer pairs) that test recall of the key facts and concepts in the note above. Each question should be short and specific — no "explain everything about X" questions. Each answer should be short too — a fact, a definition, a term — not a paragraph. Write them in the same language as the note. Respond with ONLY a JSON object, no other text: {"cards": [{"question": "...", "answer": "..."}, ...]}`;
+  const prompt = `${note.content}\n\n---\n\nGenerate 5-10 flashcards (question + answer pairs) that test recall of the key facts and concepts in the note above. Each question should be short and specific — no "explain everything about X" questions. Each answer should be short too — a fact, a definition, a term — not a paragraph. Write them in the same language as the note. A question must make sense on its own, months later, without the note in front of you — name the topic in it. For each card also write 3 plausible WRONG answers (same type and length as the answer, never partially correct) for multiple choice. Respond with ONLY a JSON object, no other text: {"cards": [{"question": "...", "answer": "...", "wrong": ["...", "...", "..."]}, ...]}`;
 
   let completion;
   try {
@@ -1109,6 +1109,7 @@ export async function generateFlashcards(
       noteId,
       question: c.question,
       answer: c.answer,
+      distractors: c.distractors,
     })),
   });
 
