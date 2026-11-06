@@ -28,10 +28,13 @@ export function ClassroomImport({
   pursuitId,
   connected,
   linkedCourseId,
+  linkedElsewhere = {},
 }: {
   pursuitId: string;
   connected: boolean;
   linkedCourseId?: string | null;
+  // Course id → the other subject of yours already linked to it.
+  linkedElsewhere?: Record<string, string>;
 }) {
   const [courses, setCourses] = useState<ClassroomCourse[] | null>(null);
   // Pre-selects the course this Pursuit was already linked to (if any),
@@ -113,6 +116,8 @@ export function ClassroomImport({
           onChange={(e) => {
             const courseId = e.target.value;
             const courseName = courses.find((c) => c.id === courseId)?.name ?? "";
+            const other = linkedElsewhere[courseId];
+            if (other && !window.confirm(`${courseName} is already linked to ${other}. Link it here too?`)) return;
             pickCourse(courseId, courseName);
           }}
           className="rounded-md border border-border-subtle bg-white px-3 py-2 text-sm"
@@ -121,6 +126,7 @@ export function ClassroomImport({
           {courses.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}
+              {linkedElsewhere[c.id] ? ` — already in ${linkedElsewhere[c.id]}` : ""}
             </option>
           ))}
         </select>

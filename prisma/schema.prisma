@@ -196,6 +196,10 @@ model PursuitContentSection {
   brainDumps BrainDump[]
   notes      Note[]
 
+  // The Classroom unit this unit maps to ("UD2"), matched against file
+  // names, so the slide picker only shows that unit's slides.
+  classroomUnit String?
+
   @@unique([pursuitId, name])
 }
 
@@ -307,7 +311,8 @@ model BrainDump {
   // Position within its section (see reorderDumpSection).
   sectionOrder Int                    @default(0)
 
-  notes Note[]
+  notes       Note[]
+  attachments Attachment[]
 
   @@index([searchVector], type: Gin)
 }
@@ -405,6 +410,10 @@ model Attachment {
 
   pursuitId String
   pursuit   Pursuit @relation(fields: [pursuitId], references: [id])
+
+  // The page this file belongs to; null for files on the subject itself.
+  dumpId String?
+  dump   BrainDump? @relation(fields: [dumpId], references: [id], onDelete: SetNull)
 }
 
 // ─── Internalize ───

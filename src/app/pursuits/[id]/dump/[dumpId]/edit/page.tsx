@@ -23,6 +23,7 @@ export default async function EditDumpPage({
       pursuit: { OR: [{ ownerId: session.user.id }, { members: { some: { userId: session.user.id } } }] },
     },
     include: {
+      section: { select: { classroomUnit: true } },
       pursuit: {
         select: {
           title: true,
@@ -44,6 +45,8 @@ export default async function EditDumpPage({
         pursuitId={id}
         decks={dump.pursuit.attachments.filter((a) => isSlideFile(a.url))}
         classroomCourseId={dump.pursuit.classroomEnabled ? dump.pursuit.classroomCourseId : null}
+        classroomUnit={dump.section?.classroomUnit ?? null}
+        dumpId={dump.id}
       >
         <NewDumpForm
         pursuitId={id}

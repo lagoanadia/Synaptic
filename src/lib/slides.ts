@@ -31,3 +31,16 @@ export function slideSourceFor(raw: string): SlideSource | null {
 
 // Which saved Files look like something the slide panel can show.
 export const isSlideFile = (url: string) => slideSourceFor(url) !== null;
+
+// "PSP-UD2_cuaderno.pdf" → "UD2", "Tema 3 - Hilos" → "UD3", "U1 intro" → "UD1".
+export function unitCode(name: string): string | null {
+  const m = name.match(/(?:^|[^a-z])(?:ud|u|unidad|tema|t)\s*[-_ ]?\s*0*(\d{1,2})(?![\d])/i);
+  return m ? `UD${Number(m[1])}` : null;
+}
+
+// What counts as slides in a Classroom listing: presentations and PDFs,
+// plus Google files (no extension). Not .docx, .zip, .java…
+export function isSlideTitle(title: string): boolean {
+  const ext = title.match(/\.([a-z0-9]{1,5})$/i)?.[1]?.toLowerCase();
+  return !ext || ["ppt", "pptx", "pdf", "key", "odp"].includes(ext);
+}

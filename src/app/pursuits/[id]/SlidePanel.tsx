@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { upload } from "@vercel/blob/client";
 import { SlidesIcon, XIcon } from "@/app/icons";
-import { slideSourceFor } from "@/lib/slides";
+import { isSlideTitle, slideSourceFor, unitCode } from "@/lib/slides";
 import { listClassroomFiles, saveSlideDeck } from "./actions";
 import { PdfSlides } from "./PdfSlides";
 
@@ -33,13 +33,20 @@ export function SlidePanel({
   pursuitId,
   decks,
   classroomCourseId,
+  classroomUnit = null,
+  dumpId,
   children,
 }: {
   pursuitId: string;
   decks: Deck[];
   classroomCourseId: string | null;
+  // The page's unit maps to this Classroom unit ("UD2"): show only its slides.
+  classroomUnit?: string | null;
+  // Editing an existing page: uploads are attached to it.
+  dumpId?: string;
   children: React.ReactNode;
 }) {
+  const [showAllUnits, setShowAllUnits] = useState(false);
   const key = `synaptic.slides.${pursuitId}`;
   const [deck, setDeck] = useState<Deck | null>(null);
   const [width, setWidth] = useState(WIDTHS.M);
@@ -78,7 +85,11 @@ export function SlidePanel({
     setCollapsed(false);
     if (classroomCourseId && !classroom) {
       const r = await listClassroomFiles(classroomCourseId);
-      setClassroom((r.files ?? []).filter((f) => slideSourceFor(f.url)).map((f) => ({ name: f.title, url: f.url })));
+      setClassroom(
+        (r.files ?? [])
+          .filter((f) => isSlideTitle(f.title) && slideSourceFor(f.url))
+          .map((f) => ({ name: f.title, url: f.url })),
+      );
     }
   }
 
@@ -90,7 +101,7 @@ export function SlidePanel({
         handleUploadUrl: "/api/blob-upload",
         clientPayload: JSON.stringify({ pursuitId, kind: "slides" }),
       });
-      await saveSlideDeck(pursuitId, file.name, blob.url, file.size);
+      await saveSlideDeck(pursuitId, file.name, blob.url, file.size, dumpId);
       open({ name: file.name, url: blob.url });
     } catch {
       setStatus("Couldn't upload that (.pptx or .pdf)");
@@ -184,10 +195,21 @@ export function SlidePanel({
               {classroomCourseId && (
                 <div className="flex flex-wrap items-center gap-1.5">
                   <span className="text-xs font-semibold text-ink-muted">Classroom</span>
+                  {classroomUnit && (
+                    <button
+                      type="button"
+                      onClick={() => setShowAllUnits((v) => !v)}
+                      className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${showAllUnits ? "bg-chip text-ink-muted" : "bg-tile-sky text-white"}`}
+                    >
+                      {showAllUnits ? "All" : classroomUnit}
+                    </button>
+                  )}
                   {classroom === null ? (
                     <span className="text-xs text-ink-faint">…</span>
                   ) : (
-                    classroom.map((d) => (
+                    classroom
+                      .filter((d) => !classroomUnit || showAllUnits || unitCode(d.name) === classroomUnit)
+                      .map((d) => (
                       <button key={d.url} type="button" onClick={() => open(d)} className="max-w-64 truncate rounded-full bg-chip px-3 py-1 hover:text-tile-sky">
                         {d.name}
                       </button>
