@@ -121,7 +121,6 @@ export function NavDrawer({ user, plan, locale, sections }: Props) {
             <SettingsIcon size={14} className="block" /> Settings
           </span>
           <Link href="/billing" className={item(active("/billing"))}>Plan</Link>
-          <Link href="/settings/api-keys" className={item(active("/settings"))}>API keys</Link>
           <label className="flex items-center justify-between rounded-xl px-3 py-2.5 text-sm font-semibold">
             Language
             <select
