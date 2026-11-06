@@ -83,24 +83,24 @@ export function SearchBar({ pursuitId }: { pursuitId: string }) {
         type="search"
         value={query}
         onChange={(e) => handleChange(e.target.value)}
-        placeholder="Search this pursuit…"
+        placeholder="Buscar en esta asignatura…"
         className="w-full rounded-xl border border-border-subtle bg-white px-3.5 py-2.5 text-sm"
       />
       {hasQuery && (
         <div className="absolute top-full left-0 z-10 mt-2 flex w-full flex-col gap-3 rounded-2xl bg-white p-3 shadow-[0_8px_24px_rgba(13,13,13,0.08),0_2px_6px_rgba(13,13,13,0.06)]">
-          {isSearching && <p className="text-xs text-ink-faint">Searching…</p>}
+          {isSearching && <p className="text-xs text-ink-faint">Buscando…</p>}
           {!isSearching && results && !hasResults && (
-            <p className="text-xs text-ink-faint">No matches in this pursuit.</p>
+            <p className="text-xs text-ink-faint">Sin resultados en esta asignatura.</p>
           )}
           {results && (
             <>
               <ResultGroup
-                label="Brain dumps"
+                label="Notas en bruto"
                 hits={results.dumps}
                 hrefFor={(hit) => `/pursuits/${pursuitId}/dump/${hit.id}`}
               />
               <ResultGroup
-                label="Organized notes"
+                label="Notas organizadas"
                 hits={results.notes}
                 hrefFor={(hit) => `/pursuits/${pursuitId}?tab=pages#${hit.id}`}
               />

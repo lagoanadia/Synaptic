@@ -18,7 +18,7 @@ const W = 1000;
 const H = 460;
 
 // Draggable map: color = how well you know it, pulsing ring = next up,
-// hover = connections, "weak spots" fades what you know. Tiny hand-rolled
+// hover = connections, "puntos débiles" fades what you know. Tiny hand-rolled
 // force simulation (repel, springs, gravity).
 export function ConceptGraph({
   concepts,
@@ -203,7 +203,7 @@ export function ConceptGraph({
         onPointerUp={onPointerUp}
         onWheel={onWheel}
         role="img"
-        aria-label="Concept map graph"
+        aria-label="Grafo del mapa de conceptos"
       >
         <defs>
           <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
@@ -293,7 +293,7 @@ export function ConceptGraph({
           </span>
         ))}
         <button type="button" onClick={() => setView({ x: 0, y: 0, k: 1 })} className="font-semibold text-ink hover:underline">
-          Reset view
+          Restablecer vista
         </button>
       </div>
     </div>

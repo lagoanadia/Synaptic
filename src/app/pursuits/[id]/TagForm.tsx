@@ -16,7 +16,7 @@ export function TagForm({ pursuitId }: { pursuitId: string }) {
       <input
         type="text"
         name="name"
-        placeholder="+ tag"
+        placeholder="+ etiqueta"
         disabled={isPending}
         className="w-20 rounded border border-dashed border-border-subtle bg-transparent px-2 py-0.5 text-xs focus:w-28 focus:outline-none disabled:opacity-50"
       />

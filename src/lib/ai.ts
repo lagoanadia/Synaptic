@@ -9,10 +9,17 @@ import { parseJsonLoosely } from "@/lib/json";
 export const TEXT_MODEL = "openai/gpt-oss-120b";
 export const VISION_MODEL = "qwen/qwen3.8-27b";
 
+// The app is in Spanish: everything the AI writes for the user is too,
+// unless a prompt explicitly asks for another language (e.g. a debate the
+// user chose to hold in English).
+export const SPANISH =
+  "Write every text meant for the user in Spanish from Spain (tú, natural and clear), unless the instructions explicitly ask for another language. Keep code, identifiers, technical terms and quotes in their original form.";
+
 // Groq's JSON mode occasionally rejects its own output
 // ("json_validate_failed") — a one-off sampling hiccup that a second
 // identical attempt usually doesn't repeat. One retry, then give up.
 export async function createJsonCompletion(params: ChatCompletionCreateParamsNonStreaming) {
+  params = { ...params, messages: [{ role: "system", content: SPANISH }, ...params.messages] };
   try {
     return await groq.chat.completions.create(params);
   } catch {

@@ -1,7 +1,7 @@
 import { ArrowLeft } from "@/app/icons";
 import Link from "next/link";
 
-export const metadata = { title: "Privacy Policy — Synaptic" };
+export const metadata = { title: "Política de privacidad — Synaptic" };
 
 export default function PrivacyPage() {
   return (
@@ -10,15 +10,15 @@ export default function PrivacyPage() {
         <Link href="/" className="text-sm text-ink-muted hover:underline">
           <ArrowLeft /> Synaptic
         </Link>
-        <h1 className="mt-2 text-2xl font-semibold">Privacy Policy</h1>
-        <p className="mt-1 text-sm text-ink-faint">Last updated September 2026</p>
+        <h1 className="mt-2 text-2xl font-semibold">Política de privacidad</h1>
+        <p className="mt-1 text-sm text-ink-faint">Última actualización: septiembre de 2026</p>
       </div>
 
       <div className="flex flex-col gap-6 text-sm leading-relaxed text-ink">
         <p>
-          Synaptic is a personal project built and run by Nadia Lagoa Vilela, based in
-          A Coruña, Spain. This page describes what data Synaptic collects, why, and
-          what you can do about it. Questions or requests:{" "}
+          Synaptic es un proyecto personal creado y gestionado por Nadia Lagoa Vilela,
+          desde A Coruña (España). Esta página explica qué datos recoge Synaptic, para
+          qué y qué puedes hacer al respecto. Dudas o peticiones:{" "}
           <a href="mailto:lagoanadia@gmail.com" className="text-accent hover:underline">
             lagoanadia@gmail.com
           </a>
@@ -26,131 +26,136 @@ export default function PrivacyPage() {
         </p>
 
         <section className="flex flex-col gap-2">
-          <h2 className="text-base font-semibold">What we collect</h2>
+          <h2 className="text-base font-semibold">Qué recogemos</h2>
           <p>
-            <strong>Account info</strong> — when you sign in with GitHub or Google, we
-            receive your name, email address, and profile picture from them. We never
-            see or store your GitHub/Google password.
+            <strong>Datos de la cuenta</strong> — al iniciar sesión con GitHub o Google,
+            recibimos de ellos tu nombre, tu email y tu foto de perfil. Nunca vemos ni
+            guardamos tu contraseña de GitHub o Google.
           </p>
           <p>
-            <strong>What you create</strong> — brain dumps (text, pasted/uploaded
-            images), organized notes, flashcards, voice note recordings and their
-            transcripts, tags, sections, and pursuit titles. This is the actual content
-            of the app — it exists because you typed, pasted, or recorded it.
+            <strong>Lo que creas</strong> — notas en bruto (texto e imágenes pegadas o
+            subidas), notas organizadas, tarjetas, grabaciones de voz y sus
+            transcripciones, etiquetas, secciones y títulos de asignaturas. Es el
+            contenido de la app — existe porque tú lo escribiste, pegaste o grabaste.
           </p>
           <p>
-            <strong>Usage data</strong> — how many times per day you’ve used an AI
-            feature (Organize, Ask, voice transcription), so the free daily limit can be
-            enforced. We don’t track page views, clicks, or behavior beyond this.
+            <strong>Datos de uso</strong> — cuántas veces al día has usado una función
+            de IA (Organizar, Preguntar, transcripción de voz), para aplicar el límite
+            diario del plan gratis. No registramos visitas, clics ni comportamiento más
+            allá de esto.
           </p>
           <p>
-            <strong>Billing data</strong> — if you subscribe to a paid plan, Stripe
-            handles your card details directly; we never see or store your card
-            number. We keep only your Stripe customer/subscription IDs and current
-            plan, so the app knows what you’re entitled to.
+            <strong>Datos de facturación</strong> — si te suscribes a un plan de pago,
+            Stripe gestiona directamente los datos de tu tarjeta; nunca vemos ni
+            guardamos su número. Solo guardamos tus identificadores de cliente y
+            suscripción de Stripe y tu plan actual, para que la app sepa a qué tienes
+            acceso.
           </p>
         </section>
 
         <section className="flex flex-col gap-2">
-          <h2 className="text-base font-semibold">Who else sees it</h2>
-          <p>We don’t sell your data. It passes through these services to make the app work:</p>
+          <h2 className="text-base font-semibold">Quién más lo ve</h2>
+          <p>No vendemos tus datos. Pasan por estos servicios para que la app funcione:</p>
           <ul className="flex flex-col gap-1.5 pl-4">
             <li>
-              <strong>GitHub / Google</strong> — for signing in (OAuth). They see that
-              you’re signing into Synaptic; we see your name, email, and picture back.
+              <strong>GitHub / Google</strong> — para iniciar sesión (OAuth). Ven que
+              entras en Synaptic; nosotros recibimos tu nombre, email y foto.
             </li>
             <li>
-              <strong>Groq</strong> — the AI provider behind Organize, Ask, flashcard
-              generation, and voice transcription. Whatever you ask it to process gets
-              sent to Groq’s API to generate a response; it isn’t used to train Groq’s
-              models beyond their own data-processing terms.
+              <strong>Groq</strong> — el proveedor de IA detrás de Organizar, Preguntar,
+              la creación de tarjetas y la transcripción de voz. Lo que le pides procesar
+              se envía a la API de Groq para generar una respuesta; no se usa para
+              entrenar sus modelos más allá de lo que digan sus propias condiciones de
+              tratamiento de datos.
             </li>
             <li>
-              <strong>Stripe</strong> — processes payments and manages subscriptions for
-              paid plans. Stripe has its own privacy policy for the payment data it
-              handles directly.
+              <strong>Stripe</strong> — procesa los pagos y gestiona las suscripciones de
+              los planes de pago. Stripe tiene su propia política de privacidad para los
+              datos de pago que gestiona directamente.
             </li>
             <li>
-              <strong>Vercel</strong> — hosts the app and its database. Standard
-              infrastructure request logs (IP address, timestamp) pass through them as
-              part of serving the site.
+              <strong>Vercel</strong> — aloja la app y su base de datos. Los registros
+              normales de infraestructura (dirección IP, fecha y hora) pasan por ellos al
+              servir la web.
             </li>
           </ul>
           <p>
-            If you share a pursuit with someone else’s account, that person can see the
-            content of that pursuit (and, if you make them an editor, edit it) —
-            that’s the sharing feature working as intended, not a third party.
+            Si compartes una asignatura con la cuenta de otra persona, esa persona puede
+            ver su contenido (y editarlo, si le das acceso de edición) — eso es la
+            función de compartir funcionando como debe, no un tercero.
           </p>
         </section>
 
         <section className="flex flex-col gap-2">
           <h2 className="text-base font-semibold">Cookies</h2>
           <p>
-            Synaptic sets one cookie: an encrypted session token that keeps you signed
-            in. It’s strictly necessary for the app to function and isn’t used for
-            tracking or advertising, so no cookie consent banner is shown — there’s
-            nothing optional to consent to.
+            Synaptic usa una sola cookie: un token de sesión cifrado que mantiene tu
+            sesión iniciada. Es estrictamente necesaria para que la app funcione y no se
+            usa para seguimiento ni publicidad, así que no se muestra ningún aviso de
+            cookies — no hay nada opcional que aceptar.
           </p>
         </section>
 
         <section className="flex flex-col gap-2">
-          <h2 className="text-base font-semibold">How long we keep it</h2>
+          <h2 className="text-base font-semibold">Cuánto tiempo lo guardamos</h2>
           <p>
-            Your content stays until you delete it or close your account. To delete
-            your account and everything in it, email{" "}
+            Tu contenido se guarda hasta que lo borres o cierres tu cuenta. Para borrar
+            tu cuenta y todo lo que contiene, escribe a{" "}
             <a href="mailto:lagoanadia@gmail.com" className="text-accent hover:underline">
               lagoanadia@gmail.com
             </a>{" "}
-            — it’ll be done within a few days. Deleting a pursuit inside the app
-            deletes that pursuit’s content immediately and permanently.
+            — se hará en pocos días. Eliminar una asignatura dentro de la app borra su
+            contenido al momento y para siempre.
           </p>
         </section>
 
         <section className="flex flex-col gap-2">
-          <h2 className="text-base font-semibold">Your rights</h2>
+          <h2 className="text-base font-semibold">Tus derechos</h2>
           <p>
-            If you’re in the EU/EEA or UK, you have the right to access, correct,
-            export, or delete your personal data, and to object to or restrict how
-            it’s processed. Email{" "}
+            Si estás en la UE/EEE o en el Reino Unido, tienes derecho a acceder,
+            corregir, exportar o borrar tus datos personales, y a oponerte a su
+            tratamiento o limitarlo. Escribe a{" "}
             <a href="mailto:lagoanadia@gmail.com" className="text-accent hover:underline">
               lagoanadia@gmail.com
             </a>{" "}
-            for any of these — most pursuit content can also be exported yourself as
-            Markdown directly from the app (the “Export” link on any pursuit).
+            para cualquiera de ellos — además, puedes exportar tú misma la mayor parte
+            del contenido en Markdown desde la app (el enlace «Exportar» de cada
+            asignatura).
           </p>
         </section>
 
         <section className="flex flex-col gap-2">
-          <h2 className="text-base font-semibold">International transfers</h2>
+          <h2 className="text-base font-semibold">Transferencias internacionales</h2>
           <p>
-            Groq, GitHub, Google, Stripe, and Vercel operate globally, so your data may
-            be processed outside the EU/EEA (commonly the US) as part of using their
-            services. Each provider maintains its own safeguards for these transfers
-            under their respective terms.
+            Groq, GitHub, Google, Stripe y Vercel operan a nivel mundial, así que tus
+            datos pueden tratarse fuera de la UE/EEE (normalmente en EE. UU.) al usar
+            sus servicios. Cada proveedor mantiene sus propias garantías para estas
+            transferencias según sus condiciones.
           </p>
         </section>
 
         <section className="flex flex-col gap-2">
-          <h2 className="text-base font-semibold">Age</h2>
+          <h2 className="text-base font-semibold">Edad</h2>
           <p>
-            Synaptic is built with students in mind but isn’t directed at children.
-            Don’t use it if you’re under 16 without a parent or guardian’s consent.
+            Synaptic está pensada para estudiantes, pero no está dirigida a niños. No la
+            uses si tienes menos de 16 años sin el consentimiento de tu madre, padre o
+            tutor.
           </p>
         </section>
 
         <section className="flex flex-col gap-2">
-          <h2 className="text-base font-semibold">Changes</h2>
+          <h2 className="text-base font-semibold">Cambios</h2>
           <p>
-            If this policy changes in a way that matters, the “Last updated” date above
-            will change and, for anything significant, we’ll say so on the landing
-            page.
+            Si esta política cambia de forma importante, cambiará la fecha de «Última
+            actualización» de arriba y, si es algo relevante, lo diremos en la página de
+            inicio.
           </p>
         </section>
 
         <p className="text-xs text-ink-faint">
-          This is a plain-language description of an actual small project’s actual
-          practices, written by its one developer — not a substitute for a lawyer’s
-          review if you’re relying on it for something high-stakes.
+          Esto es una descripción en lenguaje sencillo de las prácticas reales de un
+          proyecto pequeño, escrita por su única desarrolladora — no sustituye la
+          revisión de un abogado si dependes de ella para algo importante.
         </p>
       </div>
     </div>

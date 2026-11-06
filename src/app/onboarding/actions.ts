@@ -9,7 +9,7 @@ export async function finishOnboarding(
   answers: OnboardingAnswers,
 ): Promise<{ error: string | null; landingId?: string | null }> {
   const session = await auth();
-  if (!session?.user?.id) return { error: "Not signed in" };
+  if (!session?.user?.id) return { error: "No has iniciado sesión" };
 
   // Runs once: a double click or a second tab mustn't build it twice.
   const user = await prisma.user.findUniqueOrThrow({
@@ -24,7 +24,7 @@ export async function finishOnboarding(
     return { error: null, landingId };
   } catch (err) {
     console.error("finishOnboarding failed", err);
-    return { error: "Something went wrong setting things up — try again" };
+    return { error: "Algo ha fallado al prepararlo todo — inténtalo de nuevo" };
   }
 }
 

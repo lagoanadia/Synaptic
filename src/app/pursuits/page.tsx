@@ -10,7 +10,7 @@ import { tileColor } from "@/lib/tileColor";
 import { SHARED, UNSORTED, accessiblePursuits, getConcepts } from "@/lib/reviewData";
 import { sample } from "@/lib/review";
 
-// Home: your Sections as big tiles + a "Cross exam" panel that pulls random
+// Home: your Sections as big tiles + a "Examen cruzado" panel that pulls random
 // concepts from everything you've written, so old stuff keeps coming back
 // instead of being forgotten. Each Section opens /pursuits/s/[sectionId].
 export default async function HomePage() {
@@ -46,7 +46,7 @@ export default async function HomePage() {
   }
 
   // Tally subjects and due cards per bucket in one pass. A pursuit someone
-  // shared with you goes in "Shared" whatever section its owner put it in
+  // shared with you goes in "Compartido" whatever section its owner put it in
   // — their private section names mean nothing on your home screen.
   const stats = new Map<string, { subjects: number; due: number }>();
   const bump = (key: string, due: number) => {
@@ -64,8 +64,8 @@ export default async function HomePage() {
   const describe = (key: string) => {
     const s = stats.get(key) ?? { subjects: 0, due: 0 };
     return {
-      subtitle: `${s.subjects} subject${s.subjects === 1 ? "" : "s"}`,
-      badge: s.due > 0 ? `${s.due} to review` : undefined,
+      subtitle: `${s.subjects} asignatura${s.subjects === 1 ? "" : "s"}`,
+      badge: s.due > 0 ? `${s.due} por repasar` : undefined,
     };
   };
 
@@ -82,7 +82,7 @@ export default async function HomePage() {
       id: UNSORTED,
       href: `/pursuits/s/${UNSORTED}`,
       movable: false,
-      name: "Unsorted",
+      name: "Sin clasificar",
       colorClass: "bg-ink-muted",
       ...describe(UNSORTED),
     });
@@ -92,7 +92,7 @@ export default async function HomePage() {
       id: SHARED,
       href: `/pursuits/s/${SHARED}`,
       movable: false,
-      name: "Shared",
+      name: "Compartido",
       colorClass: "bg-tile-deep",
       ...describe(SHARED),
     });
@@ -105,25 +105,25 @@ export default async function HomePage() {
       <header className="flex items-center justify-between">
         <div className="flex items-baseline gap-3">
           <Logo href="/pursuits" />
-          <span className="hidden text-sm text-ink-faint sm:inline">Think it. Dump it.</span>
+          <span className="hidden text-sm text-ink-faint sm:inline">Piénsalo. Apúntalo.</span>
         </div>
       </header>
 
       <div className="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <section aria-label="Sections">
+        <section aria-label="Secciones">
           <SectionTiles key={tiles.map((t) => t.id).join()} tiles={tiles} />
         </section>
 
         <aside className="flex flex-col gap-4 self-start rounded-3xl bg-white p-6 shadow-[0_1px_2px_rgba(13,13,13,0.06)]">
           <div className="flex items-baseline justify-between">
-            <h2 className="text-xl font-extrabold text-tile-sky">Cross exam</h2>
+            <h2 className="text-xl font-extrabold text-tile-sky">Examen cruzado</h2>
             {totalDue > 0 && (
-              <span className="text-xs font-semibold text-ink-muted">{totalDue} cards due</span>
+              <span className="text-xs font-semibold text-ink-muted">{totalDue} tarjetas pendientes</span>
             )}
           </div>
           {picks.length === 0 ? (
             <p className="rounded-2xl bg-callout px-4 py-5 text-sm text-ink-muted">
-              Organize a few Brain Dumps into notes and they&apos;ll start showing up here.
+              Organiza algunas notas y empezarán a aparecer aquí.
             </p>
           ) : (
             <ul className="flex flex-col gap-2.5">
@@ -144,7 +144,7 @@ export default async function HomePage() {
             href="/review?mode=learn"
             className="mt-1 rounded-full bg-ink px-4 py-2.5 text-center text-sm font-semibold text-white transition-transform hover:-translate-y-0.5"
           >
-            Start <ArrowRight />
+            Empezar <ArrowRight />
           </Link>
         </aside>
       </div>

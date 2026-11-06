@@ -22,7 +22,7 @@ async function gh(url: string) {
 
 export async function readRepo(input: string): Promise<{ ref: string; text: string }> {
   const parsed = parseRepoUrl(input);
-  if (!parsed) throw new Error("That doesn't look like a GitHub repo (owner/name)");
+  if (!parsed) throw new Error("Eso no parece un repositorio de GitHub (usuario/nombre)");
   const { owner, repo } = parsed;
   const meta = (await (await gh(`https://api.github.com/repos/${owner}/${repo}`)).json()) as {
     default_branch: string;
@@ -114,7 +114,7 @@ ${source}`,
   const links = arr(data.links)
     .map((l) => ({ from: str(obj(l).from, 60), to: str(obj(l).to, 60), label: str(obj(l).label, 30) || null }))
     .filter((l) => keys.has(l.from) && keys.has(l.to) && l.from !== l.to);
-  return { title: str(data.title, 120) || "Concept map", concepts, links };
+  return { title: str(data.title, 120) || "Mapa de conceptos", concepts, links };
 }
 
 // "Go deeper": split one concept into the smaller ideas inside it.

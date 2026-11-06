@@ -6,18 +6,18 @@ import { useRouter } from "next/navigation";
 import { finishOnboarding, skipOnboarding } from "./actions";
 import { LogoMark } from "../Logo";
 
-const AREA_CHOICES = ["School", "Work", "Projects", "Habits", "Languages", "Reading"];
+const AREA_CHOICES = ["Estudios", "Trabajo", "Proyectos", "Hábitos", "Idiomas", "Lectura"];
 
 const ITEM_PROMPT: Record<string, { question: string; placeholder: string }> = {
-  School: { question: "Which subjects?", placeholder: "AD, Bases de Datos, Programación" },
-  Work: { question: "What are you working on?", placeholder: "Client site, monthly report" },
-  Projects: { question: "Which projects?", placeholder: "Portfolio, Synaptic" },
-  Habits: { question: "Which habits?", placeholder: "Running, Reading 20 min" },
-  Languages: { question: "Which languages?", placeholder: "English, German" },
-  Reading: { question: "What are you reading?", placeholder: "Atomic Habits" },
+  Estudios: { question: "¿Qué asignaturas?", placeholder: "AD, Bases de Datos, Programación" },
+  Trabajo: { question: "¿En qué estás trabajando?", placeholder: "Web de un cliente, informe mensual" },
+  Proyectos: { question: "¿Qué proyectos?", placeholder: "Portfolio, Synaptic" },
+  Hábitos: { question: "¿Qué hábitos?", placeholder: "Correr, Leer 20 min" },
+  Idiomas: { question: "¿Qué idiomas?", placeholder: "Inglés, Alemán" },
+  Lectura: { question: "¿Qué estás leyendo?", placeholder: "Atomic Habits" },
 };
 const promptFor = (area: string) =>
-  ITEM_PROMPT[area] ?? { question: `What's in ${area}?`, placeholder: "Comma-separated" };
+  ITEM_PROMPT[area] ?? { question: `¿Qué hay en ${area}?`, placeholder: "Separados por comas" };
 
 const splitList = (s: string) =>
   s
@@ -72,9 +72,9 @@ export function Onboarding({ name }: { name: string | null }) {
       <Shell>
         <div className="flex flex-col items-center gap-4 py-16 text-center">
           <span className="h-10 w-10 animate-spin rounded-full border-4 border-tile-aqua border-t-transparent" />
-          <p className="text-lg font-bold">Building your space…</p>
+          <p className="text-lg font-bold">Creando tu espacio…</p>
           <p className="text-sm text-ink-muted">
-            {topic ? `Writing your first notes on ${topic}.` : "Setting up your sections."}
+            {topic ? `Escribiendo tus primeras notas sobre ${topic}.` : "Preparando tus secciones."}
           </p>
         </div>
       </Shell>
@@ -84,7 +84,7 @@ export function Onboarding({ name }: { name: string | null }) {
   return (
     <Shell>
       <div className="flex items-center justify-between">
-        <div className="flex gap-1.5" aria-label={`Step ${step + 1} of 3`}>
+        <div className="flex gap-1.5" aria-label={`Paso ${step + 1} de 3`}>
           {[0, 1, 2].map((i) => (
             <span key={i} className={`h-1.5 w-8 rounded-full ${i <= step ? "bg-tile-aqua" : "bg-chip"}`} />
           ))}
@@ -97,14 +97,14 @@ export function Onboarding({ name }: { name: string | null }) {
           })}
           className="text-xs text-ink-faint hover:text-ink"
         >
-          Skip — start empty
+          Saltar — empezar vacío
         </button>
       </div>
 
       {step === 0 && (
         <>
           <h1 className="text-3xl font-extrabold">
-            Hi{name ? ` ${name.split(" ")[0]}` : ""}. What are you juggling right now?
+            Hola{name ? ` ${name.split(" ")[0]}` : ""}. ¿Qué tienes entre manos ahora mismo?
           </h1>
           <div className="flex flex-wrap gap-2">
             {[...AREA_CHOICES, ...areas.filter((a) => !AREA_CHOICES.includes(a))].map((a) => (
@@ -131,12 +131,12 @@ export function Onboarding({ name }: { name: string | null }) {
             <input
               value={custom}
               onChange={(e) => setCustom(e.target.value)}
-              placeholder="Something else…"
-              aria-label="Add your own area"
+              placeholder="Otra cosa…"
+              aria-label="Añade tu propia área"
               className="flex-1 rounded-2xl border border-border-subtle px-4 py-2.5 text-sm"
             />
             <button type="submit" className="rounded-full bg-chip px-4 text-sm font-semibold">
-              Add
+              Añadir
             </button>
           </form>
           <Next disabled={areas.length === 0} onClick={() => setStep(1)} />
@@ -145,7 +145,7 @@ export function Onboarding({ name }: { name: string | null }) {
 
       {step === 1 && (
         <>
-          <h1 className="text-3xl font-extrabold">Name a few things in each.</h1>
+          <h1 className="text-3xl font-extrabold">Nombra unas cuantas cosas en cada una.</h1>
           <div className="flex flex-col gap-4">
             {areas.map((a) => (
               <label key={a} className="flex flex-col gap-1.5">
@@ -170,18 +170,18 @@ export function Onboarding({ name }: { name: string | null }) {
 
       {step === 2 && (
         <>
-          <h1 className="text-3xl font-extrabold">One thing you&apos;re learning this week?</h1>
+          <h1 className="text-3xl font-extrabold">¿Algo que estés aprendiendo esta semana?</h1>
           <input
             autoFocus
             value={topic}
             onChange={(e) => setTopic(e.target.value)}
-            placeholder="e.g. SQL joins, ficheros secuenciales, present perfect"
-            aria-label="What you're learning"
+            placeholder="p. ej. joins en SQL, ficheros secuenciales, present perfect"
+            aria-label="Lo que estás aprendiendo"
             className="rounded-2xl border border-border-subtle px-4 py-3 text-base"
           />
           {allItems.length > 1 && (
             <label className="flex flex-col gap-1.5 text-sm">
-              <span className="font-semibold">For which one?</span>
+              <span className="font-semibold">¿Para cuál?</span>
               <select
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
@@ -203,7 +203,7 @@ export function Onboarding({ name }: { name: string | null }) {
               onClick={finish}
               className="rounded-full bg-ink px-6 py-3 text-sm font-bold text-white transition-transform hover:-translate-y-0.5"
             >
-              {topic.trim() ? "Build my space" : "Skip this, build it"} <ArrowRight />
+              {topic.trim() ? "Crear mi espacio" : "Saltar esto y crearlo"} <ArrowRight />
             </button>
           </div>
         </>
@@ -231,7 +231,7 @@ function Next({ onClick, disabled = false }: { onClick: () => void; disabled?: b
       disabled={disabled}
       className="self-end rounded-full bg-ink px-6 py-3 text-sm font-bold text-white transition-transform hover:-translate-y-0.5 disabled:opacity-40 disabled:hover:translate-y-0"
     >
-      Next <ArrowRight />
+      Siguiente <ArrowRight />
     </button>
   );
 }
@@ -239,7 +239,7 @@ function Next({ onClick, disabled = false }: { onClick: () => void; disabled?: b
 function Back({ onClick }: { onClick: () => void }) {
   return (
     <button type="button" onClick={onClick} className="rounded-full px-4 py-3 text-sm text-ink-muted hover:bg-chip">
-      <ArrowLeft /> Back
+      <ArrowLeft /> Atrás
     </button>
   );
 }

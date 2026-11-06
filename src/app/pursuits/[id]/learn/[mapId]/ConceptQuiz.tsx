@@ -84,7 +84,7 @@ export function ConceptQuiz({
 
   if (!questions) {
     return (
-      <section className={card} aria-label="Quiz">
+      <section className={card} aria-label="Examen">
         <div className="flex flex-wrap gap-2">
           <button
             ref={startRef}
@@ -93,10 +93,10 @@ export function ConceptQuiz({
             disabled={loading}
             className="rounded-full bg-tile-sky px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50"
           >
-            {loading ? "Writing your quiz…" : "Quiz me"} <kbd className="ml-1 text-xs opacity-70">q</kbd>
+            {loading ? "Escribiendo tu examen…" : "Ponme un examen"} <kbd className="ml-1 text-xs opacity-70">q</kbd>
           </button>
           <button type="button" onClick={onDontKnow} className="rounded-full px-4 py-2.5 text-sm text-ink-muted hover:bg-chip">
-            Don&apos;t know
+            No lo sé
           </button>
         </div>
         {error && <p className="text-sm text-red-500">{error}</p>}
@@ -108,13 +108,13 @@ export function ConceptQuiz({
     const correct = results.filter(Boolean).length;
     const pct = correct / questions.length;
     return (
-      <section className={card} aria-label="Quiz result">
+      <section className={card} aria-label="Resultado del examen">
         <div className="flex items-baseline gap-3">
           <span className={`text-4xl font-extrabold ${pct >= 0.8 ? "text-mint" : pct >= 0.5 ? "text-amber" : "text-crimson"}`}>
             {correct}/{questions.length}
           </span>
           <span className="text-sm font-semibold text-ink-muted">
-            {pct >= 0.8 ? "Understood" : pct >= 0.5 ? "Almost" : "Reread it"}
+            {pct >= 0.8 ? "Entendido" : pct >= 0.5 ? "Casi" : "Repásalo"}
           </span>
         </div>
         <ol className="flex flex-col gap-1.5 text-sm">
@@ -129,7 +129,7 @@ export function ConceptQuiz({
           ))}
         </ol>
         <button type="button" onClick={start} disabled={loading} className="self-start rounded-full bg-chip px-5 py-2.5 text-sm font-semibold disabled:opacity-50">
-          {loading ? "Writing…" : "New quiz"}
+          {loading ? "Escribiendo…" : "Nuevo examen"}
         </button>
       </section>
     );
@@ -150,8 +150,8 @@ export function ConceptQuiz({
     }`;
 
   return (
-    <section className={card} aria-label="Quiz">
-      <div className="flex gap-1" aria-label={`Question ${i + 1} of ${questions.length}`}>
+    <section className={card} aria-label="Examen">
+      <div className="flex gap-1" aria-label={`Pregunta ${i + 1} de ${questions.length}`}>
         {questions.map((_, k) => (
           <span
             key={k}
@@ -178,7 +178,7 @@ export function ConceptQuiz({
           {[true, false].map((v, k) => (
             <button key={k} type="button" disabled={checked} onClick={() => setAnswer(v)} className={opt(answer === v, checked && v === q.answer)}>
               <kbd className="mr-2 text-xs opacity-50">{k + 1}</kbd>
-              {v ? "True" : "False"}
+              {v ? "Verdadero" : "Falso"}
             </button>
           ))}
         </div>
@@ -198,8 +198,8 @@ export function ConceptQuiz({
             disabled={checked}
             value={typeof answer === "string" ? answer : ""}
             onChange={(e) => setAnswer(e.target.value)}
-            placeholder="Your answer"
-            aria-label="Your answer"
+            placeholder="Tu respuesta"
+            aria-label="Tu respuesta"
             className={`rounded-2xl border-2 px-4 py-3 text-sm ${checked ? (right ? "border-mint bg-mint/10" : "border-crimson bg-crimson-soft") : "border-border-subtle"}`}
           />
           {checked && !right && <span className="text-sm font-semibold">{q.accepted[0]}</span>}
@@ -220,7 +220,7 @@ export function ConceptQuiz({
           checked ? (right ? "bg-mint" : "bg-crimson") : "bg-ink"
         }`}
       >
-        {checked ? (i + 1 < questions.length ? "Next" : "See result") : "Check"}
+        {checked ? (i + 1 < questions.length ? "Siguiente" : "Ver resultado") : "Comprobar"}
       </button>
     </section>
   );

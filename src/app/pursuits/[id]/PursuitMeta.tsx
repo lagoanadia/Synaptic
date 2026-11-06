@@ -73,7 +73,7 @@ export function PursuitMeta({
         name="section"
         list="pursuit-sections"
         defaultValue={sectionName ?? ""}
-        placeholder="Section (optional)"
+        placeholder="Sección (opcional)"
         className="rounded-md border border-border-subtle bg-white px-3 py-2 text-sm text-ink"
       />
       <datalist id="pursuit-sections">
@@ -86,14 +86,14 @@ export function PursuitMeta({
         disabled={isPending}
         className="text-xs font-semibold text-accent disabled:opacity-50"
       >
-        Save
+        Guardar
       </button>
       <button
         type="button"
         onClick={() => setIsEditing(false)}
         className="text-xs text-ink-faint hover:text-ink"
       >
-        Cancel
+        Cancelar
       </button>
     </form>
   );

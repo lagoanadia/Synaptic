@@ -53,7 +53,7 @@ export function AskPursuit({ pursuitId }: { pursuitId: string }) {
               handleAsk();
             }
           }}
-          placeholder="Ask this pursuit…"
+          placeholder="Pregunta sobre esta asignatura…"
           disabled={isPending}
           className="flex-1 rounded-xl border border-border-subtle bg-white px-3.5 py-2.5 text-sm disabled:opacity-50"
         />
@@ -63,7 +63,7 @@ export function AskPursuit({ pursuitId }: { pursuitId: string }) {
           disabled={isPending || question.trim() === ""}
           className="rounded-full bg-flame px-5 py-2.5 text-sm font-semibold whitespace-nowrap text-white transition-transform hover:-translate-y-0.5 disabled:opacity-50 disabled:hover:translate-y-0"
         >
-          {isPending ? "Thinking…" : "Ask"}
+          {isPending ? "Pensando…" : "Preguntar"}
         </button>
       </div>
       {error && <p className="text-xs text-red-500">{error}</p>}

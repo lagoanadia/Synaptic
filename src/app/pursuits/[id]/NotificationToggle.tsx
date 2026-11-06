@@ -40,7 +40,7 @@ export function NotificationToggle() {
     try {
       const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
       if (!publicKey) {
-        window.alert("Push notifications aren't configured for this app yet.");
+        window.alert("Las notificaciones aún no están configuradas en esta app.");
         return;
       }
       const permission = await Notification.requestPermission();
@@ -86,7 +86,7 @@ export function NotificationToggle() {
       disabled={busy}
       className="shrink-0 text-xs text-ink-faint hover:text-ink disabled:opacity-50"
     >
-      {subscribed ? <><BellIcon size={14} className="inline-block align-[-2px]" /> Reminders on</> : <><BellOffIcon size={14} /> Reminders</>}
+      {subscribed ? <><BellIcon size={14} className="inline-block align-[-2px]" /> Recordatorios activados</> : <><BellOffIcon size={14} /> Recordatorios</>}
     </button>
   );
 }

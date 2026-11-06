@@ -29,7 +29,7 @@ export default async function NotePage({ params }: { params: Promise<{ id: strin
       pursuit={note.pursuit}
       title={autoTitle(note.content, 14)}
       unit={note.section?.name ?? null}
-      date={note.createdAt.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}
+      date={note.createdAt.toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" })}
       dump={null}
       note={{ id: note.id, content: note.content, updatedAt: note.updatedAt.toISOString(), flashcards: note._count.flashcards }}
       files={[]}

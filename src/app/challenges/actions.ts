@@ -15,7 +15,7 @@ import { accessiblePursuits } from "@/lib/reviewData";
 
 async function signedIn() {
   const session = await auth();
-  if (!session?.user?.id) throw new Error("Not signed in");
+  if (!session?.user?.id) throw new Error("No has iniciado sesión");
   return { userId: session.user.id, email: session.user.email };
 }
 
@@ -89,7 +89,7 @@ ${SHAPE[language]}
 Respond with ONLY JSON: {"challenges": [
   {
     "title": "short title",
-    "prompt": "the task in plain language: what the function receives and returns, 1-2 examples. In the learner's language if the notes aren't English.",
+    "prompt": "the task in plain language: what the function receives and returns, 1-2 examples. In Spanish.",
     "entry": "functionName",
     "starter_code": "the function signature with a placeholder body and a short comment",
     "tests": [{"args": [...], "expected": ...}],
@@ -108,11 +108,11 @@ Respond with ONLY JSON: {"challenges": [
     if (!draft || seen.has(titleKey(draft.title)) || isTheoryLookup(draft)) continue;
     seen.add(titleKey(draft.title));
     const basedOn = str(obj(raw).based_on, 120);
-    const prompt = basedOn ? `From your note “${basedOn}”\n\n${draft.prompt}` : draft.prompt;
+    const prompt = basedOn ? `De tu nota “${basedOn}”\n\n${draft.prompt}` : draft.prompt;
     drafts.push({ ...draft, prompt, language, difficulty, pursuitId });
     if (drafts.length === 3) break;
   }
-  if (drafts.length === 0) return { error: "Those weren't real coding challenges — try again" };
+  if (drafts.length === 0) return { error: "No eran retos de programación de verdad — inténtalo de nuevo" };
   await budget.charge();
   return { error: null, drafts };
 }
@@ -136,7 +136,7 @@ export async function saveChallenge(
   const { userId } = await signedIn();
   // Re-validated: it came back from the browser.
   const clean = parseChallenge({ ...draft, starter_code: draft.starterCode, tests: passingTests });
-  if (!clean) return { error: "The AI made a broken challenge — try again" };
+  if (!clean) return { error: "La IA ha hecho un reto roto — inténtalo de nuevo" };
   const pursuit = draft.pursuitId
     ? await prisma.pursuit.findFirst({
         where: { AND: [accessiblePursuits(userId), { id: draft.pursuitId }] },
@@ -179,8 +179,8 @@ export async function saveRun(id: string, code: string, passed: boolean) {
 export async function reviewSolution(id: string, code: string): Promise<{ error: string | null; review?: string }> {
   const { userId, email } = await signedIn();
   const challenge = await prisma.challenge.findFirst({ where: { id, userId } });
-  if (!challenge) return { error: "Challenge not found" };
-  if (code.trim().length < 10) return { error: "Write some code first" };
+  if (!challenge) return { error: "Reto no encontrado" };
+  if (code.trim().length < 10) return { error: "Escribe algo de código primero" };
   const budget = await aiBudget(userId, email);
   const limited = await budget.check();
   if (limited) return { error: limited };
@@ -206,7 +206,7 @@ Respond with ONLY JSON: {"good": ["..."], "fix": ["..."], "next": ["..."]}`,
   );
   const points = (v: unknown) => arr(v).map((x) => str(x, 300)).filter(Boolean).slice(0, 3);
   const review = formatReview({ good: points(data.good), fix: points(data.fix), next: points(data.next) });
-  if (!review) return { error: "Couldn't reach the AI right now" };
+  if (!review) return { error: "No se ha podido contactar con la IA ahora mismo" };
   await budget.charge();
   await prisma.challenge.update({ where: { id }, data: { review, code: code.slice(0, 20000) } });
   return { error: null, review };
@@ -223,7 +223,7 @@ export async function deleteChallenge(id: string) {
 export async function getHint(id: string, code: string, level: number): Promise<{ error: string | null; hint?: string }> {
   const { userId, email } = await signedIn();
   const challenge = await prisma.challenge.findFirst({ where: { id, userId } });
-  if (!challenge) return { error: "Challenge not found" };
+  if (!challenge) return { error: "Reto no encontrado" };
   const budget = await aiBudget(userId, email);
   const limited = await budget.check();
   if (limited) return { error: limited };
@@ -241,7 +241,7 @@ Respond with ONLY JSON: {"hint": "..."}`,
     ),
   );
   const hint = str(data.hint, 800);
-  if (!hint) return { error: "Couldn't reach the AI right now" };
+  if (!hint) return { error: "No se ha podido contactar con la IA ahora mismo" };
   await budget.charge();
   return { error: null, hint };
 }

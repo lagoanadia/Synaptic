@@ -26,9 +26,9 @@ type CardForDisplay = {
 };
 
 const COLUMNS: { key: Status; label: string }[] = [
-  { key: "TODO", label: "To do" },
-  { key: "IN_PROGRESS", label: "In progress" },
-  { key: "DONE", label: "Done" },
+  { key: "TODO", label: "Por hacer" },
+  { key: "IN_PROGRESS", label: "En curso" },
+  { key: "DONE", label: "Hecho" },
 ];
 
 // Same idea as DumpControls' withDraggedInsertedAt.
@@ -115,7 +115,7 @@ function Card({
             disabled={isPending}
             onChange={(e) => setDescription(e.target.value)}
             onBlur={save}
-            placeholder="Description (optional)"
+            placeholder="Descripción (opcional)"
             rows={2}
             className="w-full resize-none rounded-md border border-border-subtle px-2 py-1 text-xs text-ink-muted outline-none disabled:opacity-50"
           />
@@ -153,7 +153,7 @@ function AddCardForm({ onAdd }: { onAdd: (title: string) => void }) {
         onClick={() => setAdding(true)}
         className="self-start text-xs text-ink-faint hover:text-ink"
       >
-        + Add card
+        + Añadir tarjeta
       </button>
     );
   }
@@ -171,7 +171,7 @@ function AddCardForm({ onAdd }: { onAdd: (title: string) => void }) {
         ref={ref}
         autoFocus
         type="text"
-        placeholder="Card title"
+        placeholder="Título de la tarjeta"
         onBlur={() => setAdding(false)}
         className="w-full rounded-md border border-border-subtle bg-white px-2.5 py-1.5 text-sm outline-none"
       />
@@ -256,13 +256,13 @@ export function ProjectBoard({
     setUploadError(null);
     setIsUploading(true);
     // Which step we're on, so an error says WHERE it broke instead of a
-    // generic "couldn't read that file".
-    let stage = "preparing the file";
+    // generic "no se ha podido leer el archivo".
+    let stage = "preparar el archivo";
     try {
       const isPdf = file.type === "application/pdf";
       let pageFiles: File[];
       if (isPdf) {
-        setUploadStatus("Converting PDF pages…");
+        setUploadStatus("Convirtiendo páginas del PDF…");
         const pages = await pdfToImagePages(file);
         pageFiles = pages.map(
           (page, i) =>
@@ -272,13 +272,13 @@ export function ProjectBoard({
         pageFiles = [file];
       }
       if (pageFiles.length === 0) {
-        setUploadError("That PDF has no pages");
+        setUploadError("Ese PDF no tiene páginas");
         return;
       }
 
-      stage = "uploading the pages";
+      stage = "subir las páginas";
       let uploaded = 0;
-      setUploadStatus(`Uploading 0 of ${pageFiles.length}…`);
+      setUploadStatus(`Subiendo 0 de ${pageFiles.length}…`);
       const urls = await mapWithLimit(pageFiles, 4, async (pageFile) => {
         const blob = await upload(`projects/${projectId}/${pageFile.name}`, pageFile, {
           access: "public",
@@ -286,13 +286,13 @@ export function ProjectBoard({
           clientPayload: JSON.stringify({ pursuitId, kind: "image" }),
         });
         uploaded++;
-        setUploadStatus(`Uploading ${uploaded} of ${pageFiles.length}…`);
+        setUploadStatus(`Subiendo ${uploaded} de ${pageFiles.length}…`);
         return blob.url;
       });
 
       // One short server call per chunk of pages, one after another —
       // see readAssignmentPages for why this isn't one big call.
-      stage = "reading the assignment";
+      stage = "leer la tarea";
       const allCards: { title: string; description?: string }[] = [];
       let anySucceeded = false;
       let lastError: string | null = null;
@@ -302,8 +302,8 @@ export function ProjectBoard({
         const last = start + chunk.length;
         setUploadStatus(
           urls.length > 1
-            ? `Reading pages ${first}–${last} of ${urls.length}…`
-            : "Reading the assignment…",
+            ? `Leyendo páginas ${first}–${last} de ${urls.length}…`
+            : "Leyendo la tarea…",
         );
         const result = await readAssignmentPages(pursuitId, chunk, first, urls.length);
         if (result.error) {
@@ -317,17 +317,17 @@ export function ProjectBoard({
       }
 
       if (!anySucceeded) {
-        setUploadError(lastError ?? "Couldn't reach the AI right now. Try again in a few minutes.");
+        setUploadError(lastError ?? "No se ha podido contactar con la IA. Inténtalo en unos minutos.");
         return;
       }
 
-      stage = "saving the cards";
-      setUploadStatus("Saving cards…");
+      stage = "guardar las tarjetas";
+      setUploadStatus("Guardando tarjetas…");
       const saved = await saveProposedCards(pursuitId, projectId, allCards);
       if (saved.error) setUploadError(saved.error);
     } catch (err) {
-      console.error(`Assignment upload failed while ${stage}`, err);
-      setUploadError(`Something went wrong while ${stage} — try again`);
+      console.error(`Ha fallado la subida de la tarea al ${stage}`, err);
+      setUploadError(`Algo ha fallado al ${stage} — inténtalo de nuevo`);
     } finally {
       setIsUploading(false);
       setUploadStatus(null);
@@ -361,7 +361,7 @@ export function ProjectBoard({
                 updateProjectDueDate(pursuitId, projectId, e.target.value || null),
               );
             }}
-            title="Due date"
+            title="Fecha de entrega"
             className="rounded-xl border border-border-subtle bg-white px-3 py-2 text-sm"
           />
           <input
@@ -381,7 +381,7 @@ export function ProjectBoard({
             onClick={() => fileInputRef.current?.click()}
             className="rounded-full border border-accent px-3.5 py-2 text-xs font-semibold text-accent transition-colors hover:bg-accent-soft disabled:opacity-50"
           >
-            {isUploading ? (uploadStatus ?? "Uploading…") : <>From assignment</>}
+            {isUploading ? (uploadStatus ?? "Subiendo…") : <>Desde una tarea</>}
           </button>
         </div>
       </div>

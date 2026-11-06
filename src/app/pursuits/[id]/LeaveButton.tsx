@@ -10,11 +10,11 @@ export function LeaveButton({ pursuitId }: { pursuitId: string }) {
   return (
     <DeleteButton
       action={leavePursuit.bind(null, pursuitId)}
-      confirmMessage="Leave this pursuit? You'll lose access unless invited back."
+      confirmMessage="¿Salir de esta asignatura? Perderás el acceso salvo que te vuelvan a invitar."
       onSuccess={() => router.push("/pursuits")}
       className="text-xs text-ink-faint hover:text-red-500"
     >
-      Leave
+      Salir
     </DeleteButton>
   );
 }

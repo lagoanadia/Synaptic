@@ -32,23 +32,23 @@ export default async function ArenaPage() {
           <span className="text-ink-faint">·</span>
           <h1 className="text-2xl font-extrabold text-orchid italic">Arena</h1>
         </div>
-        <Link href="/pursuits" className="text-sm text-ink-muted hover:underline"><ArrowLeft /> Home</Link>
+        <Link href="/pursuits" className="text-sm text-ink-muted hover:underline"><ArrowLeft /> Inicio</Link>
       </header>
 
       <div className="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1fr)_340px]">
-        <section className="flex flex-col gap-3" aria-label="Headlines">
+        <section className="flex flex-col gap-3" aria-label="Titulares">
           <HeadlinePicker headlines={headlines} />
         </section>
 
         <aside className="flex flex-col gap-6 self-start">
           <div className="flex flex-col gap-3 rounded-3xl bg-white p-5 shadow-[0_1px_2px_rgba(13,13,13,0.06)]">
-            <h2 className="font-extrabold">How you argue</h2>
+            <h2 className="font-extrabold">Cómo argumentas</h2>
             {stats.debates === 0 ? (
-              <p className="text-sm text-ink-muted">Finish a debate to see your scores and habits here.</p>
+              <p className="text-sm text-ink-muted">Termina un debate para ver aquí tus puntuaciones y hábitos.</p>
             ) : (
               <>
                 <p className="text-sm text-ink-muted">
-                  {stats.debates} judged · {stats.wins} won
+                  {stats.debates} juzgados · {stats.wins} ganados
                 </p>
                 {(Object.entries(stats.averages) as [string, number][]).map(([k, v]) => (
                   <div key={k} className="flex items-center gap-2 text-xs">
@@ -61,7 +61,7 @@ export default async function ArenaPage() {
                 ))}
                 {stats.topFallacies.length > 0 && (
                   <p className="text-xs text-ink-muted">
-                    Watch out for: {stats.topFallacies.map((f) => `${f.name} (${f.n}×)`).join(", ")}
+                    Cuidado con: {stats.topFallacies.map((f) => `${f.name} (${f.n}×)`).join(", ")}
                   </p>
                 )}
               </>
@@ -69,8 +69,8 @@ export default async function ArenaPage() {
           </div>
 
           <div className="flex flex-col gap-2">
-            <h2 className="px-1 text-sm font-bold text-ink-muted">Your debates</h2>
-            {debates.length === 0 && <p className="px-1 text-sm text-ink-faint">None yet.</p>}
+            <h2 className="px-1 text-sm font-bold text-ink-muted">Tus debates</h2>
+            {debates.length === 0 && <p className="px-1 text-sm text-ink-faint">Ninguno todavía.</p>}
             {debates.map((d) => {
               const v = d.verdict as Verdict | null;
               return (
@@ -78,15 +78,15 @@ export default async function ArenaPage() {
                   <Link href={`/arena/${d.id}`} className="flex min-w-0 flex-1 flex-col">
                     <span className="line-clamp-2 font-semibold">{d.motion}</span>
                     <span className="text-xs text-ink-muted">
-                      You: {d.side} · {v ? (v.winner === "you" ? "won" : v.winner === "ai" ? "lost" : "draw") : "in progress"}
+                      Tú: {d.side === "for" ? "a favor" : "en contra"} · {v ? (v.winner === "you" ? "ganado" : v.winner === "ai" ? "perdido" : "empate") : "en curso"}
                     </span>
                   </Link>
                   <DeleteButton
                     action={deleteDebate.bind(null, d.id)}
-                    confirmMessage="Delete this debate?"
+                    confirmMessage="¿Eliminar este debate?"
                     className="rounded-full p-1 text-ink-faint opacity-0 group-hover:opacity-100 hover:text-red-600 focus:opacity-100"
                   >
-                    <TrashIcon size={14} title="Delete debate" />
+                    <TrashIcon size={14} title="Eliminar debate" />
                   </DeleteButton>
                 </div>
               );

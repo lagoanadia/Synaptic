@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { draftChallenge, saveChallenge } from "./actions";
 import { runInSandbox } from "./sandbox";
 import { LANGUAGE_INFO, LANGUAGES, type Language } from "@/lib/challenge";
+import { DIFFICULTIES, LANGUAGE_STYLE } from "./look";
 
 export function NewChallenge({
   subjects,
@@ -26,15 +27,15 @@ export function NewChallenge({
   function create() {
     setError(null);
     startTransition(async () => {
-      setStatus("Writing challenges…");
+      setStatus("Escribiendo retos…");
       const r = await draftChallenge({ language, difficulty, pursuitId: subject || null, topic });
       if (r.error || !r.drafts) {
         setStatus(null);
-        return setError(r.error ?? "Try again");
+        return setError(r.error ?? "Reintentar");
       }
       // Check each answer key in the sandbox; keep only tests its reference
       // solution actually passes, and only challenges with 2+ of them.
-      setStatus(language === "javascript" ? "Checking…" : `Checking (loading ${LANGUAGE_INFO[language].label})…`);
+      setStatus(language === "javascript" ? "Comprobando…" : `Comprobando (cargando ${LANGUAGE_INFO[language].label})…`);
       let saved = 0;
       for (const draft of r.drafts) {
         const check = await runInSandbox(language, draft.solution, draft.entry, draft.tests);
@@ -43,7 +44,7 @@ export function NewChallenge({
         if (!(await saveChallenge(draft, passing)).error) saved++;
       }
       setStatus(null);
-      if (saved === 0) return setError("Those didn't check out — try again");
+      if (saved === 0) return setError("No han pasado la comprobación — inténtalo de nuevo");
       router.refresh();
     });
   }
@@ -53,7 +54,7 @@ export function NewChallenge({
 
   return (
     <div className="flex flex-col gap-5 rounded-3xl bg-white p-5 shadow-[0_1px_2px_rgba(13,13,13,0.06)]">
-      <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Language">
+      <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Lenguaje">
         {LANGUAGES.map((l) => (
           <button
             key={l}
@@ -65,18 +66,18 @@ export function NewChallenge({
               language === l ? "border-ink bg-white" : "border-transparent bg-chip hover:border-border-subtle"
             }`}
           >
-            <span className={`grid size-10 shrink-0 place-items-center rounded-xl font-mono text-sm font-extrabold ${STYLE[l].badge}`}>
+            <span className={`grid size-10 shrink-0 place-items-center rounded-xl font-mono text-sm font-extrabold ${LANGUAGE_STYLE[l].badge}`}>
               {LANGUAGE_INFO[l].short}
             </span>
             <span className="flex min-w-0 flex-col">
               <span className="text-sm font-bold">{LANGUAGE_INFO[l].label}</span>
-              <span className="truncate text-xs text-ink-muted">{STYLE[l].what}</span>
+              <span className="truncate text-xs text-ink-muted">{LANGUAGE_STYLE[l].what}</span>
             </span>
           </button>
         ))}
       </div>
 
-      <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Difficulty">
+      <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Dificultad">
         {DIFFICULTIES.map((d, n) => (
           <button
             key={d.key}
@@ -93,15 +94,15 @@ export function NewChallenge({
                 <span key={b} className={`w-1.5 rounded-full ${b <= n ? d.bar : "bg-ink-faint/30"}`} style={{ height: `${(b + 1) * 6 + 2}px` }} />
               ))}
             </span>
-            <span className="text-xs font-bold capitalize">{d.key}</span>
+            <span className="text-xs font-bold capitalize">{d.label}</span>
           </button>
         ))}
       </div>
 
       <div className="flex flex-col gap-2">
-        <span className="text-xs font-bold text-ink-muted">From my notes</span>
+        <span className="text-xs font-bold text-ink-muted">De mis notas</span>
         <div className="flex flex-wrap gap-1.5">
-          {[{ id: "", title: "Everything" }, ...subjects].map((s) => (
+          {[{ id: "", title: "Todo" }, ...subjects].map((s) => (
             <button
               key={s.id}
               type="button"
@@ -136,8 +137,8 @@ export function NewChallenge({
         <input
           value={topic}
           onChange={(e) => setTopic(e.target.value)}
-          placeholder="…or any topic"
-          aria-label="Topic"
+          placeholder="…o cualquier tema"
+          aria-label="Tema"
           className="rounded-2xl border border-border-subtle px-4 py-2.5 text-sm"
         />
       </div>
@@ -149,7 +150,7 @@ export function NewChallenge({
         className="flex items-center justify-center gap-3 rounded-2xl bg-mint px-6 py-3.5 text-sm font-bold text-white disabled:opacity-60"
       >
         {isPending ? (
-          (status ?? "Working…")
+          (status ?? "Trabajando…")
         ) : (
           <>
             <span className="flex gap-1" aria-hidden>
@@ -157,7 +158,7 @@ export function NewChallenge({
                 <span key={k} className="size-2 rounded-sm bg-white/80" />
               ))}
             </span>
-            Give me 3 <ArrowRight />
+            Dame 3 <ArrowRight />
           </>
         )}
       </button>
@@ -166,22 +167,12 @@ export function NewChallenge({
   );
 }
 
-const STYLE: Record<Language, { badge: string; what: string }> = {
-  javascript: { badge: "bg-amber text-ink", what: "Functions" },
-  typescript: { badge: "bg-tile-blue text-white", what: "Typed functions" },
-  python: { badge: "bg-mint text-white", what: "Functions" },
-  react: { badge: "bg-ink text-tile-sky", what: "Components" },
-};
 
-const DIFFICULTIES = [
-  { key: "easy", bar: "bg-mint" },
-  { key: "medium", bar: "bg-amber" },
-  { key: "hard", bar: "bg-crimson" },
-] as const;
+
 
 const TOPICS: Record<Language, string[]> = {
-  javascript: ["arrays", "strings", "objects", "recursion"],
-  typescript: ["types", "interfaces", "generics", "arrays"],
-  python: ["lists", "dictionaries", "strings", "recursion"],
-  react: ["props", "lists", "conditional rendering", "state"],
+  javascript: ["arrays", "strings", "objetos", "recursividad"],
+  typescript: ["tipos", "interfaces", "genéricos", "arrays"],
+  python: ["listas", "diccionarios", "strings", "recursividad"],
+  react: ["props", "listas", "renderizado condicional", "estado"],
 };

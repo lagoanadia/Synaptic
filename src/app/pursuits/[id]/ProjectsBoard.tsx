@@ -22,7 +22,7 @@ function daysUntil(dueDate: string) {
 
 function DueBadge({ dueDate }: { dueDate: string }) {
   const days = daysUntil(dueDate);
-  const label = new Date(dueDate).toLocaleDateString("en-US", {
+  const label = new Date(dueDate).toLocaleDateString("es-ES", {
     timeZone: "UTC",
     month: "short",
     day: "numeric",
@@ -39,7 +39,7 @@ function DueBadge({ dueDate }: { dueDate: string }) {
             : "bg-chip text-ink-muted"
       }`}
     >
-      {overdue ? `Overdue · ${label}` : `Due ${label}`}
+      {overdue ? `Atrasado · ${label}` : `Entrega ${label}`}
     </span>
   );
 }
@@ -51,7 +51,7 @@ function ProjectCardTile({ pursuitId, project }: { pursuitId: string; project: P
     <div className="group relative flex flex-col gap-3 rounded-2xl border border-border-subtle bg-white p-4 transition-shadow hover:shadow-[0_8px_16px_rgba(13,13,13,0.08)]">
       <DeleteButton
         action={deleteProject.bind(null, pursuitId, project.id)}
-        confirmMessage={`Delete "${project.title}"? Its board and cards go with it — this can't be undone.`}
+        confirmMessage={`¿Eliminar "${project.title}"? Se borran también su tablero y tarjetas — no se puede deshacer.`}
         className="absolute top-3 right-3 text-ink-faint opacity-0 hover:text-red-500 group-hover:opacity-100"
       >
         ×
@@ -107,7 +107,7 @@ export function ProjectsBoard({
               const id = await createProject(pursuitId, title, dueDate);
               router.push(`/pursuits/${pursuitId}/projects/${id}`);
             } catch {
-              setError("Couldn't create that project — try again");
+              setError("No se ha podido crear el proyecto — inténtalo de nuevo");
             }
           });
         }}
@@ -116,7 +116,7 @@ export function ProjectsBoard({
         <input
           ref={titleRef}
           type="text"
-          placeholder="New project title"
+          placeholder="Título del proyecto"
           required
           disabled={isPending}
           className="flex-1 rounded-xl border border-border-subtle bg-white px-3.5 py-2.5 text-sm disabled:opacity-50"
@@ -124,12 +124,12 @@ export function ProjectsBoard({
         <input
           ref={dateRef}
           type="date"
-          title="Due date (optional)"
+          title="Fecha de entrega (opcional)"
           disabled={isPending}
           className="rounded-xl border border-border-subtle bg-white px-3 py-2.5 text-sm disabled:opacity-50"
         />
         <span
-          title="The only board template today — more can be added later"
+          title="La única plantilla por ahora"
           className="rounded-full bg-accent-soft px-3 py-2 text-xs font-semibold text-accent whitespace-nowrap"
         >
           <KanbanIcon size={14} /> Kanban
@@ -139,7 +139,7 @@ export function ProjectsBoard({
           disabled={isPending}
           className="rounded-full bg-ink px-5 py-2.5 text-sm font-semibold whitespace-nowrap text-white transition-transform hover:-translate-y-0.5 hover:shadow-lg disabled:opacity-50"
         >
-          + New
+          + Nuevo
         </button>
       </form>
       {error && <p className="text-xs text-red-500">{error}</p>}

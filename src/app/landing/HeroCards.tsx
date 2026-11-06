@@ -59,38 +59,38 @@ export function HeroCards() {
       <Reveal delayMs={0}>
         <div data-tilt-card style={tiltStyle} className={`${cardBase} bg-white`}>
           <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-accent" />
-          <span className="text-xs font-semibold opacity-65">Chem · active</span>
-          <p className="mt-2 text-[0.95rem] font-bold leading-tight">Ch.9 — Thermodynamics</p>
+          <span className="text-xs font-semibold opacity-65">Química · activa</span>
+          <p className="mt-2 text-[0.95rem] font-bold leading-tight">Tema 9 — Termodinámica</p>
           <span className="mt-3 inline-block rounded-full bg-accent-soft px-2.5 py-0.5 text-[0.7rem] font-bold text-accent">
-            12 cards
+            12 tarjetas
           </span>
         </div>
       </Reveal>
       <Reveal delayMs={90}>
         <div data-tilt-card style={tiltStyle} className={`${cardBase} bg-accent text-accent-fg`}>
           <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-white" />
-          <span className="text-xs font-semibold opacity-65">Bio Lab · active</span>
-          <p className="mt-2 text-[0.95rem] font-bold leading-tight">Prep organized into 3 sections</p>
+          <span className="text-xs font-semibold opacity-65">Lab de Bio · activa</span>
+          <p className="mt-2 text-[0.95rem] font-bold leading-tight">Preparación organizada en 3 secciones</p>
           <span className="mt-3 inline-block rounded-full bg-white/25 px-2.5 py-0.5 text-[0.7rem] font-bold">
-            Today
+            Hoy
           </span>
         </div>
       </Reveal>
       <Reveal delayMs={180}>
         <div data-tilt-card style={tiltStyle} className={`${cardBase} bg-[#ebda3c]`}>
           <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-accent" />
-          <span className="text-xs font-semibold opacity-65">Essay · active</span>
-          <p className="mt-2 text-[0.95rem] font-bold leading-tight">Outline shared with 2 classmates</p>
+          <span className="text-xs font-semibold opacity-65">Ensayo · activo</span>
+          <p className="mt-2 text-[0.95rem] font-bold leading-tight">Esquema compartido con 2 compañeros</p>
           <span className="mt-3 inline-block rounded-full bg-black/10 px-2.5 py-0.5 text-[0.7rem] font-bold">
-            Shared
+            Compartido
           </span>
         </div>
       </Reveal>
       <Reveal delayMs={270}>
         <div data-tilt-card style={tiltStyle} className={`${cardBase} bg-[#b5502e] text-white`}>
-          <span className="text-[0.75rem] font-bold opacity-85">Ask</span>
+          <span className="text-[0.75rem] font-bold opacity-85">Preguntar</span>
           <p className="mt-2 text-[0.95rem] font-bold leading-tight">
-            &quot;What&apos;s the Krebs cycle?&quot; <ArrowRight /> answered from your notes
+            &quot;¿Qué es el ciclo de Krebs?&quot; <ArrowRight /> respondido con tus notas
           </p>
         </div>
       </Reveal>

@@ -36,7 +36,7 @@ export function MemberRow({
       )
       <DeleteButton
         action={removeMember.bind(null, pursuitId, memberId)}
-        confirmMessage={`Remove ${name} from this pursuit?`}
+        confirmMessage={`¿Quitar a ${name} de esta asignatura?`}
         className="text-ink-faint hover:text-red-500"
       >
         ×

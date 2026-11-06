@@ -15,7 +15,7 @@ const appFont = Plus_Jakarta_Sans({
 
 export const metadata: Metadata = {
   title: "Synaptic",
-  description: "Capture things learned by doing, then organize them later.",
+  description: "Apunta lo que aprendes y organízalo después.",
   manifest: "/manifest.webmanifest",
   // iOS ignores most of the web manifest and needs this to open standalone.
   appleWebApp: {
@@ -41,26 +41,25 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   const userId = session?.user?.id;
   const [user, sections] = userId
     ? await Promise.all([
-        prisma.user.findUnique({ where: { id: userId }, select: { plan: true, locale: true } }),
+        prisma.user.findUnique({ where: { id: userId }, select: { plan: true } }),
         prisma.section.findMany({ where: { userId }, orderBy: { order: "asc" }, select: { id: true, name: true } }),
       ])
     : [null, []];
 
   return (
-    <html lang="en" className={`${appFont.variable} h-full antialiased`}>
+    <html lang="es" className={`${appFont.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
         <RegisterServiceWorker />
         {session?.user && user && (
           <NavDrawer
             user={{ name: session.user.name ?? null, email: session.user.email ?? null, image: session.user.image ?? null }}
             plan={user.plan}
-            locale={user.locale}
             sections={sections}
           />
         )}
         <div className={`flex flex-1 flex-col ${session?.user ? "pl-12 sm:pl-14" : ""}`}>{children}</div>
         <footer className="px-6 py-4 text-center text-xs text-ink-faint">
-          Built by{" "}
+          Hecho por{" "}
           <a
             href="https://github.com/lagoanadia"
             target="_blank"
@@ -75,11 +74,11 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
           </Link>{" "}
           ·{" "}
           <Link href="/privacy" className="hover:underline">
-            Privacy
+            Privacidad
           </Link>{" "}
           ·{" "}
           <Link href="/terms" className="hover:underline">
-            Terms
+            Términos
           </Link>
         </footer>
       </body>

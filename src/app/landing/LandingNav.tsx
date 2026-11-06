@@ -22,13 +22,13 @@ export function LandingNav() {
 
         <nav className="hidden gap-8 text-sm font-medium text-[#0d0d0d] sm:flex">
           <a href="#features" className="transition-colors hover:text-accent">
-            Features
+            Funciones
           </a>
           <a href="#pricing" className="transition-colors hover:text-accent">
-            Pricing
+            Precios
           </a>
           <a href="#contact" className="transition-colors hover:text-accent">
-            Contact
+            Contacto
           </a>
         </nav>
 
@@ -37,13 +37,13 @@ export function LandingNav() {
             align="right"
             triggerClassName="rounded-full bg-[#0d0d0d] px-5 py-2.5 text-sm font-semibold text-white transition-transform hover:-translate-y-0.5 hover:shadow-lg"
           >
-            Get started
+            Empezar
           </AuthMenu>
         </div>
 
         <button
           type="button"
-          aria-label="Open menu"
+          aria-label="Abrir menú"
           onClick={() => setOpen((o) => !o)}
           className="flex h-8 w-8 flex-col justify-center gap-1.5 sm:hidden"
         >
@@ -62,7 +62,7 @@ export function LandingNav() {
           open ? "translate-y-0 opacity-100" : "pointer-events-none -translate-y-3 opacity-0"
         }`}
       >
-        {["Features", "Pricing", "Contact"].map((label) => (
+        {["Funciones", "Precios", "Contacto"].map((label) => (
           <a
             key={label}
             href={`#${label.toLowerCase()}`}
@@ -77,7 +77,7 @@ export function LandingNav() {
           align="center"
           triggerClassName="mt-2 w-full rounded-full bg-[#0d0d0d] px-5 py-2.5 text-center text-sm font-semibold text-white"
         >
-          Get started
+          Empezar
         </AuthMenu>
       </div>
     </header>

@@ -36,7 +36,7 @@ const CalloutShortcut = Extension.create({
 });
 
 const CODE_LANGUAGES = [
-  { value: "", label: "Plain" },
+  { value: "", label: "Texto" },
   { value: "js", label: "JavaScript" },
   { value: "ts", label: "TypeScript" },
   { value: "python", label: "Python" },
@@ -50,7 +50,7 @@ export function RichEditor({
   initialText,
   onChange,
   onUploadImage,
-  placeholder = "Write, or type # for a heading, - for a list, ! for a callout…",
+  placeholder = "Escribe, o usa # para un título, - para una lista, ! para un aviso…",
   editorRef,
   toolbarExtras,
   autofocus = false,
@@ -105,7 +105,7 @@ export function RichEditor({
     ],
     content: textToDoc(initialText),
     editorProps: {
-      attributes: { class: "rich-editor", "aria-label": "Page content" },
+      attributes: { class: "rich-editor", "aria-label": "Contenido de la página" },
       handlePaste: (_view, event) => {
         const files = [...(event.clipboardData?.files ?? [])].filter((f) => f.type.startsWith("image/"));
         if (files.length === 0 || !uploadRef.current || !editorInstance.current) return false;
@@ -200,31 +200,31 @@ function Toolbar({
   }
   function setLink() {
     if (s.link) return c().unsetLink().run();
-    const url = window.prompt("Link URL");
+    const url = window.prompt("URL del enlace");
     if (url) c().extendMarkRange("link").setLink({ href: url }).run();
   }
 
   return (
     <div className="sticky top-0 z-10 flex flex-wrap items-center gap-0.5 rounded-t-2xl border-b border-border-subtle bg-white/95 px-2 py-1.5 backdrop-blur">
-      <Btn on={s.h1} onClick={() => c().toggleHeading({ level: 1 }).run()} title="Heading 1 (# )">H1</Btn>
-      <Btn on={s.h2} onClick={() => c().toggleHeading({ level: 2 }).run()} title="Heading 2 (## )">H2</Btn>
-      <Btn on={s.h3} onClick={() => c().toggleHeading({ level: 3 }).run()} title="Heading 3 (### )">H3</Btn>
+      <Btn on={s.h1} onClick={() => c().toggleHeading({ level: 1 }).run()} title="Título 1 (# )">H1</Btn>
+      <Btn on={s.h2} onClick={() => c().toggleHeading({ level: 2 }).run()} title="Título 2 (## )">H2</Btn>
+      <Btn on={s.h3} onClick={() => c().toggleHeading({ level: 3 }).run()} title="Título 3 (### )">H3</Btn>
       <Sep />
-      <Btn on={s.bold} onClick={() => c().toggleBold().run()} title="Bold (Ctrl+B)"><b>B</b></Btn>
-      <Btn on={s.italic} onClick={() => c().toggleItalic().run()} title="Italic (Ctrl+I)"><i>I</i></Btn>
-      <Btn on={s.underline} onClick={() => c().toggleUnderline().run()} title="Underline (Ctrl+U)"><u>U</u></Btn>
-      <Btn on={s.link} onClick={setLink} title="Link"><LinkIcon /></Btn>
+      <Btn on={s.bold} onClick={() => c().toggleBold().run()} title="Negrita (Ctrl+B)"><b>N</b></Btn>
+      <Btn on={s.italic} onClick={() => c().toggleItalic().run()} title="Cursiva (Ctrl+I)"><i>K</i></Btn>
+      <Btn on={s.underline} onClick={() => c().toggleUnderline().run()} title="Subrayado (Ctrl+U)"><u>S</u></Btn>
+      <Btn on={s.link} onClick={setLink} title="Enlace"><LinkIcon /></Btn>
       <Sep />
-      <Btn on={s.bullet} onClick={() => c().toggleBulletList().run()} title="Bullet list (- )">•</Btn>
-      <Btn on={s.numbered} onClick={toggleNumbered} title="Numbered list (1. )">1.</Btn>
-      <Btn on={s.lettered} onClick={toggleLettered} title="Lettered list">a.</Btn>
-      <Btn on={s.callout} onClick={() => c().toggleBlockquote().run()} title="Callout (! )"><QuoteIcon /></Btn>
-      <Btn on={s.code} onClick={() => c().toggleCodeBlock().run()} title="Code block (```)">{"</>"}</Btn>
+      <Btn on={s.bullet} onClick={() => c().toggleBulletList().run()} title="Lista (- )">•</Btn>
+      <Btn on={s.numbered} onClick={toggleNumbered} title="Lista numerada (1. )">1.</Btn>
+      <Btn on={s.lettered} onClick={toggleLettered} title="Lista con letras">a.</Btn>
+      <Btn on={s.callout} onClick={() => c().toggleBlockquote().run()} title="Aviso (! )"><QuoteIcon /></Btn>
+      <Btn on={s.code} onClick={() => c().toggleCodeBlock().run()} title="Bloque de código (```)">{"</>"}</Btn>
       {s.code && (
         <select
           value={s.codeLang}
           onChange={(e) => c().updateAttributes("codeBlock", { language: e.target.value || null }).run()}
-          aria-label="Code language"
+          aria-label="Lenguaje del código"
           className="rounded-md border border-border-subtle px-1.5 py-1 text-xs"
         >
           {CODE_LANGUAGES.map((l) => (
@@ -232,18 +232,18 @@ function Toolbar({
           ))}
         </select>
       )}
-      <Btn on={s.table} onClick={() => c().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()} title="Insert table">▦</Btn>
+      <Btn on={s.table} onClick={() => c().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()} title="Insertar tabla">▦</Btn>
       {s.table && (
         <span className="flex items-center gap-0.5 rounded-md bg-chip px-1 text-xs">
-          <Btn onClick={() => c().addRowAfter().run()} title="Add row">+row</Btn>
-          <Btn onClick={() => c().addColumnAfter().run()} title="Add column">+col</Btn>
-          <Btn onClick={() => c().deleteRow().run()} title="Delete row">−row</Btn>
-          <Btn onClick={() => c().deleteColumn().run()} title="Delete column">−col</Btn>
-          <Btn onClick={() => c().deleteTable().run()} title="Delete table"><XIcon /></Btn>
+          <Btn onClick={() => c().addRowAfter().run()} title="Añadir fila">+fila</Btn>
+          <Btn onClick={() => c().addColumnAfter().run()} title="Añadir columna">+col</Btn>
+          <Btn onClick={() => c().deleteRow().run()} title="Eliminar fila">−fila</Btn>
+          <Btn onClick={() => c().deleteColumn().run()} title="Eliminar columna">−col</Btn>
+          <Btn onClick={() => c().deleteTable().run()} title="Eliminar tabla"><XIcon /></Btn>
         </span>
       )}
       {onImage && (
-        <Btn onClick={onImage} title="Insert image (or paste/drop one)">{uploading ? "…" : <ImageIcon />}</Btn>
+        <Btn onClick={onImage} title="Insertar imagen (o pégala / arrástrala)">{uploading ? "…" : <ImageIcon />}</Btn>
       )}
       {extras && (
         <>
