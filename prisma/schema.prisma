@@ -48,6 +48,8 @@ model User {
   organizeUsage OrganizeUsage[]
 
   classroomConnection GoogleClassroomConnection?
+  calendarConnection  GoogleCalendarConnection?
+  calendarEvents      CalendarEvent[]
   pushSubscriptions   PushSubscription[]
   sentNotifications   SentDeadlineNotification[]
   challenges          Challenge[]
@@ -189,6 +191,7 @@ model Pursuit {
   projects        Project[]
   conceptMaps     ConceptMap[]
   challenges      Challenge[]
+  calendarEvents  CalendarEvent[]
 }
 
 // Units inside one subject ("UD1", "UD2"), shared by its pages and notes so
@@ -205,6 +208,7 @@ model PursuitContentSection {
   brainDumps BrainDump[]
   notes      Note[]
   maps       ConceptMap[]
+  events     CalendarEvent[]
 
   // The Classroom unit this unit maps to ("UD2"), matched against file
   // names, so the slide picker only shows that unit's slides.
@@ -549,3 +553,51 @@ model Challenge {
 // A debate about a headline with an AI on the other side.
 // messages: [{ role: "user" | "ai", text, fallacies? }].
 
+// ─── Calendar ───
+// Exams, tasks and anything else with a date. Deliverables come from
+// Project.dueDate and Google events are read live, so neither is stored here.
+model CalendarEvent {
+  id        String   @id @default(cuid())
+  title     String
+  // "exam" | "task" | "event"
+  kind      String   @default("event")
+  // A day (allDay) or a moment.
+  date      DateTime
+  allDay    Boolean  @default(true)
+  done      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  // The copy in Google Calendar, when sending is on.
+  googleEventId String?
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  pursuitId String?
+  pursuit   Pursuit? @relation(fields: [pursuitId], references: [id], onDelete: SetNull)
+  // An exam's unit: what it covers.
+  unitId String?
+  unit   PursuitContentSection? @relation(fields: [unitId], references: [id], onDelete: SetNull)
+
+  @@index([userId, date])
+}
+
+// Google Calendar, its own consent (like Classroom). What to bring in and
+// send out is chosen by the user.
+model GoogleCalendarConnection {
+  id           String   @id @default(cuid())
+  accessToken  String
+  refreshToken String
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+
+  // Show events from these calendars (ids); [] = the primary one.
+  pull         Boolean  @default(true)
+  calendarIds  String[] @default([])
+  // Copy exams, deliverables and tasks into the primary calendar.
+  push         Boolean  @default(true)
+  // A 20-minute review block before each exam.
+  reviewBlocks Boolean  @default(false)
+
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}

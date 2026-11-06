@@ -7,7 +7,7 @@ import { signOutAction } from "./actions";
 import { createSection } from "./pursuits/actions";
 import { MiniNotebook } from "./Covers";
 import { SearchIcon, SearchPalette } from "./SearchPalette";
-import { CardsIcon, CodeIcon, HomeIcon, XIcon } from "./icons";
+import { CalendarIcon, CardsIcon, CodeIcon, HomeIcon, XIcon } from "./icons";
 import type { NotebookCover } from "@/lib/covers";
 
 type Props = {
@@ -71,6 +71,9 @@ export function Sidebar({ user, plan, notebooks }: Props) {
             <SearchIcon size={16} /> <span className="flex-1 text-left">Buscar</span>
             <kbd className="text-[10px] text-ink-faint">Ctrl K</kbd>
           </button>
+          <Link href="/calendar" className={row(active("/calendar"))}>
+            <CalendarIcon size={16} className="block" /> Calendario
+          </Link>
           <Link href="/review" className={row(active("/review"))}>
             <CardsIcon size={16} className="block" /> Repasar
           </Link>
