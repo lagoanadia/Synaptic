@@ -1359,3 +1359,17 @@ export async function addPageFile(pursuitId: string, dumpId: string, name: strin
   revalidatePath(`/pursuits/${pursuitId}/dump/${dumpId}`);
   return { error: null };
 }
+
+export async function renameUnit(pursuitId: string, sectionId: string, name: string): Promise<{ error: string | null }> {
+  await requireAccess(pursuitId);
+  const clean = name.trim().slice(0, 60);
+  if (!clean) return { error: "Give it a name" };
+  const taken = await prisma.pursuitContentSection.findFirst({
+    where: { pursuitId, name: clean, id: { not: sectionId } },
+    select: { id: true },
+  });
+  if (taken) return { error: `There's already a unit called "${clean}"` };
+  await prisma.pursuitContentSection.updateMany({ where: { id: sectionId, pursuitId }, data: { name: clean } });
+  revalidatePath(`/pursuits/${pursuitId}`);
+  return { error: null };
+}

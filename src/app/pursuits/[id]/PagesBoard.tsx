@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState, useTransition } from "react";
 import { CheckIcon, TrashIcon } from "@/app/icons";
 import { DeleteButton } from "../DeleteButton";
-import { createContentSection, deleteContentSection, listClassroomFiles, movePage, setUnitClassroom } from "./actions";
+import { createContentSection, deleteContentSection, listClassroomFiles, movePage, renameUnit, setUnitClassroom } from "./actions";
 import { ImportSlides } from "./ImportSlides";
 import { unitCode } from "@/lib/slides";
 
@@ -124,7 +124,11 @@ export function PagesBoard({
               }`}
             >
               <header className="flex items-center gap-2 px-1.5 py-1">
-                <span className="min-w-0 flex-1 truncate text-sm font-extrabold">{col.name}</span>
+                {col.id ? (
+                  <UnitName pursuitId={pursuitId} id={col.id} name={col.name} />
+                ) : (
+                  <span className="min-w-0 flex-1 truncate text-sm font-extrabold">{col.name}</span>
+                )}
                 {col.id && classroomCourseId && (
                   <select
                     value={col.classroomUnit ?? ""}
@@ -213,5 +217,56 @@ export function PagesBoard({
         })}
       </div>
     </div>
+  );
+}
+
+// Click the unit's name to rename it (Enter saves, Esc cancels).
+function UnitName({ pursuitId, id, name }: { pursuitId: string; id: string; name: string }) {
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(name);
+  const [error, setError] = useState<string | null>(null);
+  const [, startTransition] = useTransition();
+
+  function save() {
+    const next = value.trim();
+    setEditing(false);
+    if (!next || next === name) return setValue(name);
+    startTransition(async () => {
+      const r = await renameUnit(pursuitId, id, next);
+      if (r.error) {
+        setError(r.error);
+        setValue(name);
+      } else setError(null);
+    });
+  }
+
+  if (editing) {
+    return (
+      <input
+        autoFocus
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onBlur={save}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") save();
+          if (e.key === "Escape") {
+            setValue(name);
+            setEditing(false);
+          }
+        }}
+        aria-label="Unit name"
+        className="min-w-0 flex-1 rounded-lg bg-white px-2 py-0.5 text-sm font-extrabold"
+      />
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={() => setEditing(true)}
+      title={error ?? "Rename"}
+      className={`min-w-0 flex-1 truncate rounded-lg px-1 text-left text-sm font-extrabold hover:bg-white/60 ${error ? "text-red-600" : ""}`}
+    >
+      {value}
+    </button>
   );
 }
