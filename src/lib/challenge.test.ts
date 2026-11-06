@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { deepEqual, formatReview, jsHarness, parseChallenge, parseReview, type RunOutput } from "./challenge";
+import { deepEqual, formatReview, isTheoryLookup, jsHarness, parseChallenge, parseReview, type RunOutput } from "./challenge";
 
 // The harness is a function body; run it the way the Worker does.
 const run = (code: string, entry: string, tests: { args: unknown[]; expected: unknown }[]) =>
@@ -93,5 +93,16 @@ describe("reviews", () => {
     const old = parseReview("What works\n- Uses match.\nCould be better\n- Prints instead of returning.\nLearn next\n- Dictionaries.");
     expect(old).toEqual({ good: ["Uses match."], fix: ["Prints instead of returning."], next: ["Dictionaries."] });
     expect(parseReview(formatReview(old))).toEqual(old);
+  });
+});
+
+describe("isTheoryLookup", () => {
+  it("rejects lookup tables of theory text", () => {
+    const solution = `function Phase({ phase }) { const d = { 1: "Descubrimiento: el usuario la encuentra", 2: "Instalación: se verifica la firma", 3: "Ejecución: se piden permisos" }; return <p>{d[phase] ?? "Invalid phase"}</p>; }`;
+    expect(isTheoryLookup({ tests: [{ args: [{ phase: 1 }], expected: "Descubrimiento: el usuario la encuentra" }], solution })).toBe(true);
+  });
+  it("keeps real logic with short outputs", () => {
+    const solution = "function finalState(events) { let s = 'installed'; for (const e of events) { if (e === 'open' && s !== 'removed') s = 'running'; } return s; }";
+    expect(isTheoryLookup({ tests: [{ args: [["open"]], expected: "running" }, { args: [[]], expected: "installed" }], solution })).toBe(false);
   });
 });

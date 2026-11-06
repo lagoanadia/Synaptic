@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { aiBudget } from "@/lib/access";
 import { arr, askJson, obj, str } from "@/lib/ai";
 import { shuffle } from "@/lib/review";
-import { asLanguage, formatReview, LANGUAGE_INFO, parseChallenge, type ChallengeDraft, type ChallengeTest, type Language } from "@/lib/challenge";
+import { asLanguage, formatReview, isTheoryLookup, LANGUAGE_INFO, parseChallenge, type ChallengeDraft, type ChallengeTest, type Language } from "@/lib/challenge";
 import { accessiblePursuits } from "@/lib/reviewData";
 
 // No code ever runs on the server. The server drafts a challenge (with a
@@ -71,10 +71,18 @@ ${picked.map((n, i) => `--- NOTE ${i + 1} (${n.pursuit.title}) ---\n${n.content.
 
   const data = obj(
     await askJson(
-      `Create THREE different small coding challenges in ${LANGUAGE_INFO[language].label} for someone getting back into coding after a break. Difficulty: ${difficulty} (easy = 5-15 lines, medium = loops/conditions/data structures, hard = a small algorithm).
+      `Create FIVE different small coding challenges in ${LANGUAGE_INFO[language].label} for someone getting back into coding after a break. Difficulty: ${difficulty} (easy = 5-15 lines, medium = loops/conditions/data structures, hard = a small algorithm).
 ${context}
 ${topic ? `Topic requested: ${topic}.` : ""}
-Each of the three must practice a DIFFERENT idea (ideally from a different note), and none may be the same as or a variant of these existing challenges: ${taken.length ? taken.map((t) => `"${t}"`).join(", ") : "(none yet)"}.
+Each must practice a DIFFERENT idea (ideally from a different note), and none may be the same as or a variant of these existing challenges: ${taken.length ? taken.map((t) => `"${t}"`).join(", ") : "(none yet)"}.
+
+Be strict about what makes a GOOD coding challenge: solving it must take real programming — processing input data with loops, conditions, accumulating, transforming, validating, counting, searching or simulating. The notes give the DOMAIN (the kind of data and rules), never text to copy.
+REJECT (never write) challenges that are theory turned into code:
+- mapping a number/key to a description or definition from the notes ("phase 3 → 'Execution: …'")
+- returning memorized sentences, names or facts; lookup tables of strings
+- anything whose solution is mostly copied text or a big switch/if-chain of constants
+Instead, turn the idea into DATA + RULES. Example: a note on an app's lifecycle phases → "Given a list of lifecycle events, return the final state, or 'invalid' if a transition isn't allowed" (a state machine), not "return the description of phase N". A note on colour theory → "Given a list of RGB colours, return those that are greys", not "return the name of a colour".
+Expected outputs are short values: numbers, booleans, short strings (< 40 characters), arrays or objects — never sentences.
 
 ${SHAPE[language]}
 
@@ -90,20 +98,21 @@ Respond with ONLY JSON: {"challenges": [
   }
 ]}
 5-8 tests each, normal and edge cases. Only JSON values in args/expected.`,
-      { maxTokens: 9000 },
+      { maxTokens: 12000 },
     ),
   );
   const seen = new Set(taken.map(titleKey));
   const drafts: DraftForBrowser[] = [];
   for (const raw of arr(data.challenges)) {
     const draft = parseChallenge(raw);
-    if (!draft || seen.has(titleKey(draft.title))) continue;
+    if (!draft || seen.has(titleKey(draft.title)) || isTheoryLookup(draft)) continue;
     seen.add(titleKey(draft.title));
     const basedOn = str(obj(raw).based_on, 120);
     const prompt = basedOn ? `From your note “${basedOn}”\n\n${draft.prompt}` : draft.prompt;
     drafts.push({ ...draft, prompt, language, difficulty, pursuitId });
+    if (drafts.length === 3) break;
   }
-  if (drafts.length === 0) return { error: "The AI made broken challenges — try again" };
+  if (drafts.length === 0) return { error: "Those weren't real coding challenges — try again" };
   await budget.charge();
   return { error: null, drafts };
 }
@@ -113,7 +122,7 @@ const SHAPE: Record<Language, string> = {
   javascript: "Each must be solvable as ONE pure function (no input, files, network or randomness), tested by calling it with arguments and comparing the JSON-serializable return value.",
   typescript: "Each must be solvable as ONE pure, typed function (typed parameters and return type; no input, files, network or randomness), tested by calling it with arguments and comparing the JSON-serializable return value. starter_code and solution are TypeScript.",
   python: "Each must be solvable as ONE pure function (no input(), files, network or randomness), tested by calling it with arguments and comparing the JSON-serializable return value.",
-  react: `Each is ONE React function component (named "entry", may use hooks like useState/useMemo, written with JSX, may \`import { useState } from "react"\`; no fetch, effects that change what renders, timers or CSS). It is tested by rendering it ONCE with props: each test is {"args": [props object], "expected": "the visible text it renders"} — text only (tags removed, whitespace collapsed), e.g. a list of items renders "Milk Eggs Bread". Make tests cover different props: empty lists, conditional text, counts, formatting.`,
+  react: `Each is ONE React function component. "entry" is the component's name in PascalCase (e.g. "CartSummary"), and the code defines a component with exactly that name (it may use hooks like useState/useMemo, written with JSX, may \`import { useState } from "react"\`; no fetch, effects that change what renders, timers or CSS). It is tested by rendering it ONCE with props: each test is {"args": [props object], "expected": "the visible text it renders"} — text only (tags removed, whitespace collapsed), e.g. a list of items renders "Milk Eggs Bread". Make tests cover different props: empty lists, conditional text, counts, formatting. The component must compute what it shows from its props (filter, count, sort, group, format) — not pick a prewritten text.`,
 };
 
 // "Mezcla de colores (RGB)" and "Mezcla de colores RGB" are the same challenge.
