@@ -60,6 +60,10 @@ export function ChallengeIDE({
   }
 
   const passedCount = output?.results.filter((r) => r.ok).length ?? 0;
+  const task = splitPrompt(challenge.prompt);
+  // React tests pass props; everything else, arguments.
+  const input = (t: ChallengeTest) =>
+    challenge.language === "react" ? `<${challenge.entry} ${props(t.args[0])}/>` : `${challenge.entry}(${t.args.map(show).join(", ")})`;
 
   return (
     <div className="flex h-[calc(100vh-3rem)] min-h-[600px] flex-col bg-[#1e2127] text-[#d7dae0]">
@@ -97,39 +101,69 @@ export function ChallengeIDE({
 
       <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(320px,38%)_1fr]">
         {/* Task */}
-        <section className="min-h-0 overflow-y-auto border-b border-white/10 p-5 lg:border-r lg:border-b-0" aria-label="Task">
-          {challenge.pursuitTitle && <p className="mb-2 text-xs text-white/50">From {challenge.pursuitTitle}</p>}
-          <p className="text-sm leading-relaxed whitespace-pre-line">{challenge.prompt}</p>
-          <p className="mt-4 text-xs text-white/50">
-            Write a {challenge.language === "react" ? "component" : "function"} called <code className="rounded bg-white/10 px-1.5 py-0.5 text-white">{challenge.entry}</code>.
-          </p>
-          <h2 className="mt-6 mb-2 text-xs font-bold tracking-wide text-white/50 uppercase">Tests</h2>
-          <ul className="flex flex-col gap-1.5 font-mono text-xs">
-            {challenge.tests.map((t, i) => {
-              const r = output?.results[i];
-              return (
-                <li
-                  key={i}
-                  className={`rounded px-3 py-2 ${r ? (r.ok ? "bg-mint/15" : "bg-crimson/20") : "bg-white/5"}`}
-                >
-                  <span className="mr-2">{r ? (r.ok ? <CheckIcon size={13} /> : <XIcon size={13} />) : "·"}</span>
-                  {challenge.entry}({t.args.map(show).join(", ")}) → {show(t.expected)}
-                </li>
-              );
-            })}
-          </ul>
+        <section className="flex min-h-0 flex-col gap-6 overflow-y-auto border-b border-white/10 p-5 lg:border-r lg:border-b-0" aria-label="Task">
+          <div className="flex flex-col gap-3">
+            {(task.note || challenge.pursuitTitle) && (
+              <div className="flex flex-wrap gap-1.5 text-xs">
+                {challenge.pursuitTitle && <span className="rounded-full bg-white/10 px-2.5 py-1 text-white/70">{challenge.pursuitTitle}</span>}
+                {task.note && <span className="truncate rounded-full bg-tile-sky/20 px-2.5 py-1 text-tile-sky">{task.note}</span>}
+              </div>
+            )}
+            <p className="text-[15px] leading-relaxed whitespace-pre-line text-white/90">{task.text}</p>
+            <p className="text-sm text-white/60">
+              Your goal: write <code className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-white">{challenge.entry}</code>
+              {challenge.language === "react" ? " (a component)" : ""}
+            </p>
+          </div>
 
-          <div className="mt-8 flex flex-col gap-2">
-            {hints.map((h, i) => (
-              <p key={i} className="rounded bg-amber/15 p-3 text-sm leading-relaxed">
-                <span className="mr-2 text-xs font-bold text-amber">HINT {i + 1}</span>
-                {h}
-              </p>
+          <div className="flex flex-col gap-2">
+            <h2 className="text-xs font-bold tracking-wide text-white/50 uppercase">Examples</h2>
+            {challenge.tests.slice(0, 2).map((t, i) => (
+              <div key={i} className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 rounded-lg bg-white/5 px-3 py-2.5 font-mono text-xs">
+                <span className="break-all text-white/80">{input(t)}</span>
+                <ArrowRight size={14} className="text-white/40" />
+                <span className="font-bold break-all text-white">{show(t.expected)}</span>
+              </div>
             ))}
-            {hints.length < 3 && (
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xs font-bold tracking-wide text-white/50 uppercase">Checks</h2>
+              <span className="text-xs text-white/60">{output ? `${passedCount}/${challenge.tests.length} passing` : `${challenge.tests.length} to pass`}</span>
+            </div>
+            <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
+              <div
+                className={`h-full rounded-full transition-[width] ${passedCount === challenge.tests.length ? "bg-mint" : "bg-amber"}`}
+                style={{ width: `${(passedCount / challenge.tests.length) * 100}%` }}
+              />
+            </div>
+            <ul className="grid gap-1.5 font-mono text-xs sm:grid-cols-2">
+              {challenge.tests.map((t, i) => {
+                const r = output?.results[i];
+                return (
+                  <li
+                    key={i}
+                    title={r && !r.ok ? (r.error ?? `got ${show(r.got)}`) : undefined}
+                    className={`flex items-center gap-2 rounded-lg px-2.5 py-2 ${r ? (r.ok ? "bg-mint/15 text-white" : "bg-crimson/20 text-white") : "bg-white/5 text-white/70"}`}
+                  >
+                    <span className={`grid size-4 shrink-0 place-items-center rounded-full ${r ? (r.ok ? "bg-mint text-white" : "bg-crimson text-white") : "border border-white/30"}`}>
+                      {r && (r.ok ? <CheckIcon size={10} /> : <XIcon size={10} />)}
+                    </span>
+                    <span className="min-w-0 truncate">
+                      {challenge.language === "react" ? props(t.args[0]) || "no props" : t.args.map(show).join(", ")} → {show(t.expected)}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
-                disabled={isHinting}
+                disabled={isHinting || hints.length >= 3}
                 onClick={() =>
                   startHint(async () => {
                     setReviewError(null);
@@ -138,30 +172,36 @@ export function ChallengeIDE({
                     else if (r.hint) setHints((h) => [...h, r.hint!]);
                   })
                 }
-                className="self-start rounded border border-amber/50 px-3 py-1.5 text-sm text-amber hover:bg-amber/10 disabled:opacity-50"
+                className="flex flex-col items-start gap-0.5 rounded-xl bg-amber/15 px-4 py-3 text-left hover:bg-amber/25 disabled:opacity-50"
               >
-                {isHinting ? "Thinking…" : "Hint"}
+                <span className="text-sm font-bold text-amber">{isHinting ? "Thinking…" : "Stuck?"}</span>
+                <span className="text-xs text-white/60">{hints.length >= 3 ? "No hints left" : `Get a hint · ${3 - hints.length} left`}</span>
               </button>
-            )}
-            <button
-              type="button"
-              disabled={isReviewing}
-              onClick={() =>
-                startReview(async () => {
-                  setReviewError(null);
-                  const r = await reviewSolution(challenge.id, code);
-                  if (r.error) setReviewError(r.error);
-                  else setReview(r.review ?? null);
-                })
-              }
-              className="self-start rounded border border-white/20 px-3 py-1.5 text-sm hover:bg-white/10 disabled:opacity-50"
-            >
-              {isReviewing ? "Reviewing…" : "Code review"}
-            </button>
+              <button
+                type="button"
+                disabled={isReviewing}
+                onClick={() =>
+                  startReview(async () => {
+                    setReviewError(null);
+                    const r = await reviewSolution(challenge.id, code);
+                    if (r.error) setReviewError(r.error);
+                    else setReview(r.review ?? null);
+                  })
+                }
+                className="flex flex-col items-start gap-0.5 rounded-xl bg-tile-sky/15 px-4 py-3 text-left hover:bg-tile-sky/25 disabled:opacity-50"
+              >
+                <span className="text-sm font-bold text-tile-sky">{isReviewing ? "Reviewing…" : "Review my code"}</span>
+                <span className="text-xs text-white/60">Good, fix, next</span>
+              </button>
+            </div>
+            {hints.map((h, i) => (
+              <p key={i} className="rounded-lg bg-amber/10 p-3 text-sm leading-relaxed">
+                <span className="mr-2 text-xs font-bold text-amber">Hint {i + 1}</span>
+                {h}
+              </p>
+            ))}
             {reviewError && <p className="text-xs text-crimson">{reviewError}</p>}
-            {review && (
-              <Review text={review} />
-            )}
+            {review && <Review text={review} />}
           </div>
         </section>
 
@@ -190,7 +230,7 @@ export function ChallengeIDE({
                 {output.results.map((r, i) =>
                   r.ok ? null : (
                     <p key={i} className="mt-1.5 text-white/80">
-                      <XIcon size={12} /> test {i + 1}: {r.error ? <span className="text-crimson">{r.error}</span> : <>got {show(r.got)}, expected {show(challenge.tests[i].expected)}</>}
+                      <XIcon size={12} /> {input(challenge.tests[i])}: {r.error ? <span className="text-crimson">{r.error}</span> : <>expected {show(challenge.tests[i].expected)}, got {show(r.got)}</>}
                     </p>
                   ),
                 )}
@@ -253,3 +293,16 @@ function Review({ text }: { text: string }) {
     </div>
   );
 }
+
+// Generated prompts start with “From your note "…"” — shown as a chip.
+function splitPrompt(prompt: string) {
+  const m = prompt.match(/^From your note “([^”]+)”\s*/);
+  return m ? { note: m[1], text: prompt.slice(m[0].length) } : { note: null, text: prompt };
+}
+
+const props = (p: unknown) =>
+  p && typeof p === "object"
+    ? Object.entries(p as Record<string, unknown>)
+        .map(([k, v]) => `${k}={${show(v)}} `)
+        .join("")
+    : "";
