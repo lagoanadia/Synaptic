@@ -1,12 +1,13 @@
 "use client";
 
-import { ArrowLeft, ArrowRight, ChevronRight } from "@/app/icons";
+import { ArrowLeft, ChevronLeft, ChevronRight } from "@/app/icons";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { CodeBlock } from "../../CodeBlock";
 import { ConceptGraph } from "./ConceptGraph";
-import { nextUp, progress, type Status } from "@/lib/internalize";
+import { looksLikeCode, nextUp, progress, type Status } from "@/lib/internalize";
+import { RichContent } from "../../RichContent";
 import {
   addConcept,
   askAboutConcept,
@@ -49,6 +50,7 @@ const EXT_LANG: Record<string, string> = { ts: "ts", tsx: "ts", js: "js", jsx: "
 const langFor = (from: string | null) => EXT_LANG[from?.split(".").pop()?.toLowerCase() ?? ""] ?? "";
 
 const GRAPH_KEY = "synaptic.learn.graph";
+const PATH_KEY = "synaptic.learn.path";
 
 export function ConceptExplorer({
   pursuitId,
@@ -78,6 +80,22 @@ export function ConceptExplorer({
       return false;
     }
   });
+  const [pathOpen, setPathOpen] = useState(true);
+  useEffect(() => {
+    try {
+      // Browser storage, so only after mount.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (window.localStorage.getItem(PATH_KEY) === "0") setPathOpen(false);
+    } catch {}
+  }, []);
+  function togglePath() {
+    setPathOpen((o) => {
+      try {
+        window.localStorage.setItem(PATH_KEY, o ? "0" : "1");
+      } catch {}
+      return !o;
+    });
+  }
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -195,7 +213,19 @@ export function ConceptExplorer({
           <Link href={`/pursuits/${pursuitId}?tab=learn`} className="text-sm text-ink-muted hover:underline">
             <ArrowLeft /> {pursuitTitle}
           </Link>
-          <h1 className="truncate text-2xl font-extrabold text-tile-sky italic">{map.title}</h1>
+          <div className="flex min-w-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={togglePath}
+              aria-pressed={pathOpen}
+              title={pathOpen ? "Hide path" : "Show path"}
+              aria-label={pathOpen ? "Hide path" : "Show path"}
+              className="hidden shrink-0 rounded-full bg-chip p-1.5 text-ink-muted hover:text-ink lg:block"
+            >
+              {pathOpen ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
+            </button>
+            <h1 className="truncate text-2xl font-extrabold text-tile-sky italic">{map.title}</h1>
+          </div>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex w-48 flex-col gap-1" title={`${stats.mastered} mastered · ${stats.understood} understood · ${stats.reread} to reread`}>
@@ -238,7 +268,8 @@ export function ConceptExplorer({
         />
       )}
 
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[300px_minmax(0,1fr)]">
+      <div className={`grid grid-cols-1 gap-8 ${pathOpen ? "lg:grid-cols-[300px_minmax(0,1fr)]" : ""}`}>
+        {pathOpen && (
         <PathList
           concepts={withStatus}
           currentId={currentId}
@@ -252,6 +283,7 @@ export function ConceptExplorer({
             })
           }
         />
+        )}
 
         {current ? (
           <ConceptCard
@@ -260,14 +292,11 @@ export function ConceptExplorer({
             concepts={concepts}
             links={links}
             parentChain={chain(byId, current)}
-            upNextTitle={upNext ? byId.get(upNext)?.title ?? null : null}
-            canGoBack={history.length > 0}
             isPending={isPending}
             error={error}
             askRef={askRef}
             explainRef={explainRef}
             onGo={(id) => go(id)}
-            onBack={back}
             actions={actions}
             onStatus={(s) => {
               setLocalStatus((m) => ({ ...m, [current.id]: s }));
@@ -385,14 +414,11 @@ function ConceptCard({
   concepts,
   links,
   parentChain,
-  upNextTitle,
-  canGoBack,
   isPending,
   error,
   askRef,
   explainRef,
   onGo,
-  onBack,
   actions,
   onStatus,
   onExplained,
@@ -405,14 +431,11 @@ function ConceptCard({
   concepts: ExplorerConcept[];
   links: ExplorerLink[];
   parentChain: ExplorerConcept[];
-  upNextTitle: string | null;
-  canGoBack: boolean;
   isPending: boolean;
   error: string | null;
   askRef: React.RefObject<HTMLInputElement | null>;
   explainRef: React.RefObject<HTMLTextAreaElement | null>;
   onGo: (id: string) => void;
-  onBack: () => void;
   actions: { skip: () => void; reread: () => void; deeper: () => void; random: () => void };
   onStatus: (s: Status) => void;
   onExplained: (s: Status) => void;
@@ -537,7 +560,13 @@ function ConceptCard({
               From the source{concept.excerptFrom ? ` · ${concept.excerptFrom}` : ""}
             </span>
             <div className="px-5">
-              <CodeBlock code={concept.excerpt} language={langFor(concept.excerptFrom)} />
+              {langFor(concept.excerptFrom) || looksLikeCode(concept.excerpt) ? (
+                <CodeBlock code={concept.excerpt} language={langFor(concept.excerptFrom)} />
+              ) : (
+                <div className="border-l-2 border-border-subtle pl-4">
+                  <RichContent content={concept.excerpt} paragraphClassName="text-sm leading-relaxed whitespace-pre-line text-ink-muted" />
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -547,26 +576,12 @@ function ConceptCard({
           <ActionButton onClick={actions.deeper} disabled={isPending} primary kbd="d">
             {children.length > 0 ? `Go deeper (${children.length})` : isPending ? "Splitting…" : "Go deeper"}
           </ActionButton>
-          <ActionButton onClick={actions.skip} kbd={<ArrowRight size={12} />}>
-            {upNextTitle ? `Next: ${upNextTitle}` : "Skip"}
-          </ActionButton>
-          <ActionButton onClick={actions.random} kbd="j">
-            Jump somewhere
-          </ActionButton>
           <ActionButton onClick={actions.reread} kbd="r">
             I don&apos;t know
           </ActionButton>
-          {canGoBack && (
-            <ActionButton onClick={onBack} kbd={<ArrowLeft size={12} />}>
-              Back
-            </ActionButton>
-          )}
         </div>
         {(error || localError) && <p className="text-sm text-red-500">{error ?? localError}</p>}
 
-        {children.length > 0 && (
-          <Chips title="Inside this" items={children.map((c) => ({ id: c.id, title: c.title, status: c.status }))} onGo={onGo} />
-        )}
         {needs.length > 0 && (
           <Chips title="Builds on" items={needs.map((l) => ({ id: l.fromId, title: byId.get(l.fromId)!.title, status: byId.get(l.fromId)!.status, label: l.label }))} onGo={onGo} onRemove={(id) => run(async () => { await unlinkConcepts(id, concept.id); refresh(); })} />
         )}
