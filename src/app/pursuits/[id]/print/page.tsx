@@ -1,3 +1,4 @@
+import { ArrowLeft } from "@/app/icons";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import type { ReactNode } from "react";
@@ -148,7 +149,7 @@ function PrintShell({
           href={`/pursuits/${pursuitId}`}
           className="text-sm text-ink-muted hover:underline"
         >
-          ← Back to Pursuit
+          <ArrowLeft /> Back to Pursuit
         </Link>
         <PrintButton />
       </div>

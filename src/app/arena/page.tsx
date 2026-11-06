@@ -1,3 +1,4 @@
+import { ArrowLeft } from "@/app/icons";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
@@ -22,21 +23,18 @@ export default async function ArenaPage() {
   const stats = debateStats(debates.flatMap((d) => (d.verdict ? [d.verdict as Verdict] : [])));
 
   return (
-    <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-6 py-10 lg:px-10">
+    <div className="mx-auto flex w-full max-w-[1800px] flex-1 flex-col gap-8 px-6 py-10 lg:px-14">
       <header className="flex items-center justify-between">
         <div className="flex items-baseline gap-2">
           <Logo href="/pursuits" />
           <span className="text-ink-faint">·</span>
           <h1 className="text-2xl font-extrabold text-orchid italic">Arena</h1>
         </div>
-        <Link href="/pursuits" className="text-sm text-ink-muted hover:underline">← Home</Link>
+        <Link href="/pursuits" className="text-sm text-ink-muted hover:underline"><ArrowLeft /> Home</Link>
       </header>
 
       <div className="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1fr)_340px]">
         <section className="flex flex-col gap-3" aria-label="Headlines">
-          <p className="text-sm text-ink-muted">
-            Today in tech and AI. Pick one and argue about it with someone who won&apos;t just agree with you.
-          </p>
           <HeadlinePicker headlines={headlines} />
         </section>
 

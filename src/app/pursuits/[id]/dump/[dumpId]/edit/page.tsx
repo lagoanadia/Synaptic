@@ -1,3 +1,4 @@
+import { ArrowLeft } from "@/app/icons";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
@@ -35,21 +36,22 @@ export default async function EditDumpPage({
   if (!dump) notFound();
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-6 py-9">
+    <div className="mx-auto flex w-full max-w-[1800px] flex-1 flex-col gap-4 px-6 lg:px-10 py-9">
       <Link href={`/pursuits/${id}/dump/${dumpId}`} className="text-sm text-ink-muted hover:underline">
-        ← {dump.pursuit.title}
+        <ArrowLeft /> {dump.pursuit.title}
       </Link>
       <SlidePanel
         pursuitId={id}
         decks={dump.pursuit.attachments.filter((a) => isSlideFile(a.url))}
         classroomCourseId={dump.pursuit.classroomEnabled ? dump.pursuit.classroomCourseId : null}
-      />
-      <NewDumpForm
+      >
+        <NewDumpForm
         pursuitId={id}
         dumpId={dump.id}
         initialContent={dump.content ?? ""}
         initialUpdatedAt={dump.updatedAt.toISOString()}
       />
+      </SlidePanel>
     </div>
   );
 }

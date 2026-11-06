@@ -1,5 +1,6 @@
 "use client";
 
+import { CheckIcon } from "@/app/icons";
 import { useEffect, useState } from "react";
 import { listPursuitDeadlines } from "./actions";
 import { NotificationToggle } from "./NotificationToggle";
@@ -82,7 +83,7 @@ export function UpcomingDeadlines({
               <span
                 className={`shrink-0 text-xs ${d.late ? "text-amber-600" : "text-forest"}`}
               >
-                {d.late ? "✓ Turned in late" : "✓ Turned in"}
+                <CheckIcon size={12} /> {d.late ? "Late" : "Done"}
               </span>
             ) : (
               <span

@@ -1,5 +1,6 @@
 "use client";
 
+import { CheckIcon } from "@/app/icons";
 import { useRef, useState, useTransition } from "react";
 import { createApiKey, revokeApiKey } from "./actions";
 import { DeleteButton } from "@/app/pursuits/DeleteButton";
@@ -77,7 +78,7 @@ export function ApiKeyManager({ keys }: { keys: KeyForDisplay[] }) {
               }}
               className="shrink-0 rounded-md border border-ink px-3 py-2 text-xs font-medium hover:bg-white"
             >
-              {copied ? "Copied ✓" : "Copy"}
+              {copied ? <>Copied <CheckIcon size={12} /></> : "Copy"}
             </button>
           </div>
           <button

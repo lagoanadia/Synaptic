@@ -30,45 +30,52 @@ Respond with ONLY JSON: {"motion": "...", "brief": "...", "for_case": "...", "ag
   };
 }
 
-const opponentRules = (aiSide: string, language: string) => `You are the user's debate opponent. You argue ${aiSide} the motion. Your job is to make them think harder — not to flatter them, and not to win dishonestly.
-Rules:
-- Argue like an informed advocate: mechanisms, trade-offs, precedents, numbers you're confident about. Never invent facts, studies or quotes; if unsure say so or argue from principle.
-- Go for the weakest link in their LAST message. If they made a genuinely good point, concede it in one short clause, then pivot.
-- If they dodged your previous question, call it out first.
-- Name a logical fallacy only if it's really there, and quote their exact words.
-- No generic praise ("great point", "interesting"). No hedging walls. Direct, a bit provocative, never rude.
-- Under 160 words. End with exactly ONE pointed question they must answer.
+const opponentRules = (aiSide: string, style: string, language: string) =>
+  style === "socratic"
+    ? `You are a Socratic sparring partner on this motion. You never argue a side and never lecture. Each turn: briefly reflect what the user just claimed (one clause), then ask ONE sharp question that exposes an assumption, a missing step, a counterexample or a consequence they haven't considered. If they ask you something directly (context, a fact, a clarification), answer it plainly in 1-3 sentences first. Under 90 words. Write in ${language}.`
+    : `You are the user's debate opponent, arguing ${aiSide} the motion. Your job is to make them think harder, not to flatter them or win dishonestly.
+- Follow the conversation wherever the user takes it. If they ask a question, want clarification or context, or say they don't understand, answer that plainly first — never scold them for asking — then continue the debate.
+- Argue like an informed advocate: mechanisms, trade-offs, precedents, numbers you're confident about. Never invent facts, studies or quotes.
+- Target the weakest link in their last argument. Concede genuinely good points in one short clause, then pivot.
+- Name a logical fallacy only if it's really there, quoting their exact words.
+- No generic praise. Direct, a bit provocative, never rude. Vary your approach; don't repeat the same argument.
+- Under 150 words. Usually end with one pointed question, but not if they just asked you something.
 - Write in ${language}.`;
 
 function transcript(messages: DebateMessage[]) {
-  return messages.map((m) => `${m.role === "user" ? "USER" : "YOU"}: ${m.text}`).join("\n\n");
+  return messages
+    .map((m) => `${m.role === "user" ? "USER" : "YOU"}: ${m.intent ? `[${m.text}] ` : ""}${m.role === "user" && m.intent ? "" : m.text}`)
+    .join("\n\n");
 }
 
 export async function opponentTurn(
-  d: { motion: string; brief: string; side: string; language: string },
+  d: { motion: string; brief: string; side: string; style: string; language: string },
   messages: DebateMessage[],
+  instruction?: string,
 ): Promise<DebateMessage | null> {
   const aiSide = d.side === "for" ? "AGAINST" : "FOR";
   const userTurns = messages.filter((m) => m.role === "user").length;
-  // The first user message is their steelman of YOUR side.
   const phase =
-    userTurns === 1
-      ? `The user's first message is their STEELMAN of your side (${aiSide}): the strongest case they can make for it. First grade it honestly in 1-2 sentences (what they nailed, what the strongest version would add). Then give your opening argument and your question.`
+    instruction ??
+    (userTurns === 0
+      ? d.style === "socratic"
+        ? "Open: ask the user what they believe about the motion and why, in one inviting question."
+        : "Open the debate: your strongest opening argument in under 100 words, then one question."
       : userTurns >= MAX_TURNS
-        ? "This is the last exchange: give your closing rebuttal and summarize, in one sentence, the crux where you two actually disagree. Instead of a question, invite them to end the debate for the verdict."
-        : "Reply to their latest argument.";
+        ? "Last exchange: close, name in one sentence the crux where you actually disagree, and suggest ending for the verdict."
+        : "Reply to the user's latest message.");
   const data = obj(
     await askJson(
-      `${opponentRules(aiSide, d.language)}
+      `${opponentRules(aiSide, d.style, d.language)}
 
 Motion: "${d.motion}"
 Context: ${d.brief}
-The user argues ${d.side.toUpperCase()}.
+The user currently argues ${d.side.toUpperCase()}.
 
-${phase}
+What to do now: ${phase}
 
-Debate so far:
-${transcript(messages)}
+Conversation so far:
+${transcript(messages) || "(nothing yet)"}
 
 Respond with ONLY JSON: {"reply": "...", "fallacies": [{"name": "fallacy name", "quote": "their exact words"}]} (fallacies = only real ones in their latest message, else []).`,
       { maxTokens: 2500 },

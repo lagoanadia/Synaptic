@@ -1,3 +1,4 @@
+import { ArrowLeft } from "@/app/icons";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
@@ -23,7 +24,7 @@ export default async function ApiKeysPage() {
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-6 py-9">
       <Link href="/pursuits" className="text-sm text-ink-muted hover:underline">
-        ← Pursuits
+        <ArrowLeft /> Pursuits
       </Link>
 
       <div className="flex flex-col gap-2">

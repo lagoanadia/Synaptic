@@ -1,10 +1,9 @@
+import { ArrowRight } from "@/app/icons";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { ProfileMenu } from "../ProfileMenu";
 import { Logo } from "../Logo";
-import { isLocale } from "@/lib/i18n";
 import { Onboarding } from "../onboarding/Onboarding";
 import { SectionTiles, type Tile } from "./SectionTiles";
 import { tileColor } from "@/lib/tileColor";
@@ -34,12 +33,11 @@ export default async function HomePage() {
     prisma.section.findMany({ where: { userId }, orderBy: { order: "asc" } }),
     prisma.user.findUniqueOrThrow({
       where: { id: userId },
-      select: { plan: true, onboardedAt: true, locale: true },
+      select: { onboardedAt: true },
     }),
     getConcepts(userId, { kind: "all" }),
   ]);
 
-  const locale = isLocale(viewer.locale) ? viewer.locale : "en";
 
   // First visit: quick questions instead of an empty screen. Anyone who
   // already has subjects (accounts from before this existed) skips it.
@@ -74,6 +72,7 @@ export default async function HomePage() {
   const tiles: Tile[] = sections.map((s, i) => ({
     id: s.id,
     href: `/pursuits/s/${s.id}`,
+    movable: true,
     name: s.name,
     colorClass: tileColor(i),
     ...describe(s.id),
@@ -82,6 +81,7 @@ export default async function HomePage() {
     tiles.push({
       id: UNSORTED,
       href: `/pursuits/s/${UNSORTED}`,
+      movable: false,
       name: "Unsorted",
       colorClass: "bg-ink-muted",
       ...describe(UNSORTED),
@@ -91,6 +91,7 @@ export default async function HomePage() {
     tiles.push({
       id: SHARED,
       href: `/pursuits/s/${SHARED}`,
+      movable: false,
       name: "Shared",
       colorClass: "bg-tile-deep",
       ...describe(SHARED),
@@ -100,37 +101,17 @@ export default async function HomePage() {
   const picks = sample(concepts, 3);
 
   return (
-    <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-10 px-6 py-10 lg:px-10">
+    <div className="mx-auto flex w-full max-w-[1800px] flex-1 flex-col gap-10 px-6 py-10 lg:px-14">
       <header className="flex items-center justify-between">
         <div className="flex items-baseline gap-3">
           <Logo href="/pursuits" />
           <span className="hidden text-sm text-ink-faint sm:inline">Think it. Dump it.</span>
-          {viewer.plan !== "FREE" && (
-            <span className="rounded-full bg-accent-soft px-2.5 py-1 text-xs font-semibold text-accent">
-              {viewer.plan === "PRO" ? "Student Pro" : "Team"}
-            </span>
-          )}
         </div>
-        <nav className="ml-auto mr-3 flex items-center gap-1.5" aria-label="Practice">
-          <Link href="/challenges" className="rounded-full bg-chip px-3.5 py-1.5 text-sm font-semibold text-ink-muted hover:text-mint">
-            {"</>"} Challenges
-          </Link>
-          <Link href="/arena" className="rounded-full bg-chip px-3.5 py-1.5 text-sm font-semibold text-ink-muted hover:text-orchid">
-            ⚔ Arena
-          </Link>
-        </nav>
-        <ProfileMenu
-          name={session.user.name}
-          email={session.user.email}
-          image={session.user.image}
-          plan={viewer.plan}
-          locale={locale}
-        />
       </header>
 
       <div className="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1fr)_360px]">
         <section aria-label="Sections">
-          <SectionTiles tiles={tiles} />
+          <SectionTiles key={tiles.map((t) => t.id).join()} tiles={tiles} />
         </section>
 
         <aside className="flex flex-col gap-4 self-start rounded-3xl bg-white p-6 shadow-[0_1px_2px_rgba(13,13,13,0.06)]">
@@ -140,9 +121,6 @@ export default async function HomePage() {
               <span className="text-xs font-semibold text-ink-muted">{totalDue} cards due</span>
             )}
           </div>
-          <p className="text-sm text-ink-muted">
-            Three random concepts from everything you&apos;ve written. Still remember them?
-          </p>
           {picks.length === 0 ? (
             <p className="rounded-2xl bg-callout px-4 py-5 text-sm text-ink-muted">
               Organize a few Brain Dumps into notes and they&apos;ll start showing up here.
@@ -152,7 +130,7 @@ export default async function HomePage() {
               {picks.map((c) => (
                 <li key={c.id}>
                   <Link
-                    href={`/review?mode=recall&concept=${c.id}`}
+                    href={`/pursuits/${c.pursuitId}?tab=pages`}
                     className="flex flex-col rounded-2xl bg-tile-blue px-4 py-3 text-white transition-transform hover:-translate-y-0.5"
                   >
                     <span className="truncate text-sm font-semibold">{c.title}</span>
@@ -163,10 +141,10 @@ export default async function HomePage() {
             </ul>
           )}
           <Link
-            href="/review?mode=challenge"
+            href="/review?mode=learn"
             className="mt-1 rounded-full bg-ink px-4 py-2.5 text-center text-sm font-semibold text-white transition-transform hover:-translate-y-0.5"
           >
-            Take the cross exam →
+            Start <ArrowRight />
           </Link>
         </aside>
       </div>

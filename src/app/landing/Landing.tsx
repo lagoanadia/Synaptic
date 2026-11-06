@@ -1,3 +1,4 @@
+import { ArrowRight, CheckIcon } from "@/app/icons";
 import { HeroCards } from "./HeroCards";
 import { Reveal } from "./Reveal";
 import { AuthMenu } from "./AuthMenu";
@@ -36,7 +37,7 @@ export function Landing() {
               Join for free
             </AuthMenu>
             <a href="#features" className="font-semibold transition-colors hover:text-accent">
-              Read more →
+              Read more <ArrowRight />
             </a>
           </div>
         </Reveal>
@@ -135,7 +136,7 @@ export function Landing() {
               <ul className="mb-7 flex flex-col gap-2.5 text-sm">
                 {["Unlimited capture", "AI organizing", "10 flashcards/mo"].map((f) => (
                   <li key={f} className="relative pl-5 opacity-85">
-                    <span className="absolute left-0 font-bold text-accent">✓</span>
+                    <span className="absolute left-0 font-bold text-accent"><CheckIcon size={14} /></span>
                     {f}
                   </li>
                 ))}
@@ -162,7 +163,7 @@ export function Landing() {
               <ul className="mb-7 flex flex-col gap-2.5 text-sm">
                 {["Unlimited flashcards", "Ask your notes (AI)", "Unlimited sharing"].map((f) => (
                   <li key={f} className="relative pl-5 opacity-85">
-                    <span className="absolute left-0 font-bold text-[#ebda3c]">✓</span>
+                    <span className="absolute left-0 font-bold text-[#ebda3c]"><CheckIcon size={14} /></span>
                     {f}
                   </li>
                 ))}
@@ -185,7 +186,7 @@ export function Landing() {
               <ul className="mb-7 flex flex-col gap-2.5 text-sm">
                 {["Shared sections", "Study group spaces", "Priority support"].map((f) => (
                   <li key={f} className="relative pl-5 opacity-85">
-                    <span className="absolute left-0 font-bold text-[#b5502e]">✓</span>
+                    <span className="absolute left-0 font-bold text-[#b5502e]"><CheckIcon size={14} /></span>
                     {f}
                   </li>
                 ))}

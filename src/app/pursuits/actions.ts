@@ -92,32 +92,15 @@ export async function deletePursuit(pursuitId: string) {
   revalidatePath("/pursuits", "layout");
 }
 
-// Moves a section's row up or down among the user's other sections by
-// swapping its `order` with whichever neighbor sits on that side.
-export async function reorderSection(sectionId: string, direction: "up" | "down") {
+// The new order of the user's sections, from dragging tiles on the home
+// screen. Ids that aren't this user's are ignored.
+export async function reorderSections(orderedIds: string[]) {
   const session = await auth();
-  if (!session?.user?.id) {
-    throw new Error("Not signed in");
-  }
-
-  const sections = await prisma.section.findMany({
-    where: { userId: session.user.id },
-    orderBy: { order: "asc" },
-  });
-  const index = sections.findIndex((s) => s.id === sectionId);
-  if (index === -1) return;
-
-  const swapIndex = direction === "up" ? index - 1 : index + 1;
-  if (swapIndex < 0 || swapIndex >= sections.length) return;
-
-  const current = sections[index];
-  const neighbor = sections[swapIndex];
-
-  await prisma.$transaction([
-    prisma.section.update({ where: { id: current.id }, data: { order: neighbor.order } }),
-    prisma.section.update({ where: { id: neighbor.id }, data: { order: current.order } }),
-  ]);
-
+  if (!session?.user?.id) throw new Error("Not signed in");
+  const mine = await prisma.section.findMany({ where: { userId: session.user.id }, select: { id: true } });
+  const owned = new Set(mine.map((s) => s.id));
+  const ids = orderedIds.filter((id) => owned.has(id));
+  await prisma.$transaction(ids.map((id, order) => prisma.section.update({ where: { id }, data: { order } })));
   revalidatePath("/pursuits", "layout");
 }
 

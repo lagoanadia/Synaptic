@@ -1,3 +1,4 @@
+import { ArrowLeft } from "@/app/icons";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
@@ -40,19 +41,20 @@ export default async function NewDumpPage({
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-6 py-9">
+    <div className="mx-auto flex w-full max-w-[1800px] flex-1 flex-col gap-4 px-6 lg:px-10 py-9">
       <Link
         href={`/pursuits/${id}?tab=pages`}
         className="text-sm text-ink-muted hover:underline"
       >
-        ← {pursuit.title}
+        <ArrowLeft /> {pursuit.title}
       </Link>
       <SlidePanel
         pursuitId={pursuit.id}
         decks={pursuit.attachments.filter((a) => isSlideFile(a.url))}
         classroomCourseId={pursuit.classroomEnabled ? pursuit.classroomCourseId : null}
-      />
-      <NewDumpForm pursuitId={pursuit.id} />
+      >
+        <NewDumpForm pursuitId={pursuit.id} />
+      </SlidePanel>
     </div>
   );
 }

@@ -1,3 +1,4 @@
+import { ArrowLeft } from "@/app/icons";
 import Link from "next/link";
 
 export const metadata = { title: "Privacy Policy — Synaptic" };
@@ -7,7 +8,7 @@ export default function PrivacyPage() {
     <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-6 py-12">
       <div>
         <Link href="/" className="text-sm text-ink-muted hover:underline">
-          ← Synaptic
+          <ArrowLeft /> Synaptic
         </Link>
         <h1 className="mt-2 text-2xl font-semibold">Privacy Policy</h1>
         <p className="mt-1 text-sm text-ink-faint">Last updated September 2026</p>
@@ -115,7 +116,7 @@ export default function PrivacyPage() {
               lagoanadia@gmail.com
             </a>{" "}
             for any of these — most pursuit content can also be exported yourself as
-            Markdown directly from the app (the “↓ Export” link on any pursuit).
+            Markdown directly from the app (the “Export” link on any pursuit).
           </p>
         </section>
 

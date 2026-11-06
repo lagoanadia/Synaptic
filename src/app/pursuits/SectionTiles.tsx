@@ -3,10 +3,12 @@
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { createSection } from "./actions";
+import { createSection, reorderSections } from "./actions";
 
 export type Tile = {
   id: string;
+  // Real sections can be dragged to reorder; Unsorted/Shared can't.
+  movable: boolean;
   href: string;
   name: string;
   subtitle: string;
@@ -14,14 +16,31 @@ export type Tile = {
   badge?: string;
 };
 
-// The prototype's big square tiles. Only the first PINNED are shown until
-// you ask for the rest — four things to look at, not twelve.
+// Big square tiles; the first PINNED show until you ask for the rest.
+// Drag a tile onto another to reorder (that's how you choose what's pinned).
 const PINNED = 4;
 
-export function SectionTiles({ tiles }: { tiles: Tile[] }) {
+export function SectionTiles({ tiles: initial }: { tiles: Tile[] }) {
+  const [tiles, setTiles] = useState(initial);
   const [showAll, setShowAll] = useState(false);
+  const [dragging, setDragging] = useState<string | null>(null);
+  const [over, setOver] = useState<string | null>(null);
+  const [, startTransition] = useTransition();
   const visible = showAll ? tiles : tiles.slice(0, PINNED);
   const hidden = tiles.length - PINNED;
+
+  function drop(targetId: string) {
+    const from = tiles.findIndex((t) => t.id === dragging);
+    const to = tiles.findIndex((t) => t.id === targetId);
+    setDragging(null);
+    setOver(null);
+    if (from < 0 || to < 0 || from === to || !tiles[to].movable) return;
+    const next = [...tiles];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    setTiles(next);
+    startTransition(() => reorderSections(next.filter((t) => t.movable).map((t) => t.id)));
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -30,7 +49,28 @@ export function SectionTiles({ tiles }: { tiles: Tile[] }) {
           <Link
             key={t.id}
             href={t.href}
-            className={`group relative flex aspect-square flex-col justify-end rounded-3xl p-5 text-white shadow-[0_1px_2px_rgba(13,13,13,0.06)] transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-[0_12px_28px_rgba(13,13,13,0.12)] ${t.colorClass}`}
+            draggable={t.movable}
+            onDragStart={(e) => {
+              e.dataTransfer.effectAllowed = "move";
+              setDragging(t.id);
+            }}
+            onDragEnd={() => {
+              setDragging(null);
+              setOver(null);
+            }}
+            onDragOver={(e) => {
+              if (!dragging || !t.movable) return;
+              e.preventDefault();
+              setOver(t.id);
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              drop(t.id);
+            }}
+            title={t.movable ? "Drag to reorder" : undefined}
+            className={`group relative flex aspect-square flex-col justify-end rounded-3xl p-5 text-white shadow-[0_1px_2px_rgba(13,13,13,0.06)] transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-[0_12px_28px_rgba(13,13,13,0.12)] ${t.colorClass} ${
+              t.movable ? "cursor-grab active:cursor-grabbing" : ""
+            } ${dragging === t.id ? "scale-95 opacity-40" : ""} ${over === t.id && dragging !== t.id ? "ring-4 ring-ink ring-offset-2 ring-offset-background" : ""}`}
           >
             {t.badge && (
               <span className="absolute top-4 right-4 rounded-full bg-white/25 px-2.5 py-1 text-xs font-semibold">

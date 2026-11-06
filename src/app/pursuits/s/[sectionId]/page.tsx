@@ -3,275 +3,179 @@ import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { Logo } from "../../../Logo";
-import { ProfileMenu } from "../../../ProfileMenu";
 import { DeleteButton } from "../../DeleteButton";
-import { createPursuit, deletePursuit, deleteSection, reorderSection } from "../../actions";
-import { BellIcon, BrainIcon, CalendarIcon } from "../../../icons";
-import { GameTiles } from "../../../review/GameTiles";
+import { createPursuit, deletePursuit, deleteSection } from "../../actions";
+import { ArrowLeft, BoltIcon, CardsIcon, QuestionIcon, TrashIcon } from "../../../icons";
 import { SHARED, UNSORTED, getConcepts, pursuitWhere, type ReviewScope } from "@/lib/reviewData";
 import { startOfWeek } from "@/lib/review";
-import { isLocale } from "@/lib/i18n";
+import { tileColor } from "@/lib/tileColor";
 
 const shortDate = (d: Date) => d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
-// "Synaptic · School": one Section's concepts of the week + games on the
-// left, its subjects ("Activities") on the right with three at-a-glance
-// columns — next deadline, open tasks, cards due.
-export default async function SectionPage({
-  params,
-}: {
-  params: Promise<{ sectionId: string }>;
-}) {
+// A Section: what to do today on top (one primary action), then every
+// subject as a card that says its state in words.
+export default async function SectionPage({ params }: { params: Promise<{ sectionId: string }> }) {
   const { sectionId } = await params;
   const session = await auth();
-  if (!session?.user?.id) {
-    redirect("/");
-  }
+  if (!session?.user?.id) redirect("/");
   const userId = session.user.id;
 
   const isVirtual = sectionId === UNSORTED || sectionId === SHARED;
-  const section = isVirtual
-    ? null
-    : await prisma.section.findFirst({ where: { id: sectionId, userId } });
+  const section = isVirtual ? null : await prisma.section.findFirst({ where: { id: sectionId, userId } });
   if (!isVirtual && !section) notFound();
 
   const name = section?.name ?? (sectionId === SHARED ? "Shared" : "Unsorted");
   const scope: ReviewScope = { kind: "section", sectionId };
   const now = new Date();
+  const today = new Date(now);
+  today.setHours(0, 0, 0, 0);
 
-  const [pursuits, weekConcepts, latestConcepts, cardCount, dueCount, allSections, viewer] =
-    await Promise.all([
-      prisma.pursuit.findMany({
-        where: pursuitWhere(userId, scope),
-        orderBy: { lastTouchedAt: "desc" },
-        select: {
-          id: true,
-          title: true,
-          type: true,
-          status: true,
-          ownerId: true,
-          projects: {
-            select: { dueDate: true, cards: { select: { status: true } } },
-          },
-          _count: { select: { flashcards: { where: { dueDate: { lte: now } } } } },
-        },
-      }),
-      getConcepts(userId, scope, { since: startOfWeek(now), take: 8 }),
-      getConcepts(userId, scope, { take: 5 }),
-      prisma.flashcard.count({ where: { pursuit: pursuitWhere(userId, scope) } }),
-      prisma.flashcard.count({
-        where: { pursuit: pursuitWhere(userId, scope), dueDate: { lte: now } },
-      }),
-      prisma.section.findMany({ where: { userId }, orderBy: { order: "asc" }, select: { id: true } }),
-      prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { plan: true, locale: true } }),
-    ]);
+  const [pursuits, weekConcepts] = await Promise.all([
+    prisma.pursuit.findMany({
+      where: pursuitWhere(userId, scope),
+      orderBy: { lastTouchedAt: "desc" },
+      select: {
+        id: true,
+        title: true,
+        status: true,
+        ownerId: true,
+        projects: { select: { dueDate: true, cards: { select: { status: true } } } },
+        _count: { select: { flashcards: { where: { dueDate: { lte: now } } }, notes: true } },
+      },
+    }),
+    getConcepts(userId, scope, { since: startOfWeek(now), take: 12 }),
+  ]);
 
-  // Nothing new this week? Show the latest few instead of an empty box.
-  const concepts = weekConcepts.length > 0 ? weekConcepts : latestConcepts;
-  const conceptsLabel = weekConcepts.length > 0 ? "This week" : "Latest";
-  const sectionIndex = section ? allSections.findIndex((s) => s.id === section.id) : -1;
+  const due = pursuits.reduce((n, p) => n + p._count.flashcards, 0);
+  const q = `section=${sectionId}`;
 
   return (
-    <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-10 px-6 py-10 lg:px-10">
+    <div className="mx-auto flex w-full max-w-[1800px] flex-1 flex-col gap-8 px-6 py-10 lg:px-14">
       <header className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-baseline gap-2">
-          <Logo href="/pursuits" />
-          <span className="text-base text-ink-faint">·</span>
-          <h1 className="text-2xl font-extrabold text-tile-cyan italic">{name}</h1>
-        </div>
-        <div className="flex items-center gap-4">
-          <Link href="/pursuits" className="text-sm text-ink-muted hover:underline">
-            ← All sections
+        <div className="group flex items-center gap-3">
+          <Link href="/pursuits" aria-label="All sections" className="rounded-full p-2 text-ink-muted hover:bg-chip hover:text-ink">
+            <ArrowLeft size={18} className="block" />
           </Link>
-          <ProfileMenu
-            name={session.user.name}
-            email={session.user.email}
-            image={session.user.image}
-            plan={viewer.plan}
-            locale={isLocale(viewer.locale) ? viewer.locale : "en"}
-          />
+          <Logo href="/pursuits" withWordmark={false} />
+          <h1 className="text-3xl font-extrabold text-tile-cyan italic">{name}</h1>
+          {section && (
+            <DeleteButton
+              action={deleteSection.bind(null, section.id)}
+              confirmMessage={`Delete the section "${section.name}"? Its subjects move to Unsorted; nothing inside them is deleted.`}
+              className="rounded-full p-1.5 text-ink-faint opacity-0 transition-opacity group-hover:opacity-100 hover:bg-chip hover:text-red-600 focus:opacity-100"
+            >
+              <TrashIcon size={16} title={`Delete section ${section.name}`} />
+            </DeleteButton>
+          )}
         </div>
       </header>
 
-      <div className="grid grid-cols-1 gap-12 lg:grid-cols-2">
-        {/* Left: concepts + games */}
-        <div className="flex flex-col gap-10">
-          <section className="flex flex-col gap-3">
-            <div className="flex items-baseline justify-between">
-              <h2 className="text-xl font-extrabold">Concepts</h2>
-              <span className="text-xs font-semibold text-ink-muted">{conceptsLabel}</span>
-            </div>
-            {concepts.length === 0 ? (
-              <p className="rounded-2xl bg-callout px-4 py-5 text-sm text-ink-muted">
-                No concepts here yet. Dump something in a subject and hit Organize.
-              </p>
-            ) : (
-              <ul className="flex flex-col gap-2">
-                {concepts.map((c) => (
-                  <li key={c.id}>
-                    <Link
-                      href={`/pursuits/${c.pursuitId}?tab=pages`}
-                      className="flex items-center justify-between gap-3 rounded-2xl bg-tile-sky px-4 py-3 text-white transition-transform hover:-translate-y-0.5"
-                    >
-                      <span className="truncate text-sm font-semibold">{c.title}</span>
-                      <span className="shrink-0 text-xs">{c.pursuitTitle}</span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-
-          <GameTiles
-            scopeQuery={`section=${sectionId}`}
-            cardCount={cardCount}
-            dueCount={dueCount}
-            conceptCount={latestConcepts.length}
-          />
-        </div>
-
-        {/* Right: subjects */}
-        <section className="flex flex-col gap-3">
-          <div className="grid grid-cols-[minmax(0,1fr)_repeat(3,3.5rem)] items-end gap-2">
-            <h2 className="text-xl font-extrabold">Activities</h2>
-            <span className="flex justify-center text-ink-muted" title="Next deadline">
-              <CalendarIcon title="Next deadline" />
-            </span>
-            <span className="flex justify-center text-ink-muted" title="Open tasks">
-              <BellIcon title="Open tasks" />
-            </span>
-            <span className="flex justify-center text-ink-muted" title="Cards to review">
-              <BrainIcon title="Cards to review" />
-            </span>
-          </div>
-
-          {pursuits.length === 0 && (
-            <p className="rounded-2xl bg-callout px-4 py-5 text-sm text-ink-muted">
-              No subjects in {name} yet.
-            </p>
-          )}
-
-          <ul className="flex flex-col gap-2">
-            {pursuits.map((p) => {
-              const upcoming = p.projects
-                .map((pr) => pr.dueDate)
-                .filter((d): d is Date => !!d && d >= startOfDay(now))
-                .sort((a, b) => a.getTime() - b.getTime())[0];
-              const openTasks = p.projects.reduce(
-                (n, pr) => n + pr.cards.filter((c) => c.status !== "DONE").length,
-                0,
-              );
-              const due = p._count.flashcards;
-              return (
-                <li
-                  key={p.id}
-                  className="group grid grid-cols-[minmax(0,1fr)_repeat(3,3.5rem)] items-center gap-2"
+      {/* Today */}
+      <section className="flex flex-col gap-4 rounded-3xl bg-white p-5 shadow-[0_1px_2px_rgba(13,13,13,0.06)] lg:flex-row lg:items-center" aria-label="Today">
+        <Link
+          href={due > 0 ? `/review?mode=flash&${q}` : `/review?mode=learn&${q}`}
+          className="flex shrink-0 items-center gap-3 rounded-2xl bg-tile-blue px-6 py-4 text-white transition-transform hover:-translate-y-0.5"
+        >
+          <CardsIcon size={26} />
+          <span className="text-lg font-extrabold">{due > 0 ? `Review ${plural(due, "card")}` : "Learn"}</span>
+        </Link>
+        <nav className="flex flex-wrap gap-2" aria-label="Other ways to practice">
+          {[
+            { mode: "learn", label: "Learn", Icon: QuestionIcon },
+            { mode: "match", label: "Match", Icon: BoltIcon },
+          ].map(({ mode, label, Icon }) => (
+            <Link key={mode} href={`/review?mode=${mode}&${q}`} className="flex items-center gap-2 rounded-full bg-chip px-4 py-2.5 text-sm font-semibold hover:bg-accent-soft hover:text-accent">
+              <Icon size={16} /> {label}
+            </Link>
+          ))}
+          <Link href="/challenges" className="flex items-center gap-2 rounded-full bg-chip px-4 py-2.5 text-sm font-semibold hover:bg-mint/15 hover:text-mint">
+            <span className="font-mono text-xs font-bold">{"</>"}</span> Code
+          </Link>
+        </nav>
+        {weekConcepts.length > 0 && (
+          <div className="flex min-w-0 flex-1 items-center gap-2 lg:justify-end">
+            <span className="shrink-0 text-xs font-semibold text-ink-muted">New this week</span>
+            <div className="flex min-w-0 gap-1.5 overflow-x-auto">
+              {weekConcepts.map((c) => (
+                <Link
+                  key={c.id}
+                  href={`/pursuits/${c.pursuitId}?tab=pages`}
+                  title={c.pursuitTitle}
+                  className="shrink-0 rounded-full border border-border-subtle px-3 py-1.5 text-xs hover:border-tile-sky hover:text-tile-sky"
                 >
-                  <Link
-                    href={`/pursuits/${p.id}`}
-                    className={`flex items-center justify-between gap-2 rounded-2xl px-4 py-3 text-white transition-transform hover:-translate-y-0.5 ${
-                      p.status === "ACTIVE" ? "bg-tile-sky" : "bg-ink-muted"
-                    }`}
-                  >
-                    <span className="truncate text-sm font-semibold">{p.title}</span>
-                    {p.status !== "ACTIVE" && (
-                      <span className="shrink-0 text-xs">{p.status.toLowerCase()}</span>
-                    )}
-                  </Link>
-                  <Cell value={upcoming ? shortDate(upcoming) : null} />
-                  <Cell value={openTasks > 0 ? String(openTasks) : null} />
-                  <Cell value={due > 0 ? String(due) : null} highlight={due > 0} />
-                </li>
-              );
-            })}
-          </ul>
+                  {c.title}
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+      </section>
 
-          {sectionId !== SHARED && (
-            <form action={createPursuit} className="mt-2 flex gap-2">
+      {/* Subjects */}
+      <ul className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-4" aria-label="Subjects">
+        {pursuits.map((p, i) => {
+          const nextDue = p.projects
+            .map((pr) => pr.dueDate)
+            .filter((d): d is Date => !!d && d >= today)
+            .sort((a, b) => a.getTime() - b.getTime())[0];
+          const openTasks = p.projects.reduce((n, pr) => n + pr.cards.filter((c) => c.status !== "DONE").length, 0);
+          const cards = p._count.flashcards;
+          const facts = [
+            nextDue && { text: `Due ${shortDate(nextDue)}`, strong: nextDue.getTime() - today.getTime() < 3 * 86400000 },
+            openTasks > 0 && { text: plural(openTasks, "open task"), strong: false },
+            cards > 0 && { text: `${cards} to review`, strong: true },
+          ].filter(Boolean) as { text: string; strong: boolean }[];
+          return (
+            <li key={p.id} className="group relative">
+              <Link
+                href={`/pursuits/${p.id}`}
+                className={`flex h-full min-h-40 flex-col justify-between gap-4 rounded-3xl p-5 text-white transition-all hover:-translate-y-1 hover:shadow-[0_12px_28px_rgba(13,13,13,0.12)] ${
+                  p.status === "ACTIVE" ? tileColor(i) : "bg-ink-muted"
+                }`}
+              >
+                <span className="pr-8 text-xl leading-tight font-extrabold">{p.title}</span>
+                <span className="flex flex-wrap gap-1.5">
+                  {facts.length === 0 && <span className="text-xs">{p._count.notes > 0 ? plural(p._count.notes, "note") : "Empty"}</span>}
+                  {facts.map((f) => (
+                    <span key={f.text} className={`rounded-full px-2.5 py-1 text-xs font-semibold ${f.strong ? "bg-white text-ink" : "bg-white/25"}`}>
+                      {f.text}
+                    </span>
+                  ))}
+                  {p.status !== "ACTIVE" && <span className="rounded-full bg-white/25 px-2.5 py-1 text-xs">{p.status.toLowerCase()}</span>}
+                </span>
+              </Link>
+              {p.ownerId === userId && (
+                <DeleteButton
+                  action={deletePursuit.bind(null, p.id)}
+                  confirmMessage={`Delete "${p.title}" and everything inside it? This can't be undone.`}
+                  className="absolute top-4 right-4 rounded-full bg-black/15 p-1.5 text-white opacity-0 transition-opacity group-hover:opacity-100 hover:bg-black/30 focus:opacity-100"
+                >
+                  <TrashIcon size={15} title={`Delete ${p.title}`} />
+                </DeleteButton>
+              )}
+            </li>
+          );
+        })}
+        {sectionId !== SHARED && (
+          <li>
+            <form action={createPursuit} className="flex h-full min-h-40 flex-col justify-center gap-2 rounded-3xl border-2 border-dashed border-border-subtle p-5 focus-within:border-tile-sky">
               <input type="hidden" name="section" value={section?.name ?? ""} />
               <input
                 type="text"
                 name="title"
                 required
-                placeholder={`New subject in ${name}`}
-                className="flex-1 rounded-2xl border border-border-subtle bg-white px-4 py-3 text-sm"
+                placeholder="+ New subject"
+                aria-label="New subject name"
+                className="bg-transparent text-lg font-bold placeholder:text-ink-faint focus:outline-none"
               />
-              <button
-                type="submit"
-                className="rounded-full bg-ink px-5 text-sm font-semibold text-white transition-transform hover:-translate-y-0.5"
-              >
-                + Add
+              <button type="submit" className="self-start rounded-full bg-ink px-4 py-1.5 text-xs font-semibold text-white">
+                Add
               </button>
             </form>
-          )}
-
-          {/* Housekeeping, kept small and out of the way */}
-          <details className="mt-6 text-xs text-ink-muted">
-            <summary className="cursor-pointer select-none hover:text-ink">Manage</summary>
-            <div className="mt-3 flex flex-col gap-3">
-              {section && (
-                <div className="flex flex-wrap items-center gap-2">
-                  <span>Order on home:</span>
-                  <form action={reorderSection.bind(null, section.id, "up")}>
-                    <button type="submit" disabled={sectionIndex <= 0} className="rounded-full bg-chip px-3 py-1 hover:text-ink disabled:opacity-40">
-                      ← Earlier
-                    </button>
-                  </form>
-                  <form action={reorderSection.bind(null, section.id, "down")}>
-                    <button type="submit" disabled={sectionIndex === allSections.length - 1} className="rounded-full bg-chip px-3 py-1 hover:text-ink disabled:opacity-40">
-                      Later →
-                    </button>
-                  </form>
-                  <DeleteButton
-                    action={deleteSection.bind(null, section.id)}
-                    confirmMessage={`Delete section "${section.name}"? Its subjects move to Unsorted — nothing inside them is deleted.`}
-                    className="rounded-full bg-chip px-3 py-1 hover:text-red-600"
-                  >
-                    Delete section
-                  </DeleteButton>
-                </div>
-              )}
-              {pursuits.some((p) => p.ownerId === userId) && (
-                <div className="flex flex-col gap-1.5">
-                  <span>Delete a subject (and everything inside it):</span>
-                  <div className="flex flex-wrap gap-1.5">
-                    {pursuits
-                      .filter((p) => p.ownerId === userId)
-                      .map((p) => (
-                        <DeleteButton
-                          key={p.id}
-                          action={deletePursuit.bind(null, p.id)}
-                          confirmMessage={`Delete "${p.title}"? This deletes everything inside it and can't be undone.`}
-                          className="rounded-full bg-chip px-3 py-1 hover:text-red-600"
-                        >
-                          {p.title} ×
-                        </DeleteButton>
-                      ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </details>
-        </section>
-      </div>
+          </li>
+        )}
+      </ul>
     </div>
-  );
-}
-
-function startOfDay(d: Date) {
-  const x = new Date(d);
-  x.setHours(0, 0, 0, 0);
-  return x;
-}
-
-function Cell({ value, highlight = false }: { value: string | null; highlight?: boolean }) {
-  return (
-    <span
-      className={`flex h-full min-h-11 items-center justify-center rounded-xl text-xs font-semibold ${
-        highlight ? "bg-tile-aqua text-white" : value ? "bg-white text-ink" : "bg-white/50 text-ink-faint"
-      }`}
-    >
-      {value ?? "—"}
-    </span>
   );
 }

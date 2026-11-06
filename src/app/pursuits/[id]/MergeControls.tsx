@@ -1,5 +1,6 @@
 "use client";
 
+import { ArrowRight } from "@/app/icons";
 import Link from "next/link";
 import { useRef, useState, useTransition } from "react";
 import {
@@ -322,7 +323,7 @@ export function MergeControls({
                       const result = await generateFlashcards(pursuitId, n.id);
                       setFlashcardMessage({
                         noteId: n.id,
-                        text: result.error ?? `${result.count} flashcards generated →`,
+                        text: result.error ?? `${result.count} flashcards generated`,
                       });
                     })
                   }
@@ -401,7 +402,7 @@ export function MergeControls({
                             href={`/pursuits/${pursuitId}/dump/${o.id}`}
                             className="self-start text-xs font-semibold text-accent hover:underline"
                           >
-                            Open original page →
+                            Open original page <ArrowRight />
                           </Link>
                         </div>
                       ))}
@@ -460,7 +461,7 @@ export function MergeControls({
             }
             className="self-start rounded-full border border-accent px-3.5 py-1.5 text-xs font-semibold text-accent transition-colors hover:bg-accent-soft disabled:opacity-50"
           >
-            {isPending ? "Merging…" : `Merge ${selected.length} notes →`}
+            {isPending ? "Merging…" : <>Merge {selected.length} notes <ArrowRight /></>}
           </button>
         )}
         {addingSection ? (

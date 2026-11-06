@@ -1,5 +1,6 @@
 "use client";
 
+import { SlidesIcon } from "@/app/icons";
 import { useRef, useState, useTransition } from "react";
 import { importSlides } from "./actions";
 import { readPptx, slidesToText } from "@/lib/pptx";
@@ -49,7 +50,7 @@ export function ImportSlides({ pursuitId, sectionId }: { pursuitId: string; sect
         disabled={isPending}
         className="self-start rounded-full border-2 border-tile-sky px-4 py-2 text-sm font-semibold text-tile-sky transition-colors hover:bg-accent-soft disabled:opacity-60"
       >
-        {isPending ? (status ?? "Working…") : "📊 Import slides → summary"}
+        {isPending ? (status ?? "Working…") : <><SlidesIcon /> Import</>}
       </button>
       {error && <p className="text-xs text-red-500">{error}</p>}
     </div>

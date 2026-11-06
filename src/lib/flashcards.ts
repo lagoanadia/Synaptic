@@ -1,6 +1,6 @@
 import { parseJsonLoosely } from "@/lib/json";
 
-export type FlashcardDraft = { question: string; answer: string };
+export type FlashcardDraft = { question: string; answer: string; distractors: string[] };
 
 // AI text → question/answer pairs. Never throws; bad cards are dropped.
 export function parseFlashcardsResponse(rawText: string): FlashcardDraft[] {
@@ -17,6 +17,9 @@ export function parseFlashcardsResponse(rawText: string): FlashcardDraft[] {
     .map((c) => ({
       question: typeof c.question === "string" ? c.question.trim() : "",
       answer: typeof c.answer === "string" ? c.answer.trim() : "",
+      distractors: Array.isArray(c.wrong)
+        ? c.wrong.filter((w): w is string => typeof w === "string" && w.trim() !== "").map((w) => w.trim()).slice(0, 3)
+        : [],
     }))
     .filter((c) => c.question !== "" && c.answer !== "");
 }

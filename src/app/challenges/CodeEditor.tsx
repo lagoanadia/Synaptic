@@ -7,7 +7,24 @@ import { EditorState, Prec } from "@codemirror/state";
 import { indentWithTab } from "@codemirror/commands";
 import { javascript } from "@codemirror/lang-javascript";
 import { python } from "@codemirror/lang-python";
-import { oneDark } from "@codemirror/theme-one-dark";
+import { oneDarkTheme } from "@codemirror/theme-one-dark";
+import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
+import { tags as t } from "@lezer/highlight";
+
+// One Dark's chrome with a calmer palette: One Dark paints every variable
+// red, so ordinary JS read as a wall of red.
+const highlight = HighlightStyle.define([
+  { tag: [t.keyword, t.controlKeyword, t.moduleKeyword, t.operatorKeyword], color: "#c792ea" },
+  { tag: [t.function(t.variableName), t.function(t.propertyName)], color: "#82aaff" },
+  { tag: [t.definition(t.variableName), t.definition(t.function(t.variableName))], color: "#82aaff" },
+  { tag: [t.variableName, t.propertyName], color: "#d7dae0" },
+  { tag: [t.string, t.special(t.string), t.regexp], color: "#c3e88d" },
+  { tag: [t.number, t.bool, t.null, t.atom], color: "#f78c6c" },
+  { tag: [t.className, t.typeName], color: "#ffcb6b" },
+  { tag: [t.comment, t.lineComment, t.blockComment], color: "#7f848e", fontStyle: "italic" },
+  { tag: [t.operator, t.punctuation, t.bracket], color: "#89ddff" },
+  { tag: t.self, color: "#ff5370" },
+]);
 
 // CodeMirror 6 in a thin React wrapper: line numbers, highlighting,
 // brackets, Tab indents, Ctrl/Cmd+Enter runs.
@@ -42,7 +59,8 @@ export function CodeEditor({
             keymap.of([{ key: "Mod-Enter", run: () => (handlers.current.onRun(), true) }]),
           ),
           language === "python" ? python() : javascript(),
-          oneDark,
+          oneDarkTheme,
+          syntaxHighlighting(highlight),
           EditorView.theme({ "&": { height: "100%", fontSize: "14px" }, ".cm-scroller": { fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" } }),
           EditorView.updateListener.of((u) => {
             if (u.docChanged) handlers.current.onChange(u.state.doc.toString());

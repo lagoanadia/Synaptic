@@ -1,5 +1,6 @@
 "use client";
 
+import { ArrowLeft, ArrowRight } from "@/app/icons";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { finishOnboarding, skipOnboarding } from "./actions";
@@ -105,7 +106,6 @@ export function Onboarding({ name }: { name: string | null }) {
           <h1 className="text-3xl font-extrabold">
             Hi{name ? ` ${name.split(" ")[0]}` : ""}. What are you juggling right now?
           </h1>
-          <p className="text-sm text-ink-muted">Pick all that apply. Each one becomes a section.</p>
           <div className="flex flex-wrap gap-2">
             {[...AREA_CHOICES, ...areas.filter((a) => !AREA_CHOICES.includes(a))].map((a) => (
               <button
@@ -146,7 +146,6 @@ export function Onboarding({ name }: { name: string | null }) {
       {step === 1 && (
         <>
           <h1 className="text-3xl font-extrabold">Name a few things in each.</h1>
-          <p className="text-sm text-ink-muted">Comma-separated. Leave any blank.</p>
           <div className="flex flex-col gap-4">
             {areas.map((a) => (
               <label key={a} className="flex flex-col gap-1.5">
@@ -172,10 +171,6 @@ export function Onboarding({ name }: { name: string | null }) {
       {step === 2 && (
         <>
           <h1 className="text-3xl font-extrabold">One thing you&apos;re learning this week?</h1>
-          <p className="text-sm text-ink-muted">
-            We&apos;ll write your first note, flashcards and practice tasks about it, so you start
-            with something real.
-          </p>
           <input
             autoFocus
             value={topic}
@@ -208,7 +203,7 @@ export function Onboarding({ name }: { name: string | null }) {
               onClick={finish}
               className="rounded-full bg-ink px-6 py-3 text-sm font-bold text-white transition-transform hover:-translate-y-0.5"
             >
-              {topic.trim() ? "Build my space →" : "Skip this, build it →"}
+              {topic.trim() ? "Build my space" : "Skip this, build it"} <ArrowRight />
             </button>
           </div>
         </>
@@ -236,7 +231,7 @@ function Next({ onClick, disabled = false }: { onClick: () => void; disabled?: b
       disabled={disabled}
       className="self-end rounded-full bg-ink px-6 py-3 text-sm font-bold text-white transition-transform hover:-translate-y-0.5 disabled:opacity-40 disabled:hover:translate-y-0"
     >
-      Next →
+      Next <ArrowRight />
     </button>
   );
 }
@@ -244,7 +239,7 @@ function Next({ onClick, disabled = false }: { onClick: () => void; disabled?: b
 function Back({ onClick }: { onClick: () => void }) {
   return (
     <button type="button" onClick={onClick} className="rounded-full px-4 py-3 text-sm text-ink-muted hover:bg-chip">
-      ← Back
+      <ArrowLeft /> Back
     </button>
   );
 }

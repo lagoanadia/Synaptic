@@ -1,20 +1,22 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { CheckIcon } from "@/app/icons";
+import Link from "next/link";
+import { useEffect, useState, useTransition } from "react";
 import { reviewFlashcard } from "./actions";
 
 type CardForDisplay = { id: string; question: string; answer: string };
 
-// Quality ratings match the 0-5 scale SM-2 itself uses (see lib/sm2.ts) —
-// these four buttons just cover the range people actually need day to
-// day, not all six values.
+// SM-2 quality ratings (lib/sm2.ts); keys 1-4.
 const RATINGS = [
-  { label: "Again", quality: 1, className: "border-red-300 bg-red-50 text-red-600" },
-  { label: "Hard", quality: 3, className: "border-border-subtle text-ink-muted" },
-  { label: "Good", quality: 4, className: "border-cobalt bg-cobalt-soft text-ink" },
-  { label: "Easy", quality: 5, className: "border-border-subtle text-ink-muted" },
+  { label: "Again", quality: 1, className: "bg-crimson text-white" },
+  { label: "Hard", quality: 3, className: "bg-amber text-white" },
+  { label: "Good", quality: 4, className: "bg-tile-sky text-white" },
+  { label: "Easy", quality: 5, className: "bg-mint text-white" },
 ] as const;
 
+// Click or Space flips the card, 1-4 rates it. The queue on the side
+// shows what's coming; click one to jump to it.
 export function FlashcardReview({
   pursuitId,
   dueCards,
@@ -25,67 +27,130 @@ export function FlashcardReview({
   upcomingCount: number;
 }) {
   const [queue, setQueue] = useState(dueCards);
-  const [revealed, setRevealed] = useState(false);
+  const [flipped, setFlipped] = useState(false);
+  const [done, setDone] = useState(0);
   const [isPending, startTransition] = useTransition();
-
   const current = queue[0];
+  const total = done + queue.length;
 
   function rate(quality: number) {
     if (!current || isPending) return;
     startTransition(async () => {
       await reviewFlashcard(pursuitId, current.id, quality);
       setQueue((q) => q.slice(1));
-      setRevealed(false);
+      setDone((n) => n + 1);
+      setFlipped(false);
     });
   }
 
+  function jumpTo(id: string) {
+    setQueue((q) => [...q.filter((c) => c.id === id), ...q.filter((c) => c.id !== id)]);
+    setFlipped(false);
+  }
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.target as HTMLElement).closest("input, textarea, select, [contenteditable]")) return;
+      if (e.key === " ") {
+        e.preventDefault();
+        setFlipped((f) => !f);
+      } else if (flipped && ["1", "2", "3", "4"].includes(e.key)) {
+        rate(RATINGS[Number(e.key) - 1].quality);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
+
   if (!current) {
     return (
-      <div className="flex flex-col gap-2">
-        <p className="text-sm text-ink-muted">No cards due right now.</p>
-        {upcomingCount > 0 && (
-          <p className="text-xs text-ink-faint">
-            {upcomingCount} more scheduled for later.
-          </p>
-        )}
+      <div className="flex flex-col items-center gap-4 rounded-3xl bg-white px-6 py-16 text-center shadow-[0_1px_2px_rgba(13,13,13,0.06)]">
+        <span className="flex items-center gap-2 text-5xl font-extrabold text-mint">{done > 0 && done}<CheckIcon size={44} className="block" /></span>
+        <p className="font-semibold">{done > 0 ? "All caught up" : "Nothing due"}</p>
+        {upcomingCount > 0 && <p className="text-sm text-ink-muted">{upcomingCount} scheduled for later</p>}
+        <Link
+          href={`/review?mode=learn&pursuit=${pursuitId}`}
+          className="rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-white"
+        >
+          Learn
+        </Link>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-3 rounded-2xl border-t-4 border-cobalt bg-white p-6 shadow-[0_1px_2px_rgba(13,13,13,0.06)]">
-        <span className="self-start rounded-full bg-cobalt-soft px-2.5 py-1 text-xs font-semibold text-ink">
-          {queue.length} card{queue.length === 1 ? "" : "s"} left today
-        </span>
-        <p className="text-lg font-semibold">{current.question}</p>
-        {revealed ? (
-          <p className="text-base text-ink-muted">{current.answer}</p>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setRevealed(true)}
-            className="self-start text-sm font-semibold text-accent hover:underline"
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
+      <div className="flex flex-col gap-4">
+        <button
+          type="button"
+          onClick={() => setFlipped((f) => !f)}
+          aria-label={flipped ? "Show question" : "Show answer"}
+          className="group [perspective:1600px]"
+        >
+          <div
+            className={`relative min-h-[340px] w-full transition-transform duration-500 [transform-style:preserve-3d] ${
+              flipped ? "[transform:rotateY(180deg)]" : ""
+            }`}
           >
-            Show answer
-          </button>
-        )}
-      </div>
-      {revealed && (
-        <div className="flex gap-2">
-          {RATINGS.map((r) => (
+            <Face className="bg-white">
+              <span className="text-2xl leading-snug font-bold text-balance sm:text-3xl">{current.question}</span>
+              <span className="absolute bottom-5 text-xs text-ink-faint">click or Space</span>
+            </Face>
+            <Face className="bg-tile-blue text-white [transform:rotateY(180deg)]">
+              <span className="text-2xl leading-snug font-semibold text-balance sm:text-3xl">{current.answer}</span>
+            </Face>
+          </div>
+        </button>
+
+        <div className={`grid grid-cols-4 gap-2 transition-opacity ${flipped ? "opacity-100" : "pointer-events-none opacity-0"}`}>
+          {RATINGS.map((r, i) => (
             <button
               key={r.label}
               type="button"
-              disabled={isPending}
+              disabled={isPending || !flipped}
               onClick={() => rate(r.quality)}
-              className={`flex-1 rounded-full border px-3 py-2.5 text-sm font-semibold transition-transform hover:-translate-y-0.5 disabled:opacity-50 disabled:hover:translate-y-0 ${r.className}`}
+              className={`flex items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-bold transition-transform hover:-translate-y-0.5 disabled:opacity-50 ${r.className}`}
             >
               {r.label}
+              <kbd className="text-xs opacity-70">{i + 1}</kbd>
             </button>
           ))}
         </div>
-      )}
+      </div>
+
+      <aside className="flex flex-col gap-3 self-start" aria-label="Queue">
+        <div className="h-2 overflow-hidden rounded-full bg-chip" title={`${done} of ${total} done`}>
+          <div className="h-full rounded-full bg-mint transition-all" style={{ width: `${total ? (done / total) * 100 : 0}%` }} />
+        </div>
+        <span className="text-xs font-semibold text-ink-muted">
+          {done}/{total}
+          {upcomingCount > 0 && ` · ${upcomingCount} later`}
+        </span>
+        <ol className="flex flex-col gap-1.5">
+          {queue.slice(1, 9).map((c) => (
+            <li key={c.id}>
+              <button
+                type="button"
+                onClick={() => jumpTo(c.id)}
+                className="w-full truncate rounded-xl bg-white px-3 py-2.5 text-left text-sm text-ink-muted shadow-[0_1px_2px_rgba(13,13,13,0.04)] hover:text-ink"
+              >
+                {c.question}
+              </button>
+            </li>
+          ))}
+          {queue.length > 9 && <li className="px-3 text-xs text-ink-faint">+{queue.length - 9}</li>}
+        </ol>
+      </aside>
+    </div>
+  );
+}
+
+function Face({ className, children }: { className: string; children: React.ReactNode }) {
+  return (
+    <div
+      className={`absolute inset-0 flex flex-col items-center justify-center rounded-3xl p-10 shadow-[0_1px_2px_rgba(13,13,13,0.06)] [backface-visibility:hidden] ${className}`}
+    >
+      {children}
     </div>
   );
 }
