@@ -47,23 +47,8 @@ model User {
   classroomConnection GoogleClassroomConnection?
   pushSubscriptions   PushSubscription[]
   sentNotifications   SentDeadlineNotification[]
-  apiKeys             ApiKey[]
   challenges          Challenge[]
   debates             Debate[]
-}
-
-// Personal access token for the MCP server (src/app/api/mcp). Only the hash
-// is stored; the raw key is shown once.
-model ApiKey {
-  id         String    @id @default(cuid())
-  name       String
-  keyHash    String    @unique
-  prefix     String
-  createdAt  DateTime  @default(now())
-  lastUsedAt DateTime?
-
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 enum Plan {
