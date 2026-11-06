@@ -1,245 +1,320 @@
 "use client";
 
-import { ArrowLeft, ArrowRight } from "@/app/icons";
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
-import { finishOnboarding, skipOnboarding } from "./actions";
-import { LogoMark } from "../Logo";
+import { useEffect, useState, useTransition } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { CheckIcon } from "@/app/icons";
+import { Folder, MiniNotebook, Notebook } from "@/app/Covers";
+import { NOTEBOOK_COVERS, folderCover, type NotebookCover } from "@/lib/covers";
+import { ROLES, looksLikeProgramming, notebooksFor, type Role } from "@/lib/onboardingPlan";
+import { classroomCourses, finishOnboarding, skipOnboarding } from "./actions";
 
-const AREA_CHOICES = ["Estudios", "Trabajo", "Proyectos", "Hábitos", "Idiomas", "Lectura"];
-
-const ITEM_PROMPT: Record<string, { question: string; placeholder: string }> = {
-  Estudios: { question: "¿Qué asignaturas?", placeholder: "AD, Bases de Datos, Programación" },
-  Trabajo: { question: "¿En qué estás trabajando?", placeholder: "Web de un cliente, informe mensual" },
-  Proyectos: { question: "¿Qué proyectos?", placeholder: "Portfolio, Synaptic" },
-  Hábitos: { question: "¿Qué hábitos?", placeholder: "Correr, Leer 20 min" },
-  Idiomas: { question: "¿Qué idiomas?", placeholder: "Inglés, Alemán" },
-  Lectura: { question: "¿Qué estás leyendo?", placeholder: "Atomic Habits" },
+const ICON: Record<Role, string> = {
+  fp: "M3 9l9-5 9 5-9 5zM7 11v5c3 2 7 2 10 0v-5",
+  uni: "M3 10h18M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18M12 3l9 5H3z",
+  bach: "M4 5h7a2 2 0 0 1 2 2v13a2 2 0 0 0-2-2H4zM20 5h-5a2 2 0 0 0-2 2v13a2 2 0 0 1 2-2h5z",
+  work: "M3 7h18v13H3zM9 7V5h6v2M3 13h18",
+  projects: "M12 3l1.8 4.6L18.5 9l-4.7 1.4L12 15l-1.8-4.6L5.5 9l4.7-1.4zM5 19h14",
+  personal: "M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z",
 };
-const promptFor = (area: string) =>
-  ITEM_PROMPT[area] ?? { question: `¿Qué hay en ${area}?`, placeholder: "Separados por comas" };
+const DEFAULT_COVERS: NotebookCover[] = ["zebra", "croc", "leopard", "green"];
+const SWATCHES: NotebookCover[] = ["zebra", "croc", "leopard", "green", "marble", "fawn", "ruby", "tartan", "blossom"];
+const KEY = "synaptic.welcome";
 
-const splitList = (s: string) =>
-  s
-    .split(/[,\n]/)
-    .map((x) => x.trim())
-    .filter(Boolean);
+type State = { roles: Role[]; picked: { title: string; classroomCourseId: string | null }[]; typed: string; topic: string; subject: string; covers: Record<string, NotebookCover> };
+const START: State = { roles: ["fp", "personal"], picked: [], typed: "", topic: "", subject: "", covers: {} };
 
-// Three quick screens on the very first visit. Every answer becomes real
-// content: sections, subjects, and a starter note about what you're
-// learning. Everything is skippable.
+const splitList = (s: string) => s.split(/[,\n]/).map((x) => x.trim()).filter(Boolean);
+
+// Four quick steps on the very first visit: what you do, your subjects
+// (Classroom first), this week's topic, your covers. Every step can be
+// skipped; the answers become your notebooks, folders and a first page.
 export function Onboarding({ name }: { name: string | null }) {
   const router = useRouter();
+  const params = useSearchParams();
   const [step, setStep] = useState(0);
-  const [areas, setAreas] = useState<string[]>([]);
-  const [custom, setCustom] = useState("");
-  const [items, setItems] = useState<Record<string, string>>({});
-  const [topic, setTopic] = useState("");
-  const [subject, setSubject] = useState("");
+  const [s, setS] = useState<State>(START);
+  const [classroom, setClassroom] = useState<{ connected: boolean; courses: { id: string; name: string }[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
+  const [building, setBuilding] = useState(false);
+  const [, start] = useTransition();
 
-  const allItems = areas.flatMap((a) => splitList(items[a] ?? ""));
+  // Back from connecting Classroom: pick up where you were (browser storage).
+  useEffect(() => {
+    if (params.get("welcome") !== "classroom") return;
+    try {
+      const saved = JSON.parse(window.sessionStorage.getItem(KEY) ?? "null");
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (saved) setS({ ...START, ...saved });
+    } catch {}
+    setStep(1);
+  }, [params]);
 
-  function toggle(area: string) {
-    setAreas((cur) => (cur.includes(area) ? cur.filter((a) => a !== area) : [...cur, area]));
-  }
+  const notebooks = notebooksFor(s.roles);
+  const home = notebooks.find((n) => n.study) ?? notebooks[0];
+  const coverOf = (n: string, i: number) => s.covers[n] ?? DEFAULT_COVERS[i % DEFAULT_COVERS.length];
+  const subjects = [...s.picked.map((p) => p.title), ...splitList(s.typed)];
 
-  function addCustom() {
-    const c = custom.trim();
-    if (c && !areas.includes(c)) setAreas((cur) => [...cur, c]);
-    setCustom("");
+  // Step 2 asks for your Classroom courses once.
+  useEffect(() => {
+    if (step !== 1 || classroom || !home.study) return;
+    classroomCourses().then((c) => {
+      setClassroom(c);
+      if (c.connected && s.picked.length === 0) setS((cur) => ({ ...cur, picked: c.courses.map((x) => ({ title: x.name, classroomCourseId: x.id })) }));
+    });
+  }, [step, classroom, home.study, s.picked.length]);
+
+  // Remember the answers so far; Google brings you back to step 2.
+  function rememberForClassroom() {
+    try {
+      window.sessionStorage.setItem(KEY, JSON.stringify(s));
+    } catch {}
   }
 
   function finish() {
+    setBuilding(true);
     setError(null);
-    startTransition(async () => {
-      const result = await finishOnboarding({
-        areas: areas.map((a) => ({ name: a, items: splitList(items[a] ?? "") })),
-        learning: { topic, subject: subject || allItems[0] || null },
-      });
-      if (result.error) {
-        setError(result.error);
-        return;
+    start(async () => {
+      const [r] = await Promise.all([
+        finishOnboarding({
+          roles: s.roles,
+          subjects: [...s.picked, ...splitList(s.typed).map((title) => ({ title, classroomCourseId: null }))],
+          learning: { topic: s.topic, subject: s.subject || subjects[0] || null },
+          covers: Object.fromEntries(notebooks.map((n, i) => [n.name, coverOf(n.name, i)])),
+        }),
+        new Promise((ok) => setTimeout(ok, 1600)),
+      ]);
+      if (r.error) {
+        setBuilding(false);
+        return setError(r.error);
       }
-      router.push(result.landingId ? `/pursuits/${result.landingId}` : "/pursuits");
+      try {
+        window.sessionStorage.removeItem(KEY);
+      } catch {}
+      router.replace("/pursuits");
       router.refresh();
     });
   }
 
-  if (isPending) {
-    return (
-      <Shell>
-        <div className="flex flex-col items-center gap-4 py-16 text-center">
-          <span className="h-10 w-10 animate-spin rounded-full border-4 border-tile-aqua border-t-transparent" />
-          <p className="text-lg font-bold">Creando tu espacio…</p>
-          <p className="text-sm text-ink-muted">
-            {topic ? `Escribiendo tus primeras notas sobre ${topic}.` : "Preparando tus secciones."}
-          </p>
-        </div>
-      </Shell>
-    );
-  }
+  const card = "rounded-xl border bg-white transition-colors";
+  const next = (label = "Siguiente", onClick = () => setStep(step + 1)) => (
+    <button type="button" onClick={onClick} className="rounded-xl bg-ink px-8 py-3.5 text-sm font-semibold text-white">
+      {label} →
+    </button>
+  );
 
   return (
-    <Shell>
-      <div className="flex items-center justify-between">
-        <div className="flex gap-1.5" aria-label={`Paso ${step + 1} de 3`}>
-          {[0, 1, 2].map((i) => (
-            <span key={i} className={`h-1.5 w-8 rounded-full ${i <= step ? "bg-tile-aqua" : "bg-chip"}`} />
+    <div
+      className="fixed inset-0 z-50 flex flex-col overflow-y-auto bg-[#f8f4ea]"
+      style={{ backgroundImage: "radial-gradient(rgba(55,53,47,.12) 1px, transparent 1.3px)", backgroundSize: "22px 22px" }}
+    >
+      <header className="flex items-center justify-between px-5 py-5 sm:px-10">
+        <span className="flex items-center gap-2 text-sm font-semibold">
+          <span className="grid size-5 place-items-center rounded bg-accent text-[11px] font-bold text-white">S</span>
+          <span className="hidden sm:inline">Synaptic</span>
+        </span>
+        <span className="flex gap-1.5" aria-hidden>
+          {[0, 1, 2, 3].map((i) => (
+            <i key={i} className={`h-1 w-7 rounded-full ${i < step || building ? "bg-ink" : i === step ? "bg-ink/50" : "bg-ink/15"}`} />
           ))}
-        </div>
-        <button
-          type="button"
-          onClick={() => startTransition(async () => {
-            await skipOnboarding();
-            router.refresh();
-          })}
-          className="text-xs text-ink-faint hover:text-ink"
-        >
-          Saltar — empezar vacío
+        </span>
+        <button type="button" onClick={() => start(async () => { await skipOnboarding(); router.refresh(); })} className="text-sm text-ink-faint hover:text-ink">
+          Saltar
         </button>
-      </div>
+      </header>
 
-      {step === 0 && (
-        <>
-          <h1 className="text-3xl font-extrabold">
-            Hola{name ? ` ${name.split(" ")[0]}` : ""}. ¿Qué tienes entre manos ahora mismo?
-          </h1>
-          <div className="flex flex-wrap gap-2">
-            {[...AREA_CHOICES, ...areas.filter((a) => !AREA_CHOICES.includes(a))].map((a) => (
-              <button
-                key={a}
-                type="button"
-                onClick={() => toggle(a)}
-                aria-pressed={areas.includes(a)}
-                className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
-                  areas.includes(a) ? "bg-tile-sky text-white" : "bg-chip text-ink-muted hover:text-ink"
-                }`}
-              >
-                {a}
-              </button>
-            ))}
-          </div>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              addCustom();
-            }}
-            className="flex gap-2"
-          >
-            <input
-              value={custom}
-              onChange={(e) => setCustom(e.target.value)}
-              placeholder="Otra cosa…"
-              aria-label="Añade tu propia área"
-              className="flex-1 rounded-2xl border border-border-subtle px-4 py-2.5 text-sm"
-            />
-            <button type="submit" className="rounded-full bg-chip px-4 text-sm font-semibold">
-              Añadir
-            </button>
-          </form>
-          <Next disabled={areas.length === 0} onClick={() => setStep(1)} />
-        </>
-      )}
-
-      {step === 1 && (
-        <>
-          <h1 className="text-3xl font-extrabold">Nombra unas cuantas cosas en cada una.</h1>
-          <div className="flex flex-col gap-4">
-            {areas.map((a) => (
-              <label key={a} className="flex flex-col gap-1.5">
-                <span className="text-sm font-semibold">
-                  {a} · <span className="font-normal text-ink-muted">{promptFor(a).question}</span>
+      <main className="flex flex-1 flex-col items-center justify-center gap-8 px-5 pb-10">
+        {building ? (
+          <div className="flex flex-col items-center gap-7">
+            <div className="flex items-end gap-4">
+              {notebooks.slice(0, 3).map((n, i) => (
+                <span key={n.name} style={{ transform: `translateY(${[0, -10, 0][i]}px) rotate(${[-4, 0, 4][i]}deg)` }}>
+                  <Notebook cover={coverOf(n.name, i)} name={n.name} width={104} />
                 </span>
+              ))}
+            </div>
+            <div className="flex gap-4">
+              {subjects.slice(0, 4).map((t) => (
+                <Folder key={t} cover={folderCover(t)} width={72} />
+              ))}
+            </div>
+            <span className="size-6 animate-spin rounded-full border-2 border-ink/15 border-t-ink/60" />
+            <span className="text-sm text-ink-faint">Preparando tu espacio…</span>
+          </div>
+        ) : step === 0 ? (
+          <>
+            <h1 className="text-center text-[2rem] leading-tight font-bold tracking-tight sm:text-[2.4rem]">{name ? `Hola, ${name.split(" ")[0]}. ¿Qué haces?` : "¿Qué haces?"}</h1>
+            <div className="grid w-full max-w-[580px] grid-cols-2 gap-3 sm:grid-cols-3">
+              {ROLES.map((r) => {
+                const on = s.roles.includes(r.key);
+                return (
+                  <button
+                    key={r.key}
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() => setS({ ...s, roles: on ? s.roles.filter((x) => x !== r.key) : [...s.roles, r.key] })}
+                    className={`${card} relative flex flex-col items-center gap-3 py-7 font-semibold ${on ? "border-ink ring-1 ring-ink" : "border-[#ebe7dd] hover:border-[#d3d1cb]"}`}
+                  >
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" aria-hidden>
+                      <path d={ICON[r.key]} />
+                    </svg>
+                    {r.label}
+                    {on && (
+                      <span className="absolute top-2.5 right-2.5 grid size-5 place-items-center rounded-full bg-ink text-white">
+                        <CheckIcon size={12} className="block" />
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="flex items-center gap-5">
+              <span className="hidden text-sm text-ink-faint sm:inline">Tu espacio</span>
+              {notebooks.map((n, i) => (
+                <span key={n.name} className="flex flex-col items-center gap-1.5 text-sm font-medium">
+                  <Notebook cover={coverOf(n.name, i)} name={n.name} width={70} />
+                  <span>
+                    {n.name}
+                    {n.study && <span className="ml-1 text-xs text-accent" title="Herramientas de estudio">▤</span>}
+                  </span>
+                </span>
+              ))}
+            </div>
+            {next()}
+          </>
+        ) : step === 1 ? (
+          <>
+            <h1 className="text-[2rem] leading-tight font-bold tracking-tight sm:text-[2.4rem]">{home.study ? "Tus asignaturas" : `¿Qué hay en ${home.name}?`}</h1>
+            <div className="flex w-full max-w-[520px] flex-col gap-3">
+              {home.study && (
+                <div className={`${card} flex items-center gap-4 px-5 py-4 ${classroom?.connected ? "border-[#1e8e3e] ring-1 ring-[#1e8e3e]" : "border-[#ebe7dd]"}`}>
+                  <svg width="30" height="30" viewBox="0 0 24 24" aria-hidden>
+                    <rect x="2" y="4" width="20" height="16" rx="2" fill="#1e8e3e" />
+                    <circle cx="12" cy="11" r="2.6" fill="#fff" />
+                    <path d="M7.5 17c.8-2 2.6-3 4.5-3s3.7 1 4.5 3" fill="#fff" />
+                  </svg>
+                  <span className="flex flex-1 flex-col">
+                    <b className="text-[15px]">Google Classroom</b>
+                    <span className="text-xs text-ink-faint">Cursos, unidades y entregas</span>
+                  </span>
+                  {classroom?.connected ? (
+                    <span className="grid size-7 place-items-center rounded-full bg-[#1e8e3e] text-white">
+                      <CheckIcon size={15} className="block" />
+                    </span>
+                  ) : (
+                    <a href="/api/classroom/connect?pursuitId=onboarding" onClick={rememberForClassroom} className="rounded-lg bg-ink px-3 py-1.5 text-sm text-white">
+                      Conectar
+                    </a>
+                  )}
+                </div>
+              )}
+              {classroom?.connected && classroom.courses.length > 0 && (
+                <div className={`${card} border-[#ebe7dd] px-4 py-1`}>
+                  {classroom.courses.map((c) => {
+                    const on = s.picked.some((p) => p.classroomCourseId === c.id);
+                    return (
+                      <label key={c.id} className="flex cursor-pointer items-center gap-3 border-b border-[#f1efe9] py-2.5 last:border-b-0">
+                        <input
+                          type="checkbox"
+                          checked={on}
+                          onChange={() => setS({ ...s, picked: on ? s.picked.filter((p) => p.classroomCourseId !== c.id) : [...s.picked, { title: c.name, classroomCourseId: c.id }] })}
+                          className="size-4 accent-ink"
+                        />
+                        <Folder cover={folderCover(c.name)} width={36} />
+                        <b className="min-w-0 flex-1 truncate text-sm">{c.name}</b>
+                        {looksLikeProgramming(c.name) && <span className="rounded bg-chip px-1.5 py-0.5 font-mono text-[11px] text-ink-muted">&lt;/&gt; Retos</span>}
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+              <label className="flex items-center gap-3">
+                {home.study && <span className="shrink-0 text-sm text-ink-faint">o escríbelas</span>}
                 <input
-                  value={items[a] ?? ""}
-                  onChange={(e) => setItems((cur) => ({ ...cur, [a]: e.target.value }))}
-                  placeholder={promptFor(a).placeholder}
-                  className="rounded-2xl border border-border-subtle px-4 py-2.5 text-sm"
+                  value={s.typed}
+                  onChange={(e) => setS({ ...s, typed: e.target.value })}
+                  placeholder={home.study ? "Bases de datos, Sistemas…" : "Portfolio, una web…"}
+                  aria-label="Separadas por comas"
+                  className="min-w-0 flex-1 rounded-xl border border-[#ebe7dd] bg-white px-4 py-2.5 text-sm"
                 />
               </label>
-            ))}
-          </div>
-          <div className="flex justify-between">
-            <Back onClick={() => setStep(0)} />
-            <Next onClick={() => setStep(2)} />
-          </div>
-        </>
-      )}
-
-      {step === 2 && (
-        <>
-          <h1 className="text-3xl font-extrabold">¿Algo que estés aprendiendo esta semana?</h1>
-          <input
-            autoFocus
-            value={topic}
-            onChange={(e) => setTopic(e.target.value)}
-            placeholder="p. ej. joins en SQL, ficheros secuenciales, present perfect"
-            aria-label="Lo que estás aprendiendo"
-            className="rounded-2xl border border-border-subtle px-4 py-3 text-base"
-          />
-          {allItems.length > 1 && (
-            <label className="flex flex-col gap-1.5 text-sm">
-              <span className="font-semibold">¿Para cuál?</span>
-              <select
-                value={subject}
-                onChange={(e) => setSubject(e.target.value)}
-                className="rounded-2xl border border-border-subtle bg-white px-4 py-2.5"
-              >
-                {allItems.map((i) => (
-                  <option key={i} value={i}>
-                    {i}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
-          {error && <p className="text-sm text-red-500">{error}</p>}
-          <div className="flex justify-between">
-            <Back onClick={() => setStep(1)} />
-            <button
-              type="button"
-              onClick={finish}
-              className="rounded-full bg-ink px-6 py-3 text-sm font-bold text-white transition-transform hover:-translate-y-0.5"
-            >
-              {topic.trim() ? "Crear mi espacio" : "Saltar esto y crearlo"} <ArrowRight />
-            </button>
-          </div>
-        </>
-      )}
-    </Shell>
-  );
-}
-
-function Shell({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="mx-auto flex w-full max-w-xl flex-1 flex-col justify-center gap-6 px-6 py-12">
-      <LogoMark size={32} />
-      <div className="flex flex-col gap-5 rounded-3xl bg-white p-6 shadow-[0_1px_2px_rgba(13,13,13,0.06)] sm:p-8">
-        {children}
-      </div>
+            </div>
+            {next()}
+          </>
+        ) : step === 2 ? (
+          <>
+            <h1 className="text-center text-[2rem] leading-tight font-bold tracking-tight sm:text-[2.4rem]">¿Qué estás aprendiendo esta semana?</h1>
+            <div className="flex w-full max-w-[620px] items-center gap-2 rounded-xl border border-[#ebe7dd] bg-white py-2 pr-2 pl-5 shadow-[0_6px_20px_rgba(55,53,47,.06)]">
+              <input
+                autoFocus
+                value={s.topic}
+                onChange={(e) => setS({ ...s, topic: e.target.value })}
+                onKeyDown={(e) => e.key === "Enter" && setStep(3)}
+                placeholder="Joins en SQL"
+                aria-label="Tema"
+                className="min-w-0 flex-1 bg-transparent py-1.5 text-lg outline-none"
+              />
+              {subjects.length > 0 && (
+                <select value={s.subject || subjects[0]} onChange={(e) => setS({ ...s, subject: e.target.value })} aria-label="Asignatura" className="max-w-[45%] rounded-md bg-chip px-2 py-1.5 text-sm">
+                  {subjects.map((t) => (
+                    <option key={t}>{t}</option>
+                  ))}
+                </select>
+              )}
+            </div>
+            {/* What it will make: a page, then cards from it. */}
+            <div className={`flex gap-3 transition-opacity ${s.topic.trim() ? "opacity-100" : "opacity-30"}`} aria-label="Se creará una página y tarjetas">
+              <span className="grid size-14 place-items-center rounded-xl border border-[#ebe7dd] bg-white text-ink-muted" title="Una página">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" aria-hidden>
+                  <path d="M6 3h8l4 4v14H6z" />
+                  <path d="M14 3v4h4M9 12h6M9 16h6" />
+                </svg>
+              </span>
+              <span className="grid size-14 place-items-center rounded-xl border border-[#ebe7dd] bg-white text-ink-muted" title="Tarjetas">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" aria-hidden>
+                  <rect x="4" y="7" width="13" height="13" rx="2" />
+                  <path d="M8 4h10a2 2 0 0 1 2 2v10" />
+                </svg>
+              </span>
+            </div>
+            {next()}
+          </>
+        ) : (
+          <>
+            <h1 className="text-[2rem] leading-tight font-bold tracking-tight sm:text-[2.4rem]">Elige tus tapas</h1>
+            <div className="flex flex-wrap justify-center gap-10">
+              {notebooks.map((n, i) => (
+                <div key={n.name} className="flex flex-col items-center gap-4">
+                  <Notebook cover={coverOf(n.name, i)} name={n.name} width={130} />
+                  <div className="flex max-w-[190px] flex-wrap items-center justify-center gap-1.5">
+                    {SWATCHES.map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        title={c}
+                        onClick={() => setS({ ...s, covers: { ...s.covers, [n.name]: c } })}
+                        className={`rounded-sm ${coverOf(n.name, i) === c ? "ring-2 ring-ink ring-offset-2 ring-offset-[#f8f4ea]" : ""}`}
+                      >
+                        <MiniNotebook cover={c} size={26} />
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      title="Al azar"
+                      aria-label="Al azar"
+                      onClick={() => setS({ ...s, covers: { ...s.covers, [n.name]: NOTEBOOK_COVERS[Math.floor(Math.random() * NOTEBOOK_COVERS.length)] } })}
+                      className="px-1 text-ink-faint hover:text-ink"
+                    >
+                      ⤮
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {error && <p className="text-sm text-red-500">{error}</p>}
+            {next("Crear mi espacio", finish)}
+          </>
+        )}
+      </main>
     </div>
-  );
-}
-
-function Next({ onClick, disabled = false }: { onClick: () => void; disabled?: boolean }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className="self-end rounded-full bg-ink px-6 py-3 text-sm font-bold text-white transition-transform hover:-translate-y-0.5 disabled:opacity-40 disabled:hover:translate-y-0"
-    >
-      Siguiente <ArrowRight />
-    </button>
-  );
-}
-
-function Back({ onClick }: { onClick: () => void }) {
-  return (
-    <button type="button" onClick={onClick} className="rounded-full px-4 py-3 text-sm text-ink-muted hover:bg-chip">
-      <ArrowLeft /> Atrás
-    </button>
   );
 }

@@ -34,6 +34,10 @@ model User {
   // Home page blocks (lib/blocks.ts); null = defaults.
   homeBlocks Json?
 
+  // What the welcome flow wrote as an example ({ topic, dumps, notes,
+  // flashcards } ids), so "Quitar lo de ejemplo" can remove exactly that.
+  sampleContent Json?
+
   // "en" | "de" | "fr" | "es" (lib/i18n.ts).
   locale String @default("en")
 

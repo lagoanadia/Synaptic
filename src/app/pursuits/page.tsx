@@ -11,6 +11,7 @@ import { homeBlocks } from "@/lib/blocks";
 import { notebookCover } from "@/lib/covers";
 import { folderItems, notebookMap, recentPages } from "@/lib/blockData";
 import { Greeting } from "./Greeting";
+import { SampleNote } from "./SampleNote";
 import { NotebookShelf, type ShelfItem } from "./NotebookShelf";
 import { HomeBlocks } from "./HomeBlocks";
 import { FolderRow, RecentList } from "./BlockViews";
@@ -24,7 +25,7 @@ export default async function HomePage() {
 
   const [sections, viewer, pursuitBuckets] = await Promise.all([
     prisma.section.findMany({ where: { userId }, orderBy: { order: "asc" }, select: { id: true, name: true, cover: true, study: true } }),
-    prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { onboardedAt: true, homeBlocks: true } }),
+    prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { onboardedAt: true, homeBlocks: true, sampleContent: true } }),
     prisma.pursuit.findMany({ where: accessiblePursuits(userId), select: { ownerId: true, sectionId: true } }),
   ]);
 
@@ -39,6 +40,7 @@ export default async function HomePage() {
   if (pursuitBuckets.some((p) => p.ownerId !== userId))
     shelf.push({ id: SHARED, name: "Compartido", cover: "ocean", href: `/pursuits/s/${SHARED}`, movable: false });
 
+  const sample = viewer.sampleContent as { topic: string; flashcards?: string[] } | null;
   const blocks = homeBlocks(viewer.homeBlocks, sections);
   const studyOf = new Map(sections.map((s) => [s.id, s.study]));
   const entries = await Promise.all(
@@ -60,6 +62,7 @@ export default async function HomePage() {
   return (
     <div className="mx-auto flex w-full max-w-[1100px] flex-1 flex-col gap-10 px-6 py-10 sm:px-12 lg:py-14">
       <Greeting name={session.user.name ?? null} />
+      {sample && <SampleNote topic={sample.topic} cards={sample.flashcards?.length ?? 0} />}
       <NotebookShelf items={shelf} />
       <HomeBlocks
         blocks={blocks}
