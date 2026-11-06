@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { aiBudget } from "@/lib/access";
 import { arr, askJson, obj, str } from "@/lib/ai";
 import { shuffle } from "@/lib/review";
-import { parseChallenge, type ChallengeDraft, type ChallengeTest, type Language } from "@/lib/challenge";
+import { asLanguage, formatReview, LANGUAGE_INFO, parseChallenge, type ChallengeDraft, type ChallengeTest, type Language } from "@/lib/challenge";
 import { accessiblePursuits } from "@/lib/reviewData";
 
 // No code ever runs on the server. The server drafts a challenge (with a
@@ -36,7 +36,7 @@ export async function draftChallenge(input: {
   const limited = await budget.check();
   if (limited) return { error: limited };
 
-  const language: Language = input.language === "python" ? "python" : "javascript";
+  const language = asLanguage(input.language);
   const difficulty = ["easy", "medium", "hard"].includes(input.difficulty) ? input.difficulty : "easy";
 
   // Built from your notes: excerpts from a few of them (one subject, or
@@ -71,12 +71,12 @@ ${picked.map((n, i) => `--- NOTE ${i + 1} (${n.pursuit.title}) ---\n${n.content.
 
   const data = obj(
     await askJson(
-      `Create THREE different small coding challenges in ${language === "python" ? "Python" : "JavaScript"} for someone getting back into coding after a break. Difficulty: ${difficulty} (easy = 5-15 lines, medium = loops/conditions/data structures, hard = a small algorithm).
+      `Create THREE different small coding challenges in ${LANGUAGE_INFO[language].label} for someone getting back into coding after a break. Difficulty: ${difficulty} (easy = 5-15 lines, medium = loops/conditions/data structures, hard = a small algorithm).
 ${context}
 ${topic ? `Topic requested: ${topic}.` : ""}
 Each of the three must practice a DIFFERENT idea (ideally from a different note), and none may be the same as or a variant of these existing challenges: ${taken.length ? taken.map((t) => `"${t}"`).join(", ") : "(none yet)"}.
 
-Each must be solvable as ONE pure function (no input(), files, network or randomness), tested by calling it with arguments and comparing the JSON-serializable return value.
+${SHAPE[language]}
 
 Respond with ONLY JSON: {"challenges": [
   {
@@ -108,6 +108,14 @@ Respond with ONLY JSON: {"challenges": [
   return { error: null, drafts };
 }
 
+// How each language's challenges are tested, for the prompt.
+const SHAPE: Record<Language, string> = {
+  javascript: "Each must be solvable as ONE pure function (no input, files, network or randomness), tested by calling it with arguments and comparing the JSON-serializable return value.",
+  typescript: "Each must be solvable as ONE pure, typed function (typed parameters and return type; no input, files, network or randomness), tested by calling it with arguments and comparing the JSON-serializable return value. starter_code and solution are TypeScript.",
+  python: "Each must be solvable as ONE pure function (no input(), files, network or randomness), tested by calling it with arguments and comparing the JSON-serializable return value.",
+  react: `Each is ONE React function component (named "entry", may use hooks like useState/useMemo, written with JSX, may \`import { useState } from "react"\`; no fetch, effects that change what renders, timers or CSS). It is tested by rendering it ONCE with props: each test is {"args": [props object], "expected": "the visible text it renders"} — text only (tags removed, whitespace collapsed), e.g. a list of items renders "Milk Eggs Bread". Make tests cover different props: empty lists, conditional text, counts, formatting.`,
+};
+
 // "Mezcla de colores (RGB)" and "Mezcla de colores RGB" are the same challenge.
 const titleKey = (t: string) =>
   t.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
@@ -132,7 +140,7 @@ export async function saveChallenge(
       pursuitId: pursuit?.id ?? null,
       title: clean.title,
       prompt: clean.prompt,
-      language: draft.language === "python" ? "python" : "javascript",
+      language: asLanguage(draft.language),
       entry: clean.entry,
       starterCode: clean.starterCode,
       tests: clean.tests as object[],
@@ -177,12 +185,18 @@ Task: ${challenge.prompt}
 Their code:
 ${code.slice(0, 8000)}
 
-Write in the same language as the task. Be specific to THEIR code. Don't rewrite the whole solution; small snippets are fine.
-Respond with ONLY JSON: {"review": "three sections with these headers on their own lines: 'What works', 'Could be better', 'Learn next' — each with 1-3 lines starting with '- '"}`,
+Write in the same language as the task, in plain, simple words — like a friend explaining, not a textbook. Be specific to THEIR code.
+- "good": what they did right (1-2 points)
+- "fix": what's wrong or missing, most important first (0-3 points; empty if nothing)
+- "next": one or two things to try or learn next
+Each point: ONE short sentence (max ~12 words). Put code in \`backticks\`. No full solutions.
+
+Respond with ONLY JSON: {"good": ["..."], "fix": ["..."], "next": ["..."]}`,
       { maxTokens: 2000 },
     ),
   );
-  const review = str(data.review, 4000);
+  const points = (v: unknown) => arr(v).map((x) => str(x, 300)).filter(Boolean).slice(0, 3);
+  const review = formatReview({ good: points(data.good), fix: points(data.fix), next: points(data.next) });
   if (!review) return { error: "Couldn't reach the AI right now" };
   await budget.charge();
   await prisma.challenge.update({ where: { id }, data: { review, code: code.slice(0, 20000) } });

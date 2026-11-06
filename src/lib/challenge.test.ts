@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { deepEqual, jsHarness, parseChallenge, type RunOutput } from "./challenge";
+import { deepEqual, formatReview, jsHarness, parseChallenge, parseReview, type RunOutput } from "./challenge";
 
 // The harness is a function body; run it the way the Worker does.
 const run = (code: string, entry: string, tests: { args: unknown[]; expected: unknown }[]) =>
@@ -65,5 +65,33 @@ describe("parseChallenge", () => {
     expect(parseChallenge({ ...good, entry: "1bad" })).toBeNull();
     expect(parseChallenge({ ...good, tests: [{ args: [], expected: 1 }] })).toBeNull();
     expect(parseChallenge(null)).toBeNull();
+  });
+});
+
+describe("jsHarness for compiled code", () => {
+  it("finds a CommonJS default export", () => {
+    const out = run('"use strict"; exports.default = function sum(a, b) { return a + b; };', "sum", [{ args: [1, 2], expected: 3 }]);
+    expect(out.results[0].ok).toBe(true);
+  });
+  it("renders a React component and compares its text", async () => {
+    const React = await import("react");
+    const ReactDOMServer = await import("react-dom/server");
+    Object.assign(globalThis, { React, ReactDOMServer });
+    const code = `function List({ items }) { return React.createElement("ul", null, items.length ? items.map((i) => React.createElement("li", { key: i }, i)) : "Empty"); }`;
+    const harness = jsHarness(code, "List", [
+      { args: [{ items: ["Milk", "Eggs"] }], expected: "Milk Eggs" },
+      { args: [{ items: [] }], expected: "Empty" },
+      { args: [{ items: ["A"] }], expected: "B" },
+    ], "react");
+    const out = new Function(harness)() as RunOutput;
+    expect(out.results.map((r) => r.ok)).toEqual([true, true, false]);
+  });
+});
+
+describe("reviews", () => {
+  it("reads old and new section headers", () => {
+    const old = parseReview("What works\n- Uses match.\nCould be better\n- Prints instead of returning.\nLearn next\n- Dictionaries.");
+    expect(old).toEqual({ good: ["Uses match."], fix: ["Prints instead of returning."], next: ["Dictionaries."] });
+    expect(parseReview(formatReview(old))).toEqual(old);
   });
 });

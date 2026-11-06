@@ -10,6 +10,7 @@ import { python } from "@codemirror/lang-python";
 import { oneDarkTheme } from "@codemirror/theme-one-dark";
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { tags as t } from "@lezer/highlight";
+import type { Language } from "@/lib/challenge";
 
 // One Dark's chrome with a calmer palette: One Dark paints every variable
 // red, so ordinary JS read as a wall of red.
@@ -35,7 +36,7 @@ export function CodeEditor({
   onRun,
 }: {
   value: string;
-  language: "javascript" | "python";
+  language: Language;
   onChange: (code: string) => void;
   onRun: () => void;
 }) {
@@ -58,7 +59,7 @@ export function CodeEditor({
           Prec.highest(
             keymap.of([{ key: "Mod-Enter", run: () => (handlers.current.onRun(), true) }]),
           ),
-          language === "python" ? python() : javascript(),
+          language === "python" ? python() : javascript({ typescript: language === "typescript" || language === "react", jsx: language === "react" }),
           oneDarkTheme,
           syntaxHighlighting(highlight),
           EditorView.theme({ "&": { height: "100%", fontSize: "14px" }, ".cm-scroller": { fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" } }),
