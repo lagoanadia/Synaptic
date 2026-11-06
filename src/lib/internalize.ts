@@ -111,3 +111,12 @@ export function parseRepoUrl(input: string): { owner: string; repo: string } | n
     .match(/^([\w.-]+)\/([\w.-]+?)(?:\.git)?(?:\/.*)?$/);
   return m ? { owner: m[1], repo: m[2] } : null;
 }
+
+// An excerpt from notes can be a table, a list or plain prose — only show
+// it as code when most of its lines look like code.
+const CODE_LINE = /[;{}]\s*$|=>|^\s*(def|class|function|import|from|return|const|let|var|public|private|protected|static|if|for|while|switch|try|catch|SELECT|INSERT|UPDATE|CREATE|#include|package|fun|val)\b|^\s*(<\/?[a-z][\w-]*[\s>/]|\/\/|#\s|\/\*)/;
+export function looksLikeCode(text: string): boolean {
+  const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
+  if (lines.length === 0 || lines.some((l) => l.startsWith("|"))) return false;
+  return lines.filter((l) => CODE_LINE.test(l)).length / lines.length >= 0.4;
+}

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   excerptInSource,
+  looksLikeCode,
   nextUp,
   parseRepoUrl,
   pickRepoFiles,
@@ -75,5 +76,16 @@ describe("helpers", () => {
     expect(parseRepoUrl("https://github.com/lagoanadia/Synaptic/tree/main/src")).toEqual({ owner: "lagoanadia", repo: "Synaptic" });
     expect(parseRepoUrl("vercel/next.js.git")).toEqual({ owner: "vercel", repo: "next.js" });
     expect(parseRepoUrl("nope")).toBeNull();
+  });
+});
+
+describe("looksLikeCode", () => {
+  it("keeps tables and prose out of code blocks", () => {
+    expect(looksLikeCode("| Área | Pregunta |\n| --- | --- |\n| Técnica | ¿Qué construye? |")).toBe(false);
+    expect(looksLikeCode("Cada proyecto tiene cuatro áreas.\nRedacción y producción.")).toBe(false);
+  });
+  it("recognizes code", () => {
+    expect(looksLikeCode("function add(a, b) {\n  return a + b;\n}")).toBe(true);
+    expect(looksLikeCode("def f(x):\n    return x * 2")).toBe(true);
   });
 });
