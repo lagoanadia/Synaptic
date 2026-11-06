@@ -125,3 +125,9 @@ export async function endDebate(id: string): Promise<{ error: string | null }> {
   revalidatePath("/arena");
   return { error: null };
 }
+
+export async function deleteDebate(id: string) {
+  const { userId } = await signedIn();
+  await prisma.debate.deleteMany({ where: { id, userId } });
+  revalidatePath("/arena");
+}

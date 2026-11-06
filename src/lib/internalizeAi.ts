@@ -1,6 +1,7 @@
 import "server-only";
 import { arr, askJson, obj, str } from "@/lib/ai";
-import { excerptInSource, parseRepoUrl, pickRepoFiles, type Verdict } from "@/lib/internalize";
+import { excerptInSource, parseRepoUrl, pickRepoFiles } from "@/lib/internalize";
+import { parseQuiz, type QuizQuestion } from "@/lib/conceptQuiz";
 
 export const MAX_SOURCE_CHARS = 60000;
 
@@ -163,33 +164,39 @@ ${source.slice(0, 30000)}`,
   return str(data.answer, 3000) || null;
 }
 
-// "Explain it back": judge the learner's own explanation. The point is
-// that THEY do the thinking — feedback names what's missing as a nudge
-// or question, never the full answer.
-export async function judgeExplanation(
+// A short exam on a concept (and what's inside it), grounded in the source.
+export async function writeConceptQuiz(
   concept: { title: string; explanation: string; excerpt: string | null },
-  attempt: string,
+  inside: { title: string; explanation: string }[],
+  source: string,
   language: string,
-): Promise<{ verdict: Verdict; feedback: string } | null> {
+): Promise<QuizQuestion[]> {
+  const parts = inside.map((c) => `- ${c.title}: ${c.explanation}`).join("\n");
   const data = obj(
     await askJson(
-      `You're a tutor checking whether a learner understands "${concept.title}".
-Reference explanation (do NOT reveal it): ${concept.explanation}
+      `Write a short exam (6 questions) checking whether a student understood "${concept.title}".
+What it is: ${concept.explanation}
+${parts ? `What it contains:\n${parts}\n` : ""}${concept.excerpt ? `Excerpt from the source:\n${concept.excerpt}\n` : ""}
+Mix the question types — use each at least once:
+- "choice": 4 options, exactly one right; wrong options must be plausible (common confusions), similar length to the right one
+- "truefalse": a statement that is clearly true or clearly false per the material — make about half false
+- "blank": a sentence with ONE gap written as ___ ; "accepted" lists the short answer (1-3 words) and its obvious variants
+- "match": 3-5 pairs to connect (term → definition, item → its role…)
 
-Learner's own explanation: "${attempt}"
+Test understanding (why, what for, which one applies), not trivia or exact wording. Everything must be answerable from the material. Write in ${language}. "why" is a one-sentence explanation shown after answering.
 
-Judge their understanding, not their wording. Verdict:
-- "got_it": the core idea is right (small gaps are fine)
-- "partly": on the right track but missing or confusing something important
-- "not_yet": wrong or too vague to tell
+Respond with ONLY JSON:
+{"questions": [
+ {"kind":"choice","prompt":"...","options":["...","...","...","..."],"answer":0,"why":"..."},
+ {"kind":"truefalse","prompt":"...","answer":false,"why":"..."},
+ {"kind":"blank","prompt":"... ___ ...","accepted":["..."],"why":"..."},
+ {"kind":"match","prompt":"...","pairs":[{"left":"...","right":"..."}],"why":"..."}
+]}
 
-Feedback in ${language}, 1-3 sentences, talking to them ("you"). Say what they got right, then point at what's missing with a hint or a question — never give the missing part away.
-
-Respond with ONLY JSON: {"verdict": "got_it" | "partly" | "not_yet", "feedback": "..."}`,
-      { maxTokens: 1500 },
+SOURCE (for grounding):
+${source.slice(0, 20000)}`,
+      { maxTokens: 4000 },
     ),
   );
-  const verdict = str(data.verdict) as Verdict;
-  if (!["got_it", "partly", "not_yet"].includes(verdict)) return null;
-  return { verdict, feedback: str(data.feedback, 1000) };
+  return parseQuiz(data.questions);
 }

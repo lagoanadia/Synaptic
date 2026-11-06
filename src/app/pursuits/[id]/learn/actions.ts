@@ -9,10 +9,11 @@ import {
   answerQuestion,
   breakDown,
   deepen,
-  judgeExplanation,
   readRepo,
+  writeConceptQuiz,
 } from "@/lib/internalizeAi";
-import { statusAfterCheck, statusAfterOpen, statusAfterReview, type Status, type Verdict } from "@/lib/internalize";
+import { quizVerdict, type QuizQuestion } from "@/lib/conceptQuiz";
+import { statusAfterCheck, statusAfterOpen, statusAfterReview, type Status } from "@/lib/internalize";
 
 type Result<T = object> = ({ error: string } & Partial<T>) | ({ error: null } & T);
 
@@ -193,26 +194,36 @@ export async function askAboutConcept(conceptId: string, question: string): Prom
   return { error: null, answer };
 }
 
-export async function explainBack(
-  conceptId: string,
-  attempt: string,
-): Promise<Result<{ verdict: Verdict; feedback: string; status: Status }>> {
-  const text = attempt.trim().slice(0, 2000);
-  if (text.length < 10) return { error: "Write a sentence or two in your own words first" };
+// ─── Quiz: a short mixed exam on a concept ─────────────────────────────
+
+export async function makeConceptQuiz(conceptId: string): Promise<Result<{ questions: QuizQuestion[] }>> {
   const { session, concept } = await conceptWithAccess(conceptId);
   const budget = await aiBudget(session.user!.id!, session.user!.email);
   const limited = await budget.check();
   if (limited) return { error: limited };
-  const judged = await judgeExplanation(concept, text, concept.map.language);
-  if (!judged) return { error: "Couldn't reach the AI right now" };
+  const inside = await prisma.concept.findMany({
+    where: { parentId: conceptId },
+    orderBy: { order: "asc" },
+    select: { title: true, explanation: true },
+  });
+  const questions = await writeConceptQuiz(concept, inside, concept.map.sourceText, concept.map.language);
+  if (questions.length < 3) return { error: "Couldn't write a quiz right now — try again" };
   await budget.charge();
-  const status = statusAfterCheck(concept.status, judged.verdict);
+  return { error: null, questions };
+}
+
+// Grading happens in the browser; this records the result.
+export async function recordConceptQuiz(conceptId: string, correct: number, total: number): Promise<Result<{ status: Status }>> {
+  const { concept } = await conceptWithAccess(conceptId);
+  const n = Math.max(0, Math.min(Math.floor(total), 20));
+  const k = Math.max(0, Math.min(Math.floor(correct), n));
+  const status = statusAfterCheck(concept.status, quizVerdict(k, n));
   await prisma.concept.update({
     where: { id: conceptId },
-    data: { status, statusAt: new Date(), attempt: text, feedback: judged.feedback },
+    data: { status, statusAt: new Date(), feedback: `Quiz: ${k}/${n}` },
   });
   revalidatePath(mapPath(concept.map.pursuitId, concept.mapId));
-  return { error: null, ...judged, status };
+  return { error: null, status };
 }
 
 // ─── Editing the map by hand ───────────────────────────────────────────

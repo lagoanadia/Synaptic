@@ -8,12 +8,12 @@ import { CodeBlock } from "../../CodeBlock";
 import { ConceptGraph } from "./ConceptGraph";
 import { looksLikeCode, nextUp, progress, type Status } from "@/lib/internalize";
 import { RichContent } from "../../RichContent";
+import { ConceptQuiz } from "./ConceptQuiz";
 import {
   addConcept,
   askAboutConcept,
   deleteConcept,
   editConcept,
-  explainBack,
   goDeeper,
   linkConcepts,
   markReread,
@@ -175,10 +175,10 @@ export function ConceptExplorer({
   }
 
   const askRef = useRef<HTMLInputElement>(null);
-  const explainRef = useRef<HTMLTextAreaElement>(null);
+  const quizRef = useRef<HTMLButtonElement>(null);
 
   // Keyboard: → skip, ← back, d deeper, r reread, j random, a ask,
-  // e explain, g graph. Ignored while typing.
+  // q quiz, g graph. Ignored while typing.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       const t = e.target as HTMLElement;
@@ -190,7 +190,7 @@ export function ConceptExplorer({
         r: actions.reread,
         j: actions.random,
         a: () => askRef.current?.focus(),
-        e: () => explainRef.current?.focus(),
+        q: () => quizRef.current?.click(),
         g: () => toggleGraph(),
       };
       const fn = map[e.key];
@@ -295,14 +295,14 @@ export function ConceptExplorer({
             isPending={isPending}
             error={error}
             askRef={askRef}
-            explainRef={explainRef}
+            quizRef={quizRef}
             onGo={(id) => go(id)}
             actions={actions}
             onStatus={(s) => {
               setLocalStatus((m) => ({ ...m, [current.id]: s }));
               run(() => setConceptStatus(current.id, s));
             }}
-            onExplained={(s) => setLocalStatus((m) => ({ ...m, [current.id]: s }))}
+            onQuizzed={(s) => setLocalStatus((m) => ({ ...m, [current.id]: s }))}
             run={run}
             refresh={() => router.refresh()}
             mapId={map.id}
@@ -417,11 +417,11 @@ function ConceptCard({
   isPending,
   error,
   askRef,
-  explainRef,
+  quizRef,
   onGo,
   actions,
   onStatus,
-  onExplained,
+  onQuizzed,
   run,
   refresh,
   mapId,
@@ -434,11 +434,11 @@ function ConceptCard({
   isPending: boolean;
   error: string | null;
   askRef: React.RefObject<HTMLInputElement | null>;
-  explainRef: React.RefObject<HTMLTextAreaElement | null>;
+  quizRef: React.RefObject<HTMLButtonElement | null>;
   onGo: (id: string) => void;
   actions: { skip: () => void; reread: () => void; deeper: () => void; random: () => void };
   onStatus: (s: Status) => void;
-  onExplained: (s: Status) => void;
+  onQuizzed: (s: Status) => void;
   run: (fn: () => Promise<void>) => void;
   refresh: () => void;
   mapId: string;
@@ -451,14 +451,10 @@ function ConceptCard({
 
   const [question, setQuestion] = useState("");
   const [answers, setAnswers] = useState<{ q: string; a: string }[]>([]);
-  const [attempt, setAttempt] = useState("");
-  const [verdict, setVerdict] = useState<{ verdict: string; feedback: string } | null>(
-    concept.feedback ? { verdict: "previous", feedback: concept.feedback } : null,
-  );
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState({ title: concept.title, summary: concept.summary, explanation: concept.explanation });
   const [linkTarget, setLinkTarget] = useState("");
-  const [busy, setBusy] = useState<"ask" | "explain" | null>(null);
+  const [busy, setBusy] = useState<"ask" | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
 
   function ask() {
@@ -474,25 +470,6 @@ function ConceptCard({
       setQuestion("");
     });
   }
-
-  function explain() {
-    setBusy("explain");
-    setLocalError(null);
-    run(async () => {
-      const r = await explainBack(concept.id, attempt);
-      setBusy(null);
-      if (r.error !== null) return setLocalError(r.error);
-      setVerdict({ verdict: r.verdict, feedback: r.feedback });
-      onExplained(r.status);
-    });
-  }
-
-  const VERDICT: Record<string, { label: string; cls: string }> = {
-    got_it: { label: "You've got it", cls: "border-mint bg-mint/10" },
-    partly: { label: "Almost", cls: "border-amber bg-amber/10" },
-    not_yet: { label: "Not yet — it's in your reread pile", cls: "border-crimson bg-crimson-soft" },
-    previous: { label: "Last time", cls: "border-border-subtle bg-callout" },
-  };
 
   return (
     <article className="flex flex-col gap-6">
@@ -590,32 +567,7 @@ function ConceptCard({
         )}
       </div>
 
-      {/* Explain it back */}
-      <section className="flex flex-col gap-3 rounded-3xl bg-white p-6 shadow-[0_1px_2px_rgba(13,13,13,0.06)]" aria-label="Explain it back">
-        <textarea
-          ref={explainRef}
-          value={attempt}
-          onChange={(e) => setAttempt(e.target.value)}
-          rows={4}
-          placeholder={concept.attempt ?? "Explain it in your own words…  (e)"}
-          aria-label="Your explanation"
-          className="rounded-2xl border border-border-subtle px-4 py-3 text-sm"
-        />
-        <div className="flex gap-2">
-          <button type="button" onClick={explain} disabled={busy !== null} className="rounded-full bg-tile-sky px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50">
-            {busy === "explain" ? "Checking…" : "Check"}
-          </button>
-          <button type="button" onClick={actions.reread} className="rounded-full px-4 py-2.5 text-sm text-ink-muted hover:bg-chip">
-            Don&apos;t know
-          </button>
-        </div>
-        {verdict && (
-          <div className={`rounded-2xl border-2 px-4 py-3 text-sm ${VERDICT[verdict.verdict]?.cls ?? ""}`}>
-            <span className="font-bold">{VERDICT[verdict.verdict]?.label}</span>
-            <p className="mt-1 leading-relaxed">{verdict.feedback}</p>
-          </div>
-        )}
-      </section>
+      <ConceptQuiz key={concept.id} conceptId={concept.id} startRef={quizRef} onStatus={onQuizzed} onDontKnow={actions.reread} />
 
       {/* Ask */}
       <section className="flex flex-col gap-3 rounded-3xl bg-white p-6 shadow-[0_1px_2px_rgba(13,13,13,0.06)]" aria-label="Ask">
@@ -727,7 +679,7 @@ function ActionButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className={`flex max-w-full items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold transition-transform hover:-translate-y-0.5 disabled:opacity-50 ${
+      className={`flex max-w-full items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold disabled:opacity-50 ${
         primary ? "bg-tile-sky text-white" : "bg-chip text-ink"
       }`}
     >
