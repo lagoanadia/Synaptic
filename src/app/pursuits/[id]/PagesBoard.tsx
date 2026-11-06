@@ -23,7 +23,6 @@ export type PageCard = {
 };
 type Unit = { id: string; name: string; classroomUnit: string | null };
 
-const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? "" : "s"}`;
 
 // One column per unit, one card per page; drag a card to another column
 // to move it. A page's organized version, files and flashcards live
@@ -37,6 +36,7 @@ export function PagesBoard({
   groupLabel = "Unidad",
   view = "board",
   study = true,
+  color = "#a0523f",
 }: {
   pursuitId: string;
   units: Unit[];
@@ -48,6 +48,8 @@ export function PagesBoard({
   groupLabel?: string;
   view?: "list" | "board";
   study?: boolean;
+  // The folder's colour (dots).
+  color?: string;
 }) {
   const label = groupLabel;
   const none = `Sin ${label.toLowerCase()}`;
@@ -82,7 +84,7 @@ export function PagesBoard({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-2">
+      {!asBoard && <div className="flex flex-wrap items-center gap-2">
         <Link href={`/pursuits/${pursuitId}/dump/new`} className="rounded-md bg-ink px-3 py-1.5 text-sm font-medium text-white">
           + Página
         </Link>
@@ -111,7 +113,7 @@ export function PagesBoard({
             />
           </form>
         )}
-      </div>
+      </div>}
 
       {!asBoard && <PagesList cards={cards} units={units} none={none} grouped={units.length > 0} onMove={(card, sectionId) => {
         setCards((cs) => cs.map((c) => (c.key === card.key ? { ...c, sectionId } : c)));
@@ -140,11 +142,11 @@ export function PagesBoard({
                 over === colKey ? "bg-accent-soft ring-2 ring-accent" : "bg-sidebar"
               }`}
             >
-              <header className="flex items-center gap-2 px-1.5 py-1">
+              <header className="flex min-h-7 items-center gap-1.5 px-1 py-0.5">
                 {col.id ? (
                   <UnitName pursuitId={pursuitId} id={col.id} name={col.name} />
                 ) : (
-                  <span className="min-w-0 flex-1 truncate text-sm font-extrabold">{col.name}</span>
+                  <span className="min-w-0 flex-1 truncate text-sm font-semibold">{col.name}</span>
                 )}
                 {col.id && classroomCourseId && (
                   <select
@@ -153,7 +155,7 @@ export function PagesBoard({
                     onChange={(e) => startTransition(() => setUnitClassroom(pursuitId, col.id!, e.target.value || null))}
                     title="Unidad de Classroom para las diapositivas de esta columna"
                     aria-label={`Unidad de Classroom para ${col.name}`}
-                    className={`rounded-full border-0 px-2 py-0.5 text-xs font-semibold ${col.classroomUnit ? "bg-tile-sky text-white" : "bg-white/70 text-ink-muted"}`}
+                    className={`rounded border-0 px-1.5 py-0.5 text-[11px] ${col.classroomUnit ? "bg-[#e7f3f8] text-[#337ea9]" : "hidden bg-white text-ink-muted group-hover/col:block"}`}
                   >
                     <option value="">Classroom</option>
                     {(classroomUnits ?? (col.classroomUnit ? [col.classroomUnit] : [])).map((u) => (
@@ -163,7 +165,16 @@ export function PagesBoard({
                     ))}
                   </select>
                 )}
-                <span className="text-xs font-semibold text-ink-muted">{items.length}</span>
+                {study && (
+                  <UnitPlay
+                    pursuitId={pursuitId}
+                    unitKey={colKey}
+                    organized={items.filter((c) => c.organized).length}
+                    pages={items.length}
+                    stats={cardStats[colKey] ?? { cards: 0, due: 0 }}
+                    color={color}
+                  />
+                )}
                 {col.id && (
                   <DeleteButton
                     action={deleteContentSection.bind(null, pursuitId, col.id)}
@@ -174,16 +185,6 @@ export function PagesBoard({
                   </DeleteButton>
                 )}
               </header>
-
-              {study && (
-                <UnitPlay
-                  pursuitId={pursuitId}
-                  unitKey={colKey}
-                  organized={items.filter((c) => c.organized).length}
-                  pages={items.length}
-                  stats={cardStats[colKey] ?? { cards: 0, due: 0 }}
-                />
-              )}
 
               {items.map((c) => (
                 <Link
@@ -208,40 +209,59 @@ export function PagesBoard({
                     e.stopPropagation();
                     drop(col.id);
                   }}
-                  className={`flex flex-col gap-2 rounded-md bg-white p-3 shadow-[0_0_0_1px_rgba(15,15,15,.06),0_1px_2px_rgba(15,15,15,.06)] transition-shadow hover:shadow-[0_0_0_1px_rgba(15,15,15,.08),0_4px_10px_rgba(15,15,15,.08)] ${
+                  className={`flex flex-col gap-2 rounded-md bg-white px-3 py-2.5 shadow-[0_0_0_1px_rgba(15,15,15,.06),0_1px_2px_rgba(15,15,15,.06)] transition-shadow hover:shadow-[0_0_0_1px_rgba(15,15,15,.08),0_4px_10px_rgba(15,15,15,.08)] ${
                     dragging === c.key ? "opacity-40" : ""
                   }`}
                 >
-                  <span className="text-sm leading-snug font-bold">{c.title}</span>
-                  {c.preview && <span className="line-clamp-2 text-xs text-ink-muted">{c.preview}</span>}
-                  <span className="flex flex-wrap gap-1.5">
+                  <span className="text-sm leading-snug font-medium">{c.title}</span>
+                  <span className="flex">
                     {c.organized ? (
-                      <span className="flex items-center gap-1 rounded-full bg-mint/15 px-2 py-0.5 text-[11px] font-semibold text-mint">
+                      <span className="flex items-center gap-1 rounded bg-[#edf3ec] px-1.5 py-0.5 text-xs text-[#448361]">
                         <CheckIcon size={11} /> Organizada
                       </span>
                     ) : (
-                      <span className="rounded-full bg-chip px-2 py-0.5 text-[11px] font-semibold text-ink-muted">Sin organizar</span>
+                      <span className="rounded bg-chip px-1.5 py-0.5 text-xs text-ink-muted">Sin organizar</span>
                     )}
-                    {c.files > 0 && (
-                      <span className="rounded-full bg-accent-soft px-2 py-0.5 text-[11px] font-semibold text-accent">{plural(c.files, "archivo")}</span>
-                    )}
-                    {c.flashcards > 0 && (
-                      <span className="rounded-full bg-chip px-2 py-0.5 text-[11px] font-semibold text-ink-muted">{plural(c.flashcards, "tarjeta")}</span>
-                    )}
-                    <span className="ml-auto text-[11px] text-ink-faint">{c.date}</span>
                   </span>
                 </Link>
               ))}
 
               <Link
                 href={`/pursuits/${pursuitId}/dump/new${col.id ? `?section=${col.id}` : ""}`}
-                className="rounded-xl px-2 py-1.5 text-xs font-semibold text-ink-muted hover:bg-white/60 hover:text-ink"
+                className="rounded-md px-1.5 py-1 text-sm text-ink-faint hover:bg-white/70 hover:text-ink"
               >
                 + Página
               </Link>
             </section>
           );
         })}
+        <div className="flex min-h-56 flex-col items-center justify-center gap-2 rounded-lg border-[1.5px] border-dashed border-[#e3e2de] p-3 text-sm text-ink-faint">
+          {newUnit === null ? (
+            <button type="button" onClick={() => setNewUnit("")} className="rounded-md px-2 py-1 hover:bg-chip hover:text-ink">
+              + {label}
+            </button>
+          ) : (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const name = newUnit.trim();
+                setNewUnit(null);
+                if (name) startTransition(() => createContentSection(pursuitId, name));
+              }}
+            >
+              <input
+                autoFocus
+                value={newUnit}
+                onChange={(e) => setNewUnit(e.target.value)}
+                onBlur={() => !newUnit.trim() && setNewUnit(null)}
+                placeholder={`Nombre (${label})`}
+                aria-label={`Nombre (${label})`}
+                className="w-40 rounded-md border border-border-subtle bg-white px-2 py-1 text-sm"
+              />
+            </form>
+          )}
+          <ImportSlides pursuitId={pursuitId} sectionId={null} />
+        </div>
       </div>}
     </div>
   );
@@ -304,7 +324,9 @@ function UnitPlay({
   organized,
   pages,
   stats,
+  color,
 }: {
+  color: string;
   pursuitId: string;
   unitKey: string;
   organized: number;
@@ -317,30 +339,29 @@ function UnitPlay({
     { mode: "flash", label: "Tarjetas", icon: CardsIcon, enabled: stats.cards > 0, due: stats.due > 0 },
     { mode: "match", label: "Unir", icon: BoltIcon, enabled: stats.cards >= 3 },
   ];
-  // How organized the unit is, as three dots (no numbers).
+  // How organized the unit is, as three dots (no numbers); the study
+  // icons only show when you hover the column.
   const filled = pages ? Math.round((organized / pages) * 3) : 0;
   return (
-    <div className="flex items-center gap-1 px-1">
+    <span className="flex items-center gap-0.5">
+      <span className="hidden items-center group-hover/col:flex">
+        {games.map((g) =>
+          g.enabled ? (
+            <Link key={g.mode} href={href(g.mode)} title={g.label} aria-label={g.label} className="relative rounded p-1 text-ink-muted hover:bg-white hover:text-ink">
+              <g.icon size={14} className="block" />
+              {g.due && <span className="absolute top-0.5 right-0.5 size-1.5 rounded-full bg-accent" />}
+            </Link>
+          ) : null,
+        )}
+      </span>
       {pages > 0 && (
-        <span className="mr-auto flex gap-1" title={`${organized} de ${pages} páginas organizadas`} aria-label="Organizada">
+        <span className="ml-1 flex gap-[3px]" title={`${organized} de ${pages} páginas organizadas`} aria-label="Organizada">
           {[0, 1, 2].map((i) => (
-            <span key={i} className={`size-[7px] rounded-full border-[1.5px] border-ink-faint ${i < filled ? "bg-ink-faint" : ""}`} />
+            <span key={i} className="size-[7px] rounded-full border-[1.5px]" style={{ borderColor: color, background: i < filled ? color : undefined }} />
           ))}
         </span>
       )}
-      {games.map((g) =>
-        g.enabled ? (
-          <Link key={g.mode} href={href(g.mode)} title={g.label} aria-label={g.label} className="relative rounded-md p-1.5 text-ink-muted hover:bg-white hover:text-ink">
-            <g.icon size={15} className="block" />
-            {g.due && <span className="absolute top-1 right-1 size-1.5 rounded-full bg-accent" />}
-          </Link>
-        ) : (
-          <span key={g.mode} title={`${g.label}: crea tarjetas desde una página primero`} className="rounded-md p-1.5 text-ink-faint/40">
-            <g.icon size={15} className="block" />
-          </span>
-        ),
-      )}
-    </div>
+    </span>
   );
 }
 

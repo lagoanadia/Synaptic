@@ -207,6 +207,7 @@ export default async function PursuitPage({
           groupLabel={groupLabel}
           view={b.view ?? (grouped ? "board" : "list")}
           study={study}
+          color={color}
         />
       );
     else if (b.type === "map")
