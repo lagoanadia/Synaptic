@@ -534,6 +534,9 @@ model Challenge {
   // JSON: [{ "args": [...], "expected": ... }]
   tests       Json
   difficulty  String    @default("easy")
+  // The skill it trains ("recorrer una lista acumulando"), from the topic's
+  // skill map; null for older challenges.
+  skill       String?
   code        String?
   passed      Boolean   @default(false)
   solvedAt    DateTime?

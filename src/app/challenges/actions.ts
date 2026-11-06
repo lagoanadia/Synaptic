@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { aiBudget } from "@/lib/access";
 import { arr, askJson, obj, str } from "@/lib/ai";
 import { shuffle } from "@/lib/review";
-import { asLanguage, formatReview, isTheoryLookup, LANGUAGE_INFO, parseChallenge, type ChallengeDraft, type ChallengeTest, type Language } from "@/lib/challenge";
+import { asLanguage, formatReview, isTheoryLookup, LANGUAGE_INFO, parseChallenge, pickBySkill, type ChallengeDraft, type ChallengeTest, type Language } from "@/lib/challenge";
 import { accessiblePursuits } from "@/lib/reviewData";
 
 // No code ever runs on the server. The server drafts a challenge (with a
@@ -20,6 +20,7 @@ async function signedIn() {
 }
 
 export type DraftForBrowser = ChallengeDraft & {
+  skill: string | null;
   language: Language;
   difficulty: string;
   pursuitId: string | null;
@@ -65,16 +66,20 @@ ${picked.map((n, i) => `--- NOTE ${i + 1} (${n.pursuit.title}) ---\n${n.content.
     where: { userId },
     orderBy: { createdAt: "desc" },
     take: 60,
-    select: { title: true },
+    select: { title: true, skill: true, passed: true },
   });
   const taken = existing.map((c) => c.title);
+  // Skills already trained (solved), so new ones go to the gaps.
+  const practised = [...new Set(existing.filter((c) => c.passed && c.skill).map((c) => c.skill!))].slice(0, 20);
 
   const data = obj(
     await askJson(
       `Create FIVE different small coding challenges in ${LANGUAGE_INFO[language].label} for someone getting back into coding after a break. Difficulty: ${difficulty} (easy = 5-15 lines, medium = loops/conditions/data structures, hard = a small algorithm).
 ${context}
 ${topic ? `Topic requested: ${topic}.` : ""}
-Each must practice a DIFFERENT idea (ideally from a different note), and none may be the same as or a variant of these existing challenges: ${taken.length ? taken.map((t) => `"${t}"`).join(", ") : "(none yet)"}.
+FIRST work out the SKILL MAP for this material: the 4-6 concrete programming skills someone who learned it should be able to APPLY (e.g. "recorrer una lista acumulando un total", "contar apariciones con un diccionario", "validar datos con condiciones", "transformar una lista de objetos", "recursividad sobre una estructura"). Skills, not topics or facts. ${practised.length ? `Already practised (put these last): ${practised.map((p) => `"${p}"`).join(", ")}.` : ""}
+THEN write each challenge to train ONE skill from the map, every challenge a DIFFERENT skill. If the notes contain exercises from class, AT MOST ONE challenge may be close to one of them ("from_class": true); every other one must be ORIGINAL — a new situation that needs the same skill, never a copy or light rewording of a class exercise.
+None may be the same as or a variant of these existing challenges: ${taken.length ? taken.map((t) => `"${t}"`).join(", ") : "(none yet)"}.
 
 Be strict about what makes a GOOD coding challenge: solving it must take real programming — processing input data with loops, conditions, accumulating, transforming, validating, counting, searching or simulating. The notes give the DOMAIN (the kind of data and rules), never text to copy.
 REJECT (never write) challenges that are theory turned into code:
@@ -86,8 +91,10 @@ Expected outputs are short values: numbers, booleans, short strings (< 40 charac
 
 ${SHAPE[language]}
 
-Respond with ONLY JSON: {"challenges": [
+Respond with ONLY JSON: {"skills": ["…", "…"], "challenges": [
   {
+    "skill": "the skill from the map it trains, in Spanish, short",
+    "from_class": false,
     "title": "short title",
     "prompt": "the task in plain language: what the function receives and returns, 1-2 examples. In Spanish.",
     "entry": "functionName",
@@ -102,16 +109,18 @@ Respond with ONLY JSON: {"challenges": [
     ),
   );
   const seen = new Set(taken.map(titleKey));
-  const drafts: DraftForBrowser[] = [];
+  const candidates: (DraftForBrowser & { fromClass: boolean })[] = [];
   for (const raw of arr(data.challenges)) {
     const draft = parseChallenge(raw);
     if (!draft || seen.has(titleKey(draft.title)) || isTheoryLookup(draft)) continue;
     seen.add(titleKey(draft.title));
-    const basedOn = str(obj(raw).based_on, 120);
+    const o = obj(raw);
+    const basedOn = str(o.based_on, 120);
     const prompt = basedOn ? `De tu nota “${basedOn}”\n\n${draft.prompt}` : draft.prompt;
-    drafts.push({ ...draft, prompt, language, difficulty, pursuitId });
-    if (drafts.length === 3) break;
+    candidates.push({ ...draft, prompt, skill: str(o.skill, 80) || null, fromClass: o.from_class === true, language, difficulty, pursuitId });
   }
+  // fromClass only matters for picking; the rest goes to the browser.
+  const drafts: DraftForBrowser[] = pickBySkill(candidates, practised).map((d) => ({ ...d, fromClass: undefined }));
   if (drafts.length === 0) return { error: "No eran retos de programación de verdad — inténtalo de nuevo" };
   await budget.charge();
   return { error: null, drafts };
@@ -154,6 +163,7 @@ export async function saveChallenge(
       starterCode: clean.starterCode,
       tests: clean.tests as object[],
       difficulty: ["easy", "medium", "hard"].includes(draft.difficulty) ? draft.difficulty : "easy",
+      skill: typeof draft.skill === "string" ? draft.skill.trim().slice(0, 80) || null : null,
     },
   });
   revalidatePath("/challenges");
