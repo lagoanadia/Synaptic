@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ArrowUpRight, CheckIcon, TrashIcon, XIcon } from "@/app/icons";
+import { ArrowLeft, ArrowUpRight, TrashIcon, XIcon } from "@/app/icons";
 import { RichContent } from "./RichContent";
 import { RichEditor } from "../../editor/RichEditor";
 import { DeleteButton } from "../DeleteButton";
@@ -37,6 +37,24 @@ export function PageView({ pursuit, title, unit, date, dump, note, files }: Prop
   const [link, setLink] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  // Files panel: closed when there's nothing in it; your choice is remembered.
+  const [filesOpen, setFilesOpen] = useState(files.length > 0);
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem("synaptic.page.files");
+      // Browser storage, so only after mount.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (saved !== null) setFilesOpen(saved === "1");
+    } catch {}
+  }, []);
+  function toggleFiles() {
+    setFilesOpen((o) => {
+      try {
+        window.localStorage.setItem("synaptic.page.files", o ? "0" : "1");
+      } catch {}
+      return !o;
+    });
+  }
   const back = `/pursuits/${pursuit.id}?tab=pages`;
 
   function run(fn: () => Promise<{ error: string | null } | void>, ok?: string) {
@@ -122,6 +140,14 @@ export function PageView({ pursuit, title, unit, date, dump, note, files }: Prop
               Flashcards{note.flashcards > 0 ? ` · ${note.flashcards}` : ""}
             </button>
           )}
+          <button
+            type="button"
+            onClick={toggleFiles}
+            aria-expanded={filesOpen}
+            className={`rounded-full px-4 py-2 text-sm font-semibold ${filesOpen ? "bg-ink text-white" : "bg-chip"}`}
+          >
+            Files{files.length > 0 ? ` · ${files.length}` : ""}
+          </button>
           <a
             href={`/pursuits/${pursuit.id}/print?${dump ? `dump=${dump.id}` : `note=${note!.id}`}`}
             target="_blank"
@@ -145,7 +171,7 @@ export function PageView({ pursuit, title, unit, date, dump, note, files }: Prop
       </header>
       {message && <p className="text-sm text-ink-muted">{message}</p>}
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
+      <div className={`grid grid-cols-1 gap-6 ${filesOpen ? "lg:grid-cols-[minmax(0,1fr)_300px]" : ""}`}>
         <article className="min-w-0 rounded-3xl bg-white p-6 shadow-[0_1px_2px_rgba(13,13,13,0.06)] sm:p-10">
           {editing && note ? (
             <div className="flex flex-col gap-3">
@@ -172,8 +198,8 @@ export function PageView({ pursuit, title, unit, date, dump, note, files }: Prop
           )}
         </article>
 
+        {filesOpen && (
         <aside className="flex flex-col gap-3 self-start" aria-label="Files">
-          <h2 className="px-1 text-xs font-bold text-ink-muted uppercase">Files</h2>
           {files.map((f) => (
             <div key={f.id} className="group flex items-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm shadow-[0_1px_2px_rgba(13,13,13,0.04)]">
               <a href={f.url} target="_blank" rel="noopener noreferrer" className="min-w-0 flex-1 truncate font-semibold hover:text-accent">
@@ -209,12 +235,8 @@ export function PageView({ pursuit, title, unit, date, dump, note, files }: Prop
               />
             </form>
           )}
-          {note && (
-            <p className="flex items-center gap-1.5 px-1 text-xs text-mint">
-              <CheckIcon size={12} /> Organized
-            </p>
-          )}
         </aside>
+        )}
       </div>
     </div>
   );
