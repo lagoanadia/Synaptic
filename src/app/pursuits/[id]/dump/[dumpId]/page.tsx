@@ -1,115 +1,45 @@
-import { ArrowLeft } from "@/app/icons";
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { autoTitle } from "@/lib/text";
-import { RichContent } from "../../RichContent";
-import { DeleteDumpButton } from "./DeleteDumpButton";
-import { AuthorBadge } from "../../AuthorBadge";
-import { collaboratorOrder, colorIndexById } from "@/lib/authorColor";
+import { PageView } from "../../PageView";
 
-export default async function DumpPage({
-  params,
-}: {
-  params: Promise<{ id: string; dumpId: string }>;
-}) {
+const longDate = (d: Date) => d.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+
+export default async function DumpPage({ params }: { params: Promise<{ id: string; dumpId: string }> }) {
   const { id, dumpId } = await params;
-
   const session = await auth();
-  if (!session?.user?.id) {
-    redirect("/");
-  }
+  if (!session?.user?.id) redirect("/");
 
   const dump = await prisma.brainDump.findFirst({
     where: {
       id: dumpId,
       pursuitId: id,
-      pursuit: {
-        OR: [
-          { ownerId: session.user.id },
-          { members: { some: { userId: session.user.id } } },
-        ],
-      },
+      pursuit: { OR: [{ ownerId: session.user.id }, { members: { some: { userId: session.user.id } } }] },
     },
     include: {
-      author: { select: { id: true, name: true, email: true, image: true } },
-      pursuit: {
-        select: {
-          title: true,
-          owner: { select: { id: true, name: true, email: true, image: true } },
-          members: {
-            select: { user: { select: { id: true, name: true, email: true, image: true } } },
-          },
-        },
+      pursuit: { select: { id: true, title: true } },
+      section: { select: { name: true } },
+      attachments: { orderBy: { createdAt: "asc" }, select: { id: true, name: true, url: true } },
+      notes: {
+        orderBy: { createdAt: "asc" },
+        take: 1,
+        select: { id: true, content: true, updatedAt: true, _count: { select: { flashcards: true } } },
       },
     },
   });
-
-  if (!dump) {
-    notFound();
-  }
-
-  const showAuthor = dump.pursuit.members.length > 0;
-  const collaborators = collaboratorOrder(
-    dump.pursuit.owner,
-    dump.pursuit.members.map((m) => m.user),
-  );
-  const authorColorIndex = colorIndexById(collaborators).get(dump.author.id) ?? 0;
+  if (!dump) notFound();
+  const note = dump.notes[0] ?? null;
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-6 py-9">
-      <div className="flex items-center justify-between">
-        <Link
-          href={`/pursuits/${id}?tab=pages`}
-          className="text-sm text-ink-muted hover:underline"
-        >
-          <ArrowLeft /> {dump.pursuit.title}
-        </Link>
-        <div className="flex items-center gap-4">
-          <Link
-            href={`/pursuits/${id}/dump/${dumpId}/edit`}
-            className="text-sm text-ink-muted hover:underline"
-          >
-            Edit
-          </Link>
-          <a
-            href={`/pursuits/${id}/print?dump=${dumpId}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm text-ink-muted hover:underline"
-          >
-            Export PDF
-          </a>
-          <DeleteDumpButton pursuitId={id} dumpId={dumpId} />
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold text-balance">
-          {autoTitle(dump.content, 12)}
-        </h1>
-        <div className="flex items-center gap-2">
-          <span
-            className={`h-1.5 w-1.5 rounded-full ${
-              dump.processed ? "bg-ink-faint" : "bg-accent"
-            }`}
-          />
-          {showAuthor && (
-            <AuthorBadge
-              name={dump.author.name ?? dump.author.email}
-              image={dump.author.image}
-              colorIndex={authorColorIndex}
-            />
-          )}
-          <span className="text-xs text-ink-faint">
-            {dump.createdAt.toLocaleString("en-US", { timeZone: "UTC" })}
-            {dump.processed && " · folded into a note"}
-          </span>
-        </div>
-      </div>
-
-      {dump.content && <RichContent content={dump.content} />}
-    </div>
+    <PageView
+      pursuit={dump.pursuit}
+      title={autoTitle(note?.content ?? dump.content, 14)}
+      unit={dump.section?.name ?? null}
+      date={longDate(dump.createdAt)}
+      dump={{ id: dump.id, content: dump.content ?? "" }}
+      note={note && { id: note.id, content: note.content, updatedAt: note.updatedAt.toISOString(), flashcards: note._count.flashcards }}
+      files={dump.attachments}
+    />
   );
 }

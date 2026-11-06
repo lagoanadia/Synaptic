@@ -9,10 +9,13 @@ import { NewDumpForm } from "./NewDumpForm";
 
 export default async function NewDumpPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ section?: string }>;
 }) {
   const { id } = await params;
+  const { section: sectionParam } = await searchParams;
 
   const session = await auth();
   if (!session?.user?.id) {
@@ -33,12 +36,14 @@ export default async function NewDumpPage({
       classroomCourseId: true,
       classroomEnabled: true,
       attachments: { orderBy: { createdAt: "desc" }, select: { name: true, url: true } },
+      contentSections: { select: { id: true, classroomUnit: true } },
     },
   });
 
   if (!pursuit) {
     notFound();
   }
+  const unit = pursuit.contentSections.find((u) => u.id === sectionParam) ?? null;
 
   return (
     <div className="mx-auto flex w-full max-w-[1800px] flex-1 flex-col gap-4 px-6 lg:px-10 py-9">
@@ -52,8 +57,9 @@ export default async function NewDumpPage({
         pursuitId={pursuit.id}
         decks={pursuit.attachments.filter((a) => isSlideFile(a.url))}
         classroomCourseId={pursuit.classroomEnabled ? pursuit.classroomCourseId : null}
+        classroomUnit={unit?.classroomUnit ?? null}
       >
-        <NewDumpForm pursuitId={pursuit.id} />
+        <NewDumpForm pursuitId={pursuit.id} sectionId={unit?.id ?? null} />
       </SlidePanel>
     </div>
   );

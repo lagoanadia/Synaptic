@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { reviewFlashcard } from "../pursuits/[id]/actions";
+import { FlashcardReview } from "../pursuits/[id]/FlashcardReview";
+import { ChevronRight } from "@/app/icons";
 import { reviewConcept } from "../pursuits/[id]/learn/actions";
 import type { ReviewCard } from "@/lib/review";
 import {
@@ -63,7 +65,13 @@ export function ReviewGames({
       {!mounted && <div className="h-80 rounded-3xl bg-white" aria-busy="true" />}
       {mounted && mode === "learn" && <Learn items={items} />}
       {mounted && mode === "match" && <Match items={matchItems} scopeKey={scopeKey} />}
-      {mode === "flash" && <FlashGame cards={flash} />}
+      {mode === "flash" && (
+        <FlashcardReview
+          dueCards={flash.map((c) => ({ id: c.id, question: c.question, answer: c.answer, pursuitId: c.pursuitId, pursuitTitle: c.pursuitTitle }))}
+          upcomingCount={0}
+          learnHref={href("learn")}
+        />
+      )}
     </div>
   );
 }
@@ -199,6 +207,17 @@ function Learn({ items }: { items: LearnItem[] }) {
           {item.context && <span className="text-ink-faint"> · {item.context}</span>}
         </span>
         <p className="text-2xl leading-snug font-bold text-balance">{item.prompt}</p>
+        {(item.hint || item.context) && !result && (
+          <details key={item.id} className="group self-start text-sm">
+            <summary className="flex cursor-pointer list-none items-center gap-1.5 rounded-full bg-chip px-3 py-1 text-xs font-semibold text-ink-muted select-none hover:text-ink [&::-webkit-details-marker]:hidden">
+              <ChevronRight size={12} className="inline-block transition-transform group-open:rotate-90" /> Hint
+            </summary>
+            <div className="mt-2 flex max-w-xl flex-col gap-1 rounded-2xl bg-callout px-4 py-3">
+              {item.hint && <p>{item.hint}</p>}
+              {item.context && <p className="text-xs text-ink-muted">From your note “{item.context}”</p>}
+            </div>
+          </details>
+        )}
         <QuestionBody
           question={question}
           result={result}
@@ -483,64 +502,5 @@ function Match({ items, scopeKey }: { items: LearnItem[]; scopeKey: string }) {
         ))}
       </div>
     </div>
-  );
-}
-
-// ─── Flashcards ───
-
-const RATINGS = [
-  { label: "Again", quality: 1 },
-  { label: "Hard", quality: 3 },
-  { label: "Good", quality: 4 },
-  { label: "Easy", quality: 5 },
-] as const;
-
-function FlashGame({ cards }: { cards: ReviewCard[] }) {
-  const [queue, setQueue] = useState(cards);
-  const [revealed, setRevealed] = useState(false);
-  const [isPending, startTransition] = useTransition();
-  const current = queue[0];
-
-  if (!current) return <Empty>Nothing due.</Empty>;
-
-  function rate(quality: number) {
-    if (isPending) return;
-    startTransition(async () => {
-      await reviewFlashcard(current.pursuitId, current.id, quality);
-      setQueue((q) => q.slice(1));
-      setRevealed(false);
-    });
-  }
-
-  return (
-    <Panel>
-      <div className="flex items-center justify-between text-xs font-semibold text-ink-muted">
-        <span>{queue.length} left</span>
-        <span>{current.pursuitTitle}</span>
-      </div>
-      <button
-        type="button"
-        onClick={() => setRevealed((r) => !r)}
-        className="flex min-h-56 flex-col items-center justify-center gap-4 rounded-2xl bg-chip p-6 text-center"
-      >
-        <span className="text-2xl font-bold">{current.question}</span>
-        {revealed && <span className="text-xl text-tile-blue">{current.answer}</span>}
-      </button>
-      {revealed && (
-        <div className="grid grid-cols-4 gap-2">
-          {RATINGS.map((r) => (
-            <button
-              key={r.label}
-              type="button"
-              disabled={isPending}
-              onClick={() => rate(r.quality)}
-              className="rounded-full border-2 border-border-subtle px-2 py-2.5 text-sm font-semibold hover:border-tile-sky disabled:opacity-50"
-            >
-              {r.label}
-            </button>
-          ))}
-        </div>
-      )}
-    </Panel>
   );
 }

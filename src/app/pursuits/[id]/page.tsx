@@ -3,9 +3,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { addAttachment, removePursuitTag, setClassroomEnabled } from "./actions";
-import { MergeControls } from "./MergeControls";
-import { DumpControls } from "./DumpControls";
+import { removePursuitTag, setClassroomEnabled } from "./actions";
 import { PursuitMeta } from "./PursuitMeta";
 import { TagForm } from "./TagForm";
 import { MemberForm } from "./MemberForm";
@@ -18,16 +16,16 @@ import { FlashcardReview } from "./FlashcardReview";
 import { Timeline } from "./Timeline";
 import { DeleteButton } from "../DeleteButton";
 import { ClassroomImport } from "./ClassroomImport";
-import { AttachmentList } from "./AttachmentList";
 import { Logo } from "../../Logo";
 import { UpcomingDeadlines } from "./UpcomingDeadlines";
 import { StatusNote } from "./StatusNote";
-import { collaboratorOrder, colorIndexById } from "@/lib/authorColor";
 import { ProjectsBoard } from "./ProjectsBoard";
 import { GameTiles } from "../../review/GameTiles";
 import { SectionGrid } from "./SectionGrid";
+import { PagesBoard, type PageCard } from "./PagesBoard";
+import { autoTitle } from "@/lib/text";
+import { conceptExcerpt } from "@/lib/review";
 import { LearnTab } from "./learn/LearnTab";
-import { ImportSlides } from "./ImportSlides";
 import { UNSORTED, SHARED } from "@/lib/reviewData";
 
 const CLASSROOM_ERROR_COPY: Record<string, string> = {
@@ -70,7 +68,7 @@ export default async function PursuitPage({
     redirect("/");
   }
 
-  const [pursuit, sections, distinctTypes, dueFlashcards, upcomingFlashcardCount, classroomConnection] =
+  const [pursuit, sections, distinctTypes, dueFlashcards, upcomingFlashcardCount, classroomConnection, otherLinked] =
     await Promise.all([
       prisma.pursuit.findFirst({
         where: {
@@ -94,7 +92,7 @@ export default async function PursuitPage({
           },
           notes: {
             orderBy: { createdAt: "desc" },
-            include: { tags: true, sourceDumps: { select: { id: true, content: true } } },
+            include: { tags: true, sourceDumps: { select: { id: true, content: true } }, _count: { select: { flashcards: true } } },
           },
           contentSections: { orderBy: { order: "asc" } },
           attachments: { orderBy: { createdAt: "desc" } },
@@ -124,6 +122,10 @@ export default async function PursuitPage({
         where: { userId: session.user.id },
         select: { id: true },
       }),
+      prisma.pursuit.findMany({
+        where: { ownerId: session.user.id, id: { not: id }, classroomCourseId: { not: null } },
+        select: { title: true, classroomCourseId: true },
+      }),
     ]);
 
   if (!pursuit) {
@@ -131,15 +133,6 @@ export default async function PursuitPage({
   }
 
 
-  // Only shown once a Pursuit actually has someone besides the owner —
-  // no point coloring who-wrote-what when there's only ever been one
-  // possible author.
-  const showAuthors = pursuit.members.length > 0;
-  const collaborators = collaboratorOrder(
-    pursuit.owner,
-    pursuit.members.map((m) => m.user),
-  );
-  const authorColorIndex = colorIndexById(collaborators);
 
   // Each tab's active underline picks up a color from nadia-lagoa.vercel.app's
   // own project-card palette (Cards → cobalt, Ask → flame, everything else →
@@ -161,14 +154,7 @@ export default async function PursuitPage({
     sectionFilter === UNSORTED
       ? { id: UNSORTED, name: "Unsorted" }
       : (pursuit.contentSections.find((s) => s.id === sectionFilter) ?? null);
-  const inActiveSection = (sectionId: string | null) =>
-    !activeSection ||
-    (activeSection.id === UNSORTED ? sectionId === null : sectionId === activeSection.id);
-  const visibleSections = activeSection
-    ? pursuit.contentSections.filter((s) => s.id === activeSection.id)
-    : pursuit.contentSections;
   const sectionQuery = activeSection ? `&section=${activeSection.id}` : "";
-  const organizedDumpIds = new Set(pursuit.notes.flatMap((n) => n.sourceDumps.map((d) => d.id)));
 
   // Where "back" goes: the Section this subject lives in on the new home.
   const backHref =
@@ -177,6 +163,51 @@ export default async function PursuitPage({
       : `/pursuits/s/${pursuit.section?.id ?? UNSORTED}`;
   const backLabel =
     pursuit.owner.id !== session.user.id ? "Shared" : (pursuit.section?.name ?? "Unsorted");
+
+  // One card per page: the raw dump plus the note organized from it (a
+  // note made from several dumps stays with the first). Notes whose
+  // dumps are gone get a card of their own.
+  const noteForDump = new Map<string, (typeof pursuit.notes)[number]>();
+  for (const n of pursuit.notes) {
+    const first = n.sourceDumps[0];
+    if (first && !noteForDump.has(first.id)) noteForDump.set(first.id, n);
+  }
+  const filesFor = (dumpId: string) => pursuit.attachments.filter((a) => a.dumpId === dumpId).length;
+  const shortDate = (d: Date) => d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  const pageCards: PageCard[] = [
+    ...pursuit.brainDumps.map((d) => {
+      const note = noteForDump.get(d.id);
+      const text = note?.content ?? d.content ?? "";
+      return {
+        key: d.id,
+        dumpId: d.id,
+        noteId: note?.id ?? null,
+        href: `/pursuits/${pursuit.id}/dump/${d.id}`,
+        title: autoTitle(text, 10),
+        preview: conceptExcerpt(text, 120),
+        organized: !!note,
+        files: filesFor(d.id) + d.images.length,
+        flashcards: note?._count.flashcards ?? 0,
+        sectionId: note?.sectionId ?? d.sectionId,
+        date: shortDate(d.createdAt),
+      };
+    }),
+    ...pursuit.notes
+      .filter((n) => n.sourceDumps.length === 0)
+      .map((n) => ({
+        key: n.id,
+        dumpId: null,
+        noteId: n.id,
+        href: `/pursuits/${pursuit.id}/note/${n.id}`,
+        title: autoTitle(n.content, 10),
+        preview: conceptExcerpt(n.content, 120),
+        organized: true,
+        files: 0,
+        flashcards: n._count.flashcards,
+        sectionId: n.sectionId,
+        date: shortDate(n.createdAt),
+      })),
+  ];
 
   return (
     <div className="mx-auto flex w-full max-w-[1800px] flex-1 flex-col gap-6 px-6 py-9 lg:px-14">
@@ -210,7 +241,7 @@ export default async function PursuitPage({
             folded away so the page opens on the content itself. */}
         <details className="group text-sm">
           <summary className="cursor-pointer text-xs text-ink-faint select-none hover:text-ink">
-            {[pursuit.type, pursuit.status.toLowerCase(), pursuit.members.length > 0 ? `shared with ${pursuit.members.length}` : null]
+            {[pursuit.type, pursuit.status.toLowerCase(), pursuit.members.length > 0 ? `shared with ${pursuit.members.length}` : null, pursuit.classroomEnabled && pursuit.classroomCourseName ? `Classroom: ${pursuit.classroomCourseName}` : null]
               .filter(Boolean)
               .join(" · ")}{" "}
             · details
@@ -265,6 +296,47 @@ export default async function PursuitPage({
                 <MemberForm pursuitId={pursuit.id} />
               )}
             </div>
+            <div className="flex flex-col gap-2 pt-2">
+            {classroomConnected && (
+              <p className="rounded-xl bg-forest-soft px-4 py-3 text-sm text-ink">
+                Connected to Google Classroom.
+              </p>
+            )}
+            {classroomError && (
+              <p className="rounded-xl bg-crimson-soft px-4 py-3 text-sm text-ink">
+                {CLASSROOM_ERROR_COPY[classroomError] ?? "Something went wrong. Try again."}
+              </p>
+            )}
+            {pursuit.classroomEnabled ? (
+              <div className="flex flex-col gap-1.5">
+                <ClassroomImport
+                  pursuitId={pursuit.id}
+                  connected={!!classroomConnection}
+                  linkedCourseId={pursuit.classroomCourseId}
+                  linkedElsewhere={Object.fromEntries(
+                    otherLinked.filter((o) => o.classroomCourseId).map((o) => [o.classroomCourseId!, o.title]),
+                  )}
+                />
+                <form action={setClassroomEnabled.bind(null, pursuit.id, false)}>
+                  <button
+                    type="submit"
+                    className="self-start text-xs text-ink-faint hover:text-red-500"
+                  >
+                    Turn off Google Classroom for this Pursuit
+                  </button>
+                </form>
+              </div>
+            ) : (
+              <form action={setClassroomEnabled.bind(null, pursuit.id, true)}>
+                <button
+                  type="submit"
+                  className="self-start rounded-full border border-border-subtle bg-white px-4 py-2 text-sm text-ink-muted transition-colors hover:border-ink hover:text-ink"
+                >
+                  + This is a school subject — enable Google Classroom
+                </button>
+              </form>
+            )}
+            </div>
           </div>
         </details>
       </div>
@@ -306,22 +378,12 @@ export default async function PursuitPage({
       </nav>
 
       {tab === "pages" && (
-        <div className="-mt-2 flex flex-wrap items-center gap-1.5">
-          {[{ id: "", name: "All" }, ...pursuit.contentSections, { id: UNSORTED, name: "Unsorted" }].map((s) => {
-            const active = (activeSection?.id ?? "") === s.id;
-            return (
-              <Link
-                key={s.id || "all"}
-                href={`/pursuits/${pursuit.id}?tab=pages${s.id ? `&section=${s.id}` : ""}`}
-                className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
-                  active ? "bg-tile-sky text-white" : "bg-chip text-ink-muted hover:text-ink"
-                }`}
-              >
-                {s.name}
-              </Link>
-            );
-          })}
-        </div>
+        <PagesBoard
+          pursuitId={pursuit.id}
+          units={pursuit.contentSections.map((u) => ({ id: u.id, name: u.name, classroomUnit: u.classroomUnit }))}
+          cards={pageCards}
+          classroomCourseId={pursuit.classroomEnabled ? pursuit.classroomCourseId : null}
+        />
       )}
 
       {tab === "overview" && (
@@ -359,57 +421,7 @@ export default async function PursuitPage({
         </div>
       )}
 
-      {tab === "pages" && (
-        <section className="flex flex-col gap-3" aria-label="Pages">
-        <div className="flex flex-wrap items-center justify-end gap-3">
-          <ImportSlides
-            pursuitId={pursuit.id}
-            sectionId={activeSection && activeSection.id !== UNSORTED ? activeSection.id : null}
-          />
-        </div>
-        <DumpControls
-          pursuitId={pursuit.id}
-          showAuthors={showAuthors}
-          sections={visibleSections.map((s) => ({ id: s.id, name: s.name }))}
-          dumps={pursuit.brainDumps
-            .filter((d) => inActiveSection(d.sectionId) && !(d.processed && organizedDumpIds.has(d.id)))
-            .map((d) => ({
-            id: d.id,
-            content: d.content,
-            images: d.images,
-            processed: d.processed,
-            createdAt: d.createdAt.toISOString(),
-            sectionId: d.sectionId,
-            sectionOrder: d.sectionOrder,
-            author: {
-              name: d.author.name ?? d.author.email,
-              image: d.author.image,
-              colorIndex: authorColorIndex.get(d.author.id) ?? 0,
-            },
-          }))}
-        />
-        </section>
-      )}
 
-      {tab === "pages" && (
-        <section className="flex flex-col gap-3" aria-label="Organized notes">
-        <MergeControls
-          pursuitId={pursuit.id}
-          sections={visibleSections.map((s) => ({ id: s.id, name: s.name }))}
-          notes={pursuit.notes.filter((n) => inActiveSection(n.sectionId)).map((n) => ({
-            id: n.id,
-            content: n.content,
-            createdAt: n.createdAt.toISOString(),
-            updatedAt: n.updatedAt.toISOString(),
-            tags: n.tags,
-            sourceDumps: n.sourceDumps.map((d) => ({ id: d.id })),
-            sectionId: n.sectionId,
-            sectionOrder: n.sectionOrder,
-          }))}
-          originals={Object.fromEntries(pursuit.notes.map((n) => [n.id, n.sourceDumps]))}
-        />
-        </section>
-      )}
 
       {tab === "learn" && <LearnTab pursuitId={pursuit.id} hasNotes={pursuit.notes.length > 0} />}
 
@@ -417,11 +429,12 @@ export default async function PursuitPage({
 
       {tab === "cards" && (
         <FlashcardReview
-          pursuitId={pursuit.id}
+          learnHref={`/review?mode=learn&pursuit=${pursuit.id}`}
           dueCards={dueFlashcards.map((c) => ({
             id: c.id,
             question: c.question,
             answer: c.answer,
+            pursuitId: pursuit.id,
           }))}
           upcomingCount={upcomingFlashcardCount}
         />
@@ -443,79 +456,6 @@ export default async function PursuitPage({
         />
       )}
 
-      {tab === "pages" && !activeSection && (
-        <section className="flex flex-col gap-4" aria-label="Files">
-          {classroomConnected && (
-            <p className="rounded-xl bg-forest-soft px-4 py-3 text-sm text-ink">
-              Connected to Google Classroom.
-            </p>
-          )}
-          {classroomError && (
-            <p className="rounded-xl bg-crimson-soft px-4 py-3 text-sm text-ink">
-              {CLASSROOM_ERROR_COPY[classroomError] ?? "Something went wrong. Try again."}
-            </p>
-          )}
-          {pursuit.classroomEnabled ? (
-            <div className="flex flex-col gap-1.5">
-              <ClassroomImport
-                pursuitId={pursuit.id}
-                connected={!!classroomConnection}
-                linkedCourseId={pursuit.classroomCourseId}
-              />
-              <form action={setClassroomEnabled.bind(null, pursuit.id, false)}>
-                <button
-                  type="submit"
-                  className="self-start text-xs text-ink-faint hover:text-red-500"
-                >
-                  Turn off Google Classroom for this Pursuit
-                </button>
-              </form>
-            </div>
-          ) : (
-            <form action={setClassroomEnabled.bind(null, pursuit.id, true)}>
-              <button
-                type="submit"
-                className="self-start rounded-full border border-border-subtle bg-white px-4 py-2 text-sm text-ink-muted transition-colors hover:border-ink hover:text-ink"
-              >
-                + This is a school subject — enable Google Classroom
-              </button>
-            </form>
-          )}
-          <form
-            action={addAttachment.bind(null, pursuit.id)}
-            className="flex gap-2"
-          >
-            <input
-              type="text"
-              name="name"
-              placeholder="File name"
-              required
-              className="flex-1 rounded-md border border-border-subtle bg-white px-3 py-2 text-sm"
-            />
-            <input
-              type="text"
-              name="url"
-              placeholder="URL"
-              required
-              className="flex-1 rounded-md border border-border-subtle bg-white px-3 py-2 text-sm"
-            />
-            <button
-              type="submit"
-              className="rounded-md border border-ink px-4 py-2 text-sm font-medium whitespace-nowrap hover:bg-chip"
-            >
-              + Add
-            </button>
-          </form>
-          <AttachmentList
-            pursuitId={pursuit.id}
-            attachments={pursuit.attachments.map((a) => ({
-              id: a.id,
-              name: a.name,
-              url: a.url,
-            }))}
-          />
-        </section>
-      )}
 
       {tab === "projects" && (
         <ProjectsBoard

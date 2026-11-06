@@ -28,3 +28,27 @@ describe("slideSourceFor", () => {
     expect(slideSourceFor("not a url")).toBeNull();
   });
 });
+
+import { isSlideTitle, unitCode } from "./slides";
+
+describe("unitCode", () => {
+  it("reads the unit from file and unit names", () => {
+    expect(unitCode("PSP-UD2_cuaderno-de-actividades.pdf")).toBe("UD2");
+    expect(unitCode("PSP-UD1-T3_processbuilder.pptx")).toBe("UD1");
+    expect(unitCode("U1")).toBe("UD1");
+    expect(unitCode("Tema 03 Hilos")).toBe("UD3");
+    expect(unitCode("Unidad 12")).toBe("UD12");
+    expect(unitCode("Calculo.java")).toBeNull();
+  });
+});
+
+describe("isSlideTitle", () => {
+  it("keeps presentations, PDFs and Google files only", () => {
+    expect(isSlideTitle("UD1.pptx")).toBe(true);
+    expect(isSlideTitle("Apuntes.pdf")).toBe(true);
+    expect(isSlideTitle("Presentación de Google")).toBe(true);
+    expect(isSlideTitle("lectura.docx")).toBe(false);
+    expect(isSlideTitle("referencia.zip")).toBe(false);
+    expect(isSlideTitle("Calculo.java")).toBe(false);
+  });
+});

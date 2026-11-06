@@ -161,42 +161,6 @@ export async function deleteContentSection(pursuitId: string, sectionId: string)
   revalidatePath(`/pursuits/${pursuitId}`);
 }
 
-// Drop target for pages: orderedIds is the whole resulting list for that section
-// (null = unsectioned). One UPDATE … unnest WITH ORDINALITY instead of N updates,
-// which exhausted the connection pool before.
-export async function reorderDumpSection(
-  pursuitId: string,
-  sectionId: string | null,
-  orderedIds: string[],
-) {
-  await requireAccess(pursuitId);
-  if (orderedIds.length === 0) return;
-  await prisma.$executeRaw`
-    UPDATE "BrainDump" AS d
-    SET "sectionId" = ${sectionId}, "sectionOrder" = (data.ord - 1)
-    FROM unnest(${orderedIds}::text[]) WITH ORDINALITY AS data(id, ord)
-    WHERE d.id = data.id AND d."pursuitId" = ${pursuitId}
-  `;
-  revalidatePath(`/pursuits/${pursuitId}`);
-}
-
-// Same as reorderDumpSection, for Organized notes.
-export async function reorderNoteSection(
-  pursuitId: string,
-  sectionId: string | null,
-  orderedIds: string[],
-) {
-  await requireAccess(pursuitId);
-  if (orderedIds.length === 0) return;
-  await prisma.$executeRaw`
-    UPDATE "Note" AS n
-    SET "sectionId" = ${sectionId}, "sectionOrder" = (data.ord - 1)
-    FROM unnest(${orderedIds}::text[]) WITH ORDINALITY AS data(id, ord)
-    WHERE n.id = data.id AND n."pursuitId" = ${pursuitId}
-  `;
-  revalidatePath(`/pursuits/${pursuitId}`);
-}
-
 export async function addBrainDump(
   pursuitId: string,
   _prevState: FormState,
@@ -218,6 +182,12 @@ export async function addBrainDump(
     (m) => m[1],
   );
 
+  const sectionId = formData.get("sectionId");
+  const section =
+    typeof sectionId === "string" && sectionId
+      ? await prisma.pursuitContentSection.findFirst({ where: { id: sectionId, pursuitId }, select: { id: true } })
+      : null;
+
   await prisma.brainDump.create({
     data: {
       pursuitId,
@@ -225,6 +195,7 @@ export async function addBrainDump(
       content: text,
       images,
       lineAuthorIds: text.split("\n").map(() => session.user.id),
+      sectionId: section?.id ?? null,
     },
   });
 
@@ -305,41 +276,6 @@ export async function updateBrainDump(
 export async function deleteBrainDump(pursuitId: string, dumpId: string) {
   await requireAccess(pursuitId);
   await prisma.brainDump.deleteMany({ where: { id: dumpId, pursuitId } });
-  revalidatePath(`/pursuits/${pursuitId}`);
-}
-
-// Finalizing skips the AI entirely — for a dump that's already written the
-// way you want it, this just promotes it straight into a Note as-is,
-// instead of asking Groq to rewrite something that doesn't need it.
-export async function finalizeBrainDump(pursuitId: string, dumpId: string) {
-  await requireAccess(pursuitId);
-
-  const dump = await prisma.brainDump.findFirst({
-    where: { id: dumpId, pursuitId, processed: false },
-  });
-  if (!dump) {
-    throw new Error("Page not found or already organized");
-  }
-
-  await prisma.note.create({
-    data: {
-      pursuitId,
-      content: dump.content ?? "",
-      sectionId: dump.sectionId,
-      sourceDumps: { connect: { id: dump.id } },
-    },
-  });
-
-  await prisma.brainDump.update({
-    where: { id: dumpId },
-    data: { processed: true },
-  });
-
-  await prisma.pursuit.update({
-    where: { id: pursuitId },
-    data: { lastTouchedAt: new Date() },
-  });
-
   revalidatePath(`/pursuits/${pursuitId}`);
 }
 
@@ -558,50 +494,6 @@ JSON object, no other text: {"content": "...", "tags": ["...", "..."]}`;
   return { error: null };
 }
 
-export async function mergeNotes(pursuitId: string, noteIds: string[]) {
-  await requireAccess(pursuitId);
-
-  if (noteIds.length < 2) {
-    throw new Error("Select at least two notes to merge");
-  }
-
-  const notes = await prisma.note.findMany({
-    where: { id: { in: noteIds }, pursuitId },
-    include: { tags: true, sourceDumps: true },
-  });
-
-  if (notes.length !== noteIds.length) {
-    throw new Error("One or more notes not found");
-  }
-
-  const mergedContent = notes.map((n) => n.content).join("\n\n");
-  const tagIds = Array.from(
-    new Set(notes.flatMap((n) => n.tags.map((t) => t.id))),
-  );
-  const dumpIds = Array.from(
-    new Set(notes.flatMap((n) => n.sourceDumps.map((d) => d.id))),
-  );
-  const firstSectionId = notes[0].sectionId;
-  const sharedSectionId =
-    firstSectionId !== null && notes.every((n) => n.sectionId === firstSectionId)
-      ? firstSectionId
-      : null;
-
-  await prisma.note.create({
-    data: {
-      pursuitId,
-      content: mergedContent,
-      sectionId: sharedSectionId,
-      tags: { connect: tagIds.map((id) => ({ id })) },
-      sourceDumps: { connect: dumpIds.map((id) => ({ id })) },
-    },
-  });
-
-  await prisma.note.deleteMany({ where: { id: { in: noteIds } } });
-
-  revalidatePath(`/pursuits/${pursuitId}`);
-}
-
 // Optimistic concurrency: only updates if the note is still the version this
 // editor loaded, so a stale save can't overwrite a newer one.
 export async function updateNote(
@@ -658,26 +550,6 @@ export async function deleteNote(pursuitId: string, noteId: string) {
       });
     }
   }
-
-  revalidatePath(`/pursuits/${pursuitId}`);
-}
-
-export async function addAttachment(pursuitId: string, formData: FormData) {
-  await requireAccess(pursuitId);
-
-  const name = formData.get("name");
-  const url = formData.get("url");
-
-  if (typeof name !== "string" || name.trim() === "") {
-    throw new Error("Name is required");
-  }
-  if (typeof url !== "string" || url.trim() === "") {
-    throw new Error("URL is required");
-  }
-
-  await prisma.attachment.create({
-    data: { pursuitId, name: name.trim(), url: url.trim(), size: 0 },
-  });
 
   revalidatePath(`/pursuits/${pursuitId}`);
 }
@@ -1078,7 +950,7 @@ export async function generateFlashcards(
     return { error: "Note not found" };
   }
 
-  const prompt = `${note.content}\n\n---\n\nGenerate 5-10 flashcards (question + answer pairs) that test recall of the key facts and concepts in the note above. Each question should be short and specific — no "explain everything about X" questions. Each answer should be short too — a fact, a definition, a term — not a paragraph. Write them in the same language as the note. A question must make sense on its own, months later, without the note in front of you — name the topic in it. For each card also write 3 plausible WRONG answers (same type and length as the answer, never partially correct) for multiple choice. Respond with ONLY a JSON object, no other text: {"cards": [{"question": "...", "answer": "...", "wrong": ["...", "...", "..."]}, ...]}`;
+  const prompt = `${note.content}\n\n---\n\nGenerate 5-10 flashcards (question + answer pairs) that test recall of the key facts and concepts in the note above. Each question should be short and specific — no "explain everything about X" questions. Each answer should be short too — a fact, a definition, a term — not a paragraph. Write them in the same language as the note. A question must make sense on its own, months later, without the note in front of you — name the topic in it. For each card also write 3 plausible WRONG answers (same type and length as the answer, never partially correct) for multiple choice. Respond with ONLY a JSON object, no other text: {"cards": [{"question": "...", "answer": "...", "wrong": ["...", "...", "..."], "hint": "one short nudge that doesn't give the answer away"}, ...]}`;
 
   let completion;
   try {
@@ -1110,6 +982,7 @@ export async function generateFlashcards(
       question: c.question,
       answer: c.answer,
       distractors: c.distractors,
+      hint: c.hint,
     })),
   });
 
@@ -1429,12 +1302,60 @@ export async function importSlides(
 
 // A deck uploaded from the slide panel is also kept in this subject's
 // Files, so it's one click away next time.
-export async function saveSlideDeck(pursuitId: string, name: string, url: string, size: number) {
+export async function saveSlideDeck(pursuitId: string, name: string, url: string, size: number, dumpId?: string) {
   await requireAccess(pursuitId);
   if (!/^https:\/\/[\w.-]+\.public\.blob\.vercel-storage\.com\//.test(url)) return null;
+  const dump = dumpId ? await prisma.brainDump.findFirst({ where: { id: dumpId, pursuitId }, select: { id: true } }) : null;
   const a = await prisma.attachment.create({
-    data: { pursuitId, name: name.trim().slice(0, 200) || "Slides", url, size: Math.max(0, Math.round(size)) },
+    data: { pursuitId, dumpId: dump?.id ?? null, name: name.trim().slice(0, 200) || "Slides", url, size: Math.max(0, Math.round(size)) },
   });
   revalidatePath(`/pursuits/${pursuitId}`);
   return a.id;
+}
+
+// ─── Pages board ───────────────────────────────────────────────────────
+
+// Moves a page (its raw dump and the note organized from it, together)
+// to the end of a unit, or out of every unit with sectionId null.
+export async function movePage(
+  pursuitId: string,
+  page: { dumpId: string | null; noteId: string | null },
+  sectionId: string | null,
+) {
+  await requireAccess(pursuitId);
+  const section = sectionId
+    ? await prisma.pursuitContentSection.findFirst({ where: { id: sectionId, pursuitId }, select: { id: true } })
+    : null;
+  const target = section?.id ?? null;
+  const last = await prisma.brainDump.aggregate({ where: { pursuitId, sectionId: target }, _max: { sectionOrder: true } });
+  const order = (last._max.sectionOrder ?? -1) + 1;
+  await prisma.$transaction([
+    ...(page.dumpId
+      ? [prisma.brainDump.updateMany({ where: { id: page.dumpId, pursuitId }, data: { sectionId: target, sectionOrder: order } })]
+      : []),
+    ...(page.noteId
+      ? [prisma.note.updateMany({ where: { id: page.noteId, pursuitId }, data: { sectionId: target, sectionOrder: order } })]
+      : []),
+  ]);
+  revalidatePath(`/pursuits/${pursuitId}`);
+}
+
+export async function setUnitClassroom(pursuitId: string, sectionId: string, unit: string | null) {
+  await requireAccess(pursuitId);
+  const clean = unit && /^UD\d{1,2}$/.test(unit) ? unit : null;
+  await prisma.pursuitContentSection.updateMany({ where: { id: sectionId, pursuitId }, data: { classroomUnit: clean } });
+  revalidatePath(`/pursuits/${pursuitId}`);
+}
+
+// A link (Drive, Classroom, any URL) attached to one page.
+export async function addPageFile(pursuitId: string, dumpId: string, name: string, url: string) {
+  await requireAccess(pursuitId);
+  if (!/^https?:\/\//.test(url.trim())) return { error: "That isn't a link" };
+  const dump = await prisma.brainDump.findFirst({ where: { id: dumpId, pursuitId }, select: { id: true } });
+  if (!dump) return { error: "Page not found" };
+  await prisma.attachment.create({
+    data: { pursuitId, dumpId, name: name.trim().slice(0, 200) || url.trim().slice(0, 200), url: url.trim(), size: 0 },
+  });
+  revalidatePath(`/pursuits/${pursuitId}/dump/${dumpId}`);
+  return { error: null };
 }

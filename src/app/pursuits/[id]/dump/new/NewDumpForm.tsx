@@ -32,6 +32,7 @@ export function NewDumpForm({
   dumpId,
   initialContent = "",
   initialUpdatedAt,
+  sectionId,
 }: {
   pursuitId: string;
   dumpId?: string;
@@ -39,6 +40,8 @@ export function NewDumpForm({
   // Editing only: the version this editor loaded, so a save that would
   // overwrite someone else's newer save is refused instead.
   initialUpdatedAt?: string;
+  // New pages: the unit to create it in.
+  sectionId?: string | null;
 }) {
   const router = useRouter();
   const isEditing = dumpId !== undefined;
@@ -203,6 +206,7 @@ export function NewDumpForm({
     <form action={formAction} className="flex flex-1 flex-col gap-4">
       <input type="hidden" name="content" value={content} />
       {initialUpdatedAt && <input type="hidden" name="expectedUpdatedAt" value={initialUpdatedAt} />}
+      {sectionId && <input type="hidden" name="sectionId" value={sectionId} />}
       <input
         ref={pdfInput}
         type="file"
