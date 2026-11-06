@@ -10,8 +10,8 @@ export const TEXT_MODEL = "openai/gpt-oss-120b";
 export const VISION_MODEL = "qwen/qwen3.8-27b";
 
 // The app is in Spanish: everything the AI writes for the user is too,
-// unless a prompt explicitly asks for another language (e.g. a debate the
-// user chose to hold in English).
+// unless a prompt explicitly asks for another language (e.g. a concept map
+// the user chose to have explained in English).
 export const SPANISH =
   "Write every text meant for the user in Spanish from Spain (tú, natural and clear), unless the instructions explicitly ask for another language. Keep code, identifiers, technical terms and quotes in their original form.";
 

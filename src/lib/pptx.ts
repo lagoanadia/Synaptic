@@ -1,5 +1,14 @@
 import { unzipSync, strFromU8 } from "fflate";
-import { decode } from "@/lib/feeds";
+
+// XML text → plain text: CDATA, numeric and the common named entities.
+const ENTITIES: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " };
+export function decode(s: string): string {
+  return s
+    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
+    .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCodePoint(parseInt(n, 16)))
+    .replace(/&([a-z]+);/gi, (m, n) => ENTITIES[n.toLowerCase()] ?? m);
+}
 
 // Reading a .pptx (a zip of XML files) in the browser: one entry per
 // slide, with its text paragraphs and the speaker notes. Images and

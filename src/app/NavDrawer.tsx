@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { signOutAction } from "./actions";
 import { tileColor } from "@/lib/tileColor";
-import { CardsIcon, ChatIcon, CodeIcon, HomeIcon, MenuIcon, SettingsIcon, XIcon } from "./icons";
+import { CardsIcon, CodeIcon, HomeIcon, MenuIcon, SettingsIcon, XIcon } from "./icons";
 
 type Props = {
   user: { name: string | null; email: string | null; image: string | null };
@@ -105,9 +105,6 @@ export function NavDrawer({ user, plan, sections }: Props) {
           </Link>
           <Link href="/challenges" className={item(active("/challenges"))}>
             <CodeIcon size={18} className="block" /> Retos
-          </Link>
-          <Link href="/arena" className={item(active("/arena"))}>
-            <ChatIcon size={18} className="block" /> Arena
           </Link>
         </div>
 

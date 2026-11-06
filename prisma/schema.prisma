@@ -48,7 +48,6 @@ model User {
   pushSubscriptions   PushSubscription[]
   sentNotifications   SentDeadlineNotification[]
   challenges          Challenge[]
-  debates             Debate[]
 }
 
 enum Plan {
@@ -529,25 +528,3 @@ model Challenge {
 // A debate about a headline with an AI on the other side.
 // messages: [{ role: "user" | "ai", text, fallacies? }].
 
-model Debate {
-  id        String   @id @default(cuid())
-  headline  String
-  url       String?
-  source    String?
-  motion    String
-  brief     String
-  // "for" | "against" — the side YOU argue.
-  side      String
-  language  String   @default("English")
-  // "opponent" argues the other side; "socratic" only asks questions.
-  style     String   @default("opponent")
-  messages  Json     @default("[]")
-  verdict   Json?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId, createdAt])
-}

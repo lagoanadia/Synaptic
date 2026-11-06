@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { strToU8, zipSync } from "fflate";
-import { readPptx, slideLines, slidesToText } from "./pptx";
+import { decode, readPptx, slideLines, slidesToText } from "./pptx";
 
 const slide = (...paras: string[][]) =>
   `<p:sld><p:cSld><p:spTree>${paras
@@ -26,5 +26,11 @@ describe("pptx", () => {
 
   it("formats slides as a page", () => {
     expect(slidesToText([{ n: 1, title: "Intro", lines: ["a"], notes: "n" }], "UD1")).toBe("# UD1\n\n## Intro\n\n- a\n\n! n");
+  });
+});
+
+describe("decode", () => {
+  it("decodes numeric entities", () => {
+    expect(decode("it&#39;s &#x2014; ok")).toBe("it's — ok");
   });
 });
