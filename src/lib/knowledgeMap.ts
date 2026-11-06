@@ -26,8 +26,9 @@ export type PlacedNode = MapNode & { x: number; y: number; r: number; state: Dot
 export type PlacedCluster = { id: string; label: string; color: string; x: number; y: number; nodes: PlacedNode[]; links: [PlacedNode, PlacedNode][] };
 
 // Clusters on a grid (up to `perRow` across); inside a cluster the roots
-// sit in the middle and the rest spiral out on the golden angle.
-export function layoutMap(clusters: MapCluster[], width: number, opts: { perRow?: number; rowHeight?: number; now?: number } = {}) {
+// sit in the middle and the rest spiral out on the golden angle. `fill`
+// (one unit on its own) spreads the spiral over the whole cell, bigger dots.
+export function layoutMap(clusters: MapCluster[], width: number, opts: { perRow?: number; rowHeight?: number; now?: number; fill?: boolean } = {}) {
   const perRow = Math.max(1, Math.min(opts.perRow ?? 4, clusters.length || 1));
   const rowH = opts.rowHeight ?? 210;
   const cellW = width / perRow;
@@ -42,13 +43,14 @@ export function layoutMap(clusters: MapCluster[], width: number, opts: { perRow?
     const nodes: PlacedNode[] = [];
     roots.forEach((n, k) => {
       const a = (k / Math.max(1, roots.length)) * Math.PI * 2;
-      const rr = roots.length > 1 ? 14 : 0;
-      nodes.push({ ...n, x: r1(cx + Math.cos(a) * rr), y: r1(cy + Math.sin(a) * rr), r: 8, state: dotState(n, opts.now) });
+      const rr = roots.length > 1 ? (opts.fill ? 40 : 14) : 0;
+      nodes.push({ ...n, x: r1(cx + Math.cos(a) * rr), y: r1(cy + Math.sin(a) * rr), r: opts.fill ? 11 : 8, state: dotState(n, opts.now) });
     });
     rest.forEach((n, k) => {
       const a = k * 2.39996;
-      const rr = Math.min(spread, 22 + 13 * Math.sqrt(k + 1));
-      nodes.push({ ...n, x: r1(cx + Math.cos(a) * rr * 1.25), y: r1(cy + Math.sin(a) * rr), r: n.depth > 1 ? 3.5 : 5, state: dotState(n, opts.now) });
+      const rr = opts.fill ? spread * (0.4 + 0.6 * Math.sqrt((k + 1) / rest.length)) : Math.min(spread, 22 + 13 * Math.sqrt(k + 1));
+      const r = opts.fill ? (n.depth > 1 ? 6 : 8) : n.depth > 1 ? 3.5 : 5;
+      nodes.push({ ...n, x: r1(cx + Math.cos(a) * rr * (opts.fill ? 1.1 : 1.25)), y: r1(cy + Math.sin(a) * rr), r, state: dotState(n, opts.now) });
     });
     const byId = new Map(nodes.map((n) => [n.id, n]));
     const links = nodes.filter((n) => n.parentId && byId.has(n.parentId)).map((n) => [byId.get(n.parentId!)!, n] as [PlacedNode, PlacedNode]);

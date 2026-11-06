@@ -2,8 +2,11 @@ import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { nextUp, type Status } from "@/lib/internalize";
-import { ConceptExplorer } from "./ConceptExplorer";
+import { folderColor } from "@/lib/covers";
+import { folderMap } from "@/lib/blockData";
+import { LearnView } from "./LearnView";
 
+// Aprender: one concept at a time, next to the map of its unit only.
 export default async function ConceptMapPage({
   params,
   searchParams,
@@ -25,9 +28,9 @@ export default async function ConceptMapPage({
     select: {
       id: true,
       title: true,
-      sourceKind: true,
-      sourceRef: true,
-      pursuit: { select: { title: true } },
+      unitId: true,
+      unit: { select: { name: true } },
+      pursuit: { select: { title: true, cover: true, section: { select: { id: true, name: true } } } },
       concepts: {
         orderBy: [{ depth: "asc" }, { order: "asc" }],
         select: {
@@ -40,44 +43,46 @@ export default async function ConceptMapPage({
           order: true,
           depth: true,
           status: true,
-          attempt: true,
-          feedback: true,
           parentId: true,
-          linksOut: { select: { toId: true, label: true } },
+          linksOut: { select: { toId: true } },
         },
       },
     },
   });
   if (!map) notFound();
 
-  const concepts = map.concepts.map((k) => ({
-    id: k.id,
-    title: k.title,
-    summary: k.summary,
-    explanation: k.explanation,
-    excerpt: k.excerpt,
-    excerptFrom: k.excerptFrom,
-    order: k.order,
-    depth: k.depth,
-    status: k.status as Status,
-    attempt: k.attempt,
-    feedback: k.feedback,
-    parentId: k.parentId,
-  }));
-  const links = map.concepts.flatMap((k) =>
-    k.linksOut.map((l) => ({ fromId: k.id, toId: l.toId, label: l.label })),
-  );
-  const startId =
-    (c && concepts.some((k) => k.id === c) ? c : null) ?? nextUp(concepts, links) ?? concepts[0]?.id ?? null;
+  const concepts = map.concepts.map((k) => ({ ...k, status: k.status as Status }));
+  const links = map.concepts.flatMap((k) => k.linksOut.map((l) => ({ fromId: k.id, toId: l.toId })));
+  const startId = (c && concepts.some((k) => k.id === c) ? c : null) ?? nextUp(concepts, links) ?? concepts[0]?.id ?? null;
+  const concept = concepts.find((k) => k.id === startId);
+  if (!concept) redirect(`/pursuits/${pursuitId}`);
+
+  // The whole unit (every map in it), or just this map when it has no unit.
+  const clusterId = map.unitId ?? `map-${map.id}`;
+  const cluster = (await folderMap(pursuitId, folderColor(pursuitId, map.pursuit.cover))).filter((k) => k.id === clusterId);
+
+  const section = map.pursuit.section;
+  const crumbs = [
+    ...(section ? [{ label: section.name, href: `/pursuits/s/${section.id}` }] : []),
+    { label: map.pursuit.title, href: `/pursuits/${pursuitId}` },
+    { label: map.unit?.name ?? map.title },
+  ];
 
   return (
-    <ConceptExplorer
+    <LearnView
+      key={concept.id}
       pursuitId={pursuitId}
-      pursuitTitle={map.pursuit.title}
-      map={{ id: map.id, title: map.title, sourceKind: map.sourceKind, sourceRef: map.sourceRef }}
-      concepts={concepts}
-      links={links}
-      startId={startId}
+      mapId={map.id}
+      crumbs={crumbs}
+      concept={{
+        id: concept.id,
+        title: concept.title,
+        summary: concept.summary,
+        explanation: concept.explanation,
+        excerpt: concept.excerpt,
+        excerptFrom: concept.excerptFrom,
+      }}
+      map={cluster}
     />
   );
 }
