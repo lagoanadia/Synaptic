@@ -1,24 +1,27 @@
 @import "tailwindcss";
 
-/* Warm cream page, near-black ink, white cards. */
+/* Notion-like: white page, warm-grey ink, hairline borders; colour comes
+   from the notebook and folder covers, not the chrome. */
 :root {
-  --background: #f2f1ee;
-  --foreground: #0d0d0d;
+  --background: #ffffff;
+  --foreground: #37352f;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --color-ink: #0d0d0d;
-  --color-ink-muted: #6b6b6b;
-  /* The lightest gray that still passes WCAG AA (4.5:1) on this background. */
-  --color-ink-faint: #6c6c6c;
-  --color-border-subtle: rgba(13, 13, 13, 0.08);
+  --color-ink: #37352f;
+  --color-ink-muted: #6f6e69;
+  /* The lightest gray that still passes WCAG AA (4.5:1) on white. */
+  --color-ink-faint: #74736e;
+  --color-border-subtle: rgba(55, 53, 47, 0.09);
+  --color-sidebar: #f7f7f5;
   /* Brand blue. accent-fg = text on a solid accent; accent-soft = pale tint. */
   --color-accent: #2383e2;
   --color-accent-fg: #ffffff;
   --color-accent-soft: #eaf3fd;
   --color-chip: #f1f1ef;
+  --color-hover: #ebebea;
   --color-callout: #f7f6f3;
   /* Card colors (from nadia-lagoa.vercel.app's project cards), each with a pale
      "-soft" wash. White text on the solid ones, by design. */
