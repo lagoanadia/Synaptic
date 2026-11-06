@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState, useTransition } from "react";
-import { CheckIcon, TrashIcon } from "@/app/icons";
+import { BoltIcon, CardsIcon, CheckIcon, QuestionIcon, TrashIcon } from "@/app/icons";
 import { DeleteButton } from "../DeleteButton";
 import { createContentSection, deleteContentSection, listClassroomFiles, movePage, renameUnit, setUnitClassroom } from "./actions";
 import { ImportSlides } from "./ImportSlides";
@@ -32,11 +32,14 @@ export function PagesBoard({
   pursuitId,
   units,
   cards: initial,
+  cardStats,
   classroomCourseId,
 }: {
   pursuitId: string;
   units: Unit[];
   cards: PageCard[];
+  // Flashcards per unit id ("none" = No unit).
+  cardStats: Record<string, { cards: number; due: number }>;
   classroomCourseId: string | null;
 }) {
   const [cards, setCards] = useState(initial);
@@ -74,6 +77,12 @@ export function PagesBoard({
           + Page
         </Link>
         <ImportSlides pursuitId={pursuitId} sectionId={null} />
+        <Link
+          href={`/challenges?pursuit=${pursuitId}`}
+          className="order-last ml-auto flex items-center gap-2 rounded-full bg-mint px-4 py-2 text-sm font-semibold text-white"
+        >
+          <span className="font-mono font-bold">{"</>"}</span> Code challenge
+        </Link>
         {newUnit === null ? (
           <button type="button" onClick={() => setNewUnit("")} className="rounded-full bg-chip px-4 py-2 text-sm font-semibold">
             + Unit
@@ -158,6 +167,14 @@ export function PagesBoard({
                 )}
               </header>
 
+              <UnitPlay
+                pursuitId={pursuitId}
+                unitKey={colKey}
+                organized={items.filter((c) => c.organized).length}
+                pages={items.length}
+                stats={cardStats[colKey] ?? { cards: 0, due: 0 }}
+              />
+
               {items.map((c) => (
                 <Link
                   key={c.key}
@@ -215,6 +232,65 @@ export function PagesBoard({
             </section>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+// A unit's study row: how much of it is organized, and its flashcards as
+// Learn / Flashcards / Match, scoped to just this unit.
+function UnitPlay({
+  pursuitId,
+  unitKey,
+  organized,
+  pages,
+  stats,
+}: {
+  pursuitId: string;
+  unitKey: string;
+  organized: number;
+  pages: number;
+  stats: { cards: number; due: number };
+}) {
+  const href = (mode: string) => `/review?mode=${mode}&pursuit=${pursuitId}&unit=${unitKey}`;
+  const games = [
+    { mode: "learn", label: "Learn", icon: QuestionIcon, enabled: stats.cards > 0 },
+    { mode: "flash", label: stats.due > 0 ? `${stats.due} due` : "Cards", icon: CardsIcon, enabled: stats.cards > 0 },
+    { mode: "match", label: "Match", icon: BoltIcon, enabled: stats.cards >= 3 },
+  ];
+  const pct = pages ? Math.round((organized / pages) * 100) : 0;
+  return (
+    <div className="flex flex-col gap-2 px-1.5">
+      {pages > 0 && (
+        <div className="flex items-center gap-2" title={`${organized} of ${pages} pages organized`}>
+          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/70">
+            <div className={`h-full rounded-full ${pct === 100 ? "bg-mint" : "bg-tile-sky"}`} style={{ width: `${pct}%` }} />
+          </div>
+          <span className="text-[11px] font-semibold text-ink-muted">{pct}%</span>
+        </div>
+      )}
+      <div className="grid grid-cols-3 gap-1.5">
+        {games.map((g) =>
+          g.enabled ? (
+            <Link
+              key={g.mode}
+              href={href(g.mode)}
+              className={`flex items-center justify-center gap-1.5 rounded-xl px-2 py-1.5 text-xs font-bold text-white ${
+                g.mode === "flash" && stats.due > 0 ? "bg-tile-blue" : "bg-tile-sky"
+              }`}
+            >
+              <g.icon size={14} /> {g.label}
+            </Link>
+          ) : (
+            <span
+              key={g.mode}
+              title="Make flashcards from a page first"
+              className="flex items-center justify-center gap-1.5 rounded-xl bg-white/50 px-2 py-1.5 text-xs font-semibold text-ink-faint"
+            >
+              <g.icon size={14} /> {g.label}
+            </span>
+          ),
+        )}
       </div>
     </div>
   );
