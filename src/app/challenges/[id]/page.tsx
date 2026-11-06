@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import type { ChallengeTest, Language } from "@/lib/challenge";
+import { asLanguage, type ChallengeTest } from "@/lib/challenge";
 import { ChallengeIDE } from "./ChallengeIDE";
 
 export default async function ChallengePage({ params }: { params: Promise<{ id: string }> }) {
@@ -19,7 +19,7 @@ export default async function ChallengePage({ params }: { params: Promise<{ id: 
         id: c.id,
         title: c.title,
         prompt: c.prompt,
-        language: c.language as Language,
+        language: asLanguage(c.language),
         entry: c.entry,
         starterCode: c.starterCode,
         tests: c.tests as ChallengeTest[],

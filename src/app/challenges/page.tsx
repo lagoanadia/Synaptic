@@ -1,3 +1,4 @@
+import { asLanguage, LANGUAGE_INFO } from "@/lib/challenge";
 import { ArrowLeft, CheckIcon } from "@/app/icons";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -55,7 +56,7 @@ export default async function ChallengesPage({ searchParams }: { searchParams: P
             {challenges.map((c) => (
               <li key={c.id} className="group flex items-center gap-3 rounded-2xl bg-white px-4 py-3 shadow-[0_1px_2px_rgba(13,13,13,0.06)]">
                 <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${c.passed ? "bg-mint text-white" : "bg-chip text-ink-muted"}`}>
-                  {c.passed ? <CheckIcon size={14} /> : c.language === "python" ? "py" : "js"}
+                  {c.passed ? <CheckIcon size={14} /> : LANGUAGE_INFO[asLanguage(c.language)].short.toLowerCase()}
                 </span>
                 <Link href={`/challenges/${c.id}`} className="min-w-0 flex-1">
                   <span className="block truncate font-semibold hover:underline">{c.title}</span>

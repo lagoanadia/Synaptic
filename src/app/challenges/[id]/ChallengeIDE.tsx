@@ -1,12 +1,12 @@
 "use client";
 
-import { ArrowLeft, CheckIcon, XIcon } from "@/app/icons";
+import { ArrowLeft, ArrowRight, CheckIcon, XIcon } from "@/app/icons";
 import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
 import { CodeEditor } from "../CodeEditor";
 import { runInSandbox, warmSandbox } from "../sandbox";
 import { getHint, reviewSolution, saveRun } from "../actions";
-import type { ChallengeTest, Language, RunOutput } from "@/lib/challenge";
+import { LANGUAGE_INFO, parseReview, type ChallengeTest, type Language, type RunOutput } from "@/lib/challenge";
 
 const show = (v: unknown) => {
   try {
@@ -69,7 +69,7 @@ export function ChallengeIDE({
             <ArrowLeft /> Challenges
           </Link>
           <span className="truncate font-semibold text-white">{challenge.title}</span>
-          <span className="rounded bg-white/10 px-2 py-0.5 text-xs">{challenge.language === "python" ? "Python" : "JavaScript"}</span>
+          <span className="rounded bg-white/10 px-2 py-0.5 text-xs">{LANGUAGE_INFO[challenge.language].label}</span>
           <span className="rounded bg-white/10 px-2 py-0.5 text-xs">{challenge.difficulty}</span>
           {solved && <span className="rounded bg-mint px-2 py-0.5 text-xs font-bold text-white">Solved</span>}
         </div>
@@ -101,7 +101,7 @@ export function ChallengeIDE({
           {challenge.pursuitTitle && <p className="mb-2 text-xs text-white/50">From {challenge.pursuitTitle}</p>}
           <p className="text-sm leading-relaxed whitespace-pre-line">{challenge.prompt}</p>
           <p className="mt-4 text-xs text-white/50">
-            Write a function called <code className="rounded bg-white/10 px-1.5 py-0.5 text-white">{challenge.entry}</code>.
+            Write a {challenge.language === "react" ? "component" : "function"} called <code className="rounded bg-white/10 px-1.5 py-0.5 text-white">{challenge.entry}</code>.
           </p>
           <h2 className="mt-6 mb-2 text-xs font-bold tracking-wide text-white/50 uppercase">Tests</h2>
           <ul className="flex flex-col gap-1.5 font-mono text-xs">
@@ -160,7 +160,7 @@ export function ChallengeIDE({
             </button>
             {reviewError && <p className="text-xs text-crimson">{reviewError}</p>}
             {review && (
-              <div className="rounded bg-white/5 p-3 text-sm leading-relaxed whitespace-pre-line">{review}</div>
+              <Review text={review} />
             )}
           </div>
         </section>
@@ -207,6 +207,49 @@ export function ChallengeIDE({
           </div>
         </section>
       </div>
+    </div>
+  );
+}
+
+const REVIEW_STYLE = {
+  good: { label: "Good", icon: CheckIcon, cls: "text-mint" },
+  fix: { label: "Fix", icon: XIcon, cls: "text-crimson" },
+  next: { label: "Next", icon: ArrowRight, cls: "text-tile-sky" },
+} as const;
+
+// The code review as three short blocks; `code` shows as code.
+function Review({ text }: { text: string }) {
+  const sections = parseReview(text);
+  const empty = !sections.good.length && !sections.fix.length && !sections.next.length;
+  if (empty) return <div className="rounded bg-white/5 p-3 text-sm leading-relaxed whitespace-pre-line">{text}</div>;
+  return (
+    <div className="flex flex-col gap-2">
+      {(["good", "fix", "next"] as const).map((k) => {
+        if (!sections[k].length) return null;
+        const { label, icon: Icon, cls } = REVIEW_STYLE[k];
+        return (
+          <div key={k} className="rounded-lg bg-white/5 p-3">
+            <span className={`flex items-center gap-1.5 text-xs font-bold tracking-wide uppercase ${cls}`}>
+              <Icon size={13} /> {label}
+            </span>
+            <ul className="mt-1.5 flex flex-col gap-1 text-sm leading-relaxed">
+              {sections[k].map((line, i) => (
+                <li key={i}>
+                  {line.split(/`([^`]+)`/).map((part, j) =>
+                    j % 2 ? (
+                      <code key={j} className="rounded bg-white/10 px-1 font-mono text-[13px]">
+                        {part}
+                      </code>
+                    ) : (
+                      part
+                    ),
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        );
+      })}
     </div>
   );
 }
