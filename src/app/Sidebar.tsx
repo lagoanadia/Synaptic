@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { signOutAction } from "./actions";
 import { createSection } from "./pursuits/actions";
 import { MiniNotebook } from "./Covers";
+import { SearchIcon, SearchPalette } from "./SearchPalette";
 import { CardsIcon, CodeIcon, HomeIcon, XIcon } from "./icons";
 import type { NotebookCover } from "@/lib/covers";
 
@@ -22,7 +23,19 @@ const PLAN_LABEL: Record<string, string> = { FREE: "Gratis", PRO: "Student Pro",
 export function Sidebar({ user, plan, notebooks }: Props) {
   const pathname = usePathname();
   const [sheet, setSheet] = useState(false);
+  const [searching, setSearching] = useState(false);
   const [lastPath, setLastPath] = useState(pathname);
+  // Ctrl+K / ⌘K opens search from anywhere.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setSearching((v) => !v);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
   if (pathname !== lastPath) {
     setLastPath(pathname);
     setSheet(false);
@@ -54,6 +67,10 @@ export function Sidebar({ user, plan, notebooks }: Props) {
           <Link href="/pursuits" className={row(active("/pursuits", true))}>
             <HomeIcon size={16} className="block" /> Inicio
           </Link>
+          <button type="button" onClick={() => setSearching(true)} className={`${row(false)} w-full`}>
+            <SearchIcon size={16} /> <span className="flex-1 text-left">Buscar</span>
+            <kbd className="text-[10px] text-ink-faint">Ctrl K</kbd>
+          </button>
           <Link href="/review" className={row(active("/review"))}>
             <CardsIcon size={16} className="block" /> Repasar
           </Link>
@@ -91,6 +108,10 @@ export function Sidebar({ user, plan, notebooks }: Props) {
             {t.label}
           </Link>
         ))}
+        <button type="button" onClick={() => setSearching(true)} className="flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] text-ink-faint">
+          <SearchIcon size={20} />
+          Buscar
+        </button>
         <button type="button" onClick={() => setSheet(true)} className={`flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] ${active("/pursuits/s") ? "text-ink" : "text-ink-faint"}`}>
           <span className="flex h-5 items-end gap-0.5" aria-hidden>
             {notebooks.slice(0, 3).map((n) => (
@@ -100,6 +121,7 @@ export function Sidebar({ user, plan, notebooks }: Props) {
           Libretas
         </button>
       </nav>
+      <SearchPalette open={searching} onClose={() => setSearching(false)} notebooks={notebooks} />
       {sheet && (
         <div className="fixed inset-0 z-40 lg:hidden" role="dialog" aria-label="Libretas">
           <button type="button" aria-label="Cerrar" className="absolute inset-0 bg-ink/20" onClick={() => setSheet(false)} />

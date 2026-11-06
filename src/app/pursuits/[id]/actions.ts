@@ -7,7 +7,7 @@ import { groq } from "@/lib/groq";
 import type { ChatCompletionContentPartImage } from "groq-sdk/resources/chat/completions";
 import { PursuitStatus, MemberRole, ProjectCardStatus } from "@/generated/prisma/client";
 import { upsertSection, upsertContentSection } from "@/lib/sections";
-import { HEADLINE_OPTIONS, buildOrTsQuery } from "@/lib/search";
+import { buildOrTsQuery } from "@/lib/search";
 import { parseOrganizeResponse } from "@/lib/organize";
 import { parseJsonLoosely } from "@/lib/json";
 import { MAX_VISION_IMAGES } from "@/lib/visionLimits";
@@ -757,58 +757,6 @@ export async function updatePursuitMeta(pursuitId: string, formData: FormData) {
 
   revalidatePath(`/pursuits/${pursuitId}`);
   revalidatePath("/pursuits");
-}
-
-export type SearchHit = { id: string; createdAt: string; snippet: string };
-export type SearchResults = { dumps: SearchHit[]; notes: SearchHit[] };
-
-// Full-text search over this subject's pages and notes.
-export async function searchPursuit(
-  pursuitId: string,
-  query: string,
-): Promise<SearchResults> {
-  await requireAccess(pursuitId);
-
-  const q = query.trim();
-  if (!q) return { dumps: [], notes: [] };
-
-  // Tagged-template $queryRaw parameterizes every ${}: not injectable.
-  const dumps = await prisma.$queryRaw<
-    { id: string; createdAt: Date; snippet: string }[]
-  >`
-    SELECT id, "createdAt",
-      ts_headline('simple', coalesce(content, ''), plainto_tsquery('simple', ${q}), ${HEADLINE_OPTIONS}) AS snippet
-    FROM "BrainDump"
-    WHERE "pursuitId" = ${pursuitId}
-      AND "searchVector" @@ plainto_tsquery('simple', ${q})
-    ORDER BY ts_rank("searchVector", plainto_tsquery('simple', ${q})) DESC
-    LIMIT 15
-  `;
-
-  const notes = await prisma.$queryRaw<
-    { id: string; createdAt: Date; snippet: string }[]
-  >`
-    SELECT id, "createdAt",
-      ts_headline('simple', content, plainto_tsquery('simple', ${q}), ${HEADLINE_OPTIONS}) AS snippet
-    FROM "Note"
-    WHERE "pursuitId" = ${pursuitId}
-      AND "searchVector" @@ plainto_tsquery('simple', ${q})
-    ORDER BY ts_rank("searchVector", plainto_tsquery('simple', ${q})) DESC
-    LIMIT 15
-  `;
-
-  return {
-    dumps: dumps.map((d) => ({
-      id: d.id,
-      createdAt: d.createdAt.toISOString(),
-      snippet: d.snippet,
-    })),
-    notes: notes.map((n) => ({
-      id: n.id,
-      createdAt: n.createdAt.toISOString(),
-      snippet: n.snippet,
-    })),
-  };
 }
 
 const ASK_CONTEXT_LIMIT = 6;

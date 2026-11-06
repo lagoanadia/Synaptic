@@ -40,6 +40,24 @@ export function buildOrTsQuery(text: string): string | null {
   return (meaningful.length > 0 ? meaningful : lowered).join(" | ");
 }
 
+// Search-as-you-type: every word must match, the last ones as prefixes
+// ("viab" finds "viabilidad"). Words only, so no tsquery syntax gets in.
+export function buildPrefixTsQuery(text: string): string | null {
+  const words = (text.match(/[\p{L}\p{N}]+/gu) ?? []).map((w) => w.toLowerCase());
+  if (words.length === 0) return null;
+  const meaningful = words.filter((w) => !STOPWORDS.has(w));
+  return (meaningful.length > 0 ? meaningful : words).map((w) => `${w}:*`).join(" & ");
+}
+
+// Wraps every word of `query` found in `text` in the highlight sentinels,
+// for results that don't come from ts_headline. Case-insensitive.
+export function markWords(text: string, query: string): string {
+  const words = (query.match(/[\p{L}\p{N}]+/gu) ?? []).filter((w) => w.length > 1);
+  if (words.length === 0) return text;
+  const re = new RegExp(`(${words.map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})`, "giu");
+  return text.replace(re, `${HL_START}$1${HL_END}`);
+}
+
 // Highlights come back as plain text split on sentinels, never as HTML:
 // rendering ts_headline HTML would let a page's content inject markup (XSS).
 export function splitHighlighted(headline: string): HighlightSegment[] {
