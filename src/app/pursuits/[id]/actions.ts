@@ -29,7 +29,7 @@ import { diffLineAuthors, normalizeLineAuthors } from "@/lib/lineAuthors";
 
 const requireAccess = requirePursuitAccess;
 
-export type FormState = { error: string | null; success?: boolean };
+export type FormState = { error: string | null; success?: boolean; updatedAt?: string };
 
 // (pursuitId, prevState, formData) to fit useActionState once bound. They return
 // errors instead of throwing so validation shows inline.
@@ -242,6 +242,7 @@ export async function updateBrainDump(
 
   // Optimistic concurrency: the version this editor loaded (see updateNote).
   const expectedUpdatedAt = formData.get("expectedUpdatedAt");
+  const now = new Date();
   const result = await prisma.brainDump.updateMany({
     where: {
       id: dumpId,
@@ -253,13 +254,13 @@ export async function updateBrainDump(
     // Rewriting a dump makes whatever note it was folded into stale, so it
     // goes back to processed:false — the same "needs organizing" state a
     // brand new dump starts in — and reappears in the Organize count.
-    data: { content: text, images, processed: false, lineAuthorIds },
+    data: { content: text, images, processed: false, lineAuthorIds, updatedAt: now },
   });
 
   if (result.count === 0) {
     return {
       error:
-        "This page was changed by someone else since you opened it — reload to see their version before saving over it.",
+        "Alguien ha cambiado esta página desde que la abriste: recarga para ver su versión antes de guardar encima.",
     };
   }
 
@@ -270,7 +271,7 @@ export async function updateBrainDump(
 
   revalidatePath(`/pursuits/${pursuitId}`);
   revalidatePath(`/pursuits/${pursuitId}/dump/${dumpId}`);
-  return { error: null, success: true };
+  return { error: null, success: true, updatedAt: now.toISOString() };
 }
 
 export async function deleteBrainDump(pursuitId: string, dumpId: string) {
@@ -501,7 +502,7 @@ export async function updateNote(
   noteId: string,
   content: string,
   expectedUpdatedAt: string,
-): Promise<{ error: string | null; conflict?: boolean }> {
+): Promise<{ error: string | null; conflict?: boolean; updatedAt?: string }> {
   await requireAccess(pursuitId);
 
   const text = content.trim();
@@ -509,9 +510,10 @@ export async function updateNote(
     return { error: "La nota no puede estar vacía" };
   }
 
+  const now = new Date();
   const result = await prisma.note.updateMany({
     where: { id: noteId, pursuitId, updatedAt: new Date(expectedUpdatedAt) },
-    data: { content: text },
+    data: { content: text, updatedAt: now },
   });
 
   if (result.count === 0) {
@@ -519,13 +521,13 @@ export async function updateNote(
     if (!current) return { error: "Esta nota ya no existe." };
     return {
       error:
-        "This note was changed by someone else since you opened it — reload to see their version before saving over it.",
+        "Alguien ha cambiado esta nota desde que la abriste: recarga para ver su versión antes de guardar encima.",
       conflict: true,
     };
   }
 
   revalidatePath(`/pursuits/${pursuitId}`);
-  return { error: null };
+  return { error: null, updatedAt: now.toISOString() };
 }
 
 export async function deleteNote(pursuitId: string, noteId: string) {
@@ -551,14 +553,6 @@ export async function deleteNote(pursuitId: string, noteId: string) {
     }
   }
 
-  revalidatePath(`/pursuits/${pursuitId}`);
-}
-
-export async function removeAttachment(pursuitId: string, attachmentId: string) {
-  await requireAccess(pursuitId);
-  // deleteMany, not delete, scoped to pursuitId so this can't be used to
-  // delete an attachment belonging to a different pursuit by guessing an id.
-  await prisma.attachment.deleteMany({ where: { id: attachmentId, pursuitId } });
   revalidatePath(`/pursuits/${pursuitId}`);
 }
 
@@ -992,6 +986,45 @@ export async function generateFlashcards(
   return { error: null, count: cards.length };
 }
 
+// One card from a passage you selected in the editor ("Crear tarjeta").
+export async function cardFromSelection(
+  pursuitId: string,
+  passage: string,
+  noteId: string | null,
+): Promise<{ error: string | null; question?: string }> {
+  const { session } = await requireAccess(pursuitId);
+  const text = passage.trim().slice(0, 2000);
+  if (!text) return { error: "Selecciona un trozo de texto" };
+  const budget = await aiBudget(session.user.id, session.user.email);
+  const limited = await budget.check();
+  if (limited) return { error: limited };
+  if (!budget.unlimited && (await getFlashcardsThisMonth(session.user.id)) >= FREE_MONTHLY_FLASHCARD_LIMIT) {
+    return { error: `Has llegado al límite del plan gratis: ${FREE_MONTHLY_FLASHCARD_LIMIT} tarjetas este mes.` };
+  }
+
+  const prompt = `${text}\n\n---\n\nWrite exactly ONE flashcard that tests the key idea of the passage above. Short, specific question that makes sense on its own months later (name the topic); short answer (a fact, a term, a definition). Same language as the passage. Also 3 plausible WRONG answers of the same type and length. Respond with ONLY a JSON object: {"cards": [{"question": "...", "answer": "...", "wrong": ["...", "...", "..."], "hint": "a short nudge that doesn't give the answer away"}]}`;
+  let completion;
+  try {
+    completion = await createJsonCompletion({
+      model: TEXT_MODEL,
+      messages: [{ role: "user", content: prompt }],
+      response_format: { type: "json_object" },
+    });
+  } catch {
+    return { error: "No se ha podido contactar con la IA. Inténtalo en unos minutos." };
+  }
+  const card = parseFlashcardsResponse(completion.choices[0]?.message?.content ?? "")[0];
+  if (!card) return { error: "No he podido crear la tarjeta" };
+
+  const ownNote = noteId ? await prisma.note.findFirst({ where: { id: noteId, pursuitId }, select: { id: true } }) : null;
+  await prisma.flashcard.create({
+    data: { pursuitId, noteId: ownNote?.id ?? null, question: card.question, answer: card.answer, distractors: card.distractors, hint: card.hint },
+  });
+  await budget.charge();
+  revalidatePath(`/pursuits/${pursuitId}`);
+  return { error: null, question: card.question };
+}
+
 // Applies one SM-2 review (see lib/sm2.ts) and reschedules the card.
 // quality is a 0-5 self-rating of how well the card was recalled just
 // now, same scale as SuperMemo/Anki use.
@@ -1021,6 +1054,7 @@ export async function reviewFlashcard(
       easeFactor: next.easeFactor,
       repetitions: next.repetitions,
       dueDate: dueDateAfter(next.interval),
+      reviewedAt: new Date(),
     },
   });
 
@@ -1345,19 +1379,6 @@ export async function setUnitClassroom(pursuitId: string, sectionId: string, uni
   const clean = unit && /^UD\d{1,2}$/.test(unit) ? unit : null;
   await prisma.pursuitContentSection.updateMany({ where: { id: sectionId, pursuitId }, data: { classroomUnit: clean } });
   revalidatePath(`/pursuits/${pursuitId}`);
-}
-
-// A link (Drive, Classroom, any URL) attached to one page.
-export async function addPageFile(pursuitId: string, dumpId: string, name: string, url: string) {
-  await requireAccess(pursuitId);
-  if (!/^https?:\/\//.test(url.trim())) return { error: "Eso no es un enlace" };
-  const dump = await prisma.brainDump.findFirst({ where: { id: dumpId, pursuitId }, select: { id: true } });
-  if (!dump) return { error: "Página no encontrada" };
-  await prisma.attachment.create({
-    data: { pursuitId, dumpId, name: name.trim().slice(0, 200) || url.trim().slice(0, 200), url: url.trim(), size: 0 },
-  });
-  revalidatePath(`/pursuits/${pursuitId}/dump/${dumpId}`);
-  return { error: null };
 }
 
 export async function renameUnit(pursuitId: string, sectionId: string, name: string): Promise<{ error: string | null }> {

@@ -35,6 +35,7 @@ export function SlidePanel({
   classroomCourseId,
   classroomUnit = null,
   dumpId,
+  onClose,
   children,
 }: {
   pursuitId: string;
@@ -44,6 +45,8 @@ export function SlidePanel({
   classroomUnit?: string | null;
   // Editing an existing page: uploads are attached to it.
   dumpId?: string;
+  // Opened from a toggle elsewhere: no button of its own; ✕ hands back.
+  onClose?: () => void;
   children: React.ReactNode;
 }) {
   const [showAllUnits, setShowAllUnits] = useState(false);
@@ -65,8 +68,10 @@ export function SlidePanel({
       // eslint-disable-next-line react-hooks/set-state-in-effect
       if (saved?.deck) setDeck(saved.deck);
       if (saved?.width) setWidth(saved.width);
-      if (saved?.collapsed) setCollapsed(true);
+      if (saved?.collapsed && !onClose) setCollapsed(true);
+      if (!saved?.deck && onClose) startPicking();
     } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
   useEffect(() => {
     store.set(key, JSON.stringify({ deck, width, collapsed }));
@@ -120,6 +125,7 @@ export function SlidePanel({
   const open_ = (deck || picking) && !collapsed;
 
   if (!deck && !picking) {
+    if (onClose) return <>{children}</>;
     return (
       <div className="flex flex-col gap-3">
         <button
@@ -163,7 +169,7 @@ export function SlidePanel({
             <button type="button" onClick={() => (picking ? setPicking(false) : startPicking())} className="rounded-full px-3 py-1 text-xs text-ink-muted hover:bg-chip">
               {picking ? "Hecho" : "Cambiar"}
             </button>
-            {deck && (
+            {deck && !onClose && (
               <button type="button" onClick={() => setCollapsed(true)} className="rounded-full px-3 py-1 text-xs text-ink-muted hover:bg-chip">
                 Ocultar
               </button>
@@ -171,8 +177,9 @@ export function SlidePanel({
             <button
               type="button"
               onClick={() => {
-                setDeck(null);
                 setPicking(false);
+                if (onClose) return onClose();
+                setDeck(null);
               }}
               aria-label="Cerrar diapositivas"
               className="rounded-full px-2 py-1 text-ink-muted hover:bg-chip"

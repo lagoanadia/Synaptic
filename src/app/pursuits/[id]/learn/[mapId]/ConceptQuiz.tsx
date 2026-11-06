@@ -13,11 +13,17 @@ export function ConceptQuiz({
   startRef,
   onStatus,
   onDontKnow,
+  auto = false,
+  onFinish,
 }: {
   conceptId: string;
   startRef: React.RefObject<HTMLButtonElement | null>;
   onStatus: (s: Status) => void;
   onDontKnow: () => void;
+  // Aprender's ✓: start right away, and hand the result back instead of
+  // showing a score screen.
+  auto?: boolean;
+  onFinish?: (passed: boolean, status: Status | null) => void;
 }) {
   const [questions, setQuestions] = useState<QuizQuestion[] | null>(null);
   const [i, setI] = useState(0);
@@ -40,6 +46,13 @@ export function ConceptQuiz({
     setResults([]);
   }
 
+  // Mount-time start for Aprender's ✓ (data fetch, not derived state).
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (auto) start();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const q = questions?.[i];
   const done = !!questions && results.length === questions.length && !checked;
 
@@ -56,7 +69,10 @@ export function ConceptQuiz({
     if (i + 1 < questions.length) setI(i + 1);
     else {
       const correct = results.filter(Boolean).length;
-      recordConceptQuiz(conceptId, correct, questions.length).then((r) => r.error === null && onStatus(r.status));
+      recordConceptQuiz(conceptId, correct, questions.length).then((r) => {
+        if (r.error === null) onStatus(r.status);
+        onFinish?.(correct / questions.length >= 0.8, r.error === null ? r.status : null);
+      });
     }
   }
 
@@ -80,7 +96,22 @@ export function ConceptQuiz({
     return () => window.removeEventListener("keydown", onKey);
   });
 
-  const card = "flex flex-col gap-4 rounded-3xl bg-white p-6 shadow-[0_1px_2px_rgba(13,13,13,0.06)]";
+  const card = "flex flex-col gap-4 rounded-lg border border-border-subtle bg-white p-5";
+
+  if (!questions && auto) {
+    return (
+      <section className={card} aria-label="Comprobar">
+        {error ? (
+          <p className="flex items-center gap-3 text-sm text-red-500">
+            <span className="flex-1">{error}</span>
+            <button type="button" onClick={start} disabled={loading} aria-label="Reintentar" title="Reintentar" className="rounded-md px-2 py-1 text-lg text-ink-muted hover:bg-chip hover:text-ink disabled:opacity-40">
+              ↻
+            </button>
+          </p>
+        ) : <span className="h-1 w-24 animate-pulse rounded-full bg-chip" aria-label="Preparando preguntas" />}
+      </section>
+    );
+  }
 
   if (!questions) {
     return (
@@ -103,6 +134,8 @@ export function ConceptQuiz({
       </section>
     );
   }
+
+  if (done && onFinish) return null;
 
   if (done) {
     const correct = results.filter(Boolean).length;

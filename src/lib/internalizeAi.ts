@@ -174,7 +174,7 @@ export async function writeConceptQuiz(
   const parts = inside.map((c) => `- ${c.title}: ${c.explanation}`).join("\n");
   const data = obj(
     await askJson(
-      `Write a short exam (6 questions) checking whether a student understood "${concept.title}".
+      `Write a quick check (4 questions) checking whether a student understood "${concept.title}".
 What it is: ${concept.explanation}
 ${parts ? `What it contains:\n${parts}\n` : ""}${concept.excerpt ? `Excerpt from the source:\n${concept.excerpt}\n` : ""}
 Mix the question types — use each at least once:

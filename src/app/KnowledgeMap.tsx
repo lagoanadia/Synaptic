@@ -4,7 +4,9 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { layoutMap, type MapCluster, type PlacedNode } from "@/lib/knowledgeMap";
 
-const W = 1000;
+const WIDE_W = 1000;
+const FOCUS_W = 520;
+const FOCUS_H = 440;
 
 // The dots map. Hover shows the concept's name; click opens it in Aprender.
 // `labels` writes every name (for a single small map), `currentId` rings
@@ -16,6 +18,7 @@ export function KnowledgeMap({
   labels = false,
   currentId,
   empty,
+  focus = false,
 }: {
   clusters: MapCluster[];
   perRow?: number;
@@ -23,6 +26,8 @@ export function KnowledgeMap({
   labels?: boolean;
   currentId?: string;
   empty?: React.ReactNode;
+  // One unit drawn at real size (Aprender): dots fill the box, always labelled.
+  focus?: boolean;
 }) {
   const router = useRouter();
   const [hover, setHover] = useState<PlacedNode | null>(null);
@@ -37,9 +42,11 @@ export function KnowledgeMap({
     return () => ro.disconnect();
   }, []);
   // Dots and lines scale up with the drawing so they stay readable.
-  const k = narrow ? 2.2 : 1;
-  const cols = narrow ? Math.min(perRow ?? 2, 2) : perRow;
-  const { clusters: placed, height } = useMemo(() => layoutMap(clusters, W, { perRow: cols, rowHeight: narrow ? (rowHeight ?? 210) * 1.6 : rowHeight }), [clusters, cols, rowHeight, narrow]);
+  const k = narrow && !focus ? 2.2 : 1;
+  const W = focus ? FOCUS_W : WIDE_W;
+  const cols = focus ? 1 : narrow ? Math.min(perRow ?? 2, 2) : perRow;
+  const rowH = focus ? FOCUS_H : narrow ? (rowHeight ?? 210) * 1.6 : rowHeight;
+  const { clusters: placed, height } = useMemo(() => layoutMap(clusters, W, { perRow: cols, rowHeight: rowH, fill: focus }), [clusters, W, cols, rowH, focus]);
 
   if (clusters.every((c) => c.nodes.length === 0)) {
     return <div className="grid min-h-40 place-items-center rounded-lg bg-[#fbfbfa] p-6 text-sm text-ink-faint">{empty}</div>;

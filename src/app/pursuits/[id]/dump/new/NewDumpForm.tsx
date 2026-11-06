@@ -3,7 +3,7 @@
 import { MicIcon, StopIcon } from "@/app/icons";
 import { useActionState, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { upload } from "@vercel/blob/client";
+import { uploadToBlob } from "@/lib/blobUpload";
 import type { Editor } from "@tiptap/react";
 import { addBrainDump, transcribeAudio, updateBrainDump, type FormState } from "../../actions";
 import { pdfToImagePages } from "@/lib/pdfToImages";
@@ -12,17 +12,6 @@ import { readPptx, slidesToText } from "@/lib/pptx";
 import { RichEditor } from "../../../../editor/RichEditor";
 
 const initialState: FormState = { error: null };
-
-// Files go straight from the browser to Blob storage: a Server Action's
-// request body is capped at 1MB, which a phone photo blows past.
-async function uploadToBlob(pursuitId: string, file: File | Blob, name: string, kind: "image" | "audio") {
-  const blob = await upload(`dumps/${pursuitId}/${name}`, file, {
-    access: "public",
-    handleUploadUrl: "/api/blob-upload",
-    clientPayload: JSON.stringify({ pursuitId, kind }),
-  });
-  return blob.url;
-}
 
 // Writing or editing a Brain Dump page, in the visual editor. Extras on
 // top of the editor itself: PDF pages as images, voice notes transcribed

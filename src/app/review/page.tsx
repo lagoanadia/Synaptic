@@ -1,19 +1,23 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { ArrowLeft } from "@/app/icons";
-import { NO_UNIT, SHARED, UNSORTED, getCards, getLearnConcepts, type ReviewScope } from "@/lib/reviewData";
+import { SHARED, UNSORTED, getCards, getLearnConcepts, type ReviewScope } from "@/lib/reviewData";
 import { shuffle } from "@/lib/review";
 import type { LearnItem } from "@/lib/learn";
 import { withDistractors } from "@/lib/quizDistractors";
 import { aiBudget } from "@/lib/access";
+import { folderCover } from "@/lib/covers";
 import { ReviewGames, type Mode } from "./ReviewGames";
 
 // Old links (?mode=quiz/recall/challenge) still land somewhere sensible.
 const MODE_ALIASES: Record<string, Mode> = { learn: "learn", quiz: "learn", recall: "learn", match: "match", challenge: "match", flash: "flash" };
 
+// Never more than this many cards a day, whatever the backlog.
+const DAILY_CAP = 12;
+
 // Review for one scope: ?section= or ?pursuit= (default: everything).
+// Tarjetas is today's review (due cards, capped); Aprender and Unir
+// practise anything in scope.
 export default async function ReviewPage({
   searchParams,
 }: {
@@ -23,7 +27,7 @@ export default async function ReviewPage({
   if (!session?.user?.id) redirect("/");
   const userId = session.user.id;
   const params = await searchParams;
-  const mode = MODE_ALIASES[params.mode ?? ""] ?? "learn";
+  const mode = MODE_ALIASES[params.mode ?? ""] ?? "flash";
 
   const scope: ReviewScope = params.pursuit
     ? { kind: "pursuit", pursuitId: params.pursuit, unitId: params.unit }
@@ -31,43 +35,27 @@ export default async function ReviewPage({
       ? { kind: "section", sectionId: params.section }
       : { kind: "all" };
 
-  let scopeLabel = "Todo";
   let backHref = "/pursuits";
-  if (scope.kind === "pursuit") {
-    const p = await prisma.pursuit.findFirst({
-      where: { id: scope.pursuitId, OR: [{ ownerId: userId }, { members: { some: { userId } } }] },
-      select: { title: true },
-    });
-    scopeLabel = p?.title ?? "Asignatura";
-    backHref = `/pursuits/${scope.pursuitId}`;
-    if (scope.unitId) {
-      const u =
-        scope.unitId === NO_UNIT
-          ? null
-          : await prisma.pursuitContentSection.findFirst({ where: { id: scope.unitId, pursuitId: scope.pursuitId }, select: { name: true } });
-      scopeLabel += ` · ${u?.name ?? "Sin unidad"}`;
-      backHref = `/pursuits/${scope.pursuitId}?tab=pages`;
-    }
-  } else if (scope.kind === "section") {
-    const s =
-      scope.sectionId === UNSORTED || scope.sectionId === SHARED
-        ? null
-        : await prisma.section.findFirst({ where: { id: scope.sectionId, userId }, select: { name: true } });
-    scopeLabel = s?.name ?? (scope.sectionId === SHARED ? "Compartido" : "Sin clasificar");
-    backHref = `/pursuits/s/${scope.sectionId}`;
-  }
+  if (scope.kind === "pursuit") backHref = `/pursuits/${scope.pursuitId}`;
+  else if (scope.kind === "section" && scope.sectionId !== UNSORTED && scope.sectionId !== SHARED) backHref = `/pursuits/s/${scope.sectionId}`;
 
-  const [allCards, dueCards, concepts] = await Promise.all([
+  const startOfDay = new Date();
+  startOfDay.setHours(0, 0, 0, 0);
+  const [allCards, dueCards, concepts, reviewedToday] = await Promise.all([
     getCards(userId, scope),
-    getCards(userId, scope, { dueOnly: true, take: 40 }),
+    getCards(userId, scope, { dueOnly: true, take: DAILY_CAP }),
     getLearnConcepts(userId, scope),
+    prisma.flashcard.count({ where: { pursuit: { ownerId: userId }, reviewedAt: { gte: startOfDay } } }),
   ]);
+  const left = Math.max(0, DAILY_CAP - reviewedToday);
 
-  // A Learn session: due cards first, then the rest, plus concepts you
-  // flagged to reread. Missing wrong answers are written once by the AI.
-  const dueIds = new Set(dueCards.map((c) => c.id));
-  let pool = [...allCards.filter((c) => dueIds.has(c.id)), ...shuffle(allCards.filter((c) => !dueIds.has(c.id)))].slice(0, 16);
-  if (mode === "learn" && pool.some((c) => (c.distractors?.length ?? 0) < 3 || !c.hint)) {
+  // Today: due cards up to what's left of the cap, plus a couple of concepts
+  // you flagged to reread. Practice: a mix of everything.
+  let pool =
+    mode === "flash"
+      ? dueCards.slice(0, left)
+      : [...dueCards, ...shuffle(allCards.filter((c) => !dueCards.some((d) => d.id === c.id)))].slice(0, DAILY_CAP);
+  if (mode !== "match" && pool.some((c) => (c.distractors?.length ?? 0) < 3 || !c.hint)) {
     const budget = await aiBudget(userId, session.user.email);
     if (!(await budget.check())) {
       const filled = await withDistractors(pool);
@@ -87,8 +75,8 @@ export default async function ReviewPage({
     hint: c.hint ?? null,
   }));
   const conceptItems: LearnItem[] = concepts
-    .filter((c) => c.summary && c.status !== "MASTERED")
-    .slice(0, 6)
+    .filter((c) => c.summary && (mode === "flash" ? c.status === "REREAD" : c.status !== "MASTERED"))
+    .slice(0, mode === "flash" ? 2 : 4)
     .map((c) => ({
       id: c.id,
       kind: "concept",
@@ -99,29 +87,31 @@ export default async function ReviewPage({
       answer: c.title,
       distractors: shuffle(concepts.filter((o) => o.pursuitId === c.pursuitId && o.id !== c.id).map((o) => o.title)).slice(0, 3),
     }));
-  const items = [...cardItems, ...conceptItems];
+  // Anything still short of wrong answers borrows other answers in scope.
+  const answers = [...new Set([...allCards.map((c) => c.answer), ...concepts.map((c) => c.title)])];
+  const items = [...cardItems, ...conceptItems].map((i) =>
+    i.distractors.length >= 3 ? i : { ...i, distractors: [...i.distractors, ...shuffle(answers.filter((a) => a !== i.answer && !i.distractors.includes(a)))].slice(0, 3) },
+  );
   const matchItems = shuffle(items.filter((i) => i.answer.length <= 70 && i.prompt.length <= 120)).slice(0, 6);
+
+  // Folders for the "done" screen.
+  const ids = [...new Set(items.map((i) => i.pursuitId))];
+  const covers = await prisma.pursuit.findMany({ where: { id: { in: ids } }, select: { id: true, title: true, cover: true } });
+  const folders = covers.map((p) => ({ id: p.id, title: p.title, cover: folderCover(p.id, p.cover) }));
 
   const scopeQuery =
     scope.kind === "pursuit" ? `pursuit=${scope.pursuitId}${scope.unitId ? `&unit=${scope.unitId}` : ""}` : scope.kind === "section" ? `section=${scope.sectionId}` : "";
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-6 py-8">
-      <header className="flex items-center gap-3">
-        <Link href={backHref} aria-label="Atrás" className="rounded-full p-2 text-ink-muted hover:bg-chip hover:text-ink">
-          <ArrowLeft size={18} className="block" />
-        </Link>
-        <h1 className="text-2xl font-extrabold">{scopeLabel}</h1>
-      </header>
-      <ReviewGames
-        key={`${mode}-${scopeQuery}`}
-        mode={mode}
-        scopeQuery={scopeQuery}
-        scopeKey={scopeQuery || "all"}
-        items={items}
-        matchItems={matchItems}
-        flash={dueCards.slice(0, 30)}
-      />
-    </div>
+    <ReviewGames
+      key={`${mode}-${scopeQuery}`}
+      mode={mode}
+      scopeQuery={scopeQuery}
+      scopeKey={scopeQuery || "all"}
+      backHref={backHref}
+      items={items}
+      matchItems={matchItems}
+      folders={folders}
+    />
   );
 }

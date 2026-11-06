@@ -1,65 +1,117 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ArrowUpRight, TrashIcon, XIcon } from "@/app/icons";
-import { RichContent } from "./RichContent";
+import { CheckIcon, SlidesIcon } from "@/app/icons";
 import { RichEditor } from "../../editor/RichEditor";
-import { DeleteButton } from "../DeleteButton";
+import { uploadToBlob } from "@/lib/blobUpload";
+import { SlidePanel } from "./SlidePanel";
 import {
-  addPageFile,
+  askPursuit,
+  cardFromSelection,
   deleteBrainDump,
   deleteNote,
   generateFlashcards,
   organizeDumps,
-  removeAttachment,
+  updateBrainDump,
   updateNote,
 } from "./actions";
 
 type Props = {
   pursuit: { id: string; title: string };
+  crumbs: { label: string; href?: string }[];
   title: string;
-  unit: string | null;
-  date: string;
-  dump: { id: string; content: string } | null;
-  note: { id: string; content: string; updatedAt: string; flashcards: number } | null;
-  files: { id: string; name: string; url: string }[];
+  dump: { id: string; content: string; updatedAt: string } | null;
+  note: { id: string; content: string; updatedAt: string } | null;
+  slides: { decks: { name: string; url: string }[]; classroomCourseId: string | null; classroomUnit: string | null };
 };
 
-// One page: its organized version and its original (switch between them),
-// its files and its actions, all in one place.
-export function PageView({ pursuit, title, unit, date, dump, note, files }: Props) {
+const SparklesIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" aria-hidden>
+    <path d="M10 3.5 11.8 8l4.7 1.8-4.7 1.8L10 16l-1.8-4.4L3.5 9.8 8.2 8z" />
+    <path d="M17.5 14l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" />
+  </svg>
+);
+const PencilIcon = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" aria-hidden>
+    <path d="M4 20h4L19 9l-4-4L4 16z" />
+  </svg>
+);
+const SaveIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" aria-hidden>
+    <path d="M5 4h11l3 3v13H5z" />
+    <path d="M8 4v5h7V4M8 20v-6h8v6" />
+  </svg>
+);
+
+// A page, editable in place. Top right, icons only: organized ✦ /
+// original ✎, the slides split, save (Ctrl+S; a ✓ shows for a moment),
+// and ⋯ for the rest.
+export function PageView({ pursuit, crumbs, title, dump, note, slides }: Props) {
   const router = useRouter();
   const [view, setView] = useState<"organized" | "original">(note ? "organized" : "original");
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(note?.content ?? "");
-  const [link, setLink] = useState("");
+  const [drafts, setDrafts] = useState({ organized: note?.content ?? "", original: dump?.content ?? "" });
+  const [dirty, setDirty] = useState({ organized: false, original: false });
+  const versions = useRef({ organized: note?.updatedAt ?? "", original: dump?.updatedAt ?? "" });
+  const [split, setSplit] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [menu, setMenu] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
-  // Files panel: closed when there's nothing in it; your choice is remembered.
-  const [filesOpen, setFilesOpen] = useState(files.length > 0);
-  useEffect(() => {
-    try {
-      const saved = window.localStorage.getItem("synaptic.page.files");
-      // Browser storage, so only after mount.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      if (saved !== null) setFilesOpen(saved === "1");
-    } catch {}
-  }, []);
-  function toggleFiles() {
-    setFilesOpen((o) => {
-      try {
-        window.localStorage.setItem("synaptic.page.files", o ? "0" : "1");
-      } catch {}
-      return !o;
+  const [pending, start] = useTransition();
+  const back = `/pursuits/${pursuit.id}`;
+
+  function save() {
+    if (!dirty[view] || pending) return;
+    const v = view;
+    const text = drafts[v];
+    setMessage(null);
+    start(async () => {
+      let r: { error: string | null; updatedAt?: string };
+      if (v === "organized" && note) r = await updateNote(pursuit.id, note.id, text, versions.current.organized);
+      else if (dump) {
+        const fd = new FormData();
+        fd.set("content", text);
+        fd.set("expectedUpdatedAt", versions.current.original);
+        r = await updateBrainDump(pursuit.id, dump.id, { error: null }, fd);
+      } else return;
+      if (r.error) return setMessage(r.error);
+      if (r.updatedAt) versions.current[v] = r.updatedAt;
+      setDirty((d) => ({ ...d, [v]: false }));
+      setSaved(true);
     });
   }
-  const back = `/pursuits/${pursuit.id}?tab=pages`;
+
+  // The ✓ shows for a moment after each save.
+  useEffect(() => {
+    if (!saved) return;
+    const t = window.setTimeout(() => setSaved(false), 1600);
+    return () => window.clearTimeout(t);
+  }, [saved]);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        save();
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
+
+  // Leaving with unsaved changes asks first.
+  const anyDirty = dirty.organized || dirty.original;
+  useEffect(() => {
+    if (!anyDirty) return;
+    const warn = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [anyDirty]);
 
   function run(fn: () => Promise<{ error: string | null } | void>, ok?: string) {
     setMessage(null);
-    startTransition(async () => {
+    start(async () => {
       const r = await fn();
       if (r && r.error) setMessage(r.error);
       else {
@@ -69,175 +121,151 @@ export function PageView({ pursuit, title, unit, date, dump, note, files }: Prop
     });
   }
 
-  const content = view === "organized" ? note?.content : dump?.content;
+  const icon = "grid size-8 place-items-center rounded-md text-ink-muted hover:bg-chip hover:text-ink disabled:opacity-40";
+  const content = drafts[view];
+  const startsWithTitle = /^#\s/.test(content.trimStart());
+
+  const page = (
+    <article className="flex min-w-0 flex-col gap-4">
+      {!startsWithTitle && <h1 className="text-[2.1rem] leading-tight font-bold tracking-tight">{title}</h1>}
+      <RichEditor
+        key={view}
+        bare
+        initialText={content}
+        onChange={(t) => {
+          setDrafts((d) => ({ ...d, [view]: t }));
+          setDirty((d) => ({ ...d, [view]: true }));
+        }}
+        onUploadImage={(file) => uploadToBlob(pursuit.id, file, file.name, "image")}
+        onAsk={(text) => askPursuit(pursuit.id, `Explícame esto de forma sencilla: "${text}"`)}
+        onCard={(text) => cardFromSelection(pursuit.id, text, note?.id ?? null)}
+        placeholder="Escribe, o pulsa / para añadir un bloque"
+      />
+    </article>
+  );
 
   return (
-    <div className="mx-auto flex w-full max-w-[1800px] flex-1 flex-col gap-6 px-6 py-8 lg:px-14">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex min-w-0 flex-col gap-2">
-          <Link href={back} className="flex items-center gap-1.5 text-sm text-ink-muted hover:text-ink">
-            <ArrowLeft /> {pursuit.title}
-          </Link>
-          <h1 className="text-3xl font-extrabold text-balance">{title}</h1>
-          <div className="flex items-center gap-2 text-xs text-ink-muted">
-            {unit && <span className="rounded-full bg-tile-sky px-2.5 py-0.5 font-semibold text-white">{unit}</span>}
-            <span>{date}</span>
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {note && dump && (
-            <span className="flex rounded-full bg-chip p-1 text-sm font-semibold" role="tablist" aria-label="Versión">
+    <div className={`mx-auto flex w-full flex-1 flex-col gap-6 px-6 py-8 sm:px-12 ${split ? "max-w-[1800px]" : "max-w-[900px]"}`}>
+      <header className="flex items-center gap-3">
+        <nav className="min-w-0 flex-1 truncate text-sm text-ink-faint" aria-label="Ruta">
+          {crumbs.map((c, i) => (
+            <span key={i}>
+              {i > 0 && <span className="mx-1.5">/</span>}
+              {c.href ? (
+                <Link href={c.href} className="hover:text-ink hover:underline">
+                  {c.label}
+                </Link>
+              ) : (
+                <span className="text-ink-muted">{c.label}</span>
+              )}
+            </span>
+          ))}
+        </nav>
+        <div className="relative flex items-center gap-1.5">
+          {note && dump ? (
+            <span className="flex rounded-lg bg-white p-0.5 shadow-[0_0_0_1px_rgba(15,15,15,.06),0_2px_6px_rgba(15,15,15,.06)]" role="tablist" aria-label="Versión">
               {(["organized", "original"] as const).map((v) => (
                 <button
                   key={v}
                   type="button"
                   role="tab"
                   aria-selected={view === v}
-                  onClick={() => {
-                    setView(v);
-                    setEditing(false);
-                  }}
-                  className={`rounded-full px-4 py-1.5 capitalize ${view === v ? "bg-white shadow-sm" : "text-ink-muted"}`}
+                  title={v === "organized" ? "Organizada" : "Original"}
+                  aria-label={v === "organized" ? "Organizada" : "Original"}
+                  onClick={() => setView(v)}
+                  className={`grid size-7 place-items-center rounded-md ${view === v ? "bg-chip text-ink" : "text-ink-faint hover:text-ink"}`}
                 >
-                  {v === "organized" ? "Organizada" : "Original"}
+                  {v === "organized" ? <SparklesIcon /> : <PencilIcon />}
                 </button>
               ))}
             </span>
-          )}
-          {!note && dump && (
-            <button
-              type="button"
-              disabled={isPending}
-              onClick={() => run(() => organizeDumps(pursuit.id, [dump.id]))}
-              className="rounded-full bg-tile-blue px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-            >
-              {isPending ? "Organizando…" : "Organizar"}
-            </button>
-          )}
-          {view === "original" && dump ? (
-            <Link href={`/pursuits/${pursuit.id}/dump/${dump.id}/edit`} className="rounded-full bg-chip px-4 py-2 text-sm font-semibold">
-              Editar
-            </Link>
           ) : (
-            note && (
-              <button type="button" onClick={() => setEditing((e) => !e)} className="rounded-full bg-chip px-4 py-2 text-sm font-semibold">
-                {editing ? "Cancelar" : "Editar"}
+            dump && (
+              <button type="button" disabled={pending} onClick={() => run(() => organizeDumps(pursuit.id, [dump.id]))} title="Organizar" aria-label="Organizar" className={icon}>
+                <SparklesIcon />
               </button>
             )
           )}
-          {note && (
-            <button
-              type="button"
-              disabled={isPending}
-              onClick={() =>
-                run(async () => {
-                  const r = await generateFlashcards(pursuit.id, note.id);
-                  return r.error ? r : { error: null };
-                }, "Tarjetas añadidas")
-              }
-              className="rounded-full bg-chip px-4 py-2 text-sm font-semibold disabled:opacity-50"
-            >
-              Tarjetas{note.flashcards > 0 ? ` · ${note.flashcards}` : ""}
-            </button>
-          )}
           <button
             type="button"
-            onClick={toggleFiles}
-            aria-expanded={filesOpen}
-            className={`rounded-full px-4 py-2 text-sm font-semibold ${filesOpen ? "bg-ink text-white" : "bg-chip"}`}
+            onClick={() => setSplit((s) => !s)}
+            aria-pressed={split}
+            title="Diapositivas al lado"
+            aria-label="Diapositivas al lado"
+            className={`${icon} ${split ? "bg-accent-soft text-accent hover:bg-accent-soft hover:text-accent" : ""}`}
           >
-            Archivos{files.length > 0 ? ` · ${files.length}` : ""}
+            <SlidesIcon size={17} />
           </button>
-          <a
-            href={`/pursuits/${pursuit.id}/print?${dump ? `dump=${dump.id}` : `note=${note!.id}`}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="rounded-full bg-chip px-4 py-2 text-sm font-semibold"
-          >
-            PDF
-          </a>
-          <DeleteButton
-            action={async () => {
-              if (dump) await deleteBrainDump(pursuit.id, dump.id);
-              if (note && !dump) await deleteNote(pursuit.id, note.id);
-            }}
-            onSuccess={() => router.push(back)}
-            confirmMessage="¿Eliminar esta página? No se puede deshacer."
-            className="rounded-full p-2 text-ink-faint hover:bg-chip hover:text-red-600"
-          >
-            <TrashIcon size={16} title="Eliminar página" />
-          </DeleteButton>
+          <button type="button" onClick={save} disabled={!dirty[view] || pending} title="Guardar (Ctrl+S)" aria-label="Guardar" className={icon}>
+            <SaveIcon />
+          </button>
+          <span className={`grid size-7 place-items-center rounded-full bg-[#e8f3ec] text-[#448361] transition-opacity duration-300 ${saved ? "opacity-100" : "opacity-0"}`} aria-live="polite">
+            {saved && <CheckIcon size={14} className="block" />}
+            <span className="sr-only">{saved ? "Guardado" : ""}</span>
+          </span>
+          <button type="button" onClick={() => setMenu((m) => !m)} aria-label="Más" title="Más" className={icon}>
+            ⋯
+          </button>
+          {menu && (
+            <div className="absolute top-full right-0 z-20 mt-1 w-52 rounded-lg bg-white p-1 text-sm shadow-[0_0_0_1px_rgba(15,15,15,.05),0_10px_26px_rgba(15,15,15,.16)]">
+              {note && (
+                <button
+                  type="button"
+                  disabled={pending}
+                  onClick={() => {
+                    setMenu(false);
+                    run(async () => {
+                      const r = await generateFlashcards(pursuit.id, note.id);
+                      return r.error ? r : { error: null };
+                    }, "Tarjetas añadidas");
+                  }}
+                  className="block w-full rounded-md px-2.5 py-1.5 text-left hover:bg-chip"
+                >
+                  Crear tarjetas
+                </button>
+              )}
+              <a
+                href={`/pursuits/${pursuit.id}/print?${dump ? `dump=${dump.id}` : `note=${note!.id}`}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block rounded-md px-2.5 py-1.5 hover:bg-chip"
+              >
+                Descargar PDF
+              </a>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!window.confirm("¿Eliminar esta página? No se puede deshacer.")) return;
+                  start(async () => {
+                    if (dump) await deleteBrainDump(pursuit.id, dump.id);
+                    else if (note) await deleteNote(pursuit.id, note.id);
+                    router.push(back);
+                  });
+                }}
+                className="block w-full rounded-md px-2.5 py-1.5 text-left text-red-600 hover:bg-chip"
+              >
+                Eliminar
+              </button>
+            </div>
+          )}
         </div>
       </header>
       {message && <p className="text-sm text-ink-muted">{message}</p>}
 
-      <div className={`grid grid-cols-1 gap-6 ${filesOpen ? "lg:grid-cols-[minmax(0,1fr)_300px]" : ""}`}>
-        <article className="min-w-0 rounded-3xl bg-white p-6 shadow-[0_1px_2px_rgba(13,13,13,0.06)] sm:p-10">
-          {editing && note ? (
-            <div className="flex flex-col gap-3">
-              <RichEditor initialText={note.content} onChange={setDraft} autofocus />
-              <button
-                type="button"
-                disabled={isPending}
-                onClick={() =>
-                  run(async () => {
-                    const r = await updateNote(pursuit.id, note.id, draft, note.updatedAt);
-                    if (!r.error) setEditing(false);
-                    return r;
-                  })
-                }
-                className="self-end rounded-full bg-ink px-5 py-2 text-sm font-semibold text-white disabled:opacity-50"
-              >
-                Guardar
-              </button>
-            </div>
-          ) : content ? (
-            <RichContent content={content} paragraphClassName="text-base leading-relaxed whitespace-pre-line" />
-          ) : (
-            <p className="text-sm text-ink-muted">Página vacía.</p>
-          )}
-        </article>
-
-        {filesOpen && (
-        <aside className="flex flex-col gap-3 self-start" aria-label="Archivos">
-          {files.map((f) => (
-            <div key={f.id} className="group flex items-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm shadow-[0_1px_2px_rgba(13,13,13,0.04)]">
-              <a href={f.url} target="_blank" rel="noopener noreferrer" className="min-w-0 flex-1 truncate font-semibold hover:text-accent">
-                {f.name} <ArrowUpRight size={12} />
-              </a>
-              <button
-                type="button"
-                onClick={() => run(() => removeAttachment(pursuit.id, f.id))}
-                aria-label={`Quitar ${f.name}`}
-                className="text-ink-faint opacity-0 group-hover:opacity-100 hover:text-red-600 focus:opacity-100"
-              >
-                <XIcon size={14} />
-              </button>
-            </div>
-          ))}
-          {dump && (
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                const url = link.trim();
-                if (!url) return;
-                setLink("");
-                run(() => addPageFile(pursuit.id, dump.id, "", url));
-              }}
-              className="flex gap-2"
-            >
-              <input
-                value={link}
-                onChange={(e) => setLink(e.target.value)}
-                placeholder="+ Enlace (Drive, Classroom…)"
-                aria-label="Añadir un enlace"
-                className="min-w-0 flex-1 rounded-2xl border border-border-subtle bg-white px-4 py-2.5 text-sm"
-              />
-            </form>
-          )}
-        </aside>
-        )}
-      </div>
+      {split ? (
+        <SlidePanel
+          pursuitId={pursuit.id}
+          decks={slides.decks}
+          classroomCourseId={slides.classroomCourseId}
+          classroomUnit={slides.classroomUnit}
+          dumpId={dump?.id}
+          onClose={() => setSplit(false)}
+        >
+          <div className="lg:pl-6">{page}</div>
+        </SlidePanel>
+      ) : (
+        page
+      )}
     </div>
   );
 }
