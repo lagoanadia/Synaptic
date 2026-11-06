@@ -6,6 +6,7 @@ import { updatePursuitMeta } from "./actions";
 import { pursuitDotColor } from "@/lib/pursuitColor";
 
 const STATUS_OPTIONS = ["ACTIVE", "PAUSED", "DONE"];
+const STATUS_LABEL: Record<string, string> = { ACTIVE: "activa", PAUSED: "en pausa", DONE: "terminada" };
 
 // Type and status were only ever set at creation — this makes that same
 // dot + label line double as an inline editor, toggled by clicking it.
@@ -39,7 +40,7 @@ export function PursuitMeta({
         />
         <span className="text-sm text-ink-muted hover:text-ink hover:underline">
           {type && `${type} · `}
-          {status.toLowerCase()}
+          {STATUS_LABEL[status] ?? status.toLowerCase()}
           {sectionName && ` · ${sectionName}`}
         </span>
       </button>
@@ -64,7 +65,7 @@ export function PursuitMeta({
       >
         {STATUS_OPTIONS.map((s) => (
           <option key={s} value={s}>
-            {s.toLowerCase()}
+            {STATUS_LABEL[s] ?? s.toLowerCase()}
           </option>
         ))}
       </select>

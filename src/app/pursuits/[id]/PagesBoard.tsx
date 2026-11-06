@@ -34,6 +34,9 @@ export function PagesBoard({
   cards: initial,
   cardStats,
   classroomCourseId,
+  groupLabel = "Unidad",
+  view = "board",
+  study = true,
 }: {
   pursuitId: string;
   units: Unit[];
@@ -41,7 +44,14 @@ export function PagesBoard({
   // Flashcards per unit id ("none" = No unit).
   cardStats: Record<string, { cards: number; due: number }>;
   classroomCourseId: string | null;
+  // What groups are called in this folder ("Unidad", "Tema"…).
+  groupLabel?: string;
+  view?: "list" | "board";
+  study?: boolean;
 }) {
+  const label = groupLabel;
+  const none = `Sin ${label.toLowerCase()}`;
+  const asBoard = view === "board" && units.length > 0;
   const [cards, setCards] = useState(initial);
   const [dragging, setDragging] = useState<string | null>(null);
   const [over, setOver] = useState<string | null>(null);
@@ -51,7 +61,7 @@ export function PagesBoard({
 
   const columns: (Unit | { id: null; name: string; classroomUnit: null })[] = [
     ...units,
-    { id: null, name: "Sin unidad", classroomUnit: null },
+    { id: null, name: none, classroomUnit: null },
   ];
 
   function drop(sectionId: string | null) {
@@ -73,19 +83,13 @@ export function PagesBoard({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-2">
-        <Link href={`/pursuits/${pursuitId}/dump/new`} className="rounded-full bg-ink px-4 py-2 text-sm font-semibold text-white">
+        <Link href={`/pursuits/${pursuitId}/dump/new`} className="rounded-md bg-ink px-3 py-1.5 text-sm font-medium text-white">
           + Página
         </Link>
         <ImportSlides pursuitId={pursuitId} sectionId={null} />
-        <Link
-          href={`/challenges?pursuit=${pursuitId}`}
-          className="order-last ml-auto flex items-center gap-2 rounded-full bg-mint px-4 py-2 text-sm font-semibold text-white"
-        >
-          <span className="font-mono font-bold">{"</>"}</span> Reto de código
-        </Link>
-        {newUnit === null ? (
-          <button type="button" onClick={() => setNewUnit("")} className="rounded-full bg-chip px-4 py-2 text-sm font-semibold">
-            + Unidad
+        {units.length === 0 ? null : newUnit === null ? (
+          <button type="button" onClick={() => setNewUnit("")} className="rounded-md px-3 py-1.5 text-sm text-ink-muted hover:bg-chip">
+            + {label}
           </button>
         ) : (
           <form
@@ -101,15 +105,19 @@ export function PagesBoard({
               value={newUnit}
               onChange={(e) => setNewUnit(e.target.value)}
               onBlur={() => !newUnit.trim() && setNewUnit(null)}
-              placeholder="Nombre de la unidad"
-              aria-label="Nombre de la unidad"
-              className="rounded-full border border-border-subtle bg-white px-4 py-2 text-sm"
+              placeholder={`Nombre (${label})`}
+              aria-label={`Nombre (${label})`}
+              className="rounded-md border border-border-subtle bg-white px-3 py-1.5 text-sm"
             />
           </form>
         )}
       </div>
 
-      <div className="grid auto-cols-[minmax(280px,1fr)] grid-flow-col gap-4 overflow-x-auto pb-2">
+      {!asBoard && <PagesList cards={cards} units={units} none={none} grouped={units.length > 0} onMove={(card, sectionId) => {
+        setCards((cs) => cs.map((c) => (c.key === card.key ? { ...c, sectionId } : c)));
+        startTransition(() => movePage(pursuitId, { dumpId: card.dumpId, noteId: card.noteId }, sectionId));
+      }} />}
+      {asBoard && <div className="grid auto-cols-[minmax(260px,1fr)] grid-flow-col gap-3 overflow-x-auto pb-2">
         {columns.map((col) => {
           const colKey = col.id ?? "none";
           const items = cards.filter((c) => c.sectionId === col.id);
@@ -128,8 +136,8 @@ export function PagesBoard({
                 e.preventDefault();
                 drop(col.id);
               }}
-              className={`group/col flex min-h-64 flex-col gap-2.5 rounded-3xl p-3 transition-colors ${
-                over === colKey ? "bg-accent-soft ring-2 ring-tile-sky" : "bg-[#e8e6e1]"
+              className={`group/col flex min-h-56 flex-col gap-2 rounded-lg p-2.5 transition-colors ${
+                over === colKey ? "bg-accent-soft ring-2 ring-accent" : "bg-sidebar"
               }`}
             >
               <header className="flex items-center gap-2 px-1.5 py-1">
@@ -159,21 +167,23 @@ export function PagesBoard({
                 {col.id && (
                   <DeleteButton
                     action={deleteContentSection.bind(null, pursuitId, col.id)}
-                    confirmMessage={`¿Eliminar la unidad "${col.name}"? Sus páginas pasan a Sin unidad.`}
+                    confirmMessage={`¿Eliminar "${col.name}"? Sus páginas pasan a ${none}.`}
                     className="rounded-full p-1 text-ink-faint opacity-0 group-hover/col:opacity-100 hover:text-red-600 focus:opacity-100"
                   >
-                    <TrashIcon size={14} title={`Eliminar unidad ${col.name}`} />
+                    <TrashIcon size={14} title={`Eliminar ${col.name}`} />
                   </DeleteButton>
                 )}
               </header>
 
-              <UnitPlay
-                pursuitId={pursuitId}
-                unitKey={colKey}
-                organized={items.filter((c) => c.organized).length}
-                pages={items.length}
-                stats={cardStats[colKey] ?? { cards: 0, due: 0 }}
-              />
+              {study && (
+                <UnitPlay
+                  pursuitId={pursuitId}
+                  unitKey={colKey}
+                  organized={items.filter((c) => c.organized).length}
+                  pages={items.length}
+                  stats={cardStats[colKey] ?? { cards: 0, due: 0 }}
+                />
+              )}
 
               {items.map((c) => (
                 <Link
@@ -198,7 +208,7 @@ export function PagesBoard({
                     e.stopPropagation();
                     drop(col.id);
                   }}
-                  className={`flex flex-col gap-2 rounded-2xl bg-white p-3.5 shadow-[0_1px_2px_rgba(13,13,13,0.06)] transition-all hover:-translate-y-0.5 hover:shadow-md ${
+                  className={`flex flex-col gap-2 rounded-md bg-white p-3 shadow-[0_0_0_1px_rgba(15,15,15,.06),0_1px_2px_rgba(15,15,15,.06)] transition-shadow hover:shadow-[0_0_0_1px_rgba(15,15,15,.08),0_4px_10px_rgba(15,15,15,.08)] ${
                     dragging === c.key ? "opacity-40" : ""
                   }`}
                 >
@@ -232,8 +242,57 @@ export function PagesBoard({
             </section>
           );
         })}
-      </div>
+      </div>}
     </div>
+  );
+}
+
+// The same pages as rows: a link each, with its group and state. The
+// group can be changed in place.
+function PagesList({
+  cards,
+  units,
+  none,
+  grouped,
+  onMove,
+}: {
+  cards: PageCard[];
+  units: Unit[];
+  none: string;
+  grouped: boolean;
+  onMove: (card: PageCard, sectionId: string | null) => void;
+}) {
+  if (cards.length === 0) return <p className="py-6 text-sm text-ink-faint">Aún no hay páginas.</p>;
+  return (
+    <ul className="flex flex-col">
+      {cards.map((c) => (
+        <li key={c.key} className="flex items-center gap-3 border-b border-[#f1f1ef] px-1 py-2 text-sm hover:bg-[#fbfbfa]">
+          <span aria-hidden>📄</span>
+          <Link href={c.href} className="min-w-0 flex-1 truncate font-medium hover:underline">
+            {c.title}
+          </Link>
+          {grouped && (
+            <select
+              value={c.sectionId ?? ""}
+              onChange={(e) => onMove(c, e.target.value || null)}
+              aria-label="Grupo"
+              className="rounded bg-[#e7f3f8] px-1.5 py-0.5 text-xs text-[#337ea9]"
+            >
+              <option value="">{none}</option>
+              {units.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name}
+                </option>
+              ))}
+            </select>
+          )}
+          <span className={`hidden rounded px-1.5 py-0.5 text-xs sm:inline ${c.organized ? "bg-[#edf3ec] text-[#448361]" : "bg-chip text-ink-muted"}`}>
+            {c.organized ? "✓ Organizada" : "Sin organizar"}
+          </span>
+          <span className="w-14 text-right text-xs text-ink-faint">{c.date}</span>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -255,43 +314,32 @@ function UnitPlay({
   const href = (mode: string) => `/review?mode=${mode}&pursuit=${pursuitId}&unit=${unitKey}`;
   const games = [
     { mode: "learn", label: "Aprender", icon: QuestionIcon, enabled: stats.cards > 0 },
-    { mode: "flash", label: stats.due > 0 ? `${stats.due} pendientes` : "Tarjetas", icon: CardsIcon, enabled: stats.cards > 0 },
+    { mode: "flash", label: "Tarjetas", icon: CardsIcon, enabled: stats.cards > 0, due: stats.due > 0 },
     { mode: "match", label: "Unir", icon: BoltIcon, enabled: stats.cards >= 3 },
   ];
-  const pct = pages ? Math.round((organized / pages) * 100) : 0;
+  // How organized the unit is, as three dots (no numbers).
+  const filled = pages ? Math.round((organized / pages) * 3) : 0;
   return (
-    <div className="flex flex-col gap-2 px-1.5">
+    <div className="flex items-center gap-1 px-1">
       {pages > 0 && (
-        <div className="flex items-center gap-2" title={`${organized} de ${pages} páginas organizadas`}>
-          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/70">
-            <div className={`h-full rounded-full ${pct === 100 ? "bg-mint" : "bg-tile-sky"}`} style={{ width: `${pct}%` }} />
-          </div>
-          <span className="text-[11px] font-semibold text-ink-muted">{pct}%</span>
-        </div>
+        <span className="mr-auto flex gap-1" title={`${organized} de ${pages} páginas organizadas`} aria-label="Organizada">
+          {[0, 1, 2].map((i) => (
+            <span key={i} className={`size-[7px] rounded-full border-[1.5px] border-ink-faint ${i < filled ? "bg-ink-faint" : ""}`} />
+          ))}
+        </span>
       )}
-      <div className="grid grid-cols-3 gap-1.5">
-        {games.map((g) =>
-          g.enabled ? (
-            <Link
-              key={g.mode}
-              href={href(g.mode)}
-              className={`flex items-center justify-center gap-1.5 rounded-xl px-2 py-1.5 text-xs font-bold text-white ${
-                g.mode === "flash" && stats.due > 0 ? "bg-tile-blue" : "bg-tile-sky"
-              }`}
-            >
-              <g.icon size={14} /> {g.label}
-            </Link>
-          ) : (
-            <span
-              key={g.mode}
-              title="Crea tarjetas desde una página primero"
-              className="flex items-center justify-center gap-1.5 rounded-xl bg-white/50 px-2 py-1.5 text-xs font-semibold text-ink-faint"
-            >
-              <g.icon size={14} /> {g.label}
-            </span>
-          ),
-        )}
-      </div>
+      {games.map((g) =>
+        g.enabled ? (
+          <Link key={g.mode} href={href(g.mode)} title={g.label} aria-label={g.label} className="relative rounded-md p-1.5 text-ink-muted hover:bg-white hover:text-ink">
+            <g.icon size={15} className="block" />
+            {g.due && <span className="absolute top-1 right-1 size-1.5 rounded-full bg-accent" />}
+          </Link>
+        ) : (
+          <span key={g.mode} title={`${g.label}: crea tarjetas desde una página primero`} className="rounded-md p-1.5 text-ink-faint/40">
+            <g.icon size={15} className="block" />
+          </span>
+        ),
+      )}
     </div>
   );
 }
