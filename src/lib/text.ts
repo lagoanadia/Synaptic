@@ -199,7 +199,8 @@ function parseTextBlocks(text: string): NoteBlock[] {
     if (TABLE_ROW.test(trimmed)) {
       const tableRows: InlineNode[][][] = [];
       while (i < lines.length && TABLE_ROW.test(lines[i].trim())) {
-        tableRows.push(splitTableRow(lines[i].trim()));
+        // Markdown's "| --- | :---: |" separator is layout, not a row.
+        if (!/^\|[\s:|-]+\|$/.test(lines[i].trim())) tableRows.push(splitTableRow(lines[i].trim()));
         i++;
       }
       const [header, ...rows] = tableRows;

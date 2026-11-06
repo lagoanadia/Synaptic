@@ -292,3 +292,12 @@ describe("parseNoteBlocks", () => {
     ]);
   });
 });
+
+describe("markdown tables", () => {
+  it("skips the --- separator row", () => {
+    const blocks = parseNoteBlocks("| Área | Pregunta |\n| --- | :---: |\n| Técnica | ¿Qué construye? |");
+    expect(blocks).toHaveLength(1);
+    const t = blocks[0] as Extract<(typeof blocks)[number], { type: "table" }>;
+    expect(t.rows).toHaveLength(1);
+  });
+});
