@@ -1,4 +1,4 @@
-import { ArrowLeft } from "@/app/icons";
+import { ArrowLeft, TrashIcon } from "@/app/icons";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
@@ -7,6 +7,8 @@ import { Logo } from "../Logo";
 import { fetchHeadlines } from "@/lib/feeds";
 import { debateStats, type Verdict } from "@/lib/debate";
 import { HeadlinePicker } from "./HeadlinePicker";
+import { DeleteButton } from "../pursuits/DeleteButton";
+import { deleteDebate } from "./actions";
 
 export default async function ArenaPage() {
   const session = await auth();
@@ -72,12 +74,21 @@ export default async function ArenaPage() {
             {debates.map((d) => {
               const v = d.verdict as Verdict | null;
               return (
-                <Link key={d.id} href={`/arena/${d.id}`} className="rounded-2xl bg-white px-4 py-3 text-sm shadow-[0_1px_2px_rgba(13,13,13,0.06)] hover:-translate-y-0.5 transition-transform">
-                  <span className="line-clamp-2 font-semibold">{d.motion}</span>
-                  <span className="text-xs text-ink-muted">
-                    You: {d.side} · {v ? (v.winner === "you" ? "won" : v.winner === "ai" ? "lost" : "draw") : "in progress"}
-                  </span>
-                </Link>
+                <div key={d.id} className="group flex items-start gap-2 rounded-2xl bg-white px-4 py-3 text-sm shadow-[0_1px_2px_rgba(13,13,13,0.06)] hover:shadow-md">
+                  <Link href={`/arena/${d.id}`} className="flex min-w-0 flex-1 flex-col">
+                    <span className="line-clamp-2 font-semibold">{d.motion}</span>
+                    <span className="text-xs text-ink-muted">
+                      You: {d.side} · {v ? (v.winner === "you" ? "won" : v.winner === "ai" ? "lost" : "draw") : "in progress"}
+                    </span>
+                  </Link>
+                  <DeleteButton
+                    action={deleteDebate.bind(null, d.id)}
+                    confirmMessage="Delete this debate?"
+                    className="rounded-full p-1 text-ink-faint opacity-0 group-hover:opacity-100 hover:text-red-600 focus:opacity-100"
+                  >
+                    <TrashIcon size={14} title="Delete debate" />
+                  </DeleteButton>
+                </div>
               );
             })}
           </div>
