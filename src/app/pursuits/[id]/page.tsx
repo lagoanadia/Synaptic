@@ -1,5 +1,6 @@
-import { ArrowLeft, ArrowDown } from "@/app/icons";
+import { ArrowDown } from "@/app/icons";
 import Link from "next/link";
+import { Fragment } from "react";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
@@ -9,14 +10,10 @@ import { TagForm } from "./TagForm";
 import { MemberForm } from "./MemberForm";
 import { MemberRow } from "./MemberRow";
 import { LeaveButton } from "./LeaveButton";
-import { SearchBar } from "./SearchBar";
 import { AskPursuit } from "./AskPursuit";
 import { PursuitTitle } from "./PursuitTitle";
-import { FlashcardReview } from "./FlashcardReview";
-import { Timeline } from "./Timeline";
 import { DeleteButton } from "../DeleteButton";
 import { ClassroomImport } from "./ClassroomImport";
-import { Logo } from "../../Logo";
 import { UpcomingDeadlines } from "./UpcomingDeadlines";
 import { StatusNote } from "./StatusNote";
 import { ProjectsBoard } from "./ProjectsBoard";
@@ -25,6 +22,14 @@ import { autoTitle } from "@/lib/text";
 import { conceptExcerpt } from "@/lib/review";
 import { LearnTab } from "./learn/LearnTab";
 import { UNSORTED, SHARED } from "@/lib/reviewData";
+import { folderBlocks } from "@/lib/blocks";
+import { folderColor, folderCover } from "@/lib/covers";
+import { folderMap } from "@/lib/blockData";
+import { KnowledgeMap } from "@/app/KnowledgeMap";
+import { Folder } from "@/app/Covers";
+import { FolderBlocks } from "./FolderBlocks";
+import { FolderSettings } from "./FolderSettings";
+import { ChallengeCards, ReviewToday } from "./FolderBlockViews";
 
 const CLASSROOM_ERROR_COPY: Record<string, string> = {
   denied: "Conexión con Google Classroom cancelada.",
@@ -40,30 +45,23 @@ export default async function PursuitPage({
   searchParams: Promise<{
     tab?: string;
     section?: string;
+    edit?: string;
     classroomConnected?: string;
     classroomError?: string;
   }>;
 }) {
   const { id } = await params;
-  const { tab: rawTab, classroomConnected, classroomError } =
-    await searchParams;
-  const tab =
-    rawTab === "learn" ||
-    rawTab === "ask" ||
-    rawTab === "cards" ||
-    rawTab === "timeline" ||
-    rawTab === "projects"
-      ? rawTab
-      : // Pages is the landing tab (it replaced Sections, Brain Dump,
-        // Organized and Files).
-        "pages";
+  const { tab, classroomConnected, classroomError, edit } = await searchParams;
+  // Old tab links: flashcards now live in the review session.
+  if (tab === "cards") redirect(`/review?mode=flash&pursuit=${id}`);
+  const editing = edit === "1";
 
   const session = await auth();
   if (!session?.user?.id) {
     redirect("/");
   }
 
-  const [pursuit, sections, distinctTypes, dueFlashcards, upcomingFlashcardCount, classroomConnection, otherLinked, cardUnits] =
+  const [pursuit, sections, distinctTypes, classroomConnection, otherLinked, cardUnits, challenges] =
     await Promise.all([
       prisma.pursuit.findFirst({
         where: {
@@ -106,13 +104,6 @@ export default async function PursuitPage({
         select: { type: true },
         distinct: ["type"],
       }),
-      prisma.flashcard.findMany({
-        where: { pursuitId: id, dueDate: { lte: new Date() } },
-        orderBy: { dueDate: "asc" },
-      }),
-      prisma.flashcard.count({
-        where: { pursuitId: id, dueDate: { gt: new Date() } },
-      }),
       prisma.googleClassroomConnection.findUnique({
         where: { userId: session.user.id },
         select: { id: true },
@@ -127,6 +118,12 @@ export default async function PursuitPage({
         where: { pursuitId: id },
         select: { dueDate: true, note: { select: { sectionId: true } } },
       }),
+      prisma.challenge.findMany({
+        where: { pursuitId: id, userId: session.user.id },
+        orderBy: { createdAt: "desc" },
+        take: 12,
+        select: { id: true, title: true, language: true, difficulty: true, passed: true },
+      }),
     ]);
 
   if (!pursuit) {
@@ -134,20 +131,6 @@ export default async function PursuitPage({
   }
 
 
-
-  // Each tab's active underline picks up a color from nadia-lagoa.vercel.app's
-  // own project-card palette (Cards → cobalt, Ask → flame, everything else →
-  // blue) instead of one flat accent for all six tabs.
-  const TAB_ACCENT: Record<string, string> = {
-    cards: "border-cobalt",
-    ask: "border-flame",
-  };
-  const tabClass = (name: string) =>
-    `pb-2 text-sm font-semibold border-b-2 whitespace-nowrap ${
-      tab === name
-        ? `${TAB_ACCENT[name] ?? "border-accent"} text-ink`
-        : "border-transparent text-ink-faint hover:text-ink"
-    }`;
 
   // Where "back" goes: the Section this subject lives in on the new home.
   const backHref =
@@ -202,221 +185,50 @@ export default async function PursuitPage({
       })),
   ];
 
-  return (
-    <div className="mx-auto flex w-full max-w-[1800px] flex-1 flex-col gap-6 px-6 py-9 lg:px-14">
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <Logo href="/pursuits" withWordmark={false} size={20} />
-          <Link href={backHref} className="text-sm text-ink-muted hover:underline">
-            <ArrowLeft /> {backLabel}
-          </Link>
-        </div>
-        <div className="flex items-center gap-4">
-          <a
-            href={`/api/pursuits/${pursuit.id}/export`}
-            className="text-sm text-ink-muted hover:underline"
-          >
-            <ArrowDown /> Exportar
-          </a>
-          {pursuit.owner.id !== session.user.id && (
-            <LeaveButton pursuitId={pursuit.id} />
-          )}
-        </div>
-      </div>
+  const study = pursuit.section?.study ?? true;
+  const cover = folderCover(pursuit.id, pursuit.cover);
+  const color = folderColor(pursuit.id, pursuit.cover);
+  const groupLabel = pursuit.groupLabel ?? "Unidad";
+  const grouped = pursuit.contentSections.length > 0;
+  const blocks = folderBlocks(pursuit.blocks, study, pursuit.projects.length > 0);
+  const isOwner = pursuit.owner.id === session.user.id;
+  const here = `/pursuits/${pursuit.id}`;
 
-      <div className="flex flex-col gap-1.5">
-        <PursuitTitle
-          pursuitId={pursuit.id}
-          title={pursuit.title}
-          className="text-3xl font-extrabold text-tile-sky italic"
-        />
-        {/* Type, status, tags and sharing: useful, but not every visit —
-            folded away so the page opens on the content itself. */}
-        <details className="group text-sm">
-          <summary className="cursor-pointer text-xs text-ink-faint select-none hover:text-ink">
-            {[pursuit.type, pursuit.status.toLowerCase(), pursuit.members.length > 0 ? `compartida con ${pursuit.members.length}` : null, pursuit.classroomEnabled && pursuit.classroomCourseName ? `Classroom: ${pursuit.classroomCourseName}` : null]
-              .filter(Boolean)
-              .join(" · ")}{" "}
-            · details
-          </summary>
-          <div className="mt-3 flex flex-col gap-2">
-            <PursuitMeta
-              pursuitId={pursuit.id}
-              type={pursuit.type}
-              status={pursuit.status}
-              sectionName={pursuit.section?.name ?? null}
-              availableTypes={distinctTypes.map((p) => p.type).filter((t) => t !== null)}
-              availableSections={sections.map((s) => s.name)}
-            />
-            <div className="flex flex-wrap items-center gap-1.5">
-              {pursuit.pursuitTags.map((t) => (
-                <span
-                  key={t.id}
-                  className="flex items-center gap-1 rounded bg-chip px-2 py-0.5 text-xs text-ink-muted"
-                >
-                  {t.name}
-                  <DeleteButton
-                    action={removePursuitTag.bind(null, pursuit.id, t.id)}
-                    className="text-ink-faint hover:text-red-500"
-                  >
-                    ×
-                  </DeleteButton>
-                </span>
-              ))}
-              <TagForm pursuitId={pursuit.id} />
-            </div>
-            <div className="flex flex-wrap items-center gap-2 pt-1">
-              <span className="text-xs text-ink-faint">Compartido con</span>
-              <span className="text-xs text-ink-muted">
-                {pursuit.owner.name ?? pursuit.owner.email} (owner)
-              </span>
-              {pursuit.members.map((m) =>
-                pursuit.owner.id === session.user.id ? (
-                  <MemberRow
-                    key={m.id}
-                    pursuitId={pursuit.id}
-                    memberId={m.id}
-                    name={m.user.name ?? m.user.email}
-                    role={m.role}
-                  />
-                ) : (
-                  <span key={m.id} className="text-xs text-ink-muted">
-                    · {m.user.name ?? m.user.email} ({m.role.toLowerCase()})
-                  </span>
-                ),
-              )}
-              {pursuit.owner.id === session.user.id && (
-                <MemberForm pursuitId={pursuit.id} />
-              )}
-            </div>
-            <div className="flex flex-col gap-2 pt-2">
-            {classroomConnected && (
-              <p className="rounded-xl bg-forest-soft px-4 py-3 text-sm text-ink">
-                Conectado a Google Classroom.
-              </p>
-            )}
-            {classroomError && (
-              <p className="rounded-xl bg-crimson-soft px-4 py-3 text-sm text-ink">
-                {CLASSROOM_ERROR_COPY[classroomError] ?? "Algo ha fallado. Inténtalo de nuevo."}
-              </p>
-            )}
-            {pursuit.classroomEnabled ? (
-              <div className="flex flex-col gap-1.5">
-                <ClassroomImport
-                  pursuitId={pursuit.id}
-                  connected={!!classroomConnection}
-                  linkedCourseId={pursuit.classroomCourseId}
-                  linkedElsewhere={Object.fromEntries(
-                    otherLinked.filter((o) => o.classroomCourseId).map((o) => [o.classroomCourseId!, o.title]),
-                  )}
-                />
-                <form action={setClassroomEnabled.bind(null, pursuit.id, false)}>
-                  <button
-                    type="submit"
-                    className="self-start text-xs text-ink-faint hover:text-red-500"
-                  >
-                    Desactivar Google Classroom en esta asignatura
-                  </button>
-                </form>
-              </div>
-            ) : (
-              <form action={setClassroomEnabled.bind(null, pursuit.id, true)}>
-                <button
-                  type="submit"
-                  className="self-start rounded-full border border-border-subtle bg-white px-4 py-2 text-sm text-ink-muted transition-colors hover:border-ink hover:text-ink"
-                >
-                  + Es una asignatura — activar Google Classroom
-                </button>
-              </form>
-            )}
-            </div>
-          </div>
-        </details>
-      </div>
-
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-        <div>
-          <StatusNote pursuitId={pursuit.id} initialNote={pursuit.statusNote} />
-        </div>
-        <div>
-          <SearchBar pursuitId={pursuit.id} />
-        </div>
-      </div>
-
-      <UpcomingDeadlines
-        pursuitId={pursuit.id}
-        hasCourse={pursuit.classroomEnabled && !!pursuit.classroomCourseId}
-      />
-
-      <nav className="flex gap-7 overflow-x-auto border-b border-border-subtle" aria-label="Asignatura">
-        {(
-          [
-            ["pages", "Páginas"],
-            ["learn", "Aprender"],
-            ["cards", "Tarjetas"],
-            ["projects", "Proyectos"],
-            ["ask", "Preguntar"],
-            ["timeline", "Historial"],
-          ] as const
-        ).map(([key, label]) => (
-          <Link
-            key={key}
-            href={`/pursuits/${pursuit.id}${key === "pages" ? "" : `?tab=${key}`}`}
-            className={tabClass(key)}
-          >
-            {label}
-          </Link>
-        ))}
-      </nav>
-
-      {tab === "pages" && (
+  const content: Record<string, React.ReactNode> = {};
+  for (const b of blocks) {
+    if (b.type === "pages")
+      content[b.id] = (
         <PagesBoard
           pursuitId={pursuit.id}
           units={pursuit.contentSections.map((u) => ({ id: u.id, name: u.name, classroomUnit: u.classroomUnit }))}
           cardStats={unitCardStats(cardUnits)}
           cards={pageCards}
           classroomCourseId={pursuit.classroomEnabled ? pursuit.classroomCourseId : null}
+          groupLabel={groupLabel}
+          view={b.view ?? (grouped ? "board" : "list")}
+          study={study}
+          color={color}
         />
-      )}
-
-
-
-
-      {tab === "learn" && <LearnTab pursuitId={pursuit.id} hasNotes={pursuit.notes.length > 0} />}
-
-      {tab === "ask" && <AskPursuit pursuitId={pursuit.id} />}
-
-      {tab === "cards" && (
-        <FlashcardReview
-          learnHref={`/review?mode=learn&pursuit=${pursuit.id}`}
-          dueCards={dueFlashcards.map((c) => ({
-            id: c.id,
-            question: c.question,
-            answer: c.answer,
-            pursuitId: pursuit.id,
-          }))}
-          upcomingCount={upcomingFlashcardCount}
-        />
-      )}
-
-      {tab === "timeline" && (
-        <Timeline
-          pursuitId={pursuit.id}
-          dumps={pursuit.brainDumps.map((d) => ({
-            id: d.id,
-            createdAt: d.createdAt,
-            content: d.content,
-          }))}
-          notes={pursuit.notes.map((n) => ({
-            id: n.id,
-            createdAt: n.createdAt,
-            content: n.content,
-          }))}
-        />
-      )}
-
-
-      {tab === "projects" && (
+      );
+    else if (b.type === "map")
+      content[b.id] = (
+        <div className="flex flex-col gap-3">
+          <KnowledgeMap clusters={await folderMap(pursuit.id, color)} perRow={3} empty="Aún no hay mapas. Crea uno abajo." />
+          <details className="text-sm">
+            <summary className="cursor-pointer text-ink-faint select-none hover:text-ink">+ Crear o abrir un mapa</summary>
+            <div className="pt-3">
+              <LearnTab pursuitId={pursuit.id} hasNotes={pursuit.notes.length > 0} />
+            </div>
+          </details>
+        </div>
+      );
+    else if (b.type === "review") content[b.id] = <ReviewToday pursuitId={pursuit.id} />;
+    else if (b.type === "ask") content[b.id] = <AskPursuit pursuitId={pursuit.id} />;
+    else if (b.type === "challenges") content[b.id] = <ChallengeCards pursuitId={pursuit.id} items={challenges} />;
+    else if (b.type === "deadlines")
+      content[b.id] = <UpcomingDeadlines pursuitId={pursuit.id} hasCourse={pursuit.classroomEnabled && !!pursuit.classroomCourseId} />;
+    else if (b.type === "tasks")
+      content[b.id] = (
         <ProjectsBoard
           pursuitId={pursuit.id}
           projects={pursuit.projects.map((p) => ({
@@ -427,8 +239,128 @@ export default async function PursuitPage({
             doneCards: p.cards.filter((c) => c.status === "DONE").length,
           }))}
         />
+      );
+  }
+
+  for (const [k, v] of Object.entries(content)) content[k] = <Fragment key={k}>{v}</Fragment>;
+
+  const props = [
+    pursuit.classroomEnabled && pursuit.classroomCourseName ? ["Classroom", pursuit.classroomCourseName] : null,
+    grouped ? ["Agrupado por", groupLabel] : null,
+    pursuit.members.length > 0 ? ["Compartida con", String(pursuit.members.length)] : null,
+  ].filter((x): x is string[] => !!x);
+
+  return (
+    <div className="mx-auto flex w-full max-w-[1200px] flex-1 flex-col gap-5 px-6 py-8 sm:px-12 lg:py-10">
+      <nav className="flex items-center justify-between gap-4 text-sm text-ink-faint" aria-label="Ruta">
+        <span className="flex items-center gap-1.5">
+          <Link href={backHref} className="hover:text-ink hover:underline">
+            {backLabel}
+          </Link>
+          <span>/</span>
+          <span className="text-ink-muted">{pursuit.title}</span>
+        </span>
+        <span className="flex items-center gap-1">
+          <a href={`/api/pursuits/${pursuit.id}/export`} title="Exportar" aria-label="Exportar" className="rounded p-1.5 hover:bg-chip hover:text-ink">
+            <ArrowDown size={16} className="block" />
+          </a>
+          {!isOwner && <LeaveButton pursuitId={pursuit.id} />}
+        </span>
+      </nav>
+
+      <header className="flex flex-wrap items-center gap-4">
+        <Folder cover={cover} width={64} />
+        <PursuitTitle pursuitId={pursuit.id} title={pursuit.title} className="min-w-0 flex-1 text-[2.1rem] leading-tight font-bold tracking-tight" />
+        <span className="flex items-center gap-2">
+          {study && (
+            <Link href={`/review?mode=flash&pursuit=${pursuit.id}`} className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-white">
+              Repaso de hoy
+            </Link>
+          )}
+          <Link href={editing ? here : `${here}?edit=1`} className={`rounded-md px-3 py-1.5 text-sm ${editing ? "bg-ink font-medium text-white" : "text-ink-faint hover:bg-chip hover:text-ink"}`}>
+            {editing ? "Listo" : "Editar"}
+          </Link>
+        </span>
+      </header>
+
+      {props.length > 0 && (
+        <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm">
+          {props.map(([k, v]) => (
+            <span key={k}>
+              <span className="mr-2 text-ink-faint">{k}</span>
+              {v}
+            </span>
+          ))}
+        </div>
       )}
 
+      {(classroomConnected || classroomError) && (
+        <p className={`rounded-md px-4 py-3 text-sm ${classroomError ? "bg-crimson-soft" : "bg-forest-soft"}`}>
+          {classroomError ? (CLASSROOM_ERROR_COPY[classroomError] ?? "Algo ha fallado. Inténtalo de nuevo.") : "Conectado a Google Classroom."}
+        </p>
+      )}
+
+      {editing && (
+        <FolderSettings pursuitId={pursuit.id} cover={cover} groupLabel={grouped ? groupLabel : null}>
+          <StatusNote pursuitId={pursuit.id} initialNote={pursuit.statusNote} />
+          <PursuitMeta
+            pursuitId={pursuit.id}
+            type={pursuit.type}
+            status={pursuit.status}
+            sectionName={pursuit.section?.name ?? null}
+            availableTypes={distinctTypes.map((p) => p.type).filter((t) => t !== null)}
+            availableSections={sections.map((s) => s.name)}
+          />
+          <div className="flex flex-wrap items-center gap-1.5">
+            {pursuit.pursuitTags.map((t) => (
+              <span key={t.id} className="flex items-center gap-1 rounded bg-chip px-2 py-0.5 text-xs text-ink-muted">
+                {t.name}
+                <DeleteButton action={removePursuitTag.bind(null, pursuit.id, t.id)} className="text-ink-faint hover:text-red-500">
+                  ×
+                </DeleteButton>
+              </span>
+            ))}
+            <TagForm pursuitId={pursuit.id} />
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs text-ink-faint">Compartido con</span>
+            <span className="text-xs text-ink-muted">{pursuit.owner.name ?? pursuit.owner.email} (propietaria)</span>
+            {pursuit.members.map((m) =>
+              isOwner ? (
+                <MemberRow key={m.id} pursuitId={pursuit.id} memberId={m.id} name={m.user.name ?? m.user.email} role={m.role} />
+              ) : (
+                <span key={m.id} className="text-xs text-ink-muted">
+                  · {m.user.name ?? m.user.email} ({m.role.toLowerCase()})
+                </span>
+              ),
+            )}
+            {isOwner && <MemberForm pursuitId={pursuit.id} />}
+          </div>
+          {pursuit.classroomEnabled ? (
+            <div className="flex flex-col gap-1.5">
+              <ClassroomImport
+                pursuitId={pursuit.id}
+                connected={!!classroomConnection}
+                linkedCourseId={pursuit.classroomCourseId}
+                linkedElsewhere={Object.fromEntries(otherLinked.filter((o) => o.classroomCourseId).map((o) => [o.classroomCourseId!, o.title]))}
+              />
+              <form action={setClassroomEnabled.bind(null, pursuit.id, false)}>
+                <button type="submit" className="self-start text-xs text-ink-faint hover:text-red-500">
+                  Desactivar Google Classroom en esta asignatura
+                </button>
+              </form>
+            </div>
+          ) : (
+            <form action={setClassroomEnabled.bind(null, pursuit.id, true)}>
+              <button type="submit" className="rounded-md border border-border-subtle px-3 py-1.5 text-sm text-ink-muted hover:border-ink hover:text-ink">
+                + Vincular Google Classroom
+              </button>
+            </form>
+          )}
+        </FolderSettings>
+      )}
+
+      <FolderBlocks key={blocks.map((b) => `${b.id}${b.view ?? ""}`).join()} pursuitId={pursuit.id} blocks={blocks} study={study} grouped={grouped} content={content} editing={editing} />
     </div>
   );
 }

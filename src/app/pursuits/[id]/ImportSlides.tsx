@@ -48,7 +48,7 @@ export function ImportSlides({ pursuitId, sectionId }: { pursuitId: string; sect
         type="button"
         onClick={() => input.current?.click()}
         disabled={isPending}
-        className="self-start rounded-full border-2 border-tile-sky px-4 py-2 text-sm font-semibold text-tile-sky transition-colors hover:bg-accent-soft disabled:opacity-60"
+        className="self-start rounded-md px-3 py-1.5 text-sm text-ink-muted transition-colors hover:bg-chip hover:text-ink disabled:opacity-60"
       >
         {isPending ? (status ?? "Trabajando…") : <><SlidesIcon /> Importar</>}
       </button>

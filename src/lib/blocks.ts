@@ -10,7 +10,7 @@ export const HOME_BLOCK_TYPES: { type: HomeBlockType; label: string }[] = [
   { type: "recent", label: "Recientes" },
 ];
 
-export type FolderBlockType = "pages" | "map" | "review" | "ask" | "challenges" | "deadlines";
+export type FolderBlockType = "pages" | "map" | "review" | "ask" | "challenges" | "deadlines" | "tasks";
 export type FolderBlock = { id: string; type: FolderBlockType; view?: "list" | "board" };
 
 export const FOLDER_BLOCK_TYPES: { type: FolderBlockType; label: string; hint: string; study?: boolean }[] = [
@@ -20,6 +20,7 @@ export const FOLDER_BLOCK_TYPES: { type: FolderBlockType; label: string; hint: s
   { type: "ask", label: "Preguntar", hint: "Pregunta a tus apuntes" },
   { type: "challenges", label: "Retos", hint: "Ejercicios de código · programación", study: true },
   { type: "deadlines", label: "Entregas", hint: "Lo que viene de Classroom" },
+  { type: "tasks", label: "Tareas", hint: "Tablero: por hacer, en curso, hecho" },
 ];
 
 const newId = () => Math.random().toString(36).slice(2, 10);
@@ -50,12 +51,13 @@ export function homeBlocks(raw: unknown, sections: { id: string; study: boolean 
 }
 
 // A folder: what you saved, or Páginas (+ Mapa and Repaso in a notebook
-// with study tools; + Preguntar otherwise). Study blocks are dropped from
-// folders in notebooks without study tools.
-export function folderBlocks(raw: unknown, study: boolean): FolderBlock[] {
+// with study tools; + Tareas if it has a board, + Preguntar otherwise).
+// Study blocks are dropped from folders in notebooks without study tools.
+export function folderBlocks(raw: unknown, study: boolean, hasTasks = false): FolderBlock[] {
   const saved = readList<FolderBlock>(raw, FOLDER_BLOCK_TYPES.map((t) => t.type));
   const studyTypes = new Set(FOLDER_BLOCK_TYPES.filter((t) => t.study).map((t) => t.type));
-  const list = saved ?? (study ? [{ id: "pages", type: "pages" as const }, { id: "map", type: "map" as const }, { id: "review", type: "review" as const }] : [{ id: "pages", type: "pages" as const }, { id: "ask", type: "ask" as const }]);
+  const b = (type: FolderBlockType): FolderBlock => ({ id: type, type });
+  const list = saved ?? (study ? [b("pages"), b("map"), b("review")] : hasTasks ? [b("tasks"), b("pages"), b("ask")] : [b("pages"), b("ask")]);
   return study ? list : list.filter((b) => !studyTypes.has(b.type));
 }
 

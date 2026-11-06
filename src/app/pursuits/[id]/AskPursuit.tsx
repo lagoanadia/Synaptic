@@ -32,17 +32,17 @@ export function AskPursuit({ pursuitId }: { pursuitId: string }) {
       <div className="flex flex-col gap-4">
         {turns.map((turn, i) => (
           <div key={i} className="flex flex-col gap-2">
-            <p className="self-end rounded-2xl bg-flame px-4 py-2.5 text-sm text-white">
+            <p className="self-end rounded-xl bg-chip px-4 py-2.5 text-sm">
               {turn.question}
             </p>
-            <p className="rounded-2xl bg-white px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap shadow-[0_1px_2px_rgba(13,13,13,0.06)]">
+            <p className="px-1 py-1 text-sm leading-relaxed whitespace-pre-wrap">
               {turn.answer}
             </p>
           </div>
         ))}
       </div>
 
-      <div className="flex gap-2 border-t border-border-subtle pt-4">
+      <div className="flex gap-2">
         <input
           type="text"
           value={question}
@@ -55,13 +55,13 @@ export function AskPursuit({ pursuitId }: { pursuitId: string }) {
           }}
           placeholder="Pregunta sobre esta asignatura…"
           disabled={isPending}
-          className="flex-1 rounded-xl border border-border-subtle bg-white px-3.5 py-2.5 text-sm disabled:opacity-50"
+          className="flex-1 rounded-lg border border-border-subtle bg-white px-3.5 py-2 text-sm disabled:opacity-50"
         />
         <button
           type="button"
           onClick={handleAsk}
           disabled={isPending || question.trim() === ""}
-          className="rounded-full bg-flame px-5 py-2.5 text-sm font-semibold whitespace-nowrap text-white transition-transform hover:-translate-y-0.5 disabled:opacity-50 disabled:hover:translate-y-0"
+          className="rounded-lg bg-accent px-4 py-2 text-sm font-medium whitespace-nowrap text-white disabled:opacity-50"
         >
           {isPending ? "Pensando…" : "Preguntar"}
         </button>

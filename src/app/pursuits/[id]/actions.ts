@@ -1373,3 +1373,39 @@ export async function renameUnit(pursuitId: string, sectionId: string, name: str
   revalidatePath(`/pursuits/${pursuitId}`);
   return { error: null };
 }
+
+// ─── Folder layout ─────────────────────────────────────────────────────
+
+const FOLDER_BLOCKS = ["pages", "map", "review", "ask", "challenges", "deadlines", "tasks"];
+
+export async function saveFolderBlocks(pursuitId: string, blocks: { id: string; type: string; view?: string }[]) {
+  await requireAccess(pursuitId);
+  const clean = blocks
+    .filter((b) => FOLDER_BLOCKS.includes(b.type))
+    .slice(0, 20)
+    .map((b) => ({ id: String(b.id).slice(0, 20), type: b.type, ...(b.view === "list" || b.view === "board" ? { view: b.view } : {}) }));
+  await prisma.pursuit.update({ where: { id: pursuitId }, data: { blocks: clean } });
+  revalidatePath(`/pursuits/${pursuitId}`);
+}
+
+// What this folder's groups are called ("Unidad", "Tema"…). Grouping for
+// the first time also creates the first group.
+export async function setGroupLabel(pursuitId: string, label: string): Promise<{ error: string | null }> {
+  await requireAccess(pursuitId);
+  const clean = label.trim().slice(0, 24);
+  if (!clean) return { error: "Ponle un nombre" };
+  await prisma.pursuit.update({ where: { id: pursuitId }, data: { groupLabel: clean } });
+  const groups = await prisma.pursuitContentSection.count({ where: { pursuitId } });
+  if (groups === 0) await prisma.pursuitContentSection.create({ data: { pursuitId, name: `${clean} 1`, order: 0 } });
+  revalidatePath(`/pursuits/${pursuitId}`);
+  return { error: null };
+}
+
+export async function setFolderCover(pursuitId: string, cover: string) {
+  await requireAccess(pursuitId);
+  const { FOLDER_COVERS } = await import("@/lib/covers");
+  if (!(cover in FOLDER_COVERS)) return;
+  await prisma.pursuit.update({ where: { id: pursuitId }, data: { cover } });
+  revalidatePath(`/pursuits/${pursuitId}`);
+  revalidatePath("/pursuits");
+}

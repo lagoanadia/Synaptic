@@ -167,3 +167,28 @@ export async function saveHomeBlocks(blocks: { id: string; type: string; section
   await prisma.user.update({ where: { id: session.user.id }, data: { homeBlocks: clean } });
   revalidatePath("/pursuits");
 }
+
+// Notebook settings: study tools on/off and its cover.
+export async function setNotebook(sectionId: string, data: { study?: boolean; cover?: string; name?: string }): Promise<{ error: string | null }> {
+  const session = await auth();
+  if (!session?.user?.id) return { error: "No has iniciado sesión" };
+  const section = await prisma.section.findFirst({ where: { id: sectionId, userId: session.user.id } });
+  if (!section) return { error: "Libreta no encontrada" };
+  const { NOTEBOOK_COVERS } = await import("@/lib/covers");
+  const name = data.name?.trim().slice(0, 40);
+  if (data.name !== undefined && !name) return { error: "Ponle un nombre" };
+  try {
+    await prisma.section.update({
+      where: { id: sectionId },
+      data: {
+        ...(typeof data.study === "boolean" ? { study: data.study } : {}),
+        ...(data.cover && (NOTEBOOK_COVERS as readonly string[]).includes(data.cover) ? { cover: data.cover } : {}),
+        ...(name ? { name } : {}),
+      },
+    });
+  } catch {
+    return { error: "Ya tienes una libreta con ese nombre" };
+  }
+  revalidatePath("/pursuits", "layout");
+  return { error: null };
+}
