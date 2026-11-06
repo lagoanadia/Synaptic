@@ -380,6 +380,8 @@ model Flashcard {
   // Three plausible wrong answers for multiple choice, written by the AI in
   // the same style as the answer. [] until generated.
   distractors String[] @default([])
+  // A vague nudge for when you're stuck; never the answer itself.
+  hint        String?
 
   pursuitId String
   pursuit   Pursuit @relation(fields: [pursuitId], references: [id])

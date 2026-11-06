@@ -5,24 +5,22 @@ import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
 import { reviewFlashcard } from "./actions";
 
-type CardForDisplay = { id: string; question: string; answer: string };
+type CardForDisplay = { id: string; question: string; answer: string; pursuitId: string; pursuitTitle?: string };
 
-// SM-2 quality ratings (lib/sm2.ts); keys 1-4.
+// Two choices, not four: did you know it or not. (SM-2 qualities.)
 const RATINGS = [
   { label: "Again", quality: 1, className: "bg-crimson text-white" },
-  { label: "Hard", quality: 3, className: "bg-amber text-white" },
-  { label: "Good", quality: 4, className: "bg-tile-sky text-white" },
-  { label: "Easy", quality: 5, className: "bg-mint text-white" },
+  { label: "Got it", quality: 4, className: "bg-mint text-white" },
 ] as const;
 
-// Click or Space flips the card, 1-4 rates it. The queue on the side
+// Click or Space flips the card, 1/2 rates it. The queue on the side
 // shows what's coming; click one to jump to it.
 export function FlashcardReview({
-  pursuitId,
+  learnHref,
   dueCards,
   upcomingCount,
 }: {
-  pursuitId: string;
+  learnHref: string;
   dueCards: CardForDisplay[];
   upcomingCount: number;
 }) {
@@ -36,7 +34,7 @@ export function FlashcardReview({
   function rate(quality: number) {
     if (!current || isPending) return;
     startTransition(async () => {
-      await reviewFlashcard(pursuitId, current.id, quality);
+      await reviewFlashcard(current.pursuitId, current.id, quality);
       setQueue((q) => q.slice(1));
       setDone((n) => n + 1);
       setFlipped(false);
@@ -54,7 +52,7 @@ export function FlashcardReview({
       if (e.key === " ") {
         e.preventDefault();
         setFlipped((f) => !f);
-      } else if (flipped && ["1", "2", "3", "4"].includes(e.key)) {
+      } else if (flipped && ["1", "2"].includes(e.key)) {
         rate(RATINGS[Number(e.key) - 1].quality);
       }
     }
@@ -69,7 +67,7 @@ export function FlashcardReview({
         <p className="font-semibold">{done > 0 ? "All caught up" : "Nothing due"}</p>
         {upcomingCount > 0 && <p className="text-sm text-ink-muted">{upcomingCount} scheduled for later</p>}
         <Link
-          href={`/review?mode=learn&pursuit=${pursuitId}`}
+          href={learnHref}
           className="rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-white"
         >
           Learn
@@ -102,7 +100,7 @@ export function FlashcardReview({
           </div>
         </button>
 
-        <div className={`grid grid-cols-4 gap-2 transition-opacity ${flipped ? "opacity-100" : "pointer-events-none opacity-0"}`}>
+        <div className={`grid grid-cols-2 gap-3 transition-opacity ${flipped ? "opacity-100" : "pointer-events-none opacity-0"}`}>
           {RATINGS.map((r, i) => (
             <button
               key={r.label}

@@ -417,11 +417,12 @@ export default async function PursuitPage({
 
       {tab === "cards" && (
         <FlashcardReview
-          pursuitId={pursuit.id}
+          learnHref={`/review?mode=learn&pursuit=${pursuit.id}`}
           dueCards={dueFlashcards.map((c) => ({
             id: c.id,
             question: c.question,
             answer: c.answer,
+            pursuitId: pursuit.id,
           }))}
           upcomingCount={upcomingFlashcardCount}
         />

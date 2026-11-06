@@ -59,7 +59,7 @@ export default async function ReviewPage({
   // flagged to reread. Missing wrong answers are written once by the AI.
   const dueIds = new Set(dueCards.map((c) => c.id));
   let pool = [...allCards.filter((c) => dueIds.has(c.id)), ...shuffle(allCards.filter((c) => !dueIds.has(c.id)))].slice(0, 16);
-  if (mode === "learn" && pool.some((c) => (c.distractors?.length ?? 0) < 3)) {
+  if (mode === "learn" && pool.some((c) => (c.distractors?.length ?? 0) < 3 || !c.hint)) {
     const budget = await aiBudget(userId, session.user.email);
     if (!(await budget.check())) {
       const filled = await withDistractors(pool);
@@ -76,6 +76,7 @@ export default async function ReviewPage({
     prompt: c.question,
     answer: c.answer,
     distractors: c.distractors ?? [],
+    hint: c.hint ?? null,
   }));
   const conceptItems: LearnItem[] = concepts
     .filter((c) => c.summary && c.status !== "MASTERED")

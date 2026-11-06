@@ -12,6 +12,7 @@ export type LearnItem = {
   prompt: string;
   answer: string;
   distractors: string[];
+  hint?: string | null;
 };
 
 export type Stage = 0 | 1 | 2; // new/recognising → producing → mastered
