@@ -172,3 +172,13 @@ export const formatReview = (r: ReviewSections) =>
     .filter((k) => r[k].length)
     .map((k) => `${k[0].toUpperCase()}${k.slice(1)}\n${r[k].map((l) => `- ${l}`).join("\n")}`)
     .join("\n");
+
+// "Theory turned into code": the answers are sentences, or the solution is
+// mostly a table of prewritten strings. Those aren't coding practice.
+export function isTheoryLookup(d: Pick<ChallengeDraft, "tests" | "solution">): boolean {
+  const strings = d.tests.map((t) => t.expected).filter((e): e is string => typeof e === "string");
+  if (strings.some((e) => e.length > 60)) return true;
+  if (new Set(strings.filter((e) => e.length > 20)).size >= 3) return true;
+  const literals = d.solution.match(/(["'`])(?:(?!\1)[^\\\n]|\\.){20,}\1/g) ?? [];
+  return literals.length >= 3;
+}

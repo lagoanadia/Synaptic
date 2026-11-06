@@ -120,9 +120,9 @@ export function ChallengeIDE({
             <h2 className="text-xs font-bold tracking-wide text-white/50 uppercase">Examples</h2>
             {challenge.tests.slice(0, 2).map((t, i) => (
               <div key={i} className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 rounded-lg bg-white/5 px-3 py-2.5 font-mono text-xs">
-                <span className="break-all text-white/80">{input(t)}</span>
+                <span className="break-words text-white/80">{input(t)}</span>
                 <ArrowRight size={14} className="text-white/40" />
-                <span className="font-bold break-all text-white">{show(t.expected)}</span>
+                <span className="font-bold break-words text-white">{show(t.expected)}</span>
               </div>
             ))}
           </div>
@@ -138,20 +138,24 @@ export function ChallengeIDE({
                 style={{ width: `${(passedCount / challenge.tests.length) * 100}%` }}
               />
             </div>
-            <ul className="grid gap-1.5 font-mono text-xs sm:grid-cols-2">
+            <ul className="flex flex-col gap-1.5 font-mono text-xs">
               {challenge.tests.map((t, i) => {
                 const r = output?.results[i];
                 return (
                   <li
                     key={i}
-                    title={r && !r.ok ? (r.error ?? `got ${show(r.got)}`) : undefined}
-                    className={`flex items-center gap-2 rounded-lg px-2.5 py-2 ${r ? (r.ok ? "bg-mint/15 text-white" : "bg-crimson/20 text-white") : "bg-white/5 text-white/70"}`}
+                    className={`flex items-start gap-2.5 rounded-lg px-3 py-2 leading-relaxed ${r ? (r.ok ? "bg-mint/15 text-white" : "bg-crimson/20 text-white") : "bg-white/5 text-white/75"}`}
                   >
-                    <span className={`grid size-4 shrink-0 place-items-center rounded-full ${r ? (r.ok ? "bg-mint text-white" : "bg-crimson text-white") : "border border-white/30"}`}>
+                    <span className={`mt-0.5 grid size-4 shrink-0 place-items-center rounded-full ${r ? (r.ok ? "bg-mint text-white" : "bg-crimson text-white") : "border border-white/30"}`}>
                       {r && (r.ok ? <CheckIcon size={10} /> : <XIcon size={10} />)}
                     </span>
-                    <span className="min-w-0 truncate">
-                      {challenge.language === "react" ? props(t.args[0]) || "no props" : t.args.map(show).join(", ")} → {show(t.expected)}
+                    <span className="min-w-0 flex-1 break-words whitespace-pre-wrap">
+                      {challenge.language === "react" ? props(t.args[0]) || "no props" : t.args.map(show).join(", ")}
+                      <span className="text-white/40"> → </span>
+                      <span className="font-bold">{show(t.expected)}</span>
+                      {r && !r.ok && (
+                        <span className="block text-white/60">{r.error ? r.error : <>got {show(r.got)}</>}</span>
+                      )}
                     </span>
                   </li>
                 );
