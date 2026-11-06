@@ -2,10 +2,10 @@ import type { Language } from "@/lib/challenge";
 
 // How languages and difficulties look, shared by the picker and the list.
 export const LANGUAGE_STYLE: Record<Language, { badge: string; what: string }> = {
-  javascript: { badge: "bg-amber text-ink", what: "Funciones" },
-  typescript: { badge: "bg-tile-blue text-white", what: "Funciones tipadas" },
-  python: { badge: "bg-mint text-white", what: "Funciones" },
-  react: { badge: "bg-ink text-tile-sky", what: "Componentes" },
+  javascript: { badge: "bg-[#e9a23b] text-white", what: "Funciones" },
+  typescript: { badge: "bg-[#2383e2] text-white", what: "Funciones tipadas" },
+  python: { badge: "bg-[#3d7a5a] text-white", what: "Funciones" },
+  react: { badge: "bg-[#2f2e2b] text-white", what: "Componentes" },
 };
 
 export const DIFFICULTIES = [

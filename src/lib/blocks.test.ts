@@ -6,8 +6,9 @@ describe("homeBlocks", () => {
     { id: "p", study: false },
     { id: "e", study: true },
   ];
-  it("defaults to the folders and map of the first notebook with study tools", () => {
+  it("defaults to this week, then the folders and map of the first notebook with study tools", () => {
     expect(homeBlocks(null, sections).map((b) => [b.type, b.sectionId])).toEqual([
+      ["week", null],
       ["folders", "e"],
       ["map", "e"],
     ]);

@@ -4,8 +4,27 @@
 // on the row, or picked from its id when unset, so every item keeps the
 // same look without anyone choosing one.
 
-export const NOTEBOOK_COVERS = ["zebra", "croc", "leopard", "green", "marble", "ocean"] as const;
+// The first six are the originals: an unset notebook is picked from those,
+// so adding looks never changes one you already have.
+const ORIGINAL_NOTEBOOKS = ["zebra", "croc", "leopard", "green", "marble", "ocean"] as const;
+export const NOTEBOOK_COVERS = [
+  ...ORIGINAL_NOTEBOOKS,
+  "fawn",
+  "ruby",
+  "ebony",
+  "smoke",
+  "moss",
+  "ember",
+  "tartan",
+  "mosaic",
+  "velvet",
+  "bordeaux",
+  "cream",
+  "blossom",
+] as const;
 export type NotebookCover = (typeof NOTEBOOK_COVERS)[number];
+// Drawn with a repeating pattern (fill) rather than a noise filter.
+export const PATTERN_NOTEBOOKS: readonly NotebookCover[] = ["tartan", "mosaic", "velvet", "bordeaux", "cream", "blossom"];
 
 // Pattern id → the folder's tab/body colour (also its colour on maps and
 // in the calendar).
@@ -17,9 +36,21 @@ export const FOLDER_COVERS = {
   forest: "#3e5b3a",
   dots: "#b07d3a",
   plum: "#7d5a8c",
+  azulejo: "#7d8a52",
+  rainbow: "#d6457f",
+  madras: "#d98a94",
+  oxblood: "#5e1a1a",
+  orchid: "#5a2242",
+  regency: "#4a1f3a",
+  olive: "#76762f",
+  olivecroc: "#5f6324",
+  damask: "#6e2438",
 } as const;
 export type FolderCover = keyof typeof FOLDER_COVERS;
-const FOLDER_KEYS = Object.keys(FOLDER_COVERS) as FolderCover[];
+// Unset folders are picked from the originals only (see notebooks above).
+const FOLDER_KEYS: FolderCover[] = ["ikat", "stripes", "gingham", "sage", "forest", "dots", "plum"];
+// Drawn with a noise filter rather than a repeating pattern.
+export const FILTER_FOLDERS: readonly FolderCover[] = ["oxblood", "olivecroc"];
 
 function hash(s: string): number {
   let h = 0;
@@ -30,7 +61,7 @@ function hash(s: string): number {
 export function notebookCover(id: string, cover?: string | null): NotebookCover {
   return (NOTEBOOK_COVERS as readonly string[]).includes(cover ?? "")
     ? (cover as NotebookCover)
-    : NOTEBOOK_COVERS[hash(id) % NOTEBOOK_COVERS.length];
+    : ORIGINAL_NOTEBOOKS[hash(id) % ORIGINAL_NOTEBOOKS.length];
 }
 
 export function folderCover(id: string, cover?: string | null): FolderCover {

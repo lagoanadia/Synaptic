@@ -1,45 +1,63 @@
 import { describe, expect, it } from "vitest";
-import { planStarterSpace } from "./onboarding";
+import { looksLikeProgramming, notebooksFor, planStarterSpace } from "./onboardingPlan";
+
+describe("notebooksFor", () => {
+  it("turns what you do into notebooks, one study notebook at most", () => {
+    expect(notebooksFor(["fp", "uni", "projects", "personal"])).toEqual([
+      { name: "Estudios", study: true, groupLabel: "Unidad" },
+      { name: "Proyectos", study: false, groupLabel: null },
+      { name: "Personal", study: false, groupLabel: null },
+    ]);
+    expect(notebooksFor(["uni"])[0].groupLabel).toBe("Tema");
+  });
+  it("has a sensible default", () => {
+    expect(notebooksFor([]).map((n) => n.name)).toEqual(["Estudios", "Personal"]);
+  });
+});
+
+describe("looksLikeProgramming", () => {
+  it("spots coding subjects", () => {
+    expect(looksLikeProgramming("Programación")).toBe(true);
+    expect(looksLikeProgramming("Bases de datos")).toBe(true);
+    expect(looksLikeProgramming("PMDM")).toBe(true);
+    expect(looksLikeProgramming("Inglés")).toBe(false);
+    expect(looksLikeProgramming("Diseño de interfaces")).toBe(false);
+  });
+});
 
 describe("planStarterSpace", () => {
-  it("trims, dedupes and attaches the topic to the chosen subject", () => {
+  it("puts subjects in the study notebook, dedupes and attaches the topic", () => {
     const plan = planStarterSpace({
-      areas: [
-        { name: " School ", items: ["AD", "ad", "  Bases de Datos "] },
-        { name: "school", items: ["dup area"] },
+      roles: ["fp", "personal"],
+      subjects: [{ title: " DI " }, { title: "di" }, { title: "Programación", classroomCourseId: "123" }],
+      learning: { topic: "Joins en SQL", subject: "programación" },
+      covers: { Estudios: "zebra", Personal: "not-a-cover" },
+    });
+    expect(plan.notebooks[0]).toEqual({
+      name: "Estudios",
+      study: true,
+      groupLabel: "Unidad",
+      cover: "zebra",
+      folders: [
+        { title: "DI", classroomCourseId: null, challenges: false },
+        { title: "Programación", classroomCourseId: "123", challenges: true },
       ],
-      learning: { topic: "SQL joins", subject: "bases de datos" },
     });
-    expect(plan.areas).toEqual([{ name: "School", items: ["AD", "Bases de Datos"] }]);
-    expect(plan.learning).toEqual({ topic: "SQL joins", areaName: "School", subject: "Bases de Datos" });
+    expect(plan.notebooks[1].cover).toBeNull();
+    expect(plan.learning).toEqual({ topic: "Joins en SQL", notebook: "Estudios", subject: "Programación" });
   });
 
-  it("falls back to the first subject when the chosen one doesn't exist", () => {
-    const plan = planStarterSpace({
-      areas: [{ name: "Work", items: [] }, { name: "School", items: ["AD"] }],
-      learning: { topic: "Ficheros", subject: "nope" },
-    });
-    expect(plan.learning?.subject).toBe("AD");
-  });
-
-  it("creates a home for the topic when there are no subjects", () => {
-    expect(planStarterSpace({ areas: [], learning: { topic: "React", subject: null } })).toEqual({
-      areas: [{ name: "Learning", items: ["React"] }],
-      learning: { topic: "React", areaName: "Learning", subject: "React" },
-    });
-    const withArea = planStarterSpace({ areas: [{ name: "Work", items: [] }], learning: { topic: "Excel", subject: null } });
-    expect(withArea.areas[0].items).toEqual(["Excel"]);
+  it("creates a folder for the topic when there are no subjects", () => {
+    const plan = planStarterSpace({ roles: ["projects"], subjects: [], learning: { topic: "React", subject: null }, covers: {} });
+    expect(plan.notebooks[0].folders.map((f) => f.title)).toEqual(["React"]);
+    expect(plan.learning?.subject).toBe("React");
   });
 
   it("caps sizes and survives garbage input", () => {
-    const plan = planStarterSpace({
-      areas: Array.from({ length: 10 }, (_, i) => ({ name: `A${i}`, items: Array.from({ length: 20 }, (_, j) => `i${j}`) })),
-      learning: { topic: "", subject: null },
-    });
-    expect(plan.areas).toHaveLength(6);
-    expect(plan.areas[0].items).toHaveLength(8);
+    const plan = planStarterSpace({ roles: ["fp"], subjects: Array.from({ length: 30 }, (_, i) => ({ title: `S${i}` })), learning: { topic: "", subject: null }, covers: {} });
+    expect(plan.notebooks[0].folders).toHaveLength(12);
     expect(plan.learning).toBeNull();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    expect(planStarterSpace(null as any)).toEqual({ areas: [], learning: null });
+    expect(planStarterSpace(null as any).notebooks.map((n) => n.name)).toEqual(["Estudios", "Personal"]);
   });
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { deepEqual, formatReview, isTheoryLookup, jsHarness, parseChallenge, parseReview, type RunOutput } from "./challenge";
+import { deepEqual, formatReview, isTheoryLookup, jsHarness, parseChallenge, parseReview, type RunOutput, pickBySkill } from "./challenge";
 
 // The harness is a function body; run it the way the Worker does.
 const run = (code: string, entry: string, tests: { args: unknown[]; expected: unknown }[]) =>
@@ -104,5 +104,17 @@ describe("isTheoryLookup", () => {
   it("keeps real logic with short outputs", () => {
     const solution = "function finalState(events) { let s = 'installed'; for (const e of events) { if (e === 'open' && s !== 'removed') s = 'running'; } return s; }";
     expect(isTheoryLookup({ tests: [{ args: [["open"]], expected: "running" }, { args: [[]], expected: "installed" }], solution })).toBe(false);
+  });
+});
+
+describe("pickBySkill", () => {
+  const c = (title: string, skill: string | null, fromClass = false) => ({ title, skill, fromClass });
+  it("keeps one challenge per skill and at most one from class", () => {
+    const picked = pickBySkill([c("a", "Contar con un mapa", true), c("b", "contar con un mapa"), c("c", "Filtrar", true), c("d", "Acumular"), c("e", "Ordenar")], []);
+    expect(picked.map((p) => p.title)).toEqual(["a", "d", "e"]);
+  });
+  it("prefers skills you haven't practised", () => {
+    const picked = pickBySkill([c("a", "Acumular"), c("b", "Validar"), c("c", "Recursividad")], ["acumular"], 2);
+    expect(picked.map((p) => p.title)).toEqual(["b", "c"]);
   });
 });

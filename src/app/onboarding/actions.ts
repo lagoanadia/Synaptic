@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { buildStarterSpace, planStarterSpace, type OnboardingAnswers } from "@/lib/onboarding";
+import { buildStarterSpace, planStarterSpace, removeSampleContent, type OnboardingAnswers } from "@/lib/onboarding";
+import { getValidAccessToken, listCourses } from "@/lib/googleClassroom";
 
 export async function finishOnboarding(
   answers: OnboardingAnswers,
@@ -32,5 +33,21 @@ export async function skipOnboarding() {
   const session = await auth();
   if (!session?.user?.id) return;
   await prisma.user.update({ where: { id: session.user.id }, data: { onboardedAt: new Date() } });
+  revalidatePath("/pursuits", "layout");
+}
+
+// Step 2: your Classroom courses, if Classroom is connected.
+export async function classroomCourses(): Promise<{ connected: boolean; courses: { id: string; name: string }[] }> {
+  const session = await auth();
+  if (!session?.user?.id) return { connected: false, courses: [] };
+  const token = await getValidAccessToken(session.user.id);
+  if (!token) return { connected: false, courses: [] };
+  return { connected: true, courses: await listCourses(token).catch(() => []) };
+}
+
+export async function removeSample() {
+  const session = await auth();
+  if (!session?.user?.id) return;
+  await removeSampleContent(session.user.id);
   revalidatePath("/pursuits", "layout");
 }

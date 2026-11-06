@@ -1,10 +1,11 @@
 // Pages built from blocks, like Notion: the home page and every folder.
 // Stored as JSON on the row; anything unreadable falls back to defaults.
 
-export type HomeBlockType = "folders" | "map" | "recent";
+export type HomeBlockType = "week" | "folders" | "map" | "recent";
 export type HomeBlock = { id: string; type: HomeBlockType; sectionId: string | null };
 
 export const HOME_BLOCK_TYPES: { type: HomeBlockType; label: string }[] = [
+  { type: "week", label: "Esta semana" },
   { type: "folders", label: "Carpetas" },
   { type: "map", label: "Mapa" },
   { type: "recent", label: "Recientes" },
@@ -34,7 +35,7 @@ function readList<T extends { id: string; type: string }>(raw: unknown, valid: r
   return out;
 }
 
-// Home: what you saved, or the folders and map of your first notebook
+// Home: what you saved, or this week, then the folders and map of your first notebook
 // with study tools (else your first notebook), plus recent pages.
 export function homeBlocks(raw: unknown, sections: { id: string; study: boolean }[]): HomeBlock[] {
   const saved = readList<HomeBlock>(raw, HOME_BLOCK_TYPES.map((t) => t.type));
@@ -43,8 +44,9 @@ export function homeBlocks(raw: unknown, sections: { id: string; study: boolean 
     return saved.map((b) => ({ ...b, sectionId: b.sectionId && ids.has(b.sectionId) ? b.sectionId : (sections[0]?.id ?? null) }));
   }
   const main = sections.find((s) => s.study) ?? sections[0];
-  if (!main) return [];
+  if (!main) return [{ id: "week", type: "week", sectionId: null }];
   return [
+    { id: "week", type: "week", sectionId: null },
     { id: "folders", type: "folders", sectionId: main.id },
     ...(main.study ? [{ id: "map", type: "map" as const, sectionId: main.id }] : [{ id: "recent", type: "recent" as const, sectionId: main.id }]),
   ];

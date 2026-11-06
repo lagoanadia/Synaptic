@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { MiniNotebook } from "../Covers";
@@ -10,7 +11,7 @@ import { saveHomeBlocks } from "./actions";
 
 type Notebook = { id: string; name: string; cover: NotebookCover };
 
-const TITLE: Record<HomeBlockType, string> = { folders: "Carpetas de", map: "Mapa de", recent: "Recientes de" };
+const TITLE: Record<HomeBlockType, string> = { week: "Esta semana", folders: "Carpetas de", map: "Mapa de", recent: "Recientes de" };
 
 // The home page's blocks. Normally just the content; "Editar" lets you
 // pick each block's notebook, reorder, remove and add blocks. Changes
@@ -59,6 +60,7 @@ export function HomeBlocks({
                 {editing ? (
                   <>
                     {TITLE[b.type]}
+                    {b.type !== "week" && (
                     <select
                       value={b.sectionId ?? ""}
                       onChange={(e) => save(blocks.map((x) => (x.id === b.id ? { ...x, sectionId: e.target.value || null } : x)))}
@@ -71,14 +73,20 @@ export function HomeBlocks({
                         </option>
                       ))}
                     </select>
+                    )}
                   </>
                 ) : (
                   <>
-                    {nb && <MiniNotebook cover={nb.cover} size={14} />}
-                    {b.type === "map" ? "Tu mapa" : b.type === "recent" ? "Recientes" : nb?.name}
+                    {nb && b.type !== "week" && <MiniNotebook cover={nb.cover} size={14} />}
+                    {b.type === "week" ? "Esta semana" : b.type === "map" ? "Tu mapa" : b.type === "recent" ? "Recientes" : nb?.name}
                   </>
                 )}
               </h2>
+              {!editing && b.type === "week" && (
+                <Link href="/calendar" className="text-sm text-ink-faint hover:text-ink">
+                  Calendario ↗
+                </Link>
+              )}
               {editing && (
                 <span className="flex items-center gap-1">
                   <button type="button" onClick={() => move(i, -1)} disabled={i === 0} title="Subir" className="rounded p-1 text-ink-faint hover:bg-chip disabled:opacity-30">

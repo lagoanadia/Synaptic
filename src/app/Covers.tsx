@@ -1,4 +1,8 @@
-import { FOLDER_COVERS, type FolderCover, type NotebookCover } from "@/lib/covers";
+import { FILTER_FOLDERS, FOLDER_COVERS, PATTERN_NOTEBOOKS, type FolderCover, type NotebookCover } from "@/lib/covers";
+
+// How a cover's rectangle is painted: a pattern fill or a noise filter.
+const notebookPaint = (c: NotebookCover) => (PATTERN_NOTEBOOKS.includes(c) ? { fill: `url(#nbp-${c})` } : { filter: `url(#nb-${c})` });
+const folderPaint = (c: FolderCover) => (FILTER_FOLDERS.includes(c) ? { filter: `url(#ff-${c})` } : { fill: `url(#fp-${c})` });
 
 // A composition notebook: textured cover, black cloth spine, white label.
 export function Notebook({
@@ -21,7 +25,7 @@ export function Notebook({
       style={{ width, height }}
     >
       <svg className="absolute inset-0 h-full w-full" preserveAspectRatio="none" aria-hidden>
-        <rect width="100%" height="100%" filter={`url(#nb-${cover})`} />
+        <rect width="100%" height="100%" {...notebookPaint(cover)} />
       </svg>
       <span className="absolute inset-y-0 left-0 w-[11%] bg-[#1c1a17] shadow-[inset_-2px_0_3px_rgba(255,255,255,.12)]" />
       {label && width >= 60 && (
@@ -41,7 +45,7 @@ export function MiniNotebook({ cover, size = 16 }: { cover: NotebookCover; size?
   return (
     <span className="relative block shrink-0 overflow-hidden rounded-[1px_2px_2px_1px]" style={{ width: Math.round(size * 0.75), height: size }}>
       <svg className="absolute inset-0 h-full w-full" preserveAspectRatio="none" aria-hidden>
-        <rect width="100%" height="100%" filter={`url(#nb-${cover})`} />
+        <rect width="100%" height="100%" {...notebookPaint(cover)} />
       </svg>
     </span>
   );
@@ -87,7 +91,7 @@ export function Folder({
       <span className="relative z-[1] block h-[9px] w-[42%] rounded-t-[6px]" style={{ background: color }} />
       <span className="relative z-[2] block aspect-[3/2] overflow-hidden rounded-[0_6px_6px_6px] shadow-[0_1px_1px_rgba(0,0,0,.08),0_8px_18px_-8px_rgba(40,30,20,.35)]" style={{ background: color }}>
         <svg className="absolute inset-0 h-full w-full" preserveAspectRatio="none" aria-hidden>
-          <rect width="100%" height="100%" fill={`url(#fp-${cover})`} />
+          <rect width="100%" height="100%" {...folderPaint(cover)} />
         </svg>
       </span>
     </span>

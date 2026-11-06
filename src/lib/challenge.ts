@@ -182,3 +182,24 @@ export function isTheoryLookup(d: Pick<ChallengeDraft, "tests" | "solution">): b
   const literals = d.solution.match(/(["'`])(?:(?!\1)[^\\\n]|\\.){20,}\1/g) ?? [];
   return literals.length >= 3;
 }
+
+// From the AI's candidates, the ones to keep: one per skill, at most one
+// close to an exercise from class, skills you haven't practised first.
+export function pickBySkill<T extends { skill: string | null; fromClass: boolean }>(candidates: T[], practised: string[], max = 3): T[] {
+  const key = (s: string | null) => (s ?? "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
+  const done = new Set(practised.map(key));
+  const ordered = [...candidates].sort((a, b) => Number(done.has(key(a.skill))) - Number(done.has(key(b.skill))));
+  const out: T[] = [];
+  const skills = new Set<string>();
+  let fromClass = 0;
+  for (const c of ordered) {
+    const k = key(c.skill);
+    if (k && skills.has(k)) continue;
+    if (c.fromClass && fromClass >= 1) continue;
+    out.push(c);
+    if (k) skills.add(k);
+    if (c.fromClass) fromClass++;
+    if (out.length === max) break;
+  }
+  return out;
+}
