@@ -65,7 +65,7 @@ async function run(worker, lang, kept, payload, timeout, reply) {
       w.terminate();
       if (lang === "python") py = null;
       if (lang === "babel") babel = null;
-      reply({ results: [], logs: [], error: "Timed out — is there an infinite loop?" });
+      reply({ results: [], logs: [], error: "Tiempo agotado — ¿hay un bucle infinito?" });
       done();
     }, timeout);
     w.onmessage = (m) => finish(m.data);

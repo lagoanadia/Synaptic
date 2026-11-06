@@ -25,11 +25,11 @@ export const MAX_TURNS = 20;
 
 // One-tap moves you can make instead of typing an argument.
 export const INTENTS = {
-  context: { label: "Explain the context", prompt: "Before going on, explain the background of this topic simply and neutrally: what happened, who's involved, what's actually known. Then hand it back to me." },
-  evidence: { label: "Show me evidence", prompt: "Back up your last claim with concrete evidence or examples, and say how confident you are and where it could be wrong." },
-  angle: { label: "Another angle", prompt: "Attack this from a completely different angle than so far (ethical, economic, technical, historical, personal…)." },
-  steelman: { label: "Test my steelman", prompt: "Ask me to state the strongest version of YOUR side, then judge my attempt honestly." },
-  simpler: { label: "Say it simpler", prompt: "Rephrase your last message in plain words, shorter, with an everyday example." },
-  switch: { label: "Switch sides", prompt: "I'm switching sides: from now on I argue the opposite of what I argued so far, and you take the side I just left. Acknowledge in one line and open on your new side." },
+  context: { label: "Explícame el contexto", prompt: "Before going on, explain the background of this topic simply and neutrally: what happened, who's involved, what's actually known. Then hand it back to me." },
+  evidence: { label: "Enséñame pruebas", prompt: "Back up your last claim with concrete evidence or examples, and say how confident you are and where it could be wrong." },
+  angle: { label: "Otro enfoque", prompt: "Attack this from a completely different angle than so far (ethical, economic, technical, historical, personal…)." },
+  steelman: { label: "Pon a prueba mi mejor versión del otro lado", prompt: "Ask me to state the strongest version of YOUR side, then judge my attempt honestly." },
+  simpler: { label: "Dilo más simple", prompt: "Rephrase your last message in plain words, shorter, with an everyday example." },
+  switch: { label: "Cambiar de lado", prompt: "I'm switching sides: from now on I argue the opposite of what I argued so far, and you take the side I just left. Acknowledge in one line and open on your new side." },
 } as const;
 export type Intent = keyof typeof INTENTS;

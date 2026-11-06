@@ -8,7 +8,7 @@ export function PrintButton() {
       onClick={() => window.print()}
       className="no-print rounded-md bg-ink px-4 py-2 text-sm font-medium text-white hover:opacity-90"
     >
-      Print / Save as PDF
+      Imprimir / Guardar como PDF
     </button>
   );
 }

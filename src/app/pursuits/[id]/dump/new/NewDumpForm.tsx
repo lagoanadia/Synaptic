@@ -62,7 +62,7 @@ export function NewDumpForm({
       const text = slidesToText(readPptx(new Uint8Array(await file.arrayBuffer())));
       editorRef.current?.chain().focus().insertContent(textToDoc(text).content ?? []).run();
     } catch {
-      setError("Couldn't read that file — it needs to be a .pptx");
+      setError("No he podido leer ese archivo — tiene que ser un .pptx");
     }
   }
 
@@ -105,16 +105,16 @@ export function NewDumpForm({
   // ─── PDF → page images ───
   async function insertPdf(file: File) {
     setError(null);
-    setBusy("Reading PDF…");
+    setBusy("Leyendo PDF…");
     try {
       const pages = await pdfToImagePages(file);
       for (let i = 0; i < pages.length; i++) {
-        setBusy(`Uploading page ${i + 1} of ${pages.length}…`);
+        setBusy(`Subiendo página ${i + 1} de ${pages.length}…`);
         const url = await uploadToBlob(pursuitId, pages[i], `${file.name}-page-${i + 1}.jpg`, "image");
         editorRef.current?.chain().focus().setImage({ src: url }).run();
       }
     } catch {
-      setError("Couldn't process that PDF — try again");
+      setError("No he podido procesar ese PDF — inténtalo de nuevo");
     } finally {
       setBusy(null);
     }
@@ -139,7 +139,7 @@ export function NewDumpForm({
       r.start();
       setRecordingSince(Date.now());
     } catch {
-      setError("Couldn't access the microphone — check this site's permission");
+      setError("No hay acceso al micrófono — revisa el permiso de esta web");
     }
   }
 
@@ -157,14 +157,14 @@ export function NewDumpForm({
     const [type, ext] = raw.includes("mp4") ? ["audio/mp4", "mp4"] : raw.includes("ogg") ? ["audio/ogg", "ogg"] : ["audio/webm", "webm"];
     const audio = new Blob(chunks.current, { type });
     if (audio.size === 0) return;
-    setBusy("Transcribing…");
+    setBusy("Transcribiendo…");
     try {
       const url = await uploadToBlob(pursuitId, audio, `voice-note.${ext}`, "audio");
       const result = await transcribeAudio(pursuitId, url);
       if (result.error) setError(result.error);
       else editorRef.current?.chain().focus().insertContent(` ${result.text ?? ""}`).run();
     } catch (err) {
-      setError(`Couldn't process that recording — ${err instanceof Error ? err.message : String(err)}`);
+      setError(`No he podido procesar la grabación — ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setBusy(null);
     }
@@ -176,7 +176,7 @@ export function NewDumpForm({
         type="button"
         onClick={() => pptxInput.current?.click()}
         disabled={!!busy}
-        title="Add a PowerPoint's slides as text"
+        title="Añadir las diapositivas de un PowerPoint como texto"
         className="rounded-md px-2 py-1 text-sm text-ink-muted hover:bg-chip hover:text-ink disabled:opacity-50"
       >
         PPT
@@ -185,7 +185,7 @@ export function NewDumpForm({
         type="button"
         onClick={() => pdfInput.current?.click()}
         disabled={!!busy}
-        title="Add a PDF's pages as images"
+        title="Añadir las páginas de un PDF como imágenes"
         className="rounded-md px-2 py-1 text-sm text-ink-muted hover:bg-chip hover:text-ink disabled:opacity-50"
       >
         PDF
@@ -194,10 +194,10 @@ export function NewDumpForm({
         type="button"
         onClick={recordingSince ? stopRecording : startRecording}
         disabled={!!busy && !recordingSince}
-        title={recordingSince ? "Stop and transcribe" : "Record a voice note"}
+        title={recordingSince ? "Parar y transcribir" : "Grabar una nota de voz"}
         className={`rounded-md px-2 py-1 text-sm ${recordingSince ? "bg-crimson text-white" : "text-ink-muted hover:bg-chip hover:text-ink"}`}
       >
-        {recordingSince ? <><StopIcon size={14} /> Stop</> : <MicIcon />}
+        {recordingSince ? <><StopIcon size={14} /> Parar</> : <MicIcon />}
       </button>
     </>
   );
@@ -233,10 +233,10 @@ export function NewDumpForm({
 
       {draftToOffer && (
         <div className="flex items-center justify-between rounded-xl border border-accent bg-accent-soft px-3 py-2 text-xs">
-          <span>You have an unsaved draft from earlier.</span>
+          <span>Tienes un borrador sin guardar de antes.</span>
           <div className="flex gap-3">
             <button type="button" onClick={() => restoreDraft(draftToOffer)} className="font-semibold text-accent">
-              Restore
+              Recuperar
             </button>
             <button
               type="button"
@@ -248,7 +248,7 @@ export function NewDumpForm({
               }}
               className="text-ink-faint hover:text-ink"
             >
-              Discard
+              Descartar
             </button>
           </div>
         </div>
@@ -264,13 +264,13 @@ export function NewDumpForm({
       />
 
       <div className="flex items-center justify-between gap-3">
-        <span className="text-xs text-ink-muted">{busy ?? (recordingSince ? "Recording…" : "")}</span>
+        <span className="text-xs text-ink-muted">{busy ?? (recordingSince ? "Grabando…" : "")}</span>
         <button
           type="submit"
           disabled={isPending || !!busy || !!recordingSince}
           className="rounded-full bg-ink px-6 py-2.5 text-sm font-semibold text-white transition-transform hover:-translate-y-0.5 disabled:opacity-50"
         >
-          {isPending ? "Saving…" : isEditing ? "Save changes" : "Save"}
+          {isPending ? "Guardando…" : isEditing ? "Guardar cambios" : "Guardar"}
         </button>
       </div>
       {(state.error || error) && <p className="text-xs text-red-500">{state.error ?? error}</p>}

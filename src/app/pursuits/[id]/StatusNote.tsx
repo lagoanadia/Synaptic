@@ -37,7 +37,7 @@ export function StatusNote({
         autoResize(e.target);
       }}
       onBlur={save}
-      placeholder="Quick notes — current status, what's pending…"
+      placeholder="Notas rápidas — cómo va, qué queda pendiente…"
       rows={1}
       disabled={isPending}
       className="w-full resize-none overflow-hidden rounded-xl border border-dashed border-border-subtle bg-callout px-4 py-3 text-sm leading-relaxed text-ink outline-none placeholder:text-ink-faint disabled:opacity-50"

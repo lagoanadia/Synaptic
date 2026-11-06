@@ -110,9 +110,9 @@ export type ExportPursuit = {
 export function buildPursuitMarkdown(pursuit: ExportPursuit): string {
   const sections: string[] = [`# ${pursuit.title}`];
 
-  sections.push("## Organized notes");
+  sections.push("## Notas organizadas");
   if (pursuit.notes.length === 0) {
-    sections.push("_No organized notes yet._");
+    sections.push("_Aún no hay notas organizadas._");
   } else {
     for (const note of pursuit.notes) {
       const tags = note.tags.map((t) => `\`${t.name}\``).join(" ");
@@ -121,9 +121,9 @@ export function buildPursuitMarkdown(pursuit: ExportPursuit): string {
     }
   }
 
-  sections.push("## Brain dumps");
+  sections.push("## Notas en bruto");
   if (pursuit.dumps.length === 0) {
-    sections.push("_No brain dumps yet._");
+    sections.push("_Aún no hay notas en bruto._");
   } else {
     for (const dump of pursuit.dumps) {
       const heading = `### ${dump.createdAt.toISOString().slice(0, 10)}`;

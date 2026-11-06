@@ -21,7 +21,7 @@ export function Timeline({
   ].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
   if (entries.length === 0) {
-    return <p className="text-sm text-ink-muted">Nothing captured yet.</p>;
+    return <p className="text-sm text-ink-muted">Aún no hay nada.</p>;
   }
 
   return (
@@ -42,10 +42,10 @@ export function Timeline({
             }`}
           />
           <span className="w-16 flex-shrink-0 text-xs text-ink-faint">
-            {entry.createdAt.toLocaleDateString("en-US", { timeZone: "UTC" })}
+            {entry.createdAt.toLocaleDateString("es-ES", { timeZone: "UTC" })}
           </span>
           <span className="text-xs whitespace-nowrap text-ink-faint uppercase">
-            {entry.type === "note" ? "Organized" : "Dump"}
+            {entry.type === "note" ? "Organizada" : "En bruto"}
           </span>
           <span className="flex-1 truncate text-sm">{autoTitle(entry.content)}</span>
         </Link>

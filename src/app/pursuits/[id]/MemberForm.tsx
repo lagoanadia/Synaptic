@@ -16,7 +16,7 @@ export function MemberForm({ pursuitId }: { pursuitId: string }) {
       <input
         type="email"
         name="email"
-        placeholder="+ invite by email"
+        placeholder="+ invitar por email"
         disabled={isPending}
         className="w-36 rounded border border-dashed border-border-subtle bg-transparent px-2 py-0.5 text-xs focus:w-48 focus:outline-none disabled:opacity-50"
       />

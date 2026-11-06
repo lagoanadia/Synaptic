@@ -15,16 +15,16 @@ export function ImportSlides({ pursuitId, sectionId }: { pursuitId: string; sect
   function handle(file: File) {
     setError(null);
     startTransition(async () => {
-      setStatus("Reading slides…");
+      setStatus("Leyendo diapositivas…");
       let text = "";
       try {
         const slides = readPptx(new Uint8Array(await file.arrayBuffer()));
         text = slidesToText(slides, file.name.replace(/\.pptx$/i, ""));
       } catch {
         setStatus(null);
-        return setError("Couldn't read that file — it needs to be a .pptx (in Google Slides: File → Download → .pptx)");
+        return setError("No he podido leer ese archivo — tiene que ser un .pptx (en Google Slides: Archivo → Descargar → .pptx)");
       }
-      setStatus("Summarizing…");
+      setStatus("Resumiendo…");
       const r = await importSlides(pursuitId, sectionId, text);
       setStatus(null);
       if (r.error) setError(r.error);
@@ -50,7 +50,7 @@ export function ImportSlides({ pursuitId, sectionId }: { pursuitId: string; sect
         disabled={isPending}
         className="self-start rounded-full border-2 border-tile-sky px-4 py-2 text-sm font-semibold text-tile-sky transition-colors hover:bg-accent-soft disabled:opacity-60"
       >
-        {isPending ? (status ?? "Working…") : <><SlidesIcon /> Import</>}
+        {isPending ? (status ?? "Trabajando…") : <><SlidesIcon /> Importar</>}
       </button>
       {error && <p className="text-xs text-red-500">{error}</p>}
     </div>

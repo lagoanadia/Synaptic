@@ -45,7 +45,7 @@ export function DebateRoom({
     startSend(async () => {
       const r = await sendArgument(debate.id, intent ? "" : text, intent);
       if (r.error || !r.messages) {
-        setError(r.error ?? "Try again");
+        setError(r.error ?? "Reintentar");
         setMessages((m) => m.slice(0, -1));
         if (!intent) setDraft(text);
         return;
@@ -63,17 +63,17 @@ export function DebateRoom({
         <h1 className="text-2xl font-extrabold text-balance">“{debate.motion}”</h1>
         <div className="flex flex-wrap items-center gap-2 text-xs">
           <span className={`rounded-full px-2.5 py-1 font-bold text-white ${side === "for" ? "bg-mint" : "bg-crimson"}`}>
-            You: {side.toUpperCase()}
+            Tú: {side === "for" ? "A FAVOR" : "EN CONTRA"}
           </span>
           <span className="text-ink-muted">Round {Math.min(userTurns, MAX_TURNS)}/{MAX_TURNS}</span>
           {debate.url && (
             <a href={debate.url} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">
-              Source <ArrowUpRight />
+              Fuente <ArrowUpRight />
             </a>
           )}
         </div>
         <details className="text-sm text-ink-muted">
-          <summary className="cursor-pointer select-none hover:text-ink">Context</summary>
+          <summary className="cursor-pointer select-none hover:text-ink">Contexto</summary>
           <p className="mt-2 leading-relaxed">{debate.brief}</p>
         </details>
       </header>
@@ -104,7 +104,7 @@ export function DebateRoom({
           </li>
         ))}
         {isSending && (
-          <li className="text-sm text-ink-muted">Your opponent is thinking…</li>
+          <li className="text-sm text-ink-muted">Tu rival está pensando…</li>
         )}
         <div ref={end} />
       </ol>
@@ -113,7 +113,7 @@ export function DebateRoom({
         <VerdictCard verdict={debate.verdict} />
       ) : (
         <div className="sticky bottom-4 flex flex-col gap-2 rounded-3xl bg-white p-4 shadow-[0_8px_30px_rgba(13,13,13,0.08)]">
-          <div className="flex flex-wrap gap-1.5" aria-label="Quick moves">
+          <div className="flex flex-wrap gap-1.5" aria-label="Movimientos rápidos">
             {(Object.keys(INTENTS) as Intent[]).map((k) => (
               <button
                 key={k}
@@ -133,8 +133,8 @@ export function DebateRoom({
               if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) send();
             }}
             rows={3}
-            placeholder="Argue, ask, push back…  (Ctrl+Enter)"
-            aria-label="Your argument"
+            placeholder="Argumenta, pregunta, rebate…  (Ctrl+Enter)"
+            aria-label="Tu argumento"
             disabled={isSending || userTurns >= MAX_TURNS}
             className="resize-none rounded-2xl border border-border-subtle px-4 py-3 text-sm"
           />
@@ -150,9 +150,9 @@ export function DebateRoom({
                 })
               }
               className="rounded-full px-4 py-2 text-sm font-semibold text-ink-muted hover:bg-chip disabled:opacity-40"
-              title={arguments_ < 2 ? "Make at least two arguments first" : "End the debate and get judged"}
+              title={arguments_ < 2 ? "Haz al menos dos argumentos primero" : "Terminar y que me juzguen"}
             >
-              {isJudging ? "Judging…" : "Verdict"}
+              {isJudging ? "Juzgando…" : "Veredicto"}
             </button>
             <button
               type="button"
@@ -160,7 +160,7 @@ export function DebateRoom({
               disabled={isSending || !draft.trim() || userTurns >= MAX_TURNS}
               className="rounded-full bg-orchid px-6 py-2.5 text-sm font-bold text-white disabled:opacity-50"
             >
-              Send
+              Enviar
             </button>
           </div>
           {error && <p className="text-xs text-red-500">{error}</p>}
@@ -171,9 +171,9 @@ export function DebateRoom({
 }
 
 function VerdictCard({ verdict }: { verdict: Verdict }) {
-  const headline = verdict.winner === "you" ? "You won this one." : verdict.winner === "ai" ? "Your opponent took it." : "A draw.";
+  const headline = verdict.winner === "you" ? "Has ganado este." : verdict.winner === "ai" ? "Lo ha ganado tu rival." : "Empate.";
   return (
-    <section className="flex flex-col gap-4 rounded-3xl bg-white p-6 shadow-[0_1px_2px_rgba(13,13,13,0.06)]" aria-label="Verdict">
+    <section className="flex flex-col gap-4 rounded-3xl bg-white p-6 shadow-[0_1px_2px_rgba(13,13,13,0.06)]" aria-label="Veredicto">
       <h2 className="text-2xl font-extrabold">{headline}</h2>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {(Object.entries(verdict.scores) as [string, number][]).map(([k, v]) => (
@@ -183,12 +183,12 @@ function VerdictCard({ verdict }: { verdict: Verdict }) {
           </div>
         ))}
       </div>
-      <Row title="Your best moment" text={verdict.strongest} />
-      <Row title="Your weakest moment" text={verdict.weakest} />
-      {verdict.steelman && <Row title="Your steelman" text={verdict.steelman} />}
+      <Row title="Tu mejor momento" text={verdict.strongest} />
+      <Row title="Tu momento más flojo" text={verdict.weakest} />
+      {verdict.steelman && <Row title="Tu mejor versión del otro lado" text={verdict.steelman} />}
       {verdict.fallacies.length > 0 && (
         <div className="flex flex-col gap-1.5">
-          <h3 className="text-sm font-bold">Fallacies</h3>
+          <h3 className="text-sm font-bold">Falacias</h3>
           {verdict.fallacies.map((f, i) => (
             <p key={i} className="text-sm">
               <span className="font-semibold text-amber">{f.name}</span>
@@ -197,10 +197,10 @@ function VerdictCard({ verdict }: { verdict: Verdict }) {
           ))}
         </div>
       )}
-      <Row title="What could change your mind" text={verdict.rethink} />
+      <Row title="Qué podría hacerte cambiar de opinión" text={verdict.rethink} />
       {verdict.readMore.length > 0 && (
         <div className="flex flex-col gap-1.5">
-          <h3 className="text-sm font-bold">Go deeper</h3>
+          <h3 className="text-sm font-bold">Profundizar</h3>
           <div className="flex flex-wrap gap-1.5">
             {verdict.readMore.map((q) => (
               <a

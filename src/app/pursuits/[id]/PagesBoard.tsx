@@ -51,7 +51,7 @@ export function PagesBoard({
 
   const columns: (Unit | { id: null; name: string; classroomUnit: null })[] = [
     ...units,
-    { id: null, name: "No unit", classroomUnit: null },
+    { id: null, name: "Sin unidad", classroomUnit: null },
   ];
 
   function drop(sectionId: string | null) {
@@ -74,18 +74,18 @@ export function PagesBoard({
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-2">
         <Link href={`/pursuits/${pursuitId}/dump/new`} className="rounded-full bg-ink px-4 py-2 text-sm font-semibold text-white">
-          + Page
+          + Página
         </Link>
         <ImportSlides pursuitId={pursuitId} sectionId={null} />
         <Link
           href={`/challenges?pursuit=${pursuitId}`}
           className="order-last ml-auto flex items-center gap-2 rounded-full bg-mint px-4 py-2 text-sm font-semibold text-white"
         >
-          <span className="font-mono font-bold">{"</>"}</span> Code challenge
+          <span className="font-mono font-bold">{"</>"}</span> Reto de código
         </Link>
         {newUnit === null ? (
           <button type="button" onClick={() => setNewUnit("")} className="rounded-full bg-chip px-4 py-2 text-sm font-semibold">
-            + Unit
+            + Unidad
           </button>
         ) : (
           <form
@@ -101,8 +101,8 @@ export function PagesBoard({
               value={newUnit}
               onChange={(e) => setNewUnit(e.target.value)}
               onBlur={() => !newUnit.trim() && setNewUnit(null)}
-              placeholder="Unit name"
-              aria-label="Unit name"
+              placeholder="Nombre de la unidad"
+              aria-label="Nombre de la unidad"
               className="rounded-full border border-border-subtle bg-white px-4 py-2 text-sm"
             />
           </form>
@@ -143,8 +143,8 @@ export function PagesBoard({
                     value={col.classroomUnit ?? ""}
                     onFocus={loadClassroomUnits}
                     onChange={(e) => startTransition(() => setUnitClassroom(pursuitId, col.id!, e.target.value || null))}
-                    title="Classroom unit for this column's slides"
-                    aria-label={`Classroom unit for ${col.name}`}
+                    title="Unidad de Classroom para las diapositivas de esta columna"
+                    aria-label={`Unidad de Classroom para ${col.name}`}
                     className={`rounded-full border-0 px-2 py-0.5 text-xs font-semibold ${col.classroomUnit ? "bg-tile-sky text-white" : "bg-white/70 text-ink-muted"}`}
                   >
                     <option value="">Classroom</option>
@@ -159,10 +159,10 @@ export function PagesBoard({
                 {col.id && (
                   <DeleteButton
                     action={deleteContentSection.bind(null, pursuitId, col.id)}
-                    confirmMessage={`Delete the unit "${col.name}"? Its pages move to No unit.`}
+                    confirmMessage={`¿Eliminar la unidad "${col.name}"? Sus páginas pasan a Sin unidad.`}
                     className="rounded-full p-1 text-ink-faint opacity-0 group-hover/col:opacity-100 hover:text-red-600 focus:opacity-100"
                   >
-                    <TrashIcon size={14} title={`Delete unit ${col.name}`} />
+                    <TrashIcon size={14} title={`Eliminar unidad ${col.name}`} />
                   </DeleteButton>
                 )}
               </header>
@@ -207,16 +207,16 @@ export function PagesBoard({
                   <span className="flex flex-wrap gap-1.5">
                     {c.organized ? (
                       <span className="flex items-center gap-1 rounded-full bg-mint/15 px-2 py-0.5 text-[11px] font-semibold text-mint">
-                        <CheckIcon size={11} /> Organized
+                        <CheckIcon size={11} /> Organizada
                       </span>
                     ) : (
-                      <span className="rounded-full bg-chip px-2 py-0.5 text-[11px] font-semibold text-ink-muted">Raw</span>
+                      <span className="rounded-full bg-chip px-2 py-0.5 text-[11px] font-semibold text-ink-muted">Sin organizar</span>
                     )}
                     {c.files > 0 && (
-                      <span className="rounded-full bg-accent-soft px-2 py-0.5 text-[11px] font-semibold text-accent">{plural(c.files, "file")}</span>
+                      <span className="rounded-full bg-accent-soft px-2 py-0.5 text-[11px] font-semibold text-accent">{plural(c.files, "archivo")}</span>
                     )}
                     {c.flashcards > 0 && (
-                      <span className="rounded-full bg-chip px-2 py-0.5 text-[11px] font-semibold text-ink-muted">{plural(c.flashcards, "card")}</span>
+                      <span className="rounded-full bg-chip px-2 py-0.5 text-[11px] font-semibold text-ink-muted">{plural(c.flashcards, "tarjeta")}</span>
                     )}
                     <span className="ml-auto text-[11px] text-ink-faint">{c.date}</span>
                   </span>
@@ -227,7 +227,7 @@ export function PagesBoard({
                 href={`/pursuits/${pursuitId}/dump/new${col.id ? `?section=${col.id}` : ""}`}
                 className="rounded-xl px-2 py-1.5 text-xs font-semibold text-ink-muted hover:bg-white/60 hover:text-ink"
               >
-                + Page
+                + Página
               </Link>
             </section>
           );
@@ -254,15 +254,15 @@ function UnitPlay({
 }) {
   const href = (mode: string) => `/review?mode=${mode}&pursuit=${pursuitId}&unit=${unitKey}`;
   const games = [
-    { mode: "learn", label: "Learn", icon: QuestionIcon, enabled: stats.cards > 0 },
-    { mode: "flash", label: stats.due > 0 ? `${stats.due} due` : "Cards", icon: CardsIcon, enabled: stats.cards > 0 },
-    { mode: "match", label: "Match", icon: BoltIcon, enabled: stats.cards >= 3 },
+    { mode: "learn", label: "Aprender", icon: QuestionIcon, enabled: stats.cards > 0 },
+    { mode: "flash", label: stats.due > 0 ? `${stats.due} pendientes` : "Tarjetas", icon: CardsIcon, enabled: stats.cards > 0 },
+    { mode: "match", label: "Unir", icon: BoltIcon, enabled: stats.cards >= 3 },
   ];
   const pct = pages ? Math.round((organized / pages) * 100) : 0;
   return (
     <div className="flex flex-col gap-2 px-1.5">
       {pages > 0 && (
-        <div className="flex items-center gap-2" title={`${organized} of ${pages} pages organized`}>
+        <div className="flex items-center gap-2" title={`${organized} de ${pages} páginas organizadas`}>
           <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/70">
             <div className={`h-full rounded-full ${pct === 100 ? "bg-mint" : "bg-tile-sky"}`} style={{ width: `${pct}%` }} />
           </div>
@@ -284,7 +284,7 @@ function UnitPlay({
           ) : (
             <span
               key={g.mode}
-              title="Make flashcards from a page first"
+              title="Crea tarjetas desde una página primero"
               className="flex items-center justify-center gap-1.5 rounded-xl bg-white/50 px-2 py-1.5 text-xs font-semibold text-ink-faint"
             >
               <g.icon size={14} /> {g.label}
@@ -330,7 +330,7 @@ function UnitName({ pursuitId, id, name }: { pursuitId: string; id: string; name
             setEditing(false);
           }
         }}
-        aria-label="Unit name"
+        aria-label="Nombre de la unidad"
         className="min-w-0 flex-1 rounded-lg bg-white px-2 py-0.5 text-sm font-extrabold"
       />
     );
@@ -339,7 +339,7 @@ function UnitName({ pursuitId, id, name }: { pursuitId: string; id: string; name
     <button
       type="button"
       onClick={() => setEditing(true)}
-      title={error ?? "Rename"}
+      title={error ?? "Renombrar"}
       className={`min-w-0 flex-1 truncate rounded-lg px-1 text-left text-sm font-extrabold hover:bg-white/60 ${error ? "text-red-600" : ""}`}
     >
       {value}

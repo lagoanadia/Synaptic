@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { autoTitle } from "@/lib/text";
 import { PageView } from "../../PageView";
 
-const longDate = (d: Date) => d.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+const longDate = (d: Date) => d.toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" });
 
 export default async function DumpPage({ params }: { params: Promise<{ id: string; dumpId: string }> }) {
   const { id, dumpId } = await params;

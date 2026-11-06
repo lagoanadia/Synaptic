@@ -62,7 +62,7 @@ export function PdfSlides({ src }: { src: string }) {
   const total = doc?.numPages ?? 0;
   const go = (d: number) => setPage((p) => Math.min(Math.max(1, p + d), total || 1));
 
-  if (error) return <p className="p-4 text-sm text-ink-muted">Couldn&apos;t open that PDF.</p>;
+  if (error) return <p className="p-4 text-sm text-ink-muted">No he podido abrir ese PDF.</p>;
 
   return (
     <div
@@ -72,16 +72,16 @@ export function PdfSlides({ src }: { src: string }) {
         if (e.key === "ArrowRight") go(1);
         if (e.key === "ArrowLeft") go(-1);
       }}
-      aria-label="Slides"
+      aria-label="Diapositivas"
     >
       <div ref={box} className="flex min-h-0 flex-1 items-center justify-center overflow-hidden bg-[#2a2a2a]">
-        {doc ? <canvas ref={canvas} className="shadow-lg" /> : <span className="text-sm text-white/60">Loading…</span>}
+        {doc ? <canvas ref={canvas} className="shadow-lg" /> : <span className="text-sm text-white/60">Cargando…</span>}
       </div>
       {total > 0 && (
         <div className="flex items-center justify-center gap-3 bg-[#2a2a2a] pb-2 text-sm text-white">
-          <button type="button" onClick={() => go(-1)} disabled={page === 1} className="rounded px-3 py-1 hover:bg-white/10 disabled:opacity-30" aria-label="Previous slide"><ChevronLeft size={18} /></button>
+          <button type="button" onClick={() => go(-1)} disabled={page === 1} className="rounded px-3 py-1 hover:bg-white/10 disabled:opacity-30" aria-label="Diapositiva anterior"><ChevronLeft size={18} /></button>
           <span className="tabular-nums">{page} / {total}</span>
-          <button type="button" onClick={() => go(1)} disabled={page === total} className="rounded px-3 py-1 hover:bg-white/10 disabled:opacity-30" aria-label="Next slide"><ChevronRight size={18} /></button>
+          <button type="button" onClick={() => go(1)} disabled={page === total} className="rounded px-3 py-1 hover:bg-white/10 disabled:opacity-30" aria-label="Diapositiva siguiente"><ChevronRight size={18} /></button>
         </div>
       )}
     </div>

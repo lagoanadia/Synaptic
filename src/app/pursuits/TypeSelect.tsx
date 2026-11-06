@@ -13,7 +13,7 @@ export function TypeSelect({
         name="type"
         list="pursuit-types"
         defaultValue={defaultValue}
-        placeholder="Type (optional)"
+        placeholder="Tipo (opcional)"
         className="rounded-xl border border-border-subtle bg-white px-3.5 py-2.5 text-sm text-ink"
       />
       <datalist id="pursuit-types">

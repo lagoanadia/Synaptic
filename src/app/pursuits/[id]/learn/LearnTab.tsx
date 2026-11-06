@@ -13,7 +13,7 @@ export async function LearnTab({ pursuitId, hasNotes }: { pursuitId: string; has
   return (
     <div className={maps.length ? "grid grid-cols-1 gap-8 xl:grid-cols-[minmax(0,1fr)_460px]" : "mx-auto w-full max-w-2xl"}>
       {maps.length > 0 && (
-      <section className="flex flex-col gap-3" aria-label="Concept maps">
+      <section className="flex flex-col gap-3" aria-label="Mapas de conceptos">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 2xl:grid-cols-3">
           {maps.map((m) => {
             const p = progress(m.concepts.map((c) => c.status as Status));
@@ -38,7 +38,7 @@ export async function LearnTab({ pursuitId, hasNotes }: { pursuitId: string; has
                 </div>
                 <span className="text-xs font-semibold text-ink-muted">
                   {p.mastered + p.understood}/{p.total}
-                  {p.reread > 0 && <span className="text-amber"> · {p.reread} to reread</span>}
+                  {p.reread > 0 && <span className="text-amber"> · {p.reread} por repasar</span>}
                 </span>
               </Link>
             );

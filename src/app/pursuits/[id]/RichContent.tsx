@@ -112,7 +112,7 @@ export function RichContent({
               <img
                 key={i}
                 src={block.url}
-                alt="Attachment"
+                alt="Adjunto"
                 className="max-w-full rounded-md border border-border-subtle"
               />
             );

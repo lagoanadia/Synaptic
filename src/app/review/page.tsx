@@ -31,21 +31,21 @@ export default async function ReviewPage({
       ? { kind: "section", sectionId: params.section }
       : { kind: "all" };
 
-  let scopeLabel = "Everything";
+  let scopeLabel = "Todo";
   let backHref = "/pursuits";
   if (scope.kind === "pursuit") {
     const p = await prisma.pursuit.findFirst({
       where: { id: scope.pursuitId, OR: [{ ownerId: userId }, { members: { some: { userId } } }] },
       select: { title: true },
     });
-    scopeLabel = p?.title ?? "Subject";
+    scopeLabel = p?.title ?? "Asignatura";
     backHref = `/pursuits/${scope.pursuitId}`;
     if (scope.unitId) {
       const u =
         scope.unitId === NO_UNIT
           ? null
           : await prisma.pursuitContentSection.findFirst({ where: { id: scope.unitId, pursuitId: scope.pursuitId }, select: { name: true } });
-      scopeLabel += ` · ${u?.name ?? "No unit"}`;
+      scopeLabel += ` · ${u?.name ?? "Sin unidad"}`;
       backHref = `/pursuits/${scope.pursuitId}?tab=pages`;
     }
   } else if (scope.kind === "section") {
@@ -53,7 +53,7 @@ export default async function ReviewPage({
       scope.sectionId === UNSORTED || scope.sectionId === SHARED
         ? null
         : await prisma.section.findFirst({ where: { id: scope.sectionId, userId }, select: { name: true } });
-    scopeLabel = s?.name ?? (scope.sectionId === SHARED ? "Shared" : "Unsorted");
+    scopeLabel = s?.name ?? (scope.sectionId === SHARED ? "Compartido" : "Sin clasificar");
     backHref = `/pursuits/s/${scope.sectionId}`;
   }
 
@@ -108,7 +108,7 @@ export default async function ReviewPage({
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-6 py-8">
       <header className="flex items-center gap-3">
-        <Link href={backHref} aria-label="Back" className="rounded-full p-2 text-ink-muted hover:bg-chip hover:text-ink">
+        <Link href={backHref} aria-label="Atrás" className="rounded-full p-2 text-ink-muted hover:bg-chip hover:text-ink">
           <ArrowLeft size={18} className="block" />
         </Link>
         <h1 className="text-2xl font-extrabold">{scopeLabel}</h1>

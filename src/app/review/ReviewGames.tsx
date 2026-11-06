@@ -27,7 +27,7 @@ export type Mode = "learn" | "match" | "flash";
 const noop = () => () => {};
 const useMounted = () => useSyncExternalStore(noop, () => true, () => false);
 
-const MODE_LABEL: Record<Mode, string> = { learn: "Learn", match: "Match", flash: "Flashcards" };
+const MODE_LABEL: Record<Mode, string> = { learn: "Aprender", match: "Unir", flash: "Tarjetas" };
 
 export function ReviewGames({
   mode,
@@ -150,11 +150,11 @@ function Learn({ items }: { items: LearnItem[] }) {
     return () => window.removeEventListener("keydown", onKey);
   });
 
-  if (items.length === 0) return <Empty>No flashcards or concepts here yet.</Empty>;
+  if (items.length === 0) return <Empty>Aún no hay tarjetas ni conceptos aquí.</Empty>;
 
   const total = items.length;
   const bar = (
-    <div className="flex h-2.5 overflow-hidden rounded-full bg-chip" aria-label={`${counts.mastered} of ${total} mastered`}>
+    <div className="flex h-2.5 overflow-hidden rounded-full bg-chip" aria-label={`${counts.mastered} de ${total} dominadas`}>
       <span className="bg-mint transition-all" style={{ width: `${(counts.mastered / total) * 100}%` }} />
       <span className="bg-tile-sky transition-all" style={{ width: `${(counts.learning / total) * 100}%` }} />
     </div>
@@ -166,7 +166,7 @@ function Learn({ items }: { items: LearnItem[] }) {
       <Panel>
         {bar}
         <p className="text-4xl font-extrabold">
-          {total - missed.length}/{total} <span className="text-lg font-semibold text-ink-muted">first try</span>
+          {total - missed.length}/{total} <span className="text-lg font-semibold text-ink-muted">a la primera</span>
         </p>
         {missed.length > 0 && (
           <div className="flex flex-col gap-2">
@@ -181,11 +181,11 @@ function Learn({ items }: { items: LearnItem[] }) {
         <div className="flex flex-wrap gap-2">
           {missed.length > 0 && (
             <button type="button" onClick={() => setState(startLearn(missed))} className="rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-white">
-              Practice mistakes
+              Practicar fallos
             </button>
           )}
           <button type="button" onClick={() => setState(startLearn(items))} className="rounded-full bg-chip px-5 py-2.5 text-sm font-semibold">
-            Restart
+            Reiniciar
           </button>
         </div>
       </Panel>
@@ -210,11 +210,11 @@ function Learn({ items }: { items: LearnItem[] }) {
         {(item.hint || item.context) && !result && (
           <details key={item.id} className="group self-start text-sm">
             <summary className="flex cursor-pointer list-none items-center gap-1.5 rounded-full bg-chip px-3 py-1 text-xs font-semibold text-ink-muted select-none hover:text-ink [&::-webkit-details-marker]:hidden">
-              <ChevronRight size={12} className="inline-block transition-transform group-open:rotate-90" /> Hint
+              <ChevronRight size={12} className="inline-block transition-transform group-open:rotate-90" /> Pista
             </summary>
             <div className="mt-2 flex max-w-xl flex-col gap-1 rounded-2xl bg-callout px-4 py-3">
               {item.hint && <p>{item.hint}</p>}
-              {item.context && <p className="text-xs text-ink-muted">From your note “{item.context}”</p>}
+              {item.context && <p className="text-xs text-ink-muted">De tu nota “{item.context}”</p>}
             </div>
           </details>
         )}
@@ -230,15 +230,15 @@ function Learn({ items }: { items: LearnItem[] }) {
         />
         {result && !result.correct && (
           <div className="flex flex-col gap-3 rounded-2xl bg-crimson-soft px-4 py-3">
-            <span className="text-xs font-bold text-crimson">Answer</span>
+            <span className="text-xs font-bold text-crimson">Respuesta</span>
             <span className="text-base font-semibold">{item.answer}</span>
             <div className="flex flex-wrap gap-2">
               <button type="button" autoFocus onClick={() => next(false)} className="rounded-full bg-ink px-5 py-2 text-sm font-semibold text-white">
-                Continue <kbd className="ml-1 text-xs opacity-60">Enter</kbd>
+                Continuar <kbd className="ml-1 text-xs opacity-60">Enter</kbd>
               </button>
               {question.type === "written" && (
                 <button type="button" onClick={() => next(true)} className="rounded-full px-4 py-2 text-sm text-ink-muted hover:bg-white">
-                  I was right
+                  Tenía razón
                 </button>
               )}
             </div>
@@ -310,7 +310,7 @@ function QuestionBody({
               onClick={() => submit(v === question.truth, String(v))}
               className={`rounded-2xl border-2 py-3.5 text-sm font-bold ${tone(v === question.truth, result?.picked === String(v))}`}
             >
-              {v ? "True" : "False"} <kbd className="ml-1 text-xs font-normal text-ink-faint">{v ? "T" : "F"}</kbd>
+              {v ? "Verdadero" : "Falso"} <kbd className="ml-1 text-xs font-normal text-ink-faint">{v ? "V" : "F"}</kbd>
             </button>
           ))}
         </div>
@@ -332,14 +332,14 @@ function QuestionBody({
           value={typed}
           onChange={(e) => setTyped(e.target.value)}
           disabled={!!result}
-          placeholder="Answer"
-          aria-label="Your answer"
+          placeholder="Respuesta"
+          aria-label="Tu respuesta"
           className={`flex-1 rounded-2xl border-2 px-4 py-3 text-base ${result ? (result.correct ? "border-mint" : "border-crimson") : "border-border-subtle"}`}
         />
         {!result && (
           <>
-            <button type="submit" className="rounded-full bg-ink px-5 text-sm font-semibold text-white">Check</button>
-            <button type="button" onClick={() => submit(false)} className="rounded-full px-3 text-sm text-ink-muted hover:bg-chip">Skip</button>
+            <button type="submit" className="rounded-full bg-ink px-5 text-sm font-semibold text-white">Comprobar</button>
+            <button type="button" onClick={() => submit(false)} className="rounded-full px-3 text-sm text-ink-muted hover:bg-chip">Saltar</button>
           </>
         )}
       </form>
@@ -354,13 +354,13 @@ function QuestionBody({
         value={typed}
         onChange={(e) => setTyped(e.target.value)}
         onKeyDown={(e) => e.key === "Enter" && setRevealed(true)}
-        placeholder="Your own words"
-        aria-label="Your answer"
+        placeholder="Con tus palabras"
+        aria-label="Tu respuesta"
         className="rounded-2xl border-2 border-border-subtle px-4 py-3 text-base"
       />
       {!revealed ? (
         <button type="button" onClick={() => setRevealed(true)} className="self-start rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-white">
-          Check
+          Comprobar
         </button>
       ) : (
         !result && (
@@ -368,10 +368,10 @@ function QuestionBody({
             <p className="rounded-2xl bg-tile-blue px-4 py-3 text-base text-white">{item.answer}</p>
             <div className="grid grid-cols-2 gap-2.5">
               <button type="button" onClick={() => submit(true)} className="rounded-2xl border-2 border-mint py-3 text-sm font-bold hover:bg-mint/10">
-                Got it
+                Me la sé
               </button>
               <button type="button" onClick={() => submit(false)} className="rounded-2xl border-2 border-crimson py-3 text-sm font-bold hover:bg-crimson-soft">
-                Missed
+                Fallada
               </button>
             </div>
           </>
@@ -431,7 +431,7 @@ function Match({ items, scopeKey }: { items: LearnItem[]; scopeKey: string }) {
     return () => window.clearInterval(id);
   }, [started, result]);
 
-  if (items.length < 3) return <Empty>Match needs at least 3 short cards.</Empty>;
+  if (items.length < 3) return <Empty>Unir necesita al menos 3 tarjetas cortas.</Empty>;
 
   const elapsed = started === null ? 0 : (now - started) / 1000 + penalty;
 
@@ -469,9 +469,9 @@ function Match({ items, scopeKey }: { items: LearnItem[]; scopeKey: string }) {
     return (
       <Panel>
         <p className="text-4xl font-extrabold">{result.time.toFixed(1)}s</p>
-        <p className="text-sm text-ink-muted">{result.best === result.time ? "New best" : `Best ${result.best.toFixed(1)}s`}</p>
+        <p className="text-sm text-ink-muted">{result.best === result.time ? "Nuevo récord" : `Récord ${result.best.toFixed(1)} s`}</p>
         <button type="button" onClick={() => router.refresh()} className="self-start rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-white">
-          Again
+          Otra vez
         </button>
       </Panel>
     );

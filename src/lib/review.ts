@@ -146,7 +146,7 @@ export function buildConceptQuiz(
     id: c.id,
     pursuitId: c.pursuitId,
     pursuitTitle: c.pursuitTitle,
-    question: `Which concept is this? “${c.summary}”`,
+    question: `¿Qué concepto es este? “${c.summary}”`,
     answer: c.title,
   }));
   return buildQuiz(asCards, count, rand).map((q) => ({ ...q, kind: "concept" as const }));

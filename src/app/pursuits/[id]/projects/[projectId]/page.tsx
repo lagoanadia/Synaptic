@@ -41,7 +41,7 @@ export default async function ProjectPage({
         href={`/pursuits/${pursuitId}?tab=projects`}
         className="text-sm text-ink-muted hover:underline"
       >
-        <ArrowLeft /> Projects
+        <ArrowLeft /> Proyectos
       </Link>
       <ProjectBoard
         pursuitId={pursuitId}

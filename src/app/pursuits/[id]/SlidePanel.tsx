@@ -73,7 +73,7 @@ export function SlidePanel({
   }, [key, deck, width, collapsed]);
 
   function open(d: Deck) {
-    if (!slideSourceFor(d.url)) return setStatus("Use a Google Slides / Drive link, .pptx or .pdf");
+    if (!slideSourceFor(d.url)) return setStatus("Usa un enlace de Google Slides / Drive, un .pptx o un .pdf");
     setDeck(d);
     setPicking(false);
     setCollapsed(false);
@@ -94,7 +94,7 @@ export function SlidePanel({
   }
 
   async function uploadDeck(file: File) {
-    setStatus("Uploading…");
+    setStatus("Subiendo…");
     try {
       const blob = await upload(`slides/${pursuitId}/${file.name}`, file, {
         access: "public",
@@ -104,7 +104,7 @@ export function SlidePanel({
       await saveSlideDeck(pursuitId, file.name, blob.url, file.size, dumpId);
       open({ name: file.name, url: blob.url });
     } catch {
-      setStatus("Couldn't upload that (.pptx or .pdf)");
+      setStatus("No se ha podido subir (.pptx o .pdf)");
     }
   }
 
@@ -127,7 +127,7 @@ export function SlidePanel({
           onClick={startPicking}
           className="flex items-center gap-2 self-start rounded-full bg-chip px-4 py-2 text-sm font-semibold text-ink-muted hover:text-ink"
         >
-          <SlidesIcon /> Slides
+          <SlidesIcon /> Diapositivas
         </button>
         {children}
       </div>
@@ -143,10 +143,10 @@ export function SlidePanel({
       {open_ ? (
         <section
           className="flex flex-col overflow-hidden rounded-2xl border border-border-subtle bg-white lg:sticky lg:top-4 lg:h-[calc(100vh-2rem)]"
-          aria-label="Slides"
+          aria-label="Diapositivas"
         >
           <div className="flex flex-wrap items-center gap-2 border-b border-border-subtle px-3 py-2 text-sm">
-            <span className="min-w-0 flex-1 truncate font-semibold">{deck?.name ?? "Slides"}</span>
+            <span className="min-w-0 flex-1 truncate font-semibold">{deck?.name ?? "Diapositivas"}</span>
             <span className="hidden rounded-full bg-chip p-0.5 text-xs lg:flex">
               {(Object.keys(WIDTHS) as (keyof typeof WIDTHS)[]).map((k) => (
                 <button
@@ -161,11 +161,11 @@ export function SlidePanel({
               ))}
             </span>
             <button type="button" onClick={() => (picking ? setPicking(false) : startPicking())} className="rounded-full px-3 py-1 text-xs text-ink-muted hover:bg-chip">
-              {picking ? "Done" : "Change"}
+              {picking ? "Hecho" : "Cambiar"}
             </button>
             {deck && (
               <button type="button" onClick={() => setCollapsed(true)} className="rounded-full px-3 py-1 text-xs text-ink-muted hover:bg-chip">
-                Hide
+                Ocultar
               </button>
             )}
             <button
@@ -174,7 +174,7 @@ export function SlidePanel({
                 setDeck(null);
                 setPicking(false);
               }}
-              aria-label="Close slides"
+              aria-label="Cerrar diapositivas"
               className="rounded-full px-2 py-1 text-ink-muted hover:bg-chip"
             >
               <XIcon />
@@ -201,7 +201,7 @@ export function SlidePanel({
                       onClick={() => setShowAllUnits((v) => !v)}
                       className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${showAllUnits ? "bg-chip text-ink-muted" : "bg-tile-sky text-white"}`}
                     >
-                      {showAllUnits ? "All" : classroomUnit}
+                      {showAllUnits ? "Todas" : classroomUnit}
                     </button>
                   )}
                   {classroom === null ? (
@@ -230,20 +230,20 @@ export function SlidePanel({
                   }}
                 />
                 <button type="button" onClick={() => fileInput.current?.click()} className="rounded-full bg-ink px-3 py-1.5 text-xs font-semibold text-white">
-                  Upload
+                  Subir
                 </button>
                 <form
                   onSubmit={(e) => {
                     e.preventDefault();
-                    if (link.trim()) open({ name: "Slides", url: link.trim() });
+                    if (link.trim()) open({ name: "Diapositivas", url: link.trim() });
                   }}
                   className="flex min-w-48 flex-1 gap-1.5"
                 >
                   <input
                     value={link}
                     onChange={(e) => setLink(e.target.value)}
-                    placeholder="Google Slides / Drive link"
-                    aria-label="Slides link"
+                    placeholder="Enlace de Google Slides / Drive"
+                    aria-label="Enlace de diapositivas"
                     className="flex-1 rounded-full border border-border-subtle px-3 py-1.5 text-xs"
                   />
                 </form>
@@ -260,7 +260,7 @@ export function SlidePanel({
                 <iframe
                   key={source.src}
                   src={source.src}
-                  title={deck?.name ?? "Slides"}
+                  title={deck?.name ?? "Diapositivas"}
                   className="h-full min-h-[50vh] w-full border-0"
                   allow="fullscreen"
                   referrerPolicy="no-referrer"
@@ -273,7 +273,7 @@ export function SlidePanel({
         <button
           type="button"
           onClick={() => setCollapsed(false)}
-          title="Show slides"
+          title="Mostrar diapositivas"
           className="flex items-center justify-center gap-2 rounded-2xl bg-chip py-3 text-ink-muted hover:text-ink lg:sticky lg:top-4 lg:h-[calc(100vh-2rem)] lg:flex-col"
         >
           <SlidesIcon size={18} />
@@ -283,7 +283,7 @@ export function SlidePanel({
       <div
         role="separator"
         aria-orientation="vertical"
-        aria-label="Drag to resize the slides"
+        aria-label="Arrastra para cambiar el tamaño"
         onPointerDown={(e) => {
           if (!open_) return;
           (e.target as Element).setPointerCapture(e.pointerId);

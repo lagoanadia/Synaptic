@@ -6,16 +6,16 @@ import { prisma } from "@/lib/prisma";
 import { createCheckoutSession, createPortalSession } from "./actions";
 
 const PLAN_COPY = {
-  FREE: { label: "Free", price: "$0" },
+  FREE: { label: "Gratis", price: "$0" },
   PRO: { label: "Student Pro", price: "$6/mo" },
   TEAM: { label: "Team", price: "$10/mo" },
 } as const;
 
 const ERROR_COPY: Record<string, string> = {
-  "not-configured": "Payments aren't set up yet — try again once billing is configured.",
-  "checkout-failed": "Couldn't start checkout right now. Try again in a few minutes.",
-  "no-billing-account": "No billing account yet — subscribe to a plan first.",
-  "portal-failed": "Couldn't open billing management right now. Try again in a few minutes.",
+  "not-configured": "Los pagos aún no están configurados.",
+  "checkout-failed": "No se ha podido iniciar el pago. Inténtalo en unos minutos.",
+  "no-billing-account": "Aún no tienes cuenta de facturación — suscríbete a un plan primero.",
+  "portal-failed": "No se ha podido abrir la facturación. Inténtalo en unos minutos.",
 };
 
 export default async function BillingPage({
@@ -35,37 +35,37 @@ export default async function BillingPage({
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-6 py-12">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Billing</h1>
+        <h1 className="text-2xl font-semibold">Facturación</h1>
         <Link href="/pursuits" className="text-sm text-ink-muted hover:underline">
-          <ArrowLeft /> Back to Pursuits
+          <ArrowLeft /> Volver
         </Link>
       </div>
 
       {success && (
         <p className="rounded-xl bg-forest-soft px-4 py-3 text-sm text-ink">
-          Payment received — this can take a few seconds to show up below if your plan
-          still says Free.
+          Pago recibido — puede tardar unos segundos en aparecer abajo si tu plan
+          sigue diciendo Gratis.
         </p>
       )}
       {canceled && (
         <p className="rounded-xl bg-chip px-4 py-3 text-sm text-ink-muted">
-          Checkout canceled — you weren&apos;t charged.
+          Pago cancelado — no se te ha cobrado.
         </p>
       )}
       {error && (
         <p className="rounded-xl bg-crimson-soft px-4 py-3 text-sm text-ink">
-          {ERROR_COPY[error] ?? "Something went wrong. Try again in a few minutes."}
+          {ERROR_COPY[error] ?? "Algo ha fallado. Inténtalo en unos minutos."}
         </p>
       )}
 
       <div className="flex flex-col gap-2 rounded-2xl border border-border-subtle bg-white p-6">
-        <span className="text-xs font-medium text-ink-muted">Current plan</span>
+        <span className="text-xs font-medium text-ink-muted">Plan actual</span>
         <span className="text-xl font-semibold">
           {current.label} <span className="text-ink-muted">· {current.price}</span>
         </span>
         {user.plan !== "FREE" && user.stripeCurrentPeriodEnd && (
           <span className="text-xs text-ink-faint">
-            Renews {user.stripeCurrentPeriodEnd.toLocaleDateString("en-US", { timeZone: "UTC" })}
+            Se renueva el {user.stripeCurrentPeriodEnd.toLocaleDateString("es-ES", { timeZone: "UTC" })}
           </span>
         )}
         {user.stripeCustomerId && (
@@ -74,7 +74,7 @@ export default async function BillingPage({
               type="submit"
               className="rounded-full border border-border-subtle px-4 py-2 text-sm font-medium hover:bg-chip"
             >
-              Manage billing
+              Gestionar facturación
             </button>
           </form>
         )}
@@ -83,9 +83,9 @@ export default async function BillingPage({
       {user.plan !== "PRO" && (
         <div className="flex items-center justify-between rounded-2xl border border-border-subtle bg-white p-6">
           <div>
-            <p className="font-semibold">Student Pro — $6/mo</p>
+            <p className="font-semibold">Student Pro — 6 $/mes</p>
             <p className="text-sm text-ink-muted">
-              Unlimited flashcards, unlimited Ask AI, unlimited sharing.
+              Tarjetas ilimitadas, preguntas a la IA ilimitadas y compartir sin límite.
             </p>
           </div>
           <form action={createCheckoutSession.bind(null, "PRO")}>
@@ -93,7 +93,7 @@ export default async function BillingPage({
               type="submit"
               className="rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90"
             >
-              Go Pro
+              Hazte Pro
             </button>
           </form>
         </div>
@@ -102,28 +102,28 @@ export default async function BillingPage({
       {user.plan !== "TEAM" && (
         <div className="flex items-center justify-between rounded-2xl border border-border-subtle bg-white p-6">
           <div>
-            <p className="font-semibold">Team — $10/mo</p>
-            <p className="text-sm text-ink-muted">Everything in Pro, for study groups.</p>
+            <p className="font-semibold">Team — 10 $/mes</p>
+            <p className="text-sm text-ink-muted">Todo lo de Pro, para grupos de estudio.</p>
           </div>
           <form action={createCheckoutSession.bind(null, "TEAM")}>
             <button
               type="submit"
               className="rounded-full border border-ink px-5 py-2.5 text-sm font-semibold hover:bg-chip"
             >
-              Go Team
+              Elegir Team
             </button>
           </form>
         </div>
       )}
 
       <p className="text-center text-xs text-ink-faint">
-        Subscribing means you agree to the{" "}
+        Al suscribirte aceptas los{" "}
         <Link href="/terms" className="hover:underline">
-          Terms of Service
+          Términos del servicio
         </Link>{" "}
-        and{" "}
+        y la{" "}
         <Link href="/privacy" className="hover:underline">
-          Privacy Policy
+          Política de privacidad
         </Link>
         .
       </p>

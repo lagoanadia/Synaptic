@@ -27,7 +27,7 @@ export async function pdfToImagePages(file: File): Promise<Blob[]> {
     canvas.width = viewport.width;
     canvas.height = viewport.height;
     const context = canvas.getContext("2d");
-    if (!context) throw new Error("Canvas not supported in this browser");
+    if (!context) throw new Error("Este navegador no soporta canvas");
 
     await page.render({ canvasContext: context, viewport }).promise;
 

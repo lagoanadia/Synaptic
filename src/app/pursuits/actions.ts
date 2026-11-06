@@ -5,12 +5,11 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { upsertSection } from "@/lib/sections";
-import { isLocale } from "@/lib/i18n";
 
 export async function createPursuit(formData: FormData) {
   const session = await auth();
   if (!session?.user?.id) {
-    throw new Error("Not signed in");
+    throw new Error("No has iniciado sesión");
   }
 
   const title = formData.get("title");
@@ -18,7 +17,7 @@ export async function createPursuit(formData: FormData) {
   const sectionName = formData.get("section");
 
   if (typeof title !== "string" || title.trim() === "") {
-    throw new Error("Title is required");
+    throw new Error("Falta el título");
   }
 
   // Sections are free-typed and stored per user, same as PursuitTag — no
@@ -44,7 +43,7 @@ export async function createPursuit(formData: FormData) {
 export async function deleteSection(sectionId: string) {
   const session = await auth();
   if (!session?.user?.id) {
-    throw new Error("Not signed in");
+    throw new Error("No has iniciado sesión");
   }
 
   // Only this user's section; its subjects become unsectioned (ON DELETE SET NULL).
@@ -60,17 +59,17 @@ export async function deleteSection(sectionId: string) {
 export async function deletePursuit(pursuitId: string) {
   const session = await auth();
   if (!session?.user?.id) {
-    throw new Error("Not signed in");
+    throw new Error("No has iniciado sesión");
   }
 
   const pursuit = await prisma.pursuit.findUnique({
     where: { id: pursuitId },
   });
   if (!pursuit) {
-    throw new Error("Pursuit not found");
+    throw new Error("Asignatura no encontrada");
   }
   if (pursuit.ownerId !== session.user.id) {
-    throw new Error("Only the owner can delete this pursuit");
+    throw new Error("Solo la propietaria puede eliminar esta asignatura");
   }
 
   // Children first: the foreign keys to Pursuit don't cascade.
@@ -96,7 +95,7 @@ export async function deletePursuit(pursuitId: string) {
 // screen. Ids that aren't this user's are ignored.
 export async function reorderSections(orderedIds: string[]) {
   const session = await auth();
-  if (!session?.user?.id) throw new Error("Not signed in");
+  if (!session?.user?.id) throw new Error("No has iniciado sesión");
   const mine = await prisma.section.findMany({ where: { userId: session.user.id }, select: { id: true } });
   const owned = new Set(mine.map((s) => s.id));
   const ids = orderedIds.filter((id) => owned.has(id));
@@ -114,7 +113,7 @@ export type PushSubscriptionInput = {
 // duplicate row for the same browser.
 export async function subscribeToPush(subscription: PushSubscriptionInput) {
   const session = await auth();
-  if (!session?.user?.id) throw new Error("Not signed in");
+  if (!session?.user?.id) throw new Error("No has iniciado sesión");
 
   await prisma.pushSubscription.upsert({
     where: { endpoint: subscription.endpoint },
@@ -134,20 +133,10 @@ export async function subscribeToPush(subscription: PushSubscriptionInput) {
 
 export async function unsubscribeFromPush(endpoint: string) {
   const session = await auth();
-  if (!session?.user?.id) throw new Error("Not signed in");
+  if (!session?.user?.id) throw new Error("No has iniciado sesión");
   // deleteMany, not delete, scoped to userId so this can't be used to
   // drop another user's subscription by passing their endpoint.
   await prisma.pushSubscription.deleteMany({ where: { endpoint, userId: session.user.id } });
-}
-
-// The language switch in ProfileMenu. Stored on the user so it follows
-// them across devices.
-export async function setLocale(locale: string) {
-  const session = await auth();
-  if (!session?.user?.id) return;
-  if (!isLocale(locale)) return;
-  await prisma.user.update({ where: { id: session.user.id }, data: { locale } });
-  revalidatePath("/pursuits", "layout");
 }
 
 // The round "+" on the home screen. Returns { error } instead of throwing
@@ -155,11 +144,11 @@ export async function setLocale(locale: string) {
 export async function createSection(name: string): Promise<{ error: string | null; id?: string }> {
   const session = await auth();
   if (!session?.user?.id) {
-    return { error: "Not signed in" };
+    return { error: "No has iniciado sesión" };
   }
   const trimmed = name.trim();
-  if (trimmed === "") return { error: "Give it a name" };
-  if (trimmed.length > 40) return { error: "Keep it under 40 characters" };
+  if (trimmed === "") return { error: "Ponle un nombre" };
+  if (trimmed.length > 40) return { error: "Máximo 40 caracteres" };
 
   const section = await upsertSection(session.user.id, trimmed);
   revalidatePath("/pursuits", "layout");

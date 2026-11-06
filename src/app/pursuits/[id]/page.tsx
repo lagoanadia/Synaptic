@@ -27,9 +27,9 @@ import { LearnTab } from "./learn/LearnTab";
 import { UNSORTED, SHARED } from "@/lib/reviewData";
 
 const CLASSROOM_ERROR_COPY: Record<string, string> = {
-  denied: "Google Classroom connection canceled.",
-  "connect-failed": "Couldn't connect to Google Classroom. Try again.",
-  "no-refresh-token": "Google didn't grant lasting access — disconnect any prior access at myaccount.google.com/permissions and try again.",
+  denied: "Conexión con Google Classroom cancelada.",
+  "connect-failed": "No se ha podido conectar con Google Classroom. Inténtalo de nuevo.",
+  "no-refresh-token": "Google no ha dado acceso permanente — quita el acceso anterior en myaccount.google.com/permissions e inténtalo de nuevo.",
 };
 
 export default async function PursuitPage({
@@ -155,7 +155,7 @@ export default async function PursuitPage({
       ? `/pursuits/s/${SHARED}`
       : `/pursuits/s/${pursuit.section?.id ?? UNSORTED}`;
   const backLabel =
-    pursuit.owner.id !== session.user.id ? "Shared" : (pursuit.section?.name ?? "Unsorted");
+    pursuit.owner.id !== session.user.id ? "Compartido" : (pursuit.section?.name ?? "Sin clasificar");
 
   // One card per page: the raw dump plus the note organized from it (a
   // note made from several dumps stays with the first). Notes whose
@@ -166,7 +166,7 @@ export default async function PursuitPage({
     if (first && !noteForDump.has(first.id)) noteForDump.set(first.id, n);
   }
   const filesFor = (dumpId: string) => pursuit.attachments.filter((a) => a.dumpId === dumpId).length;
-  const shortDate = (d: Date) => d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  const shortDate = (d: Date) => d.toLocaleDateString("es-ES", { day: "numeric", month: "short" });
   const pageCards: PageCard[] = [
     ...pursuit.brainDumps.map((d) => {
       const note = noteForDump.get(d.id);
@@ -216,7 +216,7 @@ export default async function PursuitPage({
             href={`/api/pursuits/${pursuit.id}/export`}
             className="text-sm text-ink-muted hover:underline"
           >
-            <ArrowDown /> Export
+            <ArrowDown /> Exportar
           </a>
           {pursuit.owner.id !== session.user.id && (
             <LeaveButton pursuitId={pursuit.id} />
@@ -234,7 +234,7 @@ export default async function PursuitPage({
             folded away so the page opens on the content itself. */}
         <details className="group text-sm">
           <summary className="cursor-pointer text-xs text-ink-faint select-none hover:text-ink">
-            {[pursuit.type, pursuit.status.toLowerCase(), pursuit.members.length > 0 ? `shared with ${pursuit.members.length}` : null, pursuit.classroomEnabled && pursuit.classroomCourseName ? `Classroom: ${pursuit.classroomCourseName}` : null]
+            {[pursuit.type, pursuit.status.toLowerCase(), pursuit.members.length > 0 ? `compartida con ${pursuit.members.length}` : null, pursuit.classroomEnabled && pursuit.classroomCourseName ? `Classroom: ${pursuit.classroomCourseName}` : null]
               .filter(Boolean)
               .join(" · ")}{" "}
             · details
@@ -266,7 +266,7 @@ export default async function PursuitPage({
               <TagForm pursuitId={pursuit.id} />
             </div>
             <div className="flex flex-wrap items-center gap-2 pt-1">
-              <span className="text-xs text-ink-faint">Shared with</span>
+              <span className="text-xs text-ink-faint">Compartido con</span>
               <span className="text-xs text-ink-muted">
                 {pursuit.owner.name ?? pursuit.owner.email} (owner)
               </span>
@@ -292,12 +292,12 @@ export default async function PursuitPage({
             <div className="flex flex-col gap-2 pt-2">
             {classroomConnected && (
               <p className="rounded-xl bg-forest-soft px-4 py-3 text-sm text-ink">
-                Connected to Google Classroom.
+                Conectado a Google Classroom.
               </p>
             )}
             {classroomError && (
               <p className="rounded-xl bg-crimson-soft px-4 py-3 text-sm text-ink">
-                {CLASSROOM_ERROR_COPY[classroomError] ?? "Something went wrong. Try again."}
+                {CLASSROOM_ERROR_COPY[classroomError] ?? "Algo ha fallado. Inténtalo de nuevo."}
               </p>
             )}
             {pursuit.classroomEnabled ? (
@@ -315,7 +315,7 @@ export default async function PursuitPage({
                     type="submit"
                     className="self-start text-xs text-ink-faint hover:text-red-500"
                   >
-                    Turn off Google Classroom for this Pursuit
+                    Desactivar Google Classroom en esta asignatura
                   </button>
                 </form>
               </div>
@@ -325,7 +325,7 @@ export default async function PursuitPage({
                   type="submit"
                   className="self-start rounded-full border border-border-subtle bg-white px-4 py-2 text-sm text-ink-muted transition-colors hover:border-ink hover:text-ink"
                 >
-                  + This is a school subject — enable Google Classroom
+                  + Es una asignatura — activar Google Classroom
                 </button>
               </form>
             )}
@@ -348,15 +348,15 @@ export default async function PursuitPage({
         hasCourse={pursuit.classroomEnabled && !!pursuit.classroomCourseId}
       />
 
-      <nav className="flex gap-7 overflow-x-auto border-b border-border-subtle" aria-label="Subject">
+      <nav className="flex gap-7 overflow-x-auto border-b border-border-subtle" aria-label="Asignatura">
         {(
           [
-            ["pages", "Pages"],
-            ["learn", "Learn"],
-            ["cards", "Cards"],
-            ["projects", "Projects"],
-            ["ask", "Ask"],
-            ["timeline", "Timeline"],
+            ["pages", "Páginas"],
+            ["learn", "Aprender"],
+            ["cards", "Tarjetas"],
+            ["projects", "Proyectos"],
+            ["ask", "Preguntar"],
+            ["timeline", "Historial"],
           ] as const
         ).map(([key, label]) => (
           <Link

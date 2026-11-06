@@ -96,10 +96,10 @@ Make 6 flashcards. Only state things that are true.`,
   if (!dump) {
     // AI unreachable: still personal, just not written for you.
     return {
-      dump: `${topic}\n- What I already know:\n- What confuses me:\n- Questions for class:`,
+      dump: `${topic}\n- Lo que ya sé:\n- Lo que no entiendo:\n- Preguntas para clase:`,
       note: null,
       flashcards: [],
-      tasks: [`Write down 3 things you already know about ${topic}`],
+      tasks: [`Escribe 3 cosas que ya sepas sobre ${topic}`],
     };
   }
   return {
@@ -131,7 +131,7 @@ export async function buildStarterSpace(userId: string, plan: StarterPlan): Prom
           title: item,
           ownerId: userId,
           sectionId: section.id,
-          statusNote: isLearning ? `Learning this week: ${plan.learning!.topic}` : null,
+          statusNote: isLearning ? `Aprendiendo esta semana: ${plan.learning!.topic}` : null,
         },
       });
       if (isLearning) landingId = pursuit.id;
@@ -166,7 +166,7 @@ export async function buildStarterSpace(userId: string, plan: StarterPlan): Prom
       await prisma.project.create({
         data: {
           pursuitId: landingId,
-          title: `Practice: ${plan.learning.topic}`.slice(0, 120),
+          title: `Práctica: ${plan.learning.topic}`.slice(0, 120),
           dueDate: new Date(Date.now() + 7 * 86400000),
           cards: { create: content.tasks.map((title, order) => ({ title, order })) },
         },

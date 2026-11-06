@@ -20,7 +20,7 @@ export function CopyButton({ text }: { text: string }) {
       }}
       className="shrink-0 rounded px-1.5 py-0.5 text-xs text-white/60 transition-colors hover:bg-white/10 hover:text-white"
     >
-      {copied ? <>Copied <CheckIcon size={12} /></> : "Copy"}
+      {copied ? <>Copiado <CheckIcon size={12} /></> : "Copiar"}
     </button>
   );
 }

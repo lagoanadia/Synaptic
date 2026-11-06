@@ -42,7 +42,7 @@ export default async function PrintPage({
         <h1 className="text-2xl font-bold">{note.pursuit.title}</h1>
         <div className="print-block flex flex-col gap-2">
           <span className="text-xs text-ink-faint">
-            {note.createdAt.toLocaleDateString("en-US", { timeZone: "UTC" })}
+            {note.createdAt.toLocaleDateString("es-ES", { timeZone: "UTC" })}
             {note.tags.length > 0 && ` — ${note.tags.map((t) => t.name).join(", ")}`}
           </span>
           <RichContent content={note.content} />
@@ -63,7 +63,7 @@ export default async function PrintPage({
         <h1 className="text-2xl font-bold">{dump.pursuit.title}</h1>
         <div className="print-block flex flex-col gap-2">
           <span className="text-xs text-ink-faint">
-            {dump.createdAt.toLocaleDateString("en-US", { timeZone: "UTC" })}
+            {dump.createdAt.toLocaleDateString("es-ES", { timeZone: "UTC" })}
           </span>
           <RichContent content={dump.content ?? ""} />
         </div>
@@ -91,9 +91,9 @@ export default async function PrintPage({
       <h1 className="text-2xl font-bold">{pursuit.title}</h1>
 
       <section className="flex flex-col gap-4">
-        <h2 className="text-lg font-semibold">Organized notes</h2>
+        <h2 className="text-lg font-semibold">Notas organizadas</h2>
         {pursuit.notes.length === 0 ? (
-          <p className="text-sm text-ink-muted">No organized notes yet.</p>
+          <p className="text-sm text-ink-muted">Aún no hay notas organizadas.</p>
         ) : (
           pursuit.notes.map((note) => (
             <div
@@ -101,7 +101,7 @@ export default async function PrintPage({
               className="print-block flex flex-col gap-2 border-b border-border-subtle pb-4"
             >
               <span className="text-xs text-ink-faint">
-                {note.createdAt.toLocaleDateString("en-US", { timeZone: "UTC" })}
+                {note.createdAt.toLocaleDateString("es-ES", { timeZone: "UTC" })}
                 {note.tags.length > 0 &&
                   ` — ${note.tags.map((t) => t.name).join(", ")}`}
               </span>
@@ -112,9 +112,9 @@ export default async function PrintPage({
       </section>
 
       <section className="flex flex-col gap-4">
-        <h2 className="text-lg font-semibold">Brain dumps</h2>
+        <h2 className="text-lg font-semibold">Notas en bruto</h2>
         {pursuit.brainDumps.length === 0 ? (
-          <p className="text-sm text-ink-muted">No brain dumps yet.</p>
+          <p className="text-sm text-ink-muted">Aún no hay notas en bruto.</p>
         ) : (
           pursuit.brainDumps.map((dump) => (
             <div
@@ -122,7 +122,7 @@ export default async function PrintPage({
               className="print-block flex flex-col gap-2 border-b border-border-subtle pb-4"
             >
               <span className="text-xs text-ink-faint">
-                {dump.createdAt.toLocaleDateString("en-US", { timeZone: "UTC" })}
+                {dump.createdAt.toLocaleDateString("es-ES", { timeZone: "UTC" })}
               </span>
               <RichContent content={dump.content ?? ""} />
             </div>
@@ -149,7 +149,7 @@ function PrintShell({
           href={`/pursuits/${pursuitId}`}
           className="text-sm text-ink-muted hover:underline"
         >
-          <ArrowLeft /> Back to Pursuit
+          <ArrowLeft /> Volver a la asignatura
         </Link>
         <PrintButton />
       </div>

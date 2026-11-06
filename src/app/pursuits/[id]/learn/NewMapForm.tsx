@@ -12,12 +12,13 @@ type Kind = "text" | "pdf" | "pptx" | "notes" | "repo";
 const KINDS: { kind: Kind; label: string }[] = [
   { kind: "pptx", label: "PowerPoint" },
   { kind: "pdf", label: "PDF" },
-  { kind: "text", label: "Paste" },
-  { kind: "notes", label: "My notes" },
+  { kind: "text", label: "Pegar" },
+  { kind: "notes", label: "Mis notas" },
   { kind: "repo", label: "GitHub" },
 ];
 
-const LANGUAGES = ["English", "Español", "Deutsch", "Français"];
+const LANGUAGES = ["Español", "English", "Deutsch", "Français"];
+const LANGUAGE_NAME: Record<string, string> = { Español: "Español", English: "Inglés", Deutsch: "Alemán", Français: "Francés" };
 
 export function NewMapForm({ pursuitId, hasNotes }: { pursuitId: string; hasNotes: boolean }) {
   const router = useRouter();
@@ -25,7 +26,7 @@ export function NewMapForm({ pursuitId, hasNotes }: { pursuitId: string; hasNote
   const [text, setText] = useState("");
   const [ref, setRef] = useState("");
   const [file, setFile] = useState<File | null>(null);
-  const [language, setLanguage] = useState("English");
+  const [language, setLanguage] = useState("Español");
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -41,16 +42,16 @@ export function NewMapForm({ pursuitId, hasNotes }: { pursuitId: string; hasNote
     startTransition(async () => {
       let body = text;
       if (kind === "pdf" && file) {
-        setStatus("Reading the PDF…");
+        setStatus("Leyendo el PDF…");
         try {
           body = await pdfToText(file);
         } catch {
-          setError("Couldn't read that PDF");
+          setError("No he podido leer ese PDF");
           setStatus(null);
           return;
         }
         if (body.replace(/\[p\d+\]/g, "").trim().length < 40) {
-          setError("That PDF has no selectable text (it's probably scanned).");
+          setError("Ese PDF no tiene texto seleccionable (probablemente está escaneado).");
           setStatus(null);
           return;
         }
@@ -59,12 +60,12 @@ export function NewMapForm({ pursuitId, hasNotes }: { pursuitId: string; hasNote
         try {
           body = slidesToText(readPptx(new Uint8Array(await file.arrayBuffer())));
         } catch {
-          setError("Couldn't read that file — it needs to be a .pptx");
+          setError("No he podido leer ese archivo — tiene que ser un .pptx");
           setStatus(null);
           return;
         }
       }
-      setStatus(kind === "repo" ? "Reading the repo and mapping it…" : "Breaking it into concepts…");
+      setStatus(kind === "repo" ? "Leyendo el repositorio y creando el mapa…" : "Dividiéndolo en conceptos…");
       const result = await createConceptMap(pursuitId, {
         kind,
         text: body,
@@ -82,7 +83,7 @@ export function NewMapForm({ pursuitId, hasNotes }: { pursuitId: string; hasNote
 
   return (
     <div className="flex flex-col gap-4 rounded-3xl bg-white p-6 shadow-[0_1px_2px_rgba(13,13,13,0.06)]">
-      <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Source">
+      <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Fuente">
         {KINDS.map((k) => {
           const disabled = k.kind === "notes" && !hasNotes;
           return (
@@ -92,7 +93,7 @@ export function NewMapForm({ pursuitId, hasNotes }: { pursuitId: string; hasNote
               role="radio"
               aria-checked={kind === k.kind}
               disabled={disabled}
-              title={disabled ? "No organized notes in this subject yet" : undefined}
+              title={disabled ? "Aún no hay notas organizadas en esta asignatura" : undefined}
               onClick={() => setKind(k.kind)}
               className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors disabled:opacity-40 ${
                 kind === k.kind ? "bg-ink text-white" : "bg-chip text-ink-muted hover:text-ink"
@@ -109,8 +110,8 @@ export function NewMapForm({ pursuitId, hasNotes }: { pursuitId: string; hasNote
           value={text}
           onChange={(e) => setText(e.target.value)}
           rows={8}
-          placeholder="Paste text, code or a long AI answer…"
-          aria-label="Material to break down"
+          placeholder="Pega texto, código o una respuesta larga de una IA…"
+          aria-label="Material para dividir"
           className="rounded-2xl border border-border-subtle px-4 py-3 font-mono text-xs"
         />
       )}
@@ -120,7 +121,7 @@ export function NewMapForm({ pursuitId, hasNotes }: { pursuitId: string; hasNote
           type="file"
           accept={kind === "pdf" ? "application/pdf" : ".pptx"}
           onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-          aria-label={kind === "pdf" ? "PDF file" : "PowerPoint file"}
+          aria-label={kind === "pdf" ? "Archivo PDF" : "Archivo PowerPoint"}
           className="rounded-2xl border border-dashed border-border-subtle px-4 py-6 text-sm"
         />
       )}
@@ -128,22 +129,22 @@ export function NewMapForm({ pursuitId, hasNotes }: { pursuitId: string; hasNote
         <input
           value={ref}
           onChange={(e) => setRef(e.target.value)}
-          placeholder="github.com/owner/repo (public)"
-          aria-label="GitHub repository"
+          placeholder="github.com/usuario/repo (público)"
+          aria-label="Repositorio de GitHub"
           className="rounded-2xl border border-border-subtle px-4 py-3 text-sm"
         />
       )}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <label className="flex items-center gap-2 text-sm text-ink-muted">
-          Explain in
+          Explicar en
           <select
             value={language}
             onChange={(e) => setLanguage(e.target.value)}
             className="rounded-full border border-border-subtle bg-white px-3 py-1.5 text-sm text-ink"
           >
             {LANGUAGES.map((l) => (
-              <option key={l}>{l}</option>
+              <option key={l} value={l}>{LANGUAGE_NAME[l]}</option>
             ))}
           </select>
         </label>
@@ -153,7 +154,7 @@ export function NewMapForm({ pursuitId, hasNotes }: { pursuitId: string; hasNote
           disabled={!ready || isPending}
           className="rounded-full bg-ink px-6 py-3 text-sm font-bold text-white transition-transform hover:-translate-y-0.5 disabled:opacity-40 disabled:hover:translate-y-0"
         >
-          {isPending ? (status ?? "Working…") : <>Map it <ArrowRight /></>}
+          {isPending ? (status ?? "Trabajando…") : <>Crear mapa <ArrowRight /></>}
         </button>
       </div>
       {error && <p className="text-sm text-red-500">{error}</p>}

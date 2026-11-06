@@ -39,11 +39,11 @@ export type ExplorerConcept = {
 export type ExplorerLink = { fromId: string; toId: string; label: string | null };
 
 export const STATUS_STYLE: Record<Status, { label: string; dot: string; pill: string }> = {
-  NEW: { label: "New", dot: "bg-white border-2 border-ink-faint", pill: "bg-chip text-ink-muted" },
-  SEEN: { label: "Seen", dot: "bg-ink-faint", pill: "bg-chip text-ink" },
-  REREAD: { label: "Reread", dot: "bg-amber", pill: "bg-amber text-white" },
-  UNDERSTOOD: { label: "Understood", dot: "bg-tile-sky", pill: "bg-tile-sky text-white" },
-  MASTERED: { label: "Mastered", dot: "bg-tile-deep", pill: "bg-tile-deep text-white" },
+  NEW: { label: "Nuevo", dot: "bg-white border-2 border-ink-faint", pill: "bg-chip text-ink-muted" },
+  SEEN: { label: "Visto", dot: "bg-ink-faint", pill: "bg-chip text-ink" },
+  REREAD: { label: "Repasar", dot: "bg-amber", pill: "bg-amber text-white" },
+  UNDERSTOOD: { label: "Entendido", dot: "bg-tile-sky", pill: "bg-tile-sky text-white" },
+  MASTERED: { label: "Dominado", dot: "bg-tile-deep", pill: "bg-tile-deep text-white" },
 };
 
 const EXT_LANG: Record<string, string> = { ts: "ts", tsx: "ts", js: "js", jsx: "js", mjs: "js", py: "py", java: "java", sql: "sql" };
@@ -136,7 +136,7 @@ export function ConceptExplorer({
       try {
         await fn();
       } catch {
-        setError("Something went wrong — try again");
+        setError("Algo ha fallado — inténtalo de nuevo");
       }
     });
   }
@@ -218,8 +218,8 @@ export function ConceptExplorer({
               type="button"
               onClick={togglePath}
               aria-pressed={pathOpen}
-              title={pathOpen ? "Hide path" : "Show path"}
-              aria-label={pathOpen ? "Hide path" : "Show path"}
+              title={pathOpen ? "Ocultar ruta" : "Mostrar ruta"}
+              aria-label={pathOpen ? "Ocultar ruta" : "Mostrar ruta"}
               className="hidden shrink-0 rounded-full bg-chip p-1.5 text-ink-muted hover:text-ink lg:block"
             >
               {pathOpen ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
@@ -228,14 +228,14 @@ export function ConceptExplorer({
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex w-48 flex-col gap-1" title={`${stats.mastered} mastered · ${stats.understood} understood · ${stats.reread} to reread`}>
+          <div className="flex w-48 flex-col gap-1" title={`${stats.mastered} dominados · ${stats.understood} entendidos · ${stats.reread} por repasar`}>
             <div className="flex h-2 overflow-hidden rounded-full bg-chip" aria-hidden>
               <span className="bg-tile-deep" style={{ width: pct(stats.mastered) }} />
               <span className="bg-tile-sky" style={{ width: pct(stats.understood) }} />
               <span className="bg-amber" style={{ width: pct(stats.reread) }} />
             </div>
             <span className="text-xs text-ink-muted">
-              {stats.mastered + stats.understood}/{stats.total} understood · {stats.reread} reread
+              {stats.mastered + stats.understood}/{stats.total} entendidos · {stats.reread} por repasar
             </span>
           </div>
           <button
@@ -244,7 +244,7 @@ export function ConceptExplorer({
             aria-pressed={weakOnly}
             className={`rounded-full px-3 py-1.5 text-xs font-semibold ${weakOnly ? "bg-amber text-white" : "bg-chip text-ink-muted hover:text-ink"}`}
           >
-            Weak spots
+            Puntos débiles
           </button>
           <button
             type="button"
@@ -252,7 +252,7 @@ export function ConceptExplorer({
             aria-pressed={showGraph}
             className={`rounded-full px-3 py-1.5 text-xs font-semibold ${showGraph ? "bg-ink text-white" : "bg-chip text-ink-muted hover:text-ink"}`}
           >
-            Map <kbd className="ml-1 opacity-60">g</kbd>
+            Mapa <kbd className="ml-1 opacity-60">g</kbd>
           </button>
         </div>
       </header>
@@ -309,7 +309,7 @@ export function ConceptExplorer({
             onDeleted={() => go(upNext ?? nextInOrder(concepts, currentId))}
           />
         ) : (
-          <p className="rounded-3xl bg-white p-10 text-center text-sm text-ink-muted">This map is empty.</p>
+          <p className="rounded-3xl bg-white p-10 text-center text-sm text-ink-muted">Este mapa está vacío.</p>
         )}
       </div>
     </div>
@@ -374,7 +374,7 @@ function PathList({
               <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${STATUS_STYLE[c.status].dot}`} title={STATUS_STYLE[c.status].label} />
               <span className="min-w-0 flex-1 truncate">{c.title}</span>
               {c.id === nextUpId && (
-                <span className="shrink-0 rounded-full bg-tile-aqua px-1.5 py-0.5 text-[10px] font-bold text-white">next</span>
+                <span className="shrink-0 rounded-full bg-tile-aqua px-1.5 py-0.5 text-[10px] font-bold text-white">siguiente</span>
               )}
             </button>
           )}
@@ -385,8 +385,8 @@ function PathList({
   }
 
   return (
-    <aside className="flex flex-col gap-2 self-start lg:sticky lg:top-6" aria-label="Learning path">
-      <span className="px-3 text-xs font-bold text-ink-muted uppercase">Path</span>
+    <aside className="flex flex-col gap-2 self-start lg:sticky lg:top-6" aria-label="Ruta de aprendizaje">
+      <span className="px-3 text-xs font-bold text-ink-muted uppercase">Ruta</span>
       <ul className="flex max-h-[70vh] flex-col overflow-y-auto">{render(null, 0)}</ul>
       <form
         onSubmit={(e) => {
@@ -399,8 +399,8 @@ function PathList({
         <input
           value={adding}
           onChange={(e) => setAdding(e.target.value)}
-          placeholder="+ Add a concept"
-          aria-label="Add a concept"
+          placeholder="+ Añadir un concepto"
+          aria-label="Añadir un concepto"
           className="w-full rounded-xl bg-transparent px-2 py-2 text-sm placeholder:text-ink-faint focus:bg-white"
         />
       </form>
@@ -475,7 +475,7 @@ function ConceptCard({
     <article className="flex flex-col gap-6">
       <div className="flex flex-col gap-5 rounded-3xl bg-white p-6 shadow-[0_1px_2px_rgba(13,13,13,0.06)] sm:p-8">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <nav className="flex flex-wrap items-center gap-1 text-xs text-ink-muted" aria-label="Inside">
+          <nav className="flex flex-wrap items-center gap-1 text-xs text-ink-muted" aria-label="Dentro de">
             {parentChain.map((p) => (
               <span key={p.id} className="flex items-center gap-1">
                 <button type="button" onClick={() => onGo(p.id)} className="hover:text-ink hover:underline">
@@ -488,7 +488,7 @@ function ConceptCard({
           <select
             value={concept.status}
             onChange={(e) => onStatus(e.target.value as Status)}
-            aria-label="Status"
+            aria-label="Estado"
             className={`rounded-full border-0 px-3 py-1 text-xs font-bold ${STATUS_STYLE[concept.status].pill}`}
           >
             {(Object.keys(STATUS_STYLE) as Status[]).map((s) => (
@@ -501,9 +501,9 @@ function ConceptCard({
 
         {editing ? (
           <div className="flex flex-col gap-2">
-            <input value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} aria-label="Title" className="rounded-xl border border-border-subtle px-3 py-2 text-xl font-bold" />
-            <input value={draft.summary} onChange={(e) => setDraft({ ...draft, summary: e.target.value })} placeholder="One-sentence summary" aria-label="Summary" className="rounded-xl border border-border-subtle px-3 py-2 text-sm" />
-            <textarea value={draft.explanation} onChange={(e) => setDraft({ ...draft, explanation: e.target.value })} rows={6} placeholder="Explanation" aria-label="Explanation" className="rounded-xl border border-border-subtle px-3 py-2 text-sm" />
+            <input value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} aria-label="Título" className="rounded-xl border border-border-subtle px-3 py-2 text-xl font-bold" />
+            <input value={draft.summary} onChange={(e) => setDraft({ ...draft, summary: e.target.value })} placeholder="Resumen en una frase" aria-label="Resumen" className="rounded-xl border border-border-subtle px-3 py-2 text-sm" />
+            <textarea value={draft.explanation} onChange={(e) => setDraft({ ...draft, explanation: e.target.value })} rows={6} placeholder="Explicación" aria-label="Explicación" className="rounded-xl border border-border-subtle px-3 py-2 text-sm" />
             <div className="flex gap-2">
               <button
                 type="button"
@@ -516,10 +516,10 @@ function ConceptCard({
                 }
                 className="rounded-full bg-ink px-4 py-2 text-xs font-semibold text-white"
               >
-                Save
+                Guardar
               </button>
               <button type="button" onClick={() => setEditing(false)} className="rounded-full px-4 py-2 text-xs text-ink-muted hover:bg-chip">
-                Cancel
+                Cancelar
               </button>
             </div>
           </div>
@@ -534,7 +534,7 @@ function ConceptCard({
         {concept.excerpt && (
           <div className="flex flex-col gap-1.5">
             <span className="text-xs font-semibold text-ink-muted">
-              From the source{concept.excerptFrom ? ` · ${concept.excerptFrom}` : ""}
+              De la fuente{concept.excerptFrom ? ` · ${concept.excerptFrom}` : ""}
             </span>
             <div className="px-5">
               {langFor(concept.excerptFrom) || looksLikeCode(concept.excerpt) ? (
@@ -551,26 +551,26 @@ function ConceptCard({
         {/* What to do next — every option is one tap. */}
         <div className="flex flex-wrap gap-2">
           <ActionButton onClick={actions.deeper} disabled={isPending} primary kbd="d">
-            {children.length > 0 ? `Go deeper (${children.length})` : isPending ? "Splitting…" : "Go deeper"}
+            {children.length > 0 ? `Profundizar (${children.length})` : isPending ? "Dividiendo…" : "Profundizar"}
           </ActionButton>
           <ActionButton onClick={actions.reread} kbd="r">
-            I don&apos;t know
+            No lo sé
           </ActionButton>
         </div>
         {(error || localError) && <p className="text-sm text-red-500">{error ?? localError}</p>}
 
         {needs.length > 0 && (
-          <Chips title="Builds on" items={needs.map((l) => ({ id: l.fromId, title: byId.get(l.fromId)!.title, status: byId.get(l.fromId)!.status, label: l.label }))} onGo={onGo} onRemove={(id) => run(async () => { await unlinkConcepts(id, concept.id); refresh(); })} />
+          <Chips title="Se basa en" items={needs.map((l) => ({ id: l.fromId, title: byId.get(l.fromId)!.title, status: byId.get(l.fromId)!.status, label: l.label }))} onGo={onGo} onRemove={(id) => run(async () => { await unlinkConcepts(id, concept.id); refresh(); })} />
         )}
         {leadsTo.length > 0 && (
-          <Chips title="Leads to" items={leadsTo.map((l) => ({ id: l.toId, title: byId.get(l.toId)!.title, status: byId.get(l.toId)!.status, label: l.label }))} onGo={onGo} onRemove={(id) => run(async () => { await unlinkConcepts(concept.id, id); refresh(); })} />
+          <Chips title="Lleva a" items={leadsTo.map((l) => ({ id: l.toId, title: byId.get(l.toId)!.title, status: byId.get(l.toId)!.status, label: l.label }))} onGo={onGo} onRemove={(id) => run(async () => { await unlinkConcepts(concept.id, id); refresh(); })} />
         )}
       </div>
 
       <ConceptQuiz key={concept.id} conceptId={concept.id} startRef={quizRef} onStatus={onQuizzed} onDontKnow={actions.reread} />
 
       {/* Ask */}
-      <section className="flex flex-col gap-3 rounded-3xl bg-white p-6 shadow-[0_1px_2px_rgba(13,13,13,0.06)]" aria-label="Ask">
+      <section className="flex flex-col gap-3 rounded-3xl bg-white p-6 shadow-[0_1px_2px_rgba(13,13,13,0.06)]" aria-label="Preguntar">
         {answers.map((x, i) => (
           <div key={i} className="flex flex-col gap-1 text-sm">
             <span className="font-semibold">{x.q}</span>
@@ -588,49 +588,49 @@ function ConceptCard({
             ref={askRef}
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
-            placeholder="Ask anything about this…  (a)"
-            aria-label="Your question"
+            placeholder="Pregunta lo que quieras sobre esto…  (a)"
+            aria-label="Tu pregunta"
             className="flex-1 rounded-2xl border border-border-subtle px-4 py-2.5 text-sm"
           />
           <button type="submit" disabled={busy !== null} className="rounded-full bg-ink px-5 text-sm font-semibold text-white disabled:opacity-50">
-            {busy === "ask" ? "…" : "Ask"}
+            {busy === "ask" ? "…" : "Preguntar"}
           </button>
         </form>
       </section>
 
       {/* Edit the map */}
       <details className="rounded-3xl px-2 text-sm text-ink-muted">
-        <summary className="cursor-pointer select-none hover:text-ink">Edit this concept</summary>
+        <summary className="cursor-pointer select-none hover:text-ink">Editar este concepto</summary>
         <div className="mt-3 flex flex-col gap-3">
           <div className="flex flex-wrap gap-2">
             <button type="button" onClick={() => setEditing(true)} className="rounded-full bg-chip px-3 py-1.5 hover:text-ink">
-              Edit text
+              Editar texto
             </button>
             <button
               type="button"
               onClick={() => {
-                const title = window.prompt("Sub-concept title");
+                const title = window.prompt("Título del subconcepto");
                 if (title) run(async () => { await addConcept(mapId, title, concept.id); refresh(); });
               }}
               className="rounded-full bg-chip px-3 py-1.5 hover:text-ink"
             >
-              + Sub-concept
+              + Subconcepto
             </button>
             <button
               type="button"
               onClick={() => {
-                if (!window.confirm(`Delete "${concept.title}" and everything inside it?`)) return;
+                if (!window.confirm(`¿Eliminar "${concept.title}" y todo lo que contiene?`)) return;
                 run(async () => { await deleteConcept(concept.id); onDeleted(); refresh(); });
               }}
               className="rounded-full bg-chip px-3 py-1.5 hover:text-red-600"
             >
-              Delete
+              Eliminar
             </button>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <span>Link to</span>
-            <select value={linkTarget} onChange={(e) => setLinkTarget(e.target.value)} aria-label="Concept to link" className="max-w-56 rounded-full border border-border-subtle bg-white px-3 py-1.5">
-              <option value="">choose a concept…</option>
+            <span>Enlazar con</span>
+            <select value={linkTarget} onChange={(e) => setLinkTarget(e.target.value)} aria-label="Concepto para enlazar" className="max-w-56 rounded-full border border-border-subtle bg-white px-3 py-1.5">
+              <option value="">elige un concepto…</option>
               {concepts.filter((c) => c.id !== concept.id).map((c) => (
                 <option key={c.id} value={c.id}>{c.title}</option>
               ))}
@@ -651,7 +651,7 @@ function ConceptCard({
                 }
                 className="rounded-full bg-chip px-3 py-1.5 hover:text-ink disabled:opacity-40"
               >
-                {label === "needs" ? "this builds on it" : "related"}
+                {label === "needs" ? "esto se basa en él" : "related"}
               </button>
             ))}
           </div>

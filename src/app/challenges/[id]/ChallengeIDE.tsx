@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowRight, CheckIcon, XIcon } from "@/app/icons";
 import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
 import { CodeEditor } from "../CodeEditor";
+import { difficultyOf } from "../look";
 import { runInSandbox, warmSandbox } from "../sandbox";
 import { getHint, reviewSolution, saveRun } from "../actions";
 import { LANGUAGE_INFO, parseReview, type ChallengeTest, type Language, type RunOutput } from "@/lib/challenge";
@@ -70,22 +71,22 @@ export function ChallengeIDE({
       <header className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-2.5">
         <div className="flex min-w-0 items-center gap-3">
           <Link href="/challenges" className="text-sm text-white/60 hover:text-white">
-            <ArrowLeft /> Challenges
+            <ArrowLeft /> Retos
           </Link>
           <span className="truncate font-semibold text-white">{challenge.title}</span>
           <span className="rounded bg-white/10 px-2 py-0.5 text-xs">{LANGUAGE_INFO[challenge.language].label}</span>
-          <span className="rounded bg-white/10 px-2 py-0.5 text-xs">{challenge.difficulty}</span>
-          {solved && <span className="rounded bg-mint px-2 py-0.5 text-xs font-bold text-white">Solved</span>}
+          <span className="rounded bg-white/10 px-2 py-0.5 text-xs">{difficultyOf(challenge.difficulty).label}</span>
+          {solved && <span className="rounded bg-mint px-2 py-0.5 text-xs font-bold text-white">Resuelto</span>}
         </div>
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => {
-              if (window.confirm("Reset to the starter code?")) setCode(challenge.starterCode);
+              if (window.confirm("¿Volver al código inicial?")) setCode(challenge.starterCode);
             }}
             className="rounded px-3 py-1.5 text-sm text-white/70 hover:bg-white/10"
           >
-            Reset
+            Reiniciar
           </button>
           <button
             type="button"
@@ -93,7 +94,7 @@ export function ChallengeIDE({
             disabled={running}
             className="flex items-center gap-2 rounded bg-mint px-4 py-1.5 text-sm font-bold text-white hover:brightness-110 disabled:opacity-60"
           >
-            {running ? "Running…" : "▶ Run"}
+            {running ? "Ejecutando…" : "▶ Ejecutar"}
             <kbd className="text-xs opacity-70">Ctrl+↵</kbd>
           </button>
         </div>
@@ -101,7 +102,7 @@ export function ChallengeIDE({
 
       <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(320px,38%)_1fr]">
         {/* Task */}
-        <section className="flex min-h-0 flex-col gap-6 overflow-y-auto border-b border-white/10 p-5 lg:border-r lg:border-b-0" aria-label="Task">
+        <section className="flex min-h-0 flex-col gap-6 overflow-y-auto border-b border-white/10 p-5 lg:border-r lg:border-b-0" aria-label="Tarea">
           <div className="flex flex-col gap-3">
             {(task.note || challenge.pursuitTitle) && (
               <div className="flex flex-wrap gap-1.5 text-xs">
@@ -111,13 +112,13 @@ export function ChallengeIDE({
             )}
             <p className="text-[15px] leading-relaxed whitespace-pre-line text-white/90">{task.text}</p>
             <p className="text-sm text-white/60">
-              Your goal: write <code className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-white">{challenge.entry}</code>
-              {challenge.language === "react" ? " (a component)" : ""}
+              Tu objetivo: escribir <code className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-white">{challenge.entry}</code>
+              {challenge.language === "react" ? " (un componente)" : ""}
             </p>
           </div>
 
           <div className="flex flex-col gap-2">
-            <h2 className="text-xs font-bold tracking-wide text-white/50 uppercase">Examples</h2>
+            <h2 className="text-xs font-bold tracking-wide text-white/50 uppercase">Ejemplos</h2>
             {challenge.tests.slice(0, 2).map((t, i) => (
               <div key={i} className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 rounded-lg bg-white/5 px-3 py-2.5 font-mono text-xs">
                 <span className="break-words text-white/80">{input(t)}</span>
@@ -129,8 +130,8 @@ export function ChallengeIDE({
 
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
-              <h2 className="text-xs font-bold tracking-wide text-white/50 uppercase">Checks</h2>
-              <span className="text-xs text-white/60">{output ? `${passedCount}/${challenge.tests.length} passing` : `${challenge.tests.length} to pass`}</span>
+              <h2 className="text-xs font-bold tracking-wide text-white/50 uppercase">Comprobaciones</h2>
+              <span className="text-xs text-white/60">{output ? `${passedCount}/${challenge.tests.length} correctas` : `${challenge.tests.length} por superar`}</span>
             </div>
             <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
               <div
@@ -150,7 +151,7 @@ export function ChallengeIDE({
                       {r && (r.ok ? <CheckIcon size={10} /> : <XIcon size={10} />)}
                     </span>
                     <span className="min-w-0 flex-1 break-words whitespace-pre-wrap">
-                      {challenge.language === "react" ? props(t.args[0]) || "no props" : t.args.map(show).join(", ")}
+                      {challenge.language === "react" ? props(t.args[0]) || "sin props" : t.args.map(show).join(", ")}
                       <span className="text-white/40"> → </span>
                       <span className="font-bold">{show(t.expected)}</span>
                       {r && !r.ok && (
@@ -178,8 +179,8 @@ export function ChallengeIDE({
                 }
                 className="flex flex-col items-start gap-0.5 rounded-xl bg-amber/15 px-4 py-3 text-left hover:bg-amber/25 disabled:opacity-50"
               >
-                <span className="text-sm font-bold text-amber">{isHinting ? "Thinking…" : "Stuck?"}</span>
-                <span className="text-xs text-white/60">{hints.length >= 3 ? "No hints left" : `Get a hint · ${3 - hints.length} left`}</span>
+                <span className="text-sm font-bold text-amber">{isHinting ? "Pensando…" : "¿Atascada?"}</span>
+                <span className="text-xs text-white/60">{hints.length >= 3 ? "No quedan pistas" : `Pide una pista · quedan ${3 - hints.length}`}</span>
               </button>
               <button
                 type="button"
@@ -194,8 +195,8 @@ export function ChallengeIDE({
                 }
                 className="flex flex-col items-start gap-0.5 rounded-xl bg-tile-sky/15 px-4 py-3 text-left hover:bg-tile-sky/25 disabled:opacity-50"
               >
-                <span className="text-sm font-bold text-tile-sky">{isReviewing ? "Reviewing…" : "Review my code"}</span>
-                <span className="text-xs text-white/60">Good, fix, next</span>
+                <span className="text-sm font-bold text-tile-sky">{isReviewing ? "Revisando…" : "Revisar mi código"}</span>
+                <span className="text-xs text-white/60">Bien, arreglar, siguiente</span>
               </button>
             </div>
             {hints.map((h, i) => (
@@ -210,25 +211,25 @@ export function ChallengeIDE({
         </section>
 
         {/* Editor + console */}
-        <section className="flex min-h-0 flex-col" aria-label="Code">
+        <section className="flex min-h-0 flex-col" aria-label="Código">
           <div className="min-h-[280px] flex-1">
             <CodeEditor value={code} language={challenge.language} onChange={setCode} onRun={run} />
           </div>
           <div className="h-56 shrink-0 overflow-y-auto border-t border-white/10 bg-[#16181d] p-4 font-mono text-xs" aria-live="polite">
             {!output && !running && (
               <p className="text-white/40">
-                Ctrl+Enter to run
+                Ctrl+Enter para ejecutar
               </p>
             )}
-            {running && <p className="text-white/60">Running…</p>}
+            {running && <p className="text-white/60">Ejecutando…</p>}
             {output && !running && (
               <>
                 {output.error ? (
                   <p className="whitespace-pre-wrap text-crimson">{output.error}</p>
                 ) : (
                   <p className={passedCount === output.results.length ? "text-mint" : "text-amber"}>
-                    {passedCount}/{output.results.length} tests passed
-                    {passedCount === output.results.length && " — nice."}
+                    {passedCount}/{output.results.length} pruebas superadas
+                    {passedCount === output.results.length && " — bien hecho."}
                   </p>
                 )}
                 {output.results.map((r, i) =>
@@ -256,9 +257,9 @@ export function ChallengeIDE({
 }
 
 const REVIEW_STYLE = {
-  good: { label: "Good", icon: CheckIcon, cls: "text-mint" },
-  fix: { label: "Fix", icon: XIcon, cls: "text-crimson" },
-  next: { label: "Next", icon: ArrowRight, cls: "text-tile-sky" },
+  good: { label: "Bien", icon: CheckIcon, cls: "text-mint" },
+  fix: { label: "Arreglar", icon: XIcon, cls: "text-crimson" },
+  next: { label: "Siguiente", icon: ArrowRight, cls: "text-tile-sky" },
 } as const;
 
 // The code review as three short blocks; `code` shows as code.
@@ -300,7 +301,7 @@ function Review({ text }: { text: string }) {
 
 // Generated prompts start with “From your note "…"” — shown as a chip.
 function splitPrompt(prompt: string) {
-  const m = prompt.match(/^From your note “([^”]+)”\s*/);
+  const m = prompt.match(/^(?:From your note|De tu nota) “([^”]+)”\s*/);
   return m ? { note: m[1], text: prompt.slice(m[0].length) } : { note: null, text: prompt };
 }
 

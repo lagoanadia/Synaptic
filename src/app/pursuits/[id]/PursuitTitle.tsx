@@ -74,7 +74,7 @@ export function PursuitTitle({
         disabled={isPending}
         className="text-xs font-semibold text-accent disabled:opacity-50"
       >
-        Save
+        Guardar
       </button>
       <button
         type="button"
@@ -82,7 +82,7 @@ export function PursuitTitle({
         disabled={isPending}
         className="text-xs text-ink-faint hover:text-ink"
       >
-        Cancel
+        Cancelar
       </button>
     </div>
   );

@@ -55,7 +55,7 @@ export function UpcomingDeadlines({
     <div className="flex flex-col gap-1.5 rounded-xl border border-border-subtle bg-white p-3">
       <div className="flex items-center justify-between">
         <span className="text-xs font-semibold text-ink-faint">
-          Upcoming from Classroom
+          Próximas entregas de Classroom
           {deadlines.length > 0 && (
             <span className="font-normal text-ink-faint">
               {" "}
@@ -66,7 +66,7 @@ export function UpcomingDeadlines({
         <NotificationToggle />
       </div>
       {deadlines.length === 0 && (
-        <p className="text-xs text-ink-muted">Nothing due soon.</p>
+        <p className="text-xs text-ink-muted">Nada pendiente pronto.</p>
       )}
       {ordered.map((d) => {
         const overdue = !d.turnedIn && d.dueAt.getTime() < now;
@@ -83,14 +83,14 @@ export function UpcomingDeadlines({
               <span
                 className={`shrink-0 text-xs ${d.late ? "text-amber-600" : "text-forest"}`}
               >
-                <CheckIcon size={12} /> {d.late ? "Late" : "Done"}
+                <CheckIcon size={12} /> {d.late ? "Tarde" : "Hecho"}
               </span>
             ) : (
               <span
                 className={`shrink-0 text-xs ${overdue ? "text-red-500" : "text-ink-faint"}`}
               >
-                {overdue ? "Overdue · " : "Due "}
-                {d.dueAt.toLocaleDateString("en-US", {
+                {overdue ? "Atrasada · " : "Entrega "}
+                {d.dueAt.toLocaleDateString("es-ES", {
                   weekday: "short",
                   month: "short",
                   day: "numeric",

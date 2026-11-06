@@ -86,7 +86,7 @@ export function PageView({ pursuit, title, unit, date, dump, note, files }: Prop
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {note && dump && (
-            <span className="flex rounded-full bg-chip p-1 text-sm font-semibold" role="tablist" aria-label="Version">
+            <span className="flex rounded-full bg-chip p-1 text-sm font-semibold" role="tablist" aria-label="Versión">
               {(["organized", "original"] as const).map((v) => (
                 <button
                   key={v}
@@ -99,7 +99,7 @@ export function PageView({ pursuit, title, unit, date, dump, note, files }: Prop
                   }}
                   className={`rounded-full px-4 py-1.5 capitalize ${view === v ? "bg-white shadow-sm" : "text-ink-muted"}`}
                 >
-                  {v}
+                  {v === "organized" ? "Organizada" : "Original"}
                 </button>
               ))}
             </span>
@@ -111,17 +111,17 @@ export function PageView({ pursuit, title, unit, date, dump, note, files }: Prop
               onClick={() => run(() => organizeDumps(pursuit.id, [dump.id]))}
               className="rounded-full bg-tile-blue px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
             >
-              {isPending ? "Organizing…" : "Organize"}
+              {isPending ? "Organizando…" : "Organizar"}
             </button>
           )}
           {view === "original" && dump ? (
             <Link href={`/pursuits/${pursuit.id}/dump/${dump.id}/edit`} className="rounded-full bg-chip px-4 py-2 text-sm font-semibold">
-              Edit
+              Editar
             </Link>
           ) : (
             note && (
               <button type="button" onClick={() => setEditing((e) => !e)} className="rounded-full bg-chip px-4 py-2 text-sm font-semibold">
-                {editing ? "Cancel" : "Edit"}
+                {editing ? "Cancelar" : "Editar"}
               </button>
             )
           )}
@@ -133,11 +133,11 @@ export function PageView({ pursuit, title, unit, date, dump, note, files }: Prop
                 run(async () => {
                   const r = await generateFlashcards(pursuit.id, note.id);
                   return r.error ? r : { error: null };
-                }, "Flashcards added")
+                }, "Tarjetas añadidas")
               }
               className="rounded-full bg-chip px-4 py-2 text-sm font-semibold disabled:opacity-50"
             >
-              Flashcards{note.flashcards > 0 ? ` · ${note.flashcards}` : ""}
+              Tarjetas{note.flashcards > 0 ? ` · ${note.flashcards}` : ""}
             </button>
           )}
           <button
@@ -146,7 +146,7 @@ export function PageView({ pursuit, title, unit, date, dump, note, files }: Prop
             aria-expanded={filesOpen}
             className={`rounded-full px-4 py-2 text-sm font-semibold ${filesOpen ? "bg-ink text-white" : "bg-chip"}`}
           >
-            Files{files.length > 0 ? ` · ${files.length}` : ""}
+            Archivos{files.length > 0 ? ` · ${files.length}` : ""}
           </button>
           <a
             href={`/pursuits/${pursuit.id}/print?${dump ? `dump=${dump.id}` : `note=${note!.id}`}`}
@@ -162,10 +162,10 @@ export function PageView({ pursuit, title, unit, date, dump, note, files }: Prop
               if (note && !dump) await deleteNote(pursuit.id, note.id);
             }}
             onSuccess={() => router.push(back)}
-            confirmMessage="Delete this page? This can't be undone."
+            confirmMessage="¿Eliminar esta página? No se puede deshacer."
             className="rounded-full p-2 text-ink-faint hover:bg-chip hover:text-red-600"
           >
-            <TrashIcon size={16} title="Delete page" />
+            <TrashIcon size={16} title="Eliminar página" />
           </DeleteButton>
         </div>
       </header>
@@ -188,18 +188,18 @@ export function PageView({ pursuit, title, unit, date, dump, note, files }: Prop
                 }
                 className="self-end rounded-full bg-ink px-5 py-2 text-sm font-semibold text-white disabled:opacity-50"
               >
-                Save
+                Guardar
               </button>
             </div>
           ) : content ? (
             <RichContent content={content} paragraphClassName="text-base leading-relaxed whitespace-pre-line" />
           ) : (
-            <p className="text-sm text-ink-muted">Empty page.</p>
+            <p className="text-sm text-ink-muted">Página vacía.</p>
           )}
         </article>
 
         {filesOpen && (
-        <aside className="flex flex-col gap-3 self-start" aria-label="Files">
+        <aside className="flex flex-col gap-3 self-start" aria-label="Archivos">
           {files.map((f) => (
             <div key={f.id} className="group flex items-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm shadow-[0_1px_2px_rgba(13,13,13,0.04)]">
               <a href={f.url} target="_blank" rel="noopener noreferrer" className="min-w-0 flex-1 truncate font-semibold hover:text-accent">
@@ -208,7 +208,7 @@ export function PageView({ pursuit, title, unit, date, dump, note, files }: Prop
               <button
                 type="button"
                 onClick={() => run(() => removeAttachment(pursuit.id, f.id))}
-                aria-label={`Remove ${f.name}`}
+                aria-label={`Quitar ${f.name}`}
                 className="text-ink-faint opacity-0 group-hover:opacity-100 hover:text-red-600 focus:opacity-100"
               >
                 <XIcon size={14} />
@@ -229,8 +229,8 @@ export function PageView({ pursuit, title, unit, date, dump, note, files }: Prop
               <input
                 value={link}
                 onChange={(e) => setLink(e.target.value)}
-                placeholder="+ Link (Drive, Classroom…)"
-                aria-label="Add a file link"
+                placeholder="+ Enlace (Drive, Classroom…)"
+                aria-label="Añadir un enlace"
                 className="min-w-0 flex-1 rounded-2xl border border-border-subtle bg-white px-4 py-2.5 text-sm"
               />
             </form>

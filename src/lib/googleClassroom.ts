@@ -181,7 +181,7 @@ export async function listCourseFiles(
         // Classroom doesn't always back-fill the title for a file it
         // didn't create itself (e.g. a teacher's own upload attached from
         // Drive) — fall back rather than silently dropping the file.
-        files.push({ title: drive.title || "Untitled file", url: drive.alternateLink });
+        files.push({ title: drive.title || "Archivo sin título", url: drive.alternateLink });
         continue;
       }
       const link = material.link;

@@ -1,30 +1,25 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, useTransition } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { signOutAction } from "./actions";
-import { setLocale } from "./pursuits/actions";
-import { LOCALES, type Locale } from "@/lib/i18n";
 import { tileColor } from "@/lib/tileColor";
 import { CardsIcon, ChatIcon, CodeIcon, HomeIcon, MenuIcon, SettingsIcon, XIcon } from "./icons";
 
 type Props = {
   user: { name: string | null; email: string | null; image: string | null };
   plan: string;
-  locale: string;
   sections: { id: string; name: string }[];
 };
 
-const PLAN_LABEL: Record<string, string> = { FREE: "Free", PRO: "Student Pro", TEAM: "Team" };
+const PLAN_LABEL: Record<string, string> = { FREE: "Gratis", PRO: "Student Pro", TEAM: "Team" };
 
 // The app's only navigation: a menu button in the top-left corner (or M)
 // opens a drawer with your sections, the practice areas and your account.
-export function NavDrawer({ user, plan, locale, sections }: Props) {
+export function NavDrawer({ user, plan, sections }: Props) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
-  const router = useRouter();
-  const [isChangingLocale, startLocale] = useTransition();
 
   // Close on navigation.
   const [lastPath, setLastPath] = useState(pathname);
@@ -55,7 +50,7 @@ export function NavDrawer({ user, plan, locale, sections }: Props) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        aria-label="Menu (M)"
+        aria-label="Menú (M)"
         aria-expanded={open}
         className="fixed top-4 left-3 z-40 rounded-xl bg-white/80 p-2.5 text-ink shadow-[0_1px_2px_rgba(13,13,13,0.08)] backdrop-blur hover:bg-white"
       >
@@ -88,14 +83,14 @@ export function NavDrawer({ user, plan, locale, sections }: Props) {
             <p className="truncate text-sm font-bold">{user.name ?? user.email}</p>
             <p className="text-xs font-medium text-accent">{PLAN_LABEL[plan] ?? plan}</p>
           </div>
-          <button type="button" onClick={() => setOpen(false)} aria-label="Close menu" className="rounded-lg p-1.5 text-ink-muted hover:bg-chip">
+          <button type="button" onClick={() => setOpen(false)} aria-label="Cerrar menú" className="rounded-lg p-1.5 text-ink-muted hover:bg-chip">
             <XIcon size={18} className="block" />
           </button>
         </div>
 
         <div className="flex flex-col gap-1">
           <Link href="/pursuits" className={item(active("/pursuits", true))}>
-            <HomeIcon size={18} className="block" /> Home
+            <HomeIcon size={18} className="block" /> Inicio
           </Link>
           {sections.map((s, i) => (
             <Link key={s.id} href={`/pursuits/s/${s.id}`} className={`${item(active(`/pursuits/s/${s.id}`))} pl-9`}>
@@ -106,10 +101,10 @@ export function NavDrawer({ user, plan, locale, sections }: Props) {
 
         <div className="flex flex-col gap-1">
           <Link href="/review" className={item(active("/review"))}>
-            <CardsIcon size={18} className="block" /> Review
+            <CardsIcon size={18} className="block" /> Repasar
           </Link>
           <Link href="/challenges" className={item(active("/challenges"))}>
-            <CodeIcon size={18} className="block" /> Challenges
+            <CodeIcon size={18} className="block" /> Retos
           </Link>
           <Link href="/arena" className={item(active("/arena"))}>
             <ChatIcon size={18} className="block" /> Arena
@@ -118,32 +113,12 @@ export function NavDrawer({ user, plan, locale, sections }: Props) {
 
         <div className="mt-auto flex flex-col gap-1 border-t border-border-subtle pt-4">
           <span className="flex items-center gap-3 px-3 text-xs font-bold text-ink-muted uppercase">
-            <SettingsIcon size={14} className="block" /> Settings
+            <SettingsIcon size={14} className="block" /> Ajustes
           </span>
           <Link href="/billing" className={item(active("/billing"))}>Plan</Link>
-          <label className="flex items-center justify-between rounded-xl px-3 py-2.5 text-sm font-semibold">
-            Language
-            <select
-              value={locale}
-              disabled={isChangingLocale}
-              onChange={(e) =>
-                startLocale(async () => {
-                  await setLocale(e.target.value as Locale);
-                  router.refresh();
-                })
-              }
-              className="rounded-lg border border-border-subtle bg-white px-2 py-1 text-xs"
-            >
-              {LOCALES.map((l) => (
-                <option key={l.code} value={l.code}>
-                  {l.label}
-                </option>
-              ))}
-            </select>
-          </label>
           <form action={signOutAction}>
             <button type="submit" className={`${item(false)} w-full text-ink-muted`}>
-              Sign out
+              Cerrar sesión
             </button>
           </form>
         </div>

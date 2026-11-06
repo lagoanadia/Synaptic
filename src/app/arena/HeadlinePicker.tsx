@@ -11,14 +11,14 @@ type Framed = { motion: string; brief: string; forCase: string; againstCase: str
 const ago = (iso: string | null) => {
   if (!iso) return "";
   const h = Math.round((Date.now() - new Date(iso).getTime()) / 3600000);
-  return h < 1 ? "just now" : h < 24 ? `${h}h ago` : `${Math.round(h / 24)}d ago`;
+  return h < 1 ? "ahora mismo" : h < 24 ? `hace ${h} h` : `hace ${Math.round(h / 24)} d`;
 };
 
 export function HeadlinePicker({ headlines }: { headlines: Headline[] }) {
   const router = useRouter();
   const sources = [...new Set(headlines.map((h) => h.source))];
   const [source, setSource] = useState<string | null>(null);
-  const [language, setLanguage] = useState("English");
+  const [language, setLanguage] = useState("Español");
   const [style, setStyle] = useState<"opponent" | "socratic">("opponent");
   const [selected, setSelected] = useState<Headline | null>(null);
   const [framed, setFramed] = useState<Framed | null>(null);
@@ -50,7 +50,7 @@ export function HeadlinePicker({ headlines }: { headlines: Headline[] }) {
         style,
         language,
       });
-      if (r.error || !r.id) return setError(r.error ?? "Try again");
+      if (r.error || !r.id) return setError(r.error ?? "Reintentar");
       router.push(`/arena/${r.id}`);
     });
   }
@@ -67,15 +67,15 @@ export function HeadlinePicker({ headlines }: { headlines: Headline[] }) {
             onClick={() => setSource(s)}
             className={`rounded-full px-3 py-1 text-xs font-semibold ${source === s ? "bg-ink text-white" : "bg-chip text-ink-muted hover:text-ink"}`}
           >
-            {s ?? "All"}
+            {s ?? "Todos"}
           </button>
         ))}
         <span className="flex-1" />
         <label className="flex items-center gap-1.5 text-xs text-ink-muted">
-          Debate in
+          Debate en
           <select value={language} onChange={(e) => setLanguage(e.target.value)} className="rounded-full border border-border-subtle bg-white px-2 py-1">
-            <option>English</option>
-            <option>Español</option>
+            <option value="Español">Español</option>
+            <option value="English">Inglés</option>
           </select>
         </label>
       </div>
@@ -83,23 +83,23 @@ export function HeadlinePicker({ headlines }: { headlines: Headline[] }) {
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          if (own.trim().length > 8) frame({ title: own.trim(), url: "", source: "You", summary: "", publishedAt: null });
+          if (own.trim().length > 8) frame({ title: own.trim(), url: "", source: "Tú", summary: "", publishedAt: null });
         }}
         className="flex gap-2"
       >
         <input
           value={own}
           onChange={(e) => setOwn(e.target.value)}
-          placeholder="Or bring your own topic / claim / headline…"
-          aria-label="Your own topic"
+          placeholder="O escribe tu propio tema, afirmación o titular…"
+          aria-label="Tu propio tema"
           className="flex-1 rounded-2xl border border-border-subtle bg-white px-4 py-2.5 text-sm"
         />
-        <button type="submit" className="rounded-full bg-chip px-4 text-sm font-semibold">Frame it</button>
+        <button type="submit" className="rounded-full bg-chip px-4 text-sm font-semibold">Plantear</button>
       </form>
 
       {shown.length === 0 && (
         <p className="rounded-3xl bg-callout px-6 py-8 text-center text-sm text-ink-muted">
-          Couldn&apos;t load headlines right now. Bring your own topic above.
+          No he podido cargar titulares ahora. Escribe tu propio tema arriba.
         </p>
       )}
 
@@ -124,7 +124,7 @@ export function HeadlinePicker({ headlines }: { headlines: Headline[] }) {
                   disabled={isPending}
                   className="shrink-0 rounded-full bg-orchid px-3.5 py-1.5 text-xs font-bold text-white disabled:opacity-50"
                 >
-                  Debate this
+                  Debatir esto
                 </button>
               </div>
             </li>
@@ -137,18 +137,18 @@ export function HeadlinePicker({ headlines }: { headlines: Headline[] }) {
           <div className="mx-auto flex max-w-3xl flex-col gap-3">
             <div className="flex items-start justify-between gap-3">
               <p className="text-xs text-ink-muted">{selected.title}</p>
-              <button type="button" onClick={() => setSelected(null)} aria-label="Close" className="text-ink-muted hover:text-ink"><XIcon /></button>
+              <button type="button" onClick={() => setSelected(null)} aria-label="Cerrar" className="text-ink-muted hover:text-ink"><XIcon /></button>
             </div>
-            {!framed && !error && <p className="text-sm font-semibold">Finding the real argument in this…</p>}
+            {!framed && !error && <p className="text-sm font-semibold">Buscando el debate de fondo…</p>}
             {error && <p className="text-sm text-red-500">{error}</p>}
             {framed && (
               <>
                 <p className="text-xl font-extrabold">“{framed.motion}”</p>
                 <p className="text-sm leading-relaxed text-ink-muted">{framed.brief}</p>
-                <div className="flex gap-1 self-start rounded-full bg-chip p-1 text-xs font-semibold" role="radiogroup" aria-label="Style">
+                <div className="flex gap-1 self-start rounded-full bg-chip p-1 text-xs font-semibold" role="radiogroup" aria-label="Estilo">
                   {([
-                    ["opponent", "Argue with me"],
-                    ["socratic", "Only ask me questions"],
+                    ["opponent", "Discute conmigo"],
+                    ["socratic", "Solo hazme preguntas"],
                   ] as const).map(([value, label]) => (
                     <button
                       key={value}
@@ -164,11 +164,11 @@ export function HeadlinePicker({ headlines }: { headlines: Headline[] }) {
                 </div>
                 <div className="grid gap-2 sm:grid-cols-2">
                   <button type="button" disabled={isPending} onClick={() => pick("for")} className="flex flex-col items-start gap-1 rounded-2xl border-2 border-mint p-3 text-left hover:bg-mint/10 disabled:opacity-50">
-                    <span className="text-sm font-bold">I&apos;m FOR</span>
+                    <span className="text-sm font-bold">Estoy A FAVOR</span>
                     <span className="text-xs text-ink-muted">{framed.forCase}</span>
                   </button>
                   <button type="button" disabled={isPending} onClick={() => pick("against")} className="flex flex-col items-start gap-1 rounded-2xl border-2 border-crimson p-3 text-left hover:bg-crimson-soft disabled:opacity-50">
-                    <span className="text-sm font-bold">I&apos;m AGAINST</span>
+                    <span className="text-sm font-bold">Estoy EN CONTRA</span>
                     <span className="text-xs text-ink-muted">{framed.againstCase}</span>
                   </button>
                 </div>

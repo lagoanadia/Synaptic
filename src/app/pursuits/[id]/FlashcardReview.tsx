@@ -9,8 +9,8 @@ type CardForDisplay = { id: string; question: string; answer: string; pursuitId:
 
 // Two choices, not four: did you know it or not. (SM-2 qualities.)
 const RATINGS = [
-  { label: "Again", quality: 1, className: "bg-crimson text-white" },
-  { label: "Got it", quality: 4, className: "bg-mint text-white" },
+  { label: "Otra vez", quality: 1, className: "bg-crimson text-white" },
+  { label: "Me la sé", quality: 4, className: "bg-mint text-white" },
 ] as const;
 
 // Click or Space flips the card, 1/2 rates it. The queue on the side
@@ -64,13 +64,13 @@ export function FlashcardReview({
     return (
       <div className="flex flex-col items-center gap-4 rounded-3xl bg-white px-6 py-16 text-center shadow-[0_1px_2px_rgba(13,13,13,0.06)]">
         <span className="flex items-center gap-2 text-5xl font-extrabold text-mint">{done > 0 && done}<CheckIcon size={44} className="block" /></span>
-        <p className="font-semibold">{done > 0 ? "All caught up" : "Nothing due"}</p>
-        {upcomingCount > 0 && <p className="text-sm text-ink-muted">{upcomingCount} scheduled for later</p>}
+        <p className="font-semibold">{done > 0 ? "Todo al día" : "Nada pendiente"}</p>
+        {upcomingCount > 0 && <p className="text-sm text-ink-muted">{upcomingCount} programadas para más tarde</p>}
         <Link
           href={learnHref}
           className="rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-white"
         >
-          Learn
+          Aprender
         </Link>
       </div>
     );
@@ -82,7 +82,7 @@ export function FlashcardReview({
         <button
           type="button"
           onClick={() => setFlipped((f) => !f)}
-          aria-label={flipped ? "Show question" : "Show answer"}
+          aria-label={flipped ? "Ver pregunta" : "Ver respuesta"}
           className="group [perspective:1600px]"
         >
           <div
@@ -92,7 +92,7 @@ export function FlashcardReview({
           >
             <Face className="bg-white">
               <span className="text-2xl leading-snug font-bold text-balance sm:text-3xl">{current.question}</span>
-              <span className="absolute bottom-5 text-xs text-ink-faint">click or Space</span>
+              <span className="absolute bottom-5 text-xs text-ink-faint">clic o Espacio</span>
             </Face>
             <Face className="bg-tile-blue text-white [transform:rotateY(180deg)]">
               <span className="text-2xl leading-snug font-semibold text-balance sm:text-3xl">{current.answer}</span>
@@ -116,8 +116,8 @@ export function FlashcardReview({
         </div>
       </div>
 
-      <aside className="flex flex-col gap-3 self-start" aria-label="Queue">
-        <div className="h-2 overflow-hidden rounded-full bg-chip" title={`${done} of ${total} done`}>
+      <aside className="flex flex-col gap-3 self-start" aria-label="Cola">
+        <div className="h-2 overflow-hidden rounded-full bg-chip" title={`${done} de ${total} hechas`}>
           <div className="h-full rounded-full bg-mint transition-all" style={{ width: `${total ? (done / total) * 100 : 0}%` }} />
         </div>
         <span className="text-xs font-semibold text-ink-muted">

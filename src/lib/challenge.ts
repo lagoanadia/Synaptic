@@ -97,7 +97,7 @@ try {
 } catch (e) {
   return { results: [], logs: __logs, error: String(e && e.message || e) };
 }
-if (typeof __fn !== "function") return { results: [], logs: __logs, error: "Couldn't find ${kind === "react" ? "a component" : "a function"} called ${entry}" };
+if (typeof __fn !== "function") return { results: [], logs: __logs, error: "No encuentro ${kind === "react" ? "un componente" : "una función"} llamada ${entry}" };
 const __tests = ${JSON.stringify(tests)};
 ${
   kind === "react"
@@ -134,7 +134,7 @@ try:
         exec(USER_CODE, _g)
         _fn = _g.get(ENTRY)
         if not callable(_fn):
-            _out["error"] = "Couldn't find a function called " + ENTRY
+            _out["error"] = "No encuentro una función llamada " + ENTRY
         else:
             for _t in json.loads(TESTS_JSON):
                 try:

@@ -27,7 +27,7 @@ export function CodeBlock({ code, language }: { code: string; language: string }
     >
       <summary className="flex cursor-pointer list-none items-center justify-between gap-2 border-b border-white/10 bg-white/5 px-4 py-1.5 text-xs text-white/60 [&::-webkit-details-marker]:hidden">
         <span>
-          {lang ? lang.label : "Code"} · {lines.length} line{lines.length === 1 ? "" : "s"}
+          {lang ? lang.label : "Código"} · {lines.length} line{lines.length === 1 ? "" : "s"}
         </span>
         <CopyButton text={code} />
       </summary>

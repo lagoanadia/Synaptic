@@ -19,7 +19,7 @@ function ConnectButton({ pursuitId }: { pursuitId: string }) {
       href={`/api/classroom/connect?pursuitId=${pursuitId}`}
       className="self-start rounded-full border border-border-subtle bg-white px-4 py-2 text-sm text-ink-muted transition-colors hover:border-ink hover:text-ink"
     >
-      Connect Google Classroom
+      Conectar Google Classroom
     </a>
   );
 }
@@ -99,7 +99,7 @@ export function ClassroomImport({
         <span className="text-sm font-semibold">Google Classroom</span>
         <form action={disconnectClassroom.bind(null, pursuitId)}>
           <button type="submit" className="text-xs text-ink-faint hover:text-red-500">
-            Disconnect
+            Desconectar
           </button>
         </form>
       </div>
@@ -107,9 +107,9 @@ export function ClassroomImport({
       {error && <p className="text-xs text-red-500">{error}</p>}
 
       {courses === null ? (
-        <p className="text-xs text-ink-muted">Loading your courses…</p>
+        <p className="text-xs text-ink-muted">Cargando tus cursos…</p>
       ) : courses.length === 0 ? (
-        <p className="text-xs text-ink-muted">No active Classroom courses found.</p>
+        <p className="text-xs text-ink-muted">No hay cursos activos en Classroom.</p>
       ) : (
         <select
           value={selectedCourse}
@@ -117,16 +117,16 @@ export function ClassroomImport({
             const courseId = e.target.value;
             const courseName = courses.find((c) => c.id === courseId)?.name ?? "";
             const other = linkedElsewhere[courseId];
-            if (other && !window.confirm(`${courseName} is already linked to ${other}. Link it here too?`)) return;
+            if (other && !window.confirm(`${courseName} ya está vinculado a ${other}. ¿Vincularlo aquí también?`)) return;
             pickCourse(courseId, courseName);
           }}
           className="rounded-md border border-border-subtle bg-white px-3 py-2 text-sm"
         >
-          <option value="">Pick a course…</option>
+          <option value="">Elige un curso…</option>
           {courses.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}
-              {linkedElsewhere[c.id] ? ` — already in ${linkedElsewhere[c.id]}` : ""}
+              {linkedElsewhere[c.id] ? ` — ya en ${linkedElsewhere[c.id]}` : ""}
             </option>
           ))}
         </select>
@@ -135,7 +135,7 @@ export function ClassroomImport({
       {files !== null && (
         <div className="flex flex-col">
           {files.length === 0 ? (
-            <p className="text-xs text-ink-muted">No files found in this course.</p>
+            <p className="text-xs text-ink-muted">No hay archivos en este curso.</p>
           ) : (
             files.map((f) => (
               <div
@@ -149,7 +149,7 @@ export function ClassroomImport({
                   disabled={isPending || imported.has(f.url)}
                   className="shrink-0 rounded-full border border-ink px-3 py-1 text-xs font-medium hover:bg-chip disabled:opacity-50"
                 >
-                  {imported.has(f.url) ? "Added" : "+ Add"}
+                  {imported.has(f.url) ? "Añadido" : "+ Añadir"}
                 </button>
               </div>
             ))
