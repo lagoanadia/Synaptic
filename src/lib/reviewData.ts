@@ -5,14 +5,22 @@ import type { ReviewCard, ReviewConcept } from "@/lib/review";
 import { autoTitle } from "@/lib/text";
 
 // What a review view covers: everything, one Section (or "unsorted" /
-// "shared"), or one subject.
+// "shared"), one subject, or one unit inside a subject (a Pages board
+// column; NO_UNIT is the "No unit" column).
 export type ReviewScope =
   | { kind: "all" }
   | { kind: "section"; sectionId: string }
-  | { kind: "pursuit"; pursuitId: string };
+  | { kind: "pursuit"; pursuitId: string; unitId?: string };
 
 export const UNSORTED = "unsorted";
 export const SHARED = "shared";
+export const NO_UNIT = "none";
+
+// Narrows notes/cards to one unit when the scope has one.
+function unitNoteWhere(scope: ReviewScope): Prisma.NoteWhereInput | null {
+  if (scope.kind !== "pursuit" || !scope.unitId) return null;
+  return { sectionId: scope.unitId === NO_UNIT ? null : scope.unitId };
+}
 
 export function accessiblePursuits(userId: string): Prisma.PursuitWhereInput {
   return { OR: [{ ownerId: userId }, { members: { some: { userId } } }] };
@@ -51,6 +59,7 @@ export async function getConcepts(
   const notes = await prisma.note.findMany({
     where: {
       pursuit: pursuitWhere(userId, scope),
+      ...unitNoteWhere(scope),
       ...(opts.since ? { createdAt: { gte: opts.since } } : {}),
     },
     orderBy: { createdAt: "desc" },
@@ -80,6 +89,11 @@ export async function getCards(
   const cards = await prisma.flashcard.findMany({
     where: {
       pursuit: pursuitWhere(userId, scope),
+      ...(unitNoteWhere(scope)
+        ? scope.kind === "pursuit" && scope.unitId === NO_UNIT
+          ? { OR: [{ noteId: null }, { note: unitNoteWhere(scope)! }] }
+          : { note: unitNoteWhere(scope)! }
+        : {}),
       ...(opts.dueOnly ? { dueDate: { lte: new Date() } } : {}),
     },
     orderBy: { dueDate: "asc" },
@@ -108,6 +122,8 @@ export async function getCards(
 
 // Internalize concepts in scope, rereads first.
 export async function getLearnConcepts(userId: string, scope: ReviewScope): Promise<(ReviewConcept & { explanation: string })[]> {
+  // Concept maps aren't filed under units.
+  if (unitNoteWhere(scope)) return [];
   const rows = await prisma.concept.findMany({
     where: { map: { pursuit: pursuitWhere(userId, scope) } },
     take: 400,

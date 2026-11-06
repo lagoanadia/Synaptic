@@ -20,8 +20,6 @@ import { Logo } from "../../Logo";
 import { UpcomingDeadlines } from "./UpcomingDeadlines";
 import { StatusNote } from "./StatusNote";
 import { ProjectsBoard } from "./ProjectsBoard";
-import { GameTiles } from "../../review/GameTiles";
-import { SectionGrid } from "./SectionGrid";
 import { PagesBoard, type PageCard } from "./PagesBoard";
 import { autoTitle } from "@/lib/text";
 import { conceptExcerpt } from "@/lib/review";
@@ -47,28 +45,25 @@ export default async function PursuitPage({
   }>;
 }) {
   const { id } = await params;
-  const { tab: rawTab, section: sectionFilter, classroomConnected, classroomError } =
+  const { tab: rawTab, classroomConnected, classroomError } =
     await searchParams;
   const tab =
-    rawTab === "pages" ||
     rawTab === "learn" ||
     rawTab === "ask" ||
     rawTab === "cards" ||
     rawTab === "timeline" ||
     rawTab === "projects"
       ? rawTab
-      : // Brain Dump, Organized and Files used to be three tabs; old links
-        // to any of them land on the merged Pages tab.
-        rawTab === "dump" || rawTab === "organized" || rawTab === "files"
-        ? "pages"
-        : "overview";
+      : // Pages is the landing tab (it replaced Sections, Brain Dump,
+        // Organized and Files).
+        "pages";
 
   const session = await auth();
   if (!session?.user?.id) {
     redirect("/");
   }
 
-  const [pursuit, sections, distinctTypes, dueFlashcards, upcomingFlashcardCount, classroomConnection, otherLinked] =
+  const [pursuit, sections, distinctTypes, dueFlashcards, upcomingFlashcardCount, classroomConnection, otherLinked, cardUnits] =
     await Promise.all([
       prisma.pursuit.findFirst({
         where: {
@@ -126,6 +121,12 @@ export default async function PursuitPage({
         where: { ownerId: session.user.id, id: { not: id }, classroomCourseId: { not: null } },
         select: { title: true, classroomCourseId: true },
       }),
+      // Which unit each card belongs to (through its note), for the
+      // per-column study buttons.
+      prisma.flashcard.findMany({
+        where: { pursuitId: id },
+        select: { dueDate: true, note: { select: { sectionId: true } } },
+      }),
     ]);
 
   if (!pursuit) {
@@ -147,14 +148,6 @@ export default async function PursuitPage({
         ? `${TAB_ACCENT[name] ?? "border-accent"} text-ink`
         : "border-transparent text-ink-faint hover:text-ink"
     }`;
-
-  // ?section= narrows Brain Dump and Organized to one content section
-  // (U1, U2…), so clicking a tile on the overview shows just that.
-  const activeSection =
-    sectionFilter === UNSORTED
-      ? { id: UNSORTED, name: "Unsorted" }
-      : (pursuit.contentSections.find((s) => s.id === sectionFilter) ?? null);
-  const sectionQuery = activeSection ? `&section=${activeSection.id}` : "";
 
   // Where "back" goes: the Section this subject lives in on the new home.
   const backHref =
@@ -358,7 +351,6 @@ export default async function PursuitPage({
       <nav className="flex gap-7 overflow-x-auto border-b border-border-subtle" aria-label="Subject">
         {(
           [
-            ["overview", "Sections"],
             ["pages", "Pages"],
             ["learn", "Learn"],
             ["cards", "Cards"],
@@ -369,7 +361,7 @@ export default async function PursuitPage({
         ).map(([key, label]) => (
           <Link
             key={key}
-            href={`/pursuits/${pursuit.id}${key === "overview" ? "" : `?tab=${key}`}${key === "pages" ? sectionQuery : ""}`}
+            href={`/pursuits/${pursuit.id}${key === "pages" ? "" : `?tab=${key}`}`}
             className={tabClass(key)}
           >
             {label}
@@ -381,45 +373,12 @@ export default async function PursuitPage({
         <PagesBoard
           pursuitId={pursuit.id}
           units={pursuit.contentSections.map((u) => ({ id: u.id, name: u.name, classroomUnit: u.classroomUnit }))}
+          cardStats={unitCardStats(cardUnits)}
           cards={pageCards}
           classroomCourseId={pursuit.classroomEnabled ? pursuit.classroomCourseId : null}
         />
       )}
 
-      {tab === "overview" && (
-        <div className="grid grid-cols-1 gap-10 xl:grid-cols-[minmax(0,1fr)_340px]">
-          <SectionGrid
-            pursuitId={pursuit.id}
-            tiles={[
-              ...pursuit.contentSections.map((s) => ({
-                id: s.id,
-                name: s.name,
-                pages: pursuit.brainDumps.filter((d) => d.sectionId === s.id).length,
-                notes: pursuit.notes.filter((n) => n.sectionId === s.id).length,
-              })),
-              ...(pursuit.brainDumps.some((d) => d.sectionId === null) ||
-              pursuit.notes.some((n) => n.sectionId === null)
-                ? [
-                    {
-                      id: UNSORTED,
-                      name: "Unsorted",
-                      pages: pursuit.brainDumps.filter((d) => d.sectionId === null).length,
-                      notes: pursuit.notes.filter((n) => n.sectionId === null).length,
-                    },
-                  ]
-                : []),
-            ]}
-          />
-          <div className="flex flex-col gap-6">
-            <GameTiles
-              scopeQuery={`pursuit=${pursuit.id}`}
-              cardCount={dueFlashcards.length + upcomingFlashcardCount}
-              dueCount={dueFlashcards.length}
-              conceptCount={pursuit.notes.length}
-            />
-          </div>
-        </div>
-      )}
 
 
 
@@ -472,4 +431,17 @@ export default async function PursuitPage({
 
     </div>
   );
+}
+
+// Cards and due cards per unit ("none" = No unit), keyed like the board.
+function unitCardStats(cards: { dueDate: Date; note: { sectionId: string | null } | null }[]) {
+  const now = Date.now();
+  const out: Record<string, { cards: number; due: number }> = {};
+  for (const c of cards) {
+    const key = c.note?.sectionId ?? "none";
+    const s = (out[key] ??= { cards: 0, due: 0 });
+    s.cards++;
+    if (c.dueDate.getTime() <= now) s.due++;
+  }
+  return out;
 }
