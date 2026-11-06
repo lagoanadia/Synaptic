@@ -1,154 +1,62 @@
-import { ArrowRight } from "@/app/icons";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { Logo } from "../Logo";
 import { Onboarding } from "../onboarding/Onboarding";
-import { SectionTiles, type Tile } from "./SectionTiles";
-import { tileColor } from "@/lib/tileColor";
-import { SHARED, UNSORTED, accessiblePursuits, getConcepts } from "@/lib/reviewData";
-import { sample } from "@/lib/review";
+import { KnowledgeMap } from "../KnowledgeMap";
+import { SHARED, UNSORTED, accessiblePursuits } from "@/lib/reviewData";
+import { homeBlocks } from "@/lib/blocks";
+import { notebookCover } from "@/lib/covers";
+import { folderItems, notebookMap, recentPages } from "@/lib/blockData";
+import { Greeting } from "./Greeting";
+import { NotebookShelf, type ShelfItem } from "./NotebookShelf";
+import { HomeBlocks } from "./HomeBlocks";
+import { FolderRow, RecentList } from "./BlockViews";
 
-// Home: your Sections as big tiles + a "Examen cruzado" panel that pulls random
-// concepts from everything you've written, so old stuff keeps coming back
-// instead of being forgotten. Each Section opens /pursuits/s/[sectionId].
+// Home: your notebooks, then the blocks you chose (folders of a notebook,
+// its map, recent pages). Editable like a Notion page.
 export default async function HomePage() {
   const session = await auth();
-  if (!session?.user?.id) {
-    redirect("/");
-  }
+  if (!session?.user?.id) redirect("/");
   const userId = session.user.id;
 
-  const [pursuits, sections, viewer, concepts] = await Promise.all([
-    prisma.pursuit.findMany({
-      where: accessiblePursuits(userId),
-      select: {
-        id: true,
-        ownerId: true,
-        sectionId: true,
-        _count: { select: { flashcards: { where: { dueDate: { lte: new Date() } } } } },
-      },
-    }),
-    prisma.section.findMany({ where: { userId }, orderBy: { order: "asc" } }),
-    prisma.user.findUniqueOrThrow({
-      where: { id: userId },
-      select: { onboardedAt: true },
-    }),
-    getConcepts(userId, { kind: "all" }),
+  const [sections, viewer, pursuitBuckets] = await Promise.all([
+    prisma.section.findMany({ where: { userId }, orderBy: { order: "asc" }, select: { id: true, name: true, cover: true, study: true } }),
+    prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { onboardedAt: true, homeBlocks: true } }),
+    prisma.pursuit.findMany({ where: accessiblePursuits(userId), select: { ownerId: true, sectionId: true } }),
   ]);
 
-
-  // First visit: quick questions instead of an empty screen. Anyone who
-  // already has subjects (accounts from before this existed) skips it.
-  if (viewer.onboardedAt === null && pursuits.length === 0) {
+  // First visit: quick questions instead of an empty screen.
+  if (viewer.onboardedAt === null && pursuitBuckets.length === 0) {
     return <Onboarding name={session.user.name ?? null} />;
   }
 
-  // Tally subjects and due cards per bucket in one pass. A pursuit someone
-  // shared with you goes in "Compartido" whatever section its owner put it in
-  // — their private section names mean nothing on your home screen.
-  const stats = new Map<string, { subjects: number; due: number }>();
-  const bump = (key: string, due: number) => {
-    const s = stats.get(key) ?? { subjects: 0, due: 0 };
-    s.subjects++;
-    s.due += due;
-    stats.set(key, s);
-  };
-  for (const p of pursuits) {
-    const key = p.ownerId !== userId ? SHARED : (p.sectionId ?? UNSORTED);
-    bump(key, p._count.flashcards);
-  }
-  const totalDue = pursuits.reduce((n, p) => n + p._count.flashcards, 0);
+  const shelf: ShelfItem[] = sections.map((s) => ({ id: s.id, name: s.name, cover: notebookCover(s.id, s.cover), href: `/pursuits/s/${s.id}`, movable: true }));
+  if (pursuitBuckets.some((p) => p.ownerId === userId && !p.sectionId))
+    shelf.push({ id: UNSORTED, name: "Sin clasificar", cover: "marble", href: `/pursuits/s/${UNSORTED}`, movable: false });
+  if (pursuitBuckets.some((p) => p.ownerId !== userId))
+    shelf.push({ id: SHARED, name: "Compartido", cover: "ocean", href: `/pursuits/s/${SHARED}`, movable: false });
 
-  const describe = (key: string) => {
-    const s = stats.get(key) ?? { subjects: 0, due: 0 };
-    return {
-      subtitle: `${s.subjects} asignatura${s.subjects === 1 ? "" : "s"}`,
-      badge: s.due > 0 ? `${s.due} por repasar` : undefined,
-    };
-  };
-
-  const tiles: Tile[] = sections.map((s, i) => ({
-    id: s.id,
-    href: `/pursuits/s/${s.id}`,
-    movable: true,
-    name: s.name,
-    colorClass: tileColor(i),
-    ...describe(s.id),
-  }));
-  if (stats.has(UNSORTED)) {
-    tiles.push({
-      id: UNSORTED,
-      href: `/pursuits/s/${UNSORTED}`,
-      movable: false,
-      name: "Sin clasificar",
-      colorClass: "bg-ink-muted",
-      ...describe(UNSORTED),
-    });
-  }
-  if (stats.has(SHARED)) {
-    tiles.push({
-      id: SHARED,
-      href: `/pursuits/s/${SHARED}`,
-      movable: false,
-      name: "Compartido",
-      colorClass: "bg-tile-deep",
-      ...describe(SHARED),
-    });
-  }
-
-  const picks = sample(concepts, 3);
+  const blocks = homeBlocks(viewer.homeBlocks, sections);
+  const studyOf = new Map(sections.map((s) => [s.id, s.study]));
+  const entries = await Promise.all(
+    blocks.map(async (b) => {
+      if (!b.sectionId) return [b.id, <p key={b.id} className="text-sm text-ink-faint">Elige una libreta.</p>] as const;
+      if (b.type === "folders") return [b.id, <FolderRow key={b.id} items={await folderItems(userId, b.sectionId, studyOf.get(b.sectionId) ?? true)} />] as const;
+      if (b.type === "map")
+        return [b.id, <KnowledgeMap key={b.id} clusters={await notebookMap(userId, b.sectionId)} empty="Crea un mapa desde una asignatura y aparecerá aquí." />] as const;
+      return [b.id, <RecentList key={b.id} pages={await recentPages(userId, b.sectionId)} />] as const;
+    }),
+  );
 
   return (
-    <div className="mx-auto flex w-full max-w-[1800px] flex-1 flex-col gap-10 px-6 py-10 lg:px-14">
-      <header className="flex items-center justify-between">
-        <div className="flex items-baseline gap-3">
-          <Logo href="/pursuits" />
-          <span className="hidden text-sm text-ink-faint sm:inline">Piénsalo. Apúntalo.</span>
-        </div>
-      </header>
-
-      <div className="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <section aria-label="Secciones">
-          <SectionTiles key={tiles.map((t) => t.id).join()} tiles={tiles} />
-        </section>
-
-        <aside className="flex flex-col gap-4 self-start rounded-3xl bg-white p-6 shadow-[0_1px_2px_rgba(13,13,13,0.06)]">
-          <div className="flex items-baseline justify-between">
-            <h2 className="text-xl font-extrabold text-tile-sky">Examen cruzado</h2>
-            {totalDue > 0 && (
-              <span className="text-xs font-semibold text-ink-muted">{totalDue} tarjetas pendientes</span>
-            )}
-          </div>
-          {picks.length === 0 ? (
-            <p className="rounded-2xl bg-callout px-4 py-5 text-sm text-ink-muted">
-              Organiza algunas notas y empezarán a aparecer aquí.
-            </p>
-          ) : (
-            <ul className="flex flex-col gap-2.5">
-              {picks.map((c) => (
-                <li key={c.id}>
-                  <Link
-                    href={`/pursuits/${c.pursuitId}?tab=pages`}
-                    className="flex flex-col rounded-2xl bg-tile-blue px-4 py-3 text-white transition-transform hover:-translate-y-0.5"
-                  >
-                    <span className="truncate text-sm font-semibold">{c.title}</span>
-                    <span className="text-xs">{c.pursuitTitle}</span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-          <Link
-            href="/review?mode=learn"
-            className="mt-1 rounded-full bg-ink px-4 py-2.5 text-center text-sm font-semibold text-white transition-transform hover:-translate-y-0.5"
-          >
-            Empezar <ArrowRight />
-          </Link>
-        </aside>
-      </div>
-
+    <div className="mx-auto flex w-full max-w-[1100px] flex-1 flex-col gap-10 px-6 py-10 sm:px-12 lg:py-14">
+      <Greeting name={session.user.name ?? null} />
+      <NotebookShelf items={shelf} />
+      <HomeBlocks
+        blocks={blocks}
+        notebooks={sections.map((s) => ({ id: s.id, name: s.name, cover: notebookCover(s.id, s.cover) }))}
+        content={Object.fromEntries(entries)}
+      />
     </div>
   );
 }

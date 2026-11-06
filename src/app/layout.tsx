@@ -1,16 +1,17 @@
 import type { Metadata, Viewport } from "next";
-import { Plus_Jakarta_Sans } from "next/font/google";
+import { Inter } from "next/font/google";
 import Link from "next/link";
 import "./globals.css";
 import { RegisterServiceWorker } from "./RegisterServiceWorker";
-import { NavDrawer } from "./NavDrawer";
+import { Sidebar } from "./Sidebar";
+import { CoverDefs } from "./CoverDefs";
+import { notebookCover } from "@/lib/covers";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 
-const appFont = Plus_Jakarta_Sans({
+const appFont = Inter({
   variable: "--font-app",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
 });
 
 export const metadata: Metadata = {
@@ -42,7 +43,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   const [user, sections] = userId
     ? await Promise.all([
         prisma.user.findUnique({ where: { id: userId }, select: { plan: true } }),
-        prisma.section.findMany({ where: { userId }, orderBy: { order: "asc" }, select: { id: true, name: true } }),
+        prisma.section.findMany({ where: { userId }, orderBy: { order: "asc" }, select: { id: true, name: true, cover: true } }),
       ])
     : [null, []];
 
@@ -50,15 +51,16 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="es" className={`${appFont.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
         <RegisterServiceWorker />
+        <CoverDefs />
         {session?.user && user && (
-          <NavDrawer
+          <Sidebar
             user={{ name: session.user.name ?? null, email: session.user.email ?? null, image: session.user.image ?? null }}
             plan={user.plan}
-            sections={sections}
+            notebooks={sections.map((s) => ({ id: s.id, name: s.name, cover: notebookCover(s.id, s.cover) }))}
           />
         )}
-        <div className={`flex flex-1 flex-col ${session?.user ? "pl-12 sm:pl-14" : ""}`}>{children}</div>
-        <footer className="px-6 py-4 text-center text-xs text-ink-faint">
+        <div className={`flex flex-1 flex-col ${session?.user ? "pb-16 lg:pb-0 lg:pl-60" : ""}`}>{children}</div>
+        <footer className={`px-6 py-4 text-center text-xs text-ink-faint ${session?.user ? "hidden lg:block lg:pl-60" : ""}`}>
           Hecho por{" "}
           <a
             href="https://github.com/lagoanadia"

@@ -31,6 +31,9 @@ model User {
   // it". See src/lib/onboarding.ts.
   onboardedAt DateTime?
 
+  // Home page blocks (lib/blocks.ts); null = defaults.
+  homeBlocks Json?
+
   // "en" | "de" | "fr" | "es" (lib/i18n.ts).
   locale String @default("en")
 
@@ -48,7 +51,6 @@ model User {
   pushSubscriptions   PushSubscription[]
   sentNotifications   SentDeadlineNotification[]
   challenges          Challenge[]
-  debates             Debate[]
 }
 
 enum Plan {
@@ -169,6 +171,13 @@ model Pursuit {
   // Opt-in per subject: Classroom only makes sense for school subjects.
   classroomEnabled    Boolean @default(false)
 
+  // Folder look and layout: cover pattern key, what its groups are called
+  // ("Unidad", "Tema"…; null = "Unidad"), and its page blocks (lib/blocks.ts;
+  // null = defaults for its notebook).
+  cover      String?
+  groupLabel String?
+  blocks     Json?
+
   members         PursuitMember[]
   pursuitTags     PursuitTag[]
   brainDumps      BrainDump[]
@@ -195,6 +204,7 @@ model PursuitContentSection {
 
   brainDumps BrainDump[]
   notes      Note[]
+  maps       ConceptMap[]
 
   // The Classroom unit this unit maps to ("UD2"), matched against file
   // names, so the slide picker only shows that unit's slides.
@@ -259,6 +269,10 @@ model Section {
   id    String @id @default(cuid())
   name  String
   order Int    @default(0)
+  // Cover texture key (lib/covers.ts); null = picked from the id.
+  cover String?
+  // Study tools (flashcards, review, maps, challenges) for its subjects.
+  study Boolean @default(true)
 
   userId String
   user   User   @relation(fields: [userId], references: [id])
@@ -445,6 +459,10 @@ model ConceptMap {
   pursuitId String
   pursuit   Pursuit @relation(fields: [pursuitId], references: [id], onDelete: Cascade)
 
+  // The unit (group) this map belongs to, if any.
+  unitId String?
+  unit   PursuitContentSection? @relation(fields: [unitId], references: [id], onDelete: SetNull)
+
   concepts Concept[]
 }
 
@@ -529,25 +547,3 @@ model Challenge {
 // A debate about a headline with an AI on the other side.
 // messages: [{ role: "user" | "ai", text, fallacies? }].
 
-model Debate {
-  id        String   @id @default(cuid())
-  headline  String
-  url       String?
-  source    String?
-  motion    String
-  brief     String
-  // "for" | "against" — the side YOU argue.
-  side      String
-  language  String   @default("English")
-  // "opponent" argues the other side; "socratic" only asks questions.
-  style     String   @default("opponent")
-  messages  Json     @default("[]")
-  verdict   Json?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId, createdAt])
-}
