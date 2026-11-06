@@ -396,6 +396,8 @@ model Flashcard {
   easeFactor  Float    @default(2.5)
   repetitions Int      @default(0)
   dueDate     DateTime @default(now())
+  // Last time it was reviewed; counts toward the daily cap.
+  reviewedAt  DateTime?
   // Three plausible wrong answers for multiple choice, written by the AI in
   // the same style as the answer. [] until generated.
   distractors String[] @default([])

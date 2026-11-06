@@ -1021,6 +1021,7 @@ export async function reviewFlashcard(
       easeFactor: next.easeFactor,
       repetitions: next.repetitions,
       dueDate: dueDateAfter(next.interval),
+      reviewedAt: new Date(),
     },
   });
 
