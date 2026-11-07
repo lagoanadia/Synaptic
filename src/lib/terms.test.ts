@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { termMatches } from "./terms";
+import { termFromTitle, termMatches } from "./terms";
 
 describe("termMatches", () => {
   it("marks each term once, whole words, any case", () => {
@@ -16,5 +16,18 @@ describe("termMatches", () => {
       { from: 4, to: 7, index: 2 },
       { from: 10, to: 27, index: 1 },
     ]);
+  });
+});
+
+describe("termFromTitle", () => {
+  const notes = "La herencia permite reutilizar. Una GUI es la interfaz gráfica del programa.";
+  it("finds the title, or a part of it, as written in the notes", () => {
+    expect(termFromTitle("Herencia", notes)).toBe("herencia");
+    expect(termFromTitle("Herencia: reutilizar código", notes)).toBe("herencia");
+    expect(termFromTitle("Interfaz gráfica (GUI)", notes)).toBe("interfaz gráfica");
+    expect(termFromTitle("Entorno gráfico (GUI)", notes)).toBe("GUI");
+  });
+  it("is null when the notes don't have it", () => {
+    expect(termFromTitle("Polimorfismo", notes)).toBeNull();
   });
 });

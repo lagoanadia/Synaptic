@@ -5,6 +5,7 @@ import { autoTitle } from "@/lib/text";
 import { isSlideFile } from "@/lib/slides";
 import { PageView } from "../../PageView";
 import { pageTerms } from "@/lib/blockData";
+import { fillMissingTerms } from "@/lib/autoMap";
 
 // A note whose original pages are gone.
 export default async function NotePage({ params }: { params: Promise<{ id: string; noteId: string }> }) {
@@ -35,6 +36,7 @@ export default async function NotePage({ params }: { params: Promise<{ id: strin
   if (!note) notFound();
   const p = note.pursuit;
 
+  await fillMissingTerms(p.id).catch(() => {});
   const terms = await pageTerms(p.id, note.sectionId);
 
   return (
