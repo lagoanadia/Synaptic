@@ -1,3 +1,5 @@
+import { redirect } from "next/navigation";
+import { auth } from "@/auth";
 import { LandingNav } from "./landing/LandingNav";
 import { Landing } from "./landing/Landing";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
@@ -19,9 +21,9 @@ const JSON_LD = {
   author: { "@type": "Person", name: "Nadia Lagoa" },
 };
 
-// Signed-in visitors can still see the landing page; sign-in itself lands on
-// /pursuits (landing/actions.ts).
+// Signed-in visitors go straight to their home; the landing is for everyone else.
 export default async function Home() {
+  if ((await auth())?.user?.id) redirect("/pursuits");
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }} />
