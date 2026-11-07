@@ -17,8 +17,8 @@ export default async function Image() {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={logo} width={300} height={300} alt="" style={{ borderRadius: 64, boxShadow: "0 30px 60px rgba(0,40,90,0.25)" }} />
         <div style={{ display: "flex", flexDirection: "column", color: "#fff", maxWidth: 640 }}>
-          <div style={{ fontSize: 76, fontWeight: 800, letterSpacing: -2 }}>{SITE_NAME}</div>
-          <div style={{ marginTop: 24, fontSize: 40, lineHeight: 1.25, opacity: 0.95 }}>{SITE_TAGLINE}</div>
+          <div style={{ fontSize: 44, fontWeight: 600, opacity: 0.9 }}>{SITE_NAME}</div>
+          <div style={{ marginTop: 12, fontSize: 84, lineHeight: 1.05, fontWeight: 800, letterSpacing: -2 }}>{SITE_TAGLINE}</div>
           <div style={{ marginTop: 36, fontSize: 28, opacity: 0.8 }}>synapticnotes.app</div>
         </div>
       </div>
