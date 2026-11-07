@@ -42,8 +42,15 @@ export async function notebookMap(userId: string, sectionId: string): Promise<Ma
     orderBy: { lastTouchedAt: "desc" },
     select: { id: true, title: true, cover: true, conceptMaps: { orderBy: { createdAt: "asc" }, select: mapSelect } },
   });
-  // One cluster per map (per unit), labelled with its subject: "DI · UD1".
-  return pursuits.flatMap((p) => clustersOf(p.id, folderColor(p.id, p.cover), p.conceptMaps, p.title));
+  // One cluster per subject, with every map of it.
+  return pursuits
+    .map((p) => ({
+      id: p.id,
+      label: p.title,
+      color: folderColor(p.id, p.cover),
+      nodes: p.conceptMaps.flatMap((m) => m.concepts.map((c) => ({ ...c, href: `/pursuits/${p.id}/learn/${m.id}?c=${c.id}` }))),
+    }))
+    .filter((c) => c.nodes.length > 0);
 }
 
 // One cluster per unit (group) in a subject; maps without a unit form
@@ -56,12 +63,12 @@ export async function folderMap(pursuitId: string, color: string): Promise<MapCl
 const mapSelect = { id: true, title: true, unit: { select: { id: true, name: true, order: true } }, concepts: { select: conceptSelect } } as const;
 type MapRow = { id: string; title: string; unit: { id: string; name: string; order: number } | null; concepts: Omit<MapCluster["nodes"][number], "href">[] };
 
-function clustersOf(pursuitId: string, color: string, maps: MapRow[], subject?: string): MapCluster[] {
+function clustersOf(pursuitId: string, color: string, maps: MapRow[]): MapCluster[] {
   const clusters = new Map<string, MapCluster & { order: number }>();
   for (const m of maps) {
     const key = m.unit?.id ?? `map-${m.id}`;
     const name = m.unit?.name ?? m.title;
-    const c = clusters.get(key) ?? { id: key, label: subject ? `${subject} · ${name}` : name, color, nodes: [], order: m.unit?.order ?? 999 };
+    const c = clusters.get(key) ?? { id: key, label: name, color, nodes: [], order: m.unit?.order ?? 999 };
     c.nodes.push(...m.concepts.map((n) => ({ ...n, href: `/pursuits/${pursuitId}/learn/${m.id}?c=${n.id}` })));
     clusters.set(key, c);
   }

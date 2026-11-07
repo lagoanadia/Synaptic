@@ -17,6 +17,14 @@ type Props = {
   collapsed?: boolean;
 };
 
+// A door with an arrow out: sign out.
+const LogoutIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <path d="M10 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4" />
+    <path d="M15 8l4 4-4 4M19 12H9" />
+  </svg>
+);
+
 // Two panels: the toggle that collapses / expands the sidebar.
 const PanelIcon = () => (
   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" aria-hidden>
@@ -135,15 +143,15 @@ export function Sidebar({ user, plan, notebooks, collapsed: startCollapsed = fal
           <span className="px-2 text-xs font-medium text-ink-faint">Libretas</span>
           {notebookList}
         </div>
-        <div className="mt-auto flex flex-col gap-0.5 border-t border-border-subtle pt-3">
-          <Link href="/billing" className={row(active("/billing"))}>
+        <div className="mt-auto flex items-center gap-1 border-t border-border-subtle pt-3">
+          <Link href="/billing" className={`${row(active("/billing"))} min-w-0 flex-1`}>
             <Avatar user={user} />
             <span className="min-w-0 flex-1 truncate">{user.name ?? user.email}</span>
             <span className="text-[11px] text-accent">{PLAN_LABEL[plan] ?? plan}</span>
           </Link>
           <form action={signOutAction}>
-            <button type="submit" className={`${row(false)} w-full`}>
-              Cerrar sesión
+            <button type="submit" title="Cerrar sesión" aria-label="Cerrar sesión" className="grid size-8 place-items-center rounded-md text-ink-faint hover:bg-[#ebebea] hover:text-ink">
+              <LogoutIcon />
             </button>
           </form>
         </div>
@@ -191,8 +199,8 @@ export function Sidebar({ user, plan, notebooks, collapsed: startCollapsed = fal
                 <Avatar user={user} /> {user.name ?? user.email}
               </Link>
               <form action={signOutAction}>
-                <button type="submit" className="text-ink-muted">
-                  Salir
+                <button type="submit" title="Cerrar sesión" aria-label="Cerrar sesión" className="grid size-8 place-items-center rounded-md text-ink-muted">
+                  <LogoutIcon />
                 </button>
               </form>
             </div>

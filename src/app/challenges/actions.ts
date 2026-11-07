@@ -87,6 +87,7 @@ REJECT (never write) challenges that are theory turned into code:
 - returning memorized sentences, names or facts; lookup tables of strings
 - anything whose solution is mostly copied text or a big switch/if-chain of constants
 Instead, turn the idea into DATA + RULES. Example: a note on an app's lifecycle phases → "Given a list of lifecycle events, return the final state, or 'invalid' if a transition isn't allowed" (a state machine), not "return the description of phase N". A note on colour theory → "Given a list of RGB colours, return those that are greys", not "return the name of a colour".
+EVERYTHING the learner reads is in Spanish (title, prompt, comments); identifiers in code may stay in English.
 Expected outputs are short values: numbers, booleans, short strings (< 40 characters), arrays or objects — never sentences.
 
 ${SHAPE[language]}
@@ -95,10 +96,10 @@ Respond with ONLY JSON: {"skills": ["…", "…"], "challenges": [
   {
     "skill": "the skill from the map it trains, in Spanish, short",
     "from_class": false,
-    "title": "short title",
-    "prompt": "the task in plain language: what the function receives and returns, 1-2 examples. In Spanish.",
+    "title": "short title, in Spanish",
+    "prompt": "the task, in Spanish, as markdown: one or two plain sentences on what to do; then a line **Recibe:** followed by one '- \`param\`: what it is' line per parameter; then **Devuelve:** and what it returns; then one example as a fenced code block (\`\`\`), e.g. \`\`\`\\nnombreFuncion(...) → resultado\\n\`\`\`. Never glue the example into the prose.",
     "entry": "functionName",
-    "starter_code": "the function signature with a placeholder body and a short comment",
+    "starter_code": "the function signature with a placeholder body and a short comment IN SPANISH (e.g. // Escribe tu código aquí)",
     "tests": [{"args": [...], "expected": ...}],
     "solution": "a correct reference solution",
     "based_on": "title of the note it practices, or null"

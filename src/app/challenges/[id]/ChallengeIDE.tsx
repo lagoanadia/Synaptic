@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
 import { ArrowLeft, ArrowRight, CheckIcon, XIcon } from "@/app/icons";
 import { CodeEditor } from "../CodeEditor";
+import { PromptText } from "../PromptText";
 import { DIFFICULTIES, difficultyOf } from "../look";
 import { Badge, Bars } from "../ChallengeList";
 import { runInSandbox, warmSandbox } from "../sandbox";
@@ -64,6 +65,7 @@ export function ChallengeIDE({ challenge }: { challenge: Challenge }) {
   const [solved, setSolved] = useState(challenge.passed);
   const [picked, setPicked] = useState<number | null>(null);
   const [taskOpen, setTaskOpen] = useState(true);
+  const [termOpen, setTermOpen] = useState(false);
   const [review, setReview] = useState(challenge.review);
   const [hints, setHints] = useState<string[]>([]);
   const [note, setNote] = useState<string | null>(null);
@@ -92,6 +94,7 @@ export function ChallengeIDE({ challenge }: { challenge: Challenge }) {
     setOutput(out);
     setRunning(false);
     setPicked(null);
+    setTermOpen(true);
     const allGreen = !out.error && out.results.length > 0 && out.results.every((r) => r.ok);
     if (allGreen) setSolved(true);
     saveRun(challenge.id, code, allGreen).catch(() => {});
@@ -161,7 +164,7 @@ export function ChallengeIDE({ challenge }: { challenge: Challenge }) {
               {(task.note || challenge.pursuitTitle) && (
                 <span className="text-xs text-ink-faint">{[challenge.pursuitTitle, task.note && `De tu nota “${task.note}”`].filter(Boolean).join(" · ")}</span>
               )}
-              <p className="text-[15px] leading-relaxed whitespace-pre-line">{task.text}</p>
+              <PromptText prompt={task.text} />
             </div>
             {challenge.tests[0] && (
               <div className="flex flex-col gap-2.5">
@@ -189,24 +192,31 @@ export function ChallengeIDE({ challenge }: { challenge: Challenge }) {
             <CodeEditor value={code} language={challenge.language} onChange={setCode} onRun={run} />
           </div>
 
-          <div className="flex max-h-[45%] shrink-0 flex-col gap-2.5 overflow-y-auto border-t border-border-subtle px-5 py-3" aria-live="polite">
-            <div className="flex flex-wrap items-center gap-1.5 text-sm text-ink-muted">
+          {/* Terminal: one dot per check; open it to see the failing case. */}
+          <div className="flex shrink-0 flex-col bg-[#0e0e10] text-[#d4d4d8]" aria-live="polite">
+            <div className="flex flex-wrap items-center gap-1.5 border-t border-white/10 px-4 py-2 text-[13px]">
+              <button type="button" onClick={() => setTermOpen((o) => !o)} aria-expanded={termOpen} className="mr-2 flex items-center gap-1.5 font-mono text-xs text-white/60 hover:text-white">
+                <span className={`inline-block transition-transform ${termOpen ? "rotate-90" : ""}`}>›</span> Terminal
+              </button>
               {challenge.tests.map((_, i) => {
                 const r = output?.results[i];
                 return (
                   <button
                     key={i}
                     type="button"
-                    onClick={() => setPicked(i)}
+                    onClick={() => {
+                      setPicked(i);
+                      setTermOpen(true);
+                    }}
                     title={`Comprobación ${i + 1}`}
                     aria-label={`Comprobación ${i + 1}${r ? (r.ok ? ", correcta" : ", falla") : ""}`}
-                    className={`grid size-[18px] place-items-center rounded-full text-white ${r ? (r.ok ? "bg-[#448361]" : "bg-[#e5484d]") : "border-[1.5px] border-[#d6d4cf]"} ${shown === i ? "ring-2 ring-ink/30 ring-offset-1" : ""}`}
+                    className={`grid size-[16px] place-items-center rounded-full text-white ${r ? (r.ok ? "bg-[#3fa36b]" : "bg-[#e5484d]") : "border-[1.5px] border-white/25"} ${termOpen && shown === i ? "ring-2 ring-white/40 ring-offset-1 ring-offset-[#0e0e10]" : ""}`}
                   >
-                    {r && (r.ok ? <CheckIcon size={10} /> : <XIcon size={10} />)}
+                    {r && (r.ok ? <CheckIcon size={9} /> : <XIcon size={9} />)}
                   </button>
                 );
               })}
-              <span className="ml-1.5">
+              <span className="ml-1.5 text-white/50">
                 {running ? "Ejecutando…" : output ? (output.error ? "No se ha podido ejecutar" : `${passedCount} de ${output.results.length}`) : "Ctrl + Enter para comprobar"}
               </span>
               {allGreen && (
@@ -221,29 +231,27 @@ export function ChallengeIDE({ challenge }: { challenge: Challenge }) {
                       toggleTask(true);
                     })
                   }
-                  className="ml-auto text-sm text-accent hover:underline disabled:opacity-50"
+                  className="ml-auto text-[13px] text-[#82aaff] hover:underline disabled:opacity-50"
                 >
                   {isReviewing ? "Revisando…" : "Revisar mi código"}
                 </button>
               )}
             </div>
-
-            {output?.error && <pre className="rounded-lg border border-[#f4d4d4] bg-[#fdf6f6] px-3.5 py-2.5 text-xs whitespace-pre-wrap text-[#c4373b]">{output.error}</pre>}
-
-            {shown !== null && challenge.tests[shown] && (
-              <Case
-                inputs={inputs(challenge.tests[shown])}
-                expected={challenge.tests[shown].expected}
-                result={output?.results[shown]}
-                react={react}
-              />
-            )}
-
-            {output && output.logs.length > 0 && (
-              <details className="text-xs">
-                <summary className="cursor-pointer text-ink-faint">Consola ({output.logs.length})</summary>
-                <pre className="mt-1.5 max-h-40 overflow-y-auto rounded-md bg-chip px-3 py-2 whitespace-pre-wrap">{output.logs.slice(0, 200).join("\n")}</pre>
-              </details>
+            {termOpen && (
+              <div className="flex max-h-[38vh] flex-col gap-2.5 overflow-y-auto px-4 pt-1 pb-4 font-mono text-[12.5px]">
+                {!output && !running && <p className="text-white/40">Ejecuta tu código para ver aquí cada comprobación.</p>}
+                {output?.error && <pre className="whitespace-pre-wrap text-[#ff7b7b]">{output.error}</pre>}
+                {shown !== null && challenge.tests[shown] && output && (
+                  <Case inputs={inputs(challenge.tests[shown])} expected={challenge.tests[shown].expected} result={output.results[shown]} react={react} />
+                )}
+                {allGreen && shown === null && <p className="text-[#3fa36b]">Todas las comprobaciones correctas.</p>}
+                {output && output.logs.length > 0 && (
+                  <div className="border-t border-white/10 pt-2">
+                    <p className="mb-1 text-white/40">console.log</p>
+                    <pre className="whitespace-pre-wrap text-white/80">{output.logs.slice(0, 200).join("\n")}</pre>
+                  </div>
+                )}
+              </div>
             )}
           </div>
         </section>
@@ -308,15 +316,15 @@ function Example({ inputs, expected, react }: { inputs: [string, unknown][]; exp
 function Case({ inputs, expected, result, react }: { inputs: [string, unknown][]; expected: unknown; result?: { ok: boolean; got?: unknown; error?: string }; react: boolean }) {
   const failed = result && !result.ok;
   return (
-    <div className={`grid grid-cols-[76px_1fr] gap-x-3 gap-y-1.5 rounded-lg border px-3.5 py-2.5 text-[13px] ${failed ? "border-[#f4d4d4] bg-[#fdf6f6]" : result ? "border-[#dfeee4] bg-[#f3f8f4]" : "border-border-subtle"}`}>
-      <span className="text-ink-faint">Entrada</span>
+    <div className="grid grid-cols-[76px_1fr] gap-x-3 gap-y-1.5">
+      <span className="text-white/40">Entrada</span>
       <span className="font-mono text-[12.5px] break-words">{inputs.map(([k, v]) => `${k} = ${brief(v)}`).join(" · ") || (react ? "sin props" : "—")}</span>
-      <span className="text-ink-faint">Esperado</span>
+      <span className="text-white/40">Esperado</span>
       <span className="font-mono text-[12.5px]">{show(expected)}</span>
       {result && (
         <>
-          <span className="text-ink-faint">Obtenido</span>
-          <span className={`font-mono text-[12.5px] break-words ${failed ? "text-[#e5484d]" : "text-[#448361]"}`}>{result.error ?? show(result.got)}</span>
+          <span className="text-white/40">Obtenido</span>
+          <span className={`font-mono text-[12.5px] break-words ${failed ? "text-[#ff7b7b]" : "text-[#3fa36b]"}`}>{result.error ?? show(result.got)}</span>
         </>
       )}
     </div>
