@@ -117,6 +117,34 @@ ${source}`,
   return { title: str(data.title, 120) || "Mapa de conceptos", concepts, links };
 }
 
+// A map grows with the notes: only the concepts in SOURCE that the map
+// doesn't cover yet (0-8), linked to existing ones by title.
+export async function newConcepts(source: string, existing: string[], language: string): Promise<{ concepts: Breakdown["concepts"]; links: { from: string; toTitle: string; label: string | null }[] } | null> {
+  const data = obj(
+    await askJson(
+      `A concept map already has these concepts: ${existing.map((t) => `"${t}"`).join(", ")}.
+From the SOURCE below (a student's notes), list ONLY the concepts it covers that are NOT already in the map (0-8; none is fine). Same rules as the existing ones.
+
+${RULES(language)}
+
+Respond with ONLY JSON:
+{"concepts": [{"key": "short-id", "title": "...", "summary": "one sentence", "explanation": "...", "excerpt": "verbatim or null", "excerpt_from": "... or null"}],
+ "links": [{"from": "new key", "to_title": "title of an existing concept", "label": "needs" | "related"}]}
+
+SOURCE:
+${source}`,
+      { maxTokens: 8000 },
+    ),
+  );
+  if (!data || typeof data !== "object") return null;
+  const concepts = readConcepts(data, source);
+  const keys = new Set(concepts.map((c) => c.key));
+  const links = arr(data.links)
+    .map((l) => ({ from: str(obj(l).from, 60), toTitle: str(obj(l).to_title, 120), label: str(obj(l).label, 30) || null }))
+    .filter((l) => keys.has(l.from) && existing.includes(l.toTitle));
+  return { concepts, links };
+}
+
 // "Go deeper": split one concept into the smaller ideas inside it.
 export async function deepen(
   concept: { title: string; explanation: string; excerpt: string | null },
@@ -178,7 +206,7 @@ export async function writeConceptQuiz(
 What it is: ${concept.explanation}
 ${parts ? `What it contains:\n${parts}\n` : ""}${concept.excerpt ? `Excerpt from the source:\n${concept.excerpt}\n` : ""}
 Mix the question types — use each at least once:
-- "choice": 4 options, exactly one right; wrong options must be plausible (common confusions), similar length to the right one
+- "choice": 4 options, exactly one right; wrong options must be plausible (common confusions), as long and as detailed as the right one (±20%), so it never stands out as the longest
 - "truefalse": a statement that is clearly true or clearly false per the material — make about half false
 - "blank": a sentence with ONE gap written as ___ ; "accepted" lists the short answer (1-3 words) and its obvious variants
 - "match": 3-5 pairs to connect (term → definition, item → its role…)

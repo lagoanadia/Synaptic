@@ -141,3 +141,11 @@ export function answer(state: LearnState, correct: boolean, rand: Rand = Math.ra
 
 // What a finished item means for spaced repetition (SM-2 quality 0-5).
 export const qualityFor = (misses: number) => (misses === 0 ? 4 : misses === 1 ? 3 : 1);
+
+// The right answer gives itself away when it's much longer than every wrong
+// one (a classic tell). Cards like that get their wrong answers rewritten.
+export function answerStandsOut(answer: string, distractors: string[]): boolean {
+  if (distractors.length === 0) return false;
+  const longest = Math.max(...distractors.map((d) => d.length));
+  return answer.length > longest * 1.3 && answer.length - longest > 12;
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { answer, currentQuestion, isCloseEnough, isFinished, qualityFor, startLearn, type LearnItem } from "./learn";
+import { answerStandsOut, answer, currentQuestion, isCloseEnough, isFinished, qualityFor, startLearn, type LearnItem } from "./learn";
 
 function seeded(seed = 1) {
   let s = seed;
@@ -56,5 +56,13 @@ describe("learn session", () => {
 
   it("maps misses to SM-2 quality", () => {
     expect([qualityFor(0), qualityFor(1), qualityFor(3)]).toEqual([4, 3, 1]);
+  });
+});
+
+describe("answerStandsOut", () => {
+  it("flags a right answer much longer than every wrong one", () => {
+    expect(answerStandsOut("list() solo accede al nivel actual, walk() recorre todo el árbol consumiendo más recursos", ["walk() solo muestra directorios", "walk() es más rápido", "list() es recursivo"])).toBe(true);
+    expect(answerStandsOut("Producción", ["Redacción", "Técnica", "Artística"])).toBe(false);
+    expect(answerStandsOut("abc", [])).toBe(false);
   });
 });
