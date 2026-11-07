@@ -1,4 +1,5 @@
 import { ArrowLeft } from "@/app/icons";
+import { BILLING } from "@/lib/billingFlag";
 import Link from "next/link";
 
 export const metadata = { title: "Términos del servicio — Synaptic" };
@@ -47,6 +48,7 @@ export default function TermsPage() {
           </p>
         </section>
 
+        {BILLING && (
         <section className="flex flex-col gap-2">
           <h2 className="text-base font-semibold">Planes y facturación</h2>
           <p>
@@ -68,6 +70,7 @@ export default function TermsPage() {
             por meses parciales.
           </p>
         </section>
+        )}
 
         <section className="flex flex-col gap-2">
           <h2 className="text-base font-semibold">Tu contenido</h2>

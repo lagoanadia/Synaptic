@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { addNamedConcept, refreshUnitMap } from "@/lib/autoMap";
+import { BILLING } from "@/lib/billingFlag";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { groq } from "@/lib/groq";
@@ -85,7 +86,7 @@ export async function addMember(
       if (memberCount >= 1) {
         return {
           error:
-            "Free plan pursuits can only be shared with 1 collaborator — upgrade to Pro for unlimited sharing.",
+            `Solo puedes compartir esta asignatura con 1 persona${BILLING ? ". Hazte Pro para compartir sin límite." : "."}`,
         };
       }
     }
@@ -863,7 +864,7 @@ export async function generateFlashcards(
     const generatedThisMonth = await getFlashcardsThisMonth(session.user.id);
     if (generatedThisMonth >= FREE_MONTHLY_FLASHCARD_LIMIT) {
       return {
-        error: `Has llegado al límite del plan gratis: ${FREE_MONTHLY_FLASHCARD_LIMIT} tarjetas este mes. Hazte Pro para tenerlas ilimitadas.`,
+        error: `Has llegado al límite del plan gratis: ${FREE_MONTHLY_FLASHCARD_LIMIT} tarjetas este mes.${BILLING ? " Hazte Pro para tenerlas ilimitadas." : ""}`,
       };
     }
   }
