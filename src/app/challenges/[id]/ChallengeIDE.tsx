@@ -1,13 +1,29 @@
 "use client";
 
-import { ArrowLeft, ArrowRight, CheckIcon, XIcon } from "@/app/icons";
 import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
+import { ArrowLeft, ArrowRight, CheckIcon, XIcon } from "@/app/icons";
 import { CodeEditor } from "../CodeEditor";
-import { difficultyOf } from "../look";
+import { DIFFICULTIES, difficultyOf } from "../look";
+import { Badge, Bars } from "../ChallengeList";
 import { runInSandbox, warmSandbox } from "../sandbox";
 import { getHint, reviewSolution, saveRun } from "../actions";
-import { LANGUAGE_INFO, parseReview, type ChallengeTest, type Language, type RunOutput } from "@/lib/challenge";
+import { paramNames, parseReview, type ChallengeTest, type Language, type RunOutput } from "@/lib/challenge";
+
+type Challenge = {
+  id: string;
+  title: string;
+  prompt: string;
+  language: Language;
+  entry: string;
+  starterCode: string;
+  tests: ChallengeTest[];
+  difficulty: string;
+  code: string | null;
+  passed: boolean;
+  review: string | null;
+  pursuitTitle: string | null;
+};
 
 const show = (v: unknown) => {
   try {
@@ -17,37 +33,57 @@ const show = (v: unknown) => {
   }
 };
 
-// The online-compiler screen: task on the left, editor top-right, test
-// console bottom-right. Run = Ctrl/Cmd+Enter.
-export function ChallengeIDE({
-  challenge,
-}: {
-  challenge: {
-    id: string;
-    title: string;
-    prompt: string;
-    language: Language;
-    entry: string;
-    starterCode: string;
-    tests: ChallengeTest[];
-    difficulty: string;
-    code: string | null;
-    passed: boolean;
-    review: string | null;
-    pursuitTitle: string | null;
-  };
-}) {
+const KEY = "synaptic.challenge.task";
+
+// A value in one short line: a list of objects reads "Milk (2023-01-02, 2),
+// Cheese (2023-01-10, 1)" instead of raw JSON.
+function brief(v: unknown): string {
+  const bare = (x: unknown) => (typeof x === "string" ? x : show(x));
+  if (Array.isArray(v) && v.length > 0 && v.every((x) => x && typeof x === "object" && !Array.isArray(x))) {
+    return v
+      .map((o) => {
+        // Lead with its name: the first text that isn't a date (the
+        // database doesn't keep the keys' order).
+        const vals = Object.values(o as Record<string, unknown>);
+        const i = Math.max(0, vals.findIndex((x) => typeof x === "string" && !/^\d{4}-\d{2}-\d{2}/.test(x)));
+        const rest = vals.filter((_, j) => j !== i);
+        return rest.length ? `${bare(vals[i])} (${rest.map(bare).join(", ")})` : bare(vals[i]);
+      })
+      .join(", ");
+  }
+  return show(v);
+}
+
+// A challenge: the task on the left (hide it with «), the editor, and a
+// strip of results under it: one dot per check, the failing case spelled
+// out. Run = Ctrl/Cmd+Enter.
+export function ChallengeIDE({ challenge }: { challenge: Challenge }) {
   const [code, setCode] = useState(challenge.code ?? challenge.starterCode);
   const [output, setOutput] = useState<RunOutput | null>(null);
   const [running, setRunning] = useState(false);
   const [solved, setSolved] = useState(challenge.passed);
+  const [picked, setPicked] = useState<number | null>(null);
+  const [taskOpen, setTaskOpen] = useState(true);
   const [review, setReview] = useState(challenge.review);
-  const [reviewError, setReviewError] = useState<string | null>(null);
-  const [isReviewing, startReview] = useTransition();
   const [hints, setHints] = useState<string[]>([]);
+  const [note, setNote] = useState<string | null>(null);
   const [isHinting, startHint] = useTransition();
+  const [isReviewing, startReview] = useTransition();
 
   useEffect(warmSandbox, []);
+  // Remember whether you hid the task (browser storage, after mount).
+  useEffect(() => {
+    try {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (window.localStorage.getItem(KEY) === "hidden") setTaskOpen(false);
+    } catch {}
+  }, []);
+  function toggleTask(open: boolean) {
+    setTaskOpen(open);
+    try {
+      window.localStorage.setItem(KEY, open ? "shown" : "hidden");
+    } catch {}
+  }
 
   async function run() {
     if (running) return;
@@ -55,199 +91,159 @@ export function ChallengeIDE({
     const out = await runInSandbox(challenge.language, code, challenge.entry, challenge.tests);
     setOutput(out);
     setRunning(false);
+    setPicked(null);
     const allGreen = !out.error && out.results.length > 0 && out.results.every((r) => r.ok);
     if (allGreen) setSolved(true);
     saveRun(challenge.id, code, allGreen).catch(() => {});
   }
 
-  const passedCount = output?.results.filter((r) => r.ok).length ?? 0;
+  function hint() {
+    startHint(async () => {
+      setNote(null);
+      const r = await getHint(challenge.id, code, hints.length + 1);
+      if (r.error) return setNote(r.error);
+      if (r.hint) setHints((h) => [...h, r.hint!]);
+      toggleTask(true);
+    });
+  }
+
+  const react = challenge.language === "react";
+  const names = react ? [] : paramNames(challenge.starterCode, challenge.entry, challenge.tests[0]?.args.length ?? 0);
+  const inputs = (t: ChallengeTest): [string, unknown][] =>
+    react ? Object.entries((t.args[0] as Record<string, unknown>) ?? {}) : t.args.map((a, i) => [names[i] ?? `arg${i + 1}`, a]);
   const task = splitPrompt(challenge.prompt);
-  // React tests pass props; everything else, arguments.
-  const input = (t: ChallengeTest) =>
-    challenge.language === "react" ? `<${challenge.entry} ${props(t.args[0])}/>` : `${challenge.entry}(${t.args.map(show).join(", ")})`;
+  const passedCount = output?.results.filter((r) => r.ok).length ?? 0;
+  const allGreen = !!output && !output.error && passedCount === output.results.length;
+  const firstFail = output?.results.findIndex((r) => !r.ok) ?? -1;
+  const shown = picked ?? (firstFail >= 0 ? firstFail : null);
+  const d = difficultyOf(challenge.difficulty);
+  const icon = "grid size-8 place-items-center rounded-md text-ink-muted hover:bg-chip hover:text-ink disabled:opacity-40";
 
   return (
-    <div className="flex h-[calc(100vh-3rem)] min-h-[600px] flex-col bg-[#1e2127] text-[#d7dae0]">
-      <header className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-2.5">
-        <div className="flex min-w-0 items-center gap-3">
-          <Link href="/challenges" className="text-sm text-white/60 hover:text-white">
-            <ArrowLeft /> Retos
-          </Link>
-          <span className="truncate font-semibold text-white">{challenge.title}</span>
-          <span className="rounded bg-white/10 px-2 py-0.5 text-xs">{LANGUAGE_INFO[challenge.language].label}</span>
-          <span className="rounded bg-white/10 px-2 py-0.5 text-xs">{difficultyOf(challenge.difficulty).label}</span>
-          {solved && <span className="rounded bg-mint px-2 py-0.5 text-xs font-bold text-white">Resuelto</span>}
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              if (window.confirm("¿Volver al código inicial?")) setCode(challenge.starterCode);
-            }}
-            className="rounded px-3 py-1.5 text-sm text-white/70 hover:bg-white/10"
-          >
-            Reiniciar
-          </button>
-          <button
-            type="button"
-            onClick={run}
-            disabled={running}
-            className="flex items-center gap-2 rounded bg-mint px-4 py-1.5 text-sm font-bold text-white hover:brightness-110 disabled:opacity-60"
-          >
-            {running ? "Ejecutando…" : "▶ Ejecutar"}
-            <kbd className="text-xs opacity-70">Ctrl+↵</kbd>
-          </button>
-        </div>
+    <div className="flex h-[100dvh] flex-col bg-white lg:h-screen">
+      <header className="flex h-[54px] shrink-0 items-center gap-3 border-b border-border-subtle px-4 sm:px-5">
+        <Link href="/challenges" className="flex items-center gap-1 text-sm text-ink-faint hover:text-ink">
+          <ArrowLeft /> <span className="hidden sm:inline">Retos</span>
+        </Link>
+        <h1 className="min-w-0 truncate text-[15px] font-semibold">{challenge.title}</h1>
+        <Badge language={challenge.language} small />
+        <span title={d.label}>
+          <Bars n={DIFFICULTIES.indexOf(d)} color={d.bar} />
+        </span>
+        {solved && <CheckIcon size={15} className="text-[#448361]" />}
+        <span className="flex-1" />
+        <button type="button" onClick={hint} disabled={isHinting || hints.length >= 3} title={hints.length >= 3 ? "No quedan pistas" : "Pista"} aria-label="Pista" className={icon}>
+          {isHinting ? "…" : "💡"}
+        </button>
+        <button
+          type="button"
+          onClick={() => window.confirm("¿Volver al código inicial?") && setCode(challenge.starterCode)}
+          title="Volver al código inicial"
+          aria-label="Reiniciar"
+          className={`${icon} text-lg`}
+        >
+          ↺
+        </button>
+        <button type="button" onClick={run} disabled={running} className="flex items-center gap-2 rounded-lg bg-[#448361] px-3.5 py-2 text-sm font-semibold text-white hover:brightness-105 disabled:opacity-60">
+          {running ? "Ejecutando…" : "▶ Ejecutar"}
+          <kbd className="hidden text-xs font-normal opacity-70 sm:inline">Ctrl ↵</kbd>
+        </button>
       </header>
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(320px,38%)_1fr]">
-        {/* Task */}
-        <section className="flex min-h-0 flex-col gap-6 overflow-y-auto border-b border-white/10 p-5 lg:border-r lg:border-b-0" aria-label="Tarea">
-          <div className="flex flex-col gap-3">
-            {(task.note || challenge.pursuitTitle) && (
-              <div className="flex flex-wrap gap-1.5 text-xs">
-                {challenge.pursuitTitle && <span className="rounded-full bg-white/10 px-2.5 py-1 text-white/70">{challenge.pursuitTitle}</span>}
-                {task.note && <span className="truncate rounded-full bg-tile-sky/20 px-2.5 py-1 text-tile-sky">{task.note}</span>}
+      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+        {taskOpen ? (
+          <section className="relative flex max-h-[45vh] shrink-0 flex-col gap-5 overflow-y-auto border-b border-border-subtle px-6 py-5 lg:max-h-none lg:w-[380px] lg:border-r lg:border-b-0" aria-label="Enunciado">
+            <button type="button" onClick={() => toggleTask(false)} title="Ocultar el enunciado" aria-label="Ocultar el enunciado" className="absolute top-4 right-3 rounded px-1.5 text-ink-faint hover:bg-chip hover:text-ink">
+              «
+            </button>
+            <div className="flex flex-col gap-2.5">
+              <h2 className="text-[11px] font-semibold tracking-wider text-ink-faint uppercase">Enunciado</h2>
+              {(task.note || challenge.pursuitTitle) && (
+                <span className="text-xs text-ink-faint">{[challenge.pursuitTitle, task.note && `De tu nota “${task.note}”`].filter(Boolean).join(" · ")}</span>
+              )}
+              <p className="text-[15px] leading-relaxed whitespace-pre-line">{task.text}</p>
+            </div>
+            {challenge.tests[0] && (
+              <div className="flex flex-col gap-2.5">
+                <h2 className="text-[11px] font-semibold tracking-wider text-ink-faint uppercase">Ejemplo</h2>
+                <Example inputs={inputs(challenge.tests[0])} expected={challenge.tests[0].expected} react={react} />
               </div>
             )}
-            <p className="text-[15px] leading-relaxed whitespace-pre-line text-white/90">{task.text}</p>
-            <p className="text-sm text-white/60">
-              Tu objetivo: escribir <code className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-white">{challenge.entry}</code>
-              {challenge.language === "react" ? " (un componente)" : ""}
-            </p>
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <h2 className="text-xs font-bold tracking-wide text-white/50 uppercase">Ejemplos</h2>
-            {challenge.tests.slice(0, 2).map((t, i) => (
-              <div key={i} className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 rounded-lg bg-white/5 px-3 py-2.5 font-mono text-xs">
-                <span className="break-words text-white/80">{input(t)}</span>
-                <ArrowRight size={14} className="text-white/40" />
-                <span className="font-bold break-words text-white">{show(t.expected)}</span>
-              </div>
-            ))}
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xs font-bold tracking-wide text-white/50 uppercase">Comprobaciones</h2>
-              <span className="text-xs text-white/60">{output ? `${passedCount}/${challenge.tests.length} correctas` : `${challenge.tests.length} por superar`}</span>
-            </div>
-            <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
-              <div
-                className={`h-full rounded-full transition-[width] ${passedCount === challenge.tests.length ? "bg-mint" : "bg-amber"}`}
-                style={{ width: `${(passedCount / challenge.tests.length) * 100}%` }}
-              />
-            </div>
-            <ul className="flex flex-col gap-1.5 font-mono text-xs">
-              {challenge.tests.map((t, i) => {
-                const r = output?.results[i];
-                return (
-                  <li
-                    key={i}
-                    className={`flex items-start gap-2.5 rounded-lg px-3 py-2 leading-relaxed ${r ? (r.ok ? "bg-mint/15 text-white" : "bg-crimson/20 text-white") : "bg-white/5 text-white/75"}`}
-                  >
-                    <span className={`mt-0.5 grid size-4 shrink-0 place-items-center rounded-full ${r ? (r.ok ? "bg-mint text-white" : "bg-crimson text-white") : "border border-white/30"}`}>
-                      {r && (r.ok ? <CheckIcon size={10} /> : <XIcon size={10} />)}
-                    </span>
-                    <span className="min-w-0 flex-1 break-words whitespace-pre-wrap">
-                      {challenge.language === "react" ? props(t.args[0]) || "sin props" : t.args.map(show).join(", ")}
-                      <span className="text-white/40"> → </span>
-                      <span className="font-bold">{show(t.expected)}</span>
-                      {r && !r.ok && (
-                        <span className="block text-white/60">{r.error ? r.error : <>got {show(r.got)}</>}</span>
-                      )}
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-
-          <div className="flex flex-col gap-3">
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                disabled={isHinting || hints.length >= 3}
-                onClick={() =>
-                  startHint(async () => {
-                    setReviewError(null);
-                    const r = await getHint(challenge.id, code, hints.length + 1);
-                    if (r.error) setReviewError(r.error);
-                    else if (r.hint) setHints((h) => [...h, r.hint!]);
-                  })
-                }
-                className="flex flex-col items-start gap-0.5 rounded-xl bg-amber/15 px-4 py-3 text-left hover:bg-amber/25 disabled:opacity-50"
-              >
-                <span className="text-sm font-bold text-amber">{isHinting ? "Pensando…" : "¿Atascada?"}</span>
-                <span className="text-xs text-white/60">{hints.length >= 3 ? "No quedan pistas" : `Pide una pista · quedan ${3 - hints.length}`}</span>
-              </button>
-              <button
-                type="button"
-                disabled={isReviewing}
-                onClick={() =>
-                  startReview(async () => {
-                    setReviewError(null);
-                    const r = await reviewSolution(challenge.id, code);
-                    if (r.error) setReviewError(r.error);
-                    else setReview(r.review ?? null);
-                  })
-                }
-                className="flex flex-col items-start gap-0.5 rounded-xl bg-tile-sky/15 px-4 py-3 text-left hover:bg-tile-sky/25 disabled:opacity-50"
-              >
-                <span className="text-sm font-bold text-tile-sky">{isReviewing ? "Revisando…" : "Revisar mi código"}</span>
-                <span className="text-xs text-white/60">Bien, arreglar, siguiente</span>
-              </button>
-            </div>
             {hints.map((h, i) => (
-              <p key={i} className="rounded-lg bg-amber/10 p-3 text-sm leading-relaxed">
-                <span className="mr-2 text-xs font-bold text-amber">Hint {i + 1}</span>
+              <p key={i} className="rounded-lg bg-[#fbf3db] px-3.5 py-2.5 text-sm leading-relaxed">
+                <span className="mr-1.5">💡</span>
                 {h}
               </p>
             ))}
-            {reviewError && <p className="text-xs text-crimson">{reviewError}</p>}
             {review && <Review text={review} />}
-          </div>
-        </section>
+            {note && <p className="text-xs text-red-500">{note}</p>}
+          </section>
+        ) : (
+          <button type="button" onClick={() => toggleTask(true)} title="Mostrar el enunciado" aria-label="Mostrar el enunciado" className="hidden w-8 shrink-0 items-start justify-center border-r border-border-subtle pt-4 text-ink-faint hover:bg-chip hover:text-ink lg:flex">
+            »
+          </button>
+        )}
 
-        {/* Editor + console */}
-        <section className="flex min-h-0 flex-col" aria-label="Código">
-          <div className="min-h-[280px] flex-1">
+        <section className="flex min-h-0 min-w-0 flex-1 flex-col" aria-label="Código">
+          <div className="min-h-[220px] flex-1">
             <CodeEditor value={code} language={challenge.language} onChange={setCode} onRun={run} />
           </div>
-          <div className="h-56 shrink-0 overflow-y-auto border-t border-white/10 bg-[#16181d] p-4 font-mono text-xs" aria-live="polite">
-            {!output && !running && (
-              <p className="text-white/40">
-                Ctrl+Enter para ejecutar
-              </p>
+
+          <div className="flex max-h-[45%] shrink-0 flex-col gap-2.5 overflow-y-auto border-t border-border-subtle px-5 py-3" aria-live="polite">
+            <div className="flex flex-wrap items-center gap-1.5 text-sm text-ink-muted">
+              {challenge.tests.map((_, i) => {
+                const r = output?.results[i];
+                return (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => setPicked(i)}
+                    title={`Comprobación ${i + 1}`}
+                    aria-label={`Comprobación ${i + 1}${r ? (r.ok ? ", correcta" : ", falla") : ""}`}
+                    className={`grid size-[18px] place-items-center rounded-full text-white ${r ? (r.ok ? "bg-[#448361]" : "bg-[#e5484d]") : "border-[1.5px] border-[#d6d4cf]"} ${shown === i ? "ring-2 ring-ink/30 ring-offset-1" : ""}`}
+                  >
+                    {r && (r.ok ? <CheckIcon size={10} /> : <XIcon size={10} />)}
+                  </button>
+                );
+              })}
+              <span className="ml-1.5">
+                {running ? "Ejecutando…" : output ? (output.error ? "No se ha podido ejecutar" : `${passedCount} de ${output.results.length}`) : "Ctrl + Enter para comprobar"}
+              </span>
+              {allGreen && (
+                <button
+                  type="button"
+                  disabled={isReviewing}
+                  onClick={() =>
+                    startReview(async () => {
+                      const r = await reviewSolution(challenge.id, code);
+                      if (r.error) setNote(r.error);
+                      else setReview(r.review ?? null);
+                      toggleTask(true);
+                    })
+                  }
+                  className="ml-auto text-sm text-accent hover:underline disabled:opacity-50"
+                >
+                  {isReviewing ? "Revisando…" : "Revisar mi código"}
+                </button>
+              )}
+            </div>
+
+            {output?.error && <pre className="rounded-lg border border-[#f4d4d4] bg-[#fdf6f6] px-3.5 py-2.5 text-xs whitespace-pre-wrap text-[#c4373b]">{output.error}</pre>}
+
+            {shown !== null && challenge.tests[shown] && (
+              <Case
+                inputs={inputs(challenge.tests[shown])}
+                expected={challenge.tests[shown].expected}
+                result={output?.results[shown]}
+                react={react}
+              />
             )}
-            {running && <p className="text-white/60">Ejecutando…</p>}
-            {output && !running && (
-              <>
-                {output.error ? (
-                  <p className="whitespace-pre-wrap text-crimson">{output.error}</p>
-                ) : (
-                  <p className={passedCount === output.results.length ? "text-mint" : "text-amber"}>
-                    {passedCount}/{output.results.length} pruebas superadas
-                    {passedCount === output.results.length && " — bien hecho."}
-                  </p>
-                )}
-                {output.results.map((r, i) =>
-                  r.ok ? null : (
-                    <p key={i} className="mt-1.5 text-white/80">
-                      <XIcon size={12} /> {input(challenge.tests[i])}: {r.error ? <span className="text-crimson">{r.error}</span> : <>expected {show(challenge.tests[i].expected)}, got {show(r.got)}</>}
-                    </p>
-                  ),
-                )}
-                {output.logs.length > 0 && (
-                  <div className="mt-3 border-t border-white/10 pt-2">
-                    <p className="mb-1 text-white/40">console</p>
-                    {output.logs.slice(0, 200).map((l, i) => (
-                      <p key={i} className="whitespace-pre-wrap">{l}</p>
-                    ))}
-                  </div>
-                )}
-              </>
+
+            {output && output.logs.length > 0 && (
+              <details className="text-xs">
+                <summary className="cursor-pointer text-ink-faint">Consola ({output.logs.length})</summary>
+                <pre className="mt-1.5 max-h-40 overflow-y-auto rounded-md bg-chip px-3 py-2 whitespace-pre-wrap">{output.logs.slice(0, 200).join("\n")}</pre>
+              </details>
             )}
           </div>
         </section>
@@ -256,33 +252,103 @@ export function ChallengeIDE({
   );
 }
 
+// An input value, readable: lists of objects as a small table, short
+// lists and objects inline, everything else as JSON.
+function Value({ v }: { v: unknown }) {
+  if (Array.isArray(v) && v.length > 0 && v.every((x) => x && typeof x === "object" && !Array.isArray(x))) {
+    const cols = [...new Set(v.flatMap((x) => Object.keys(x as object)))].slice(0, 6);
+    return (
+      <table className="border-collapse font-mono text-xs">
+        <thead>
+          <tr>
+            {cols.map((c) => (
+              <th key={c} className="border border-[#ebeae6] bg-sidebar px-2 py-1 text-left font-medium text-ink-muted">
+                {c}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {v.slice(0, 8).map((row, i) => (
+            <tr key={i}>
+              {cols.map((c) => (
+                <td key={c} className="border border-[#ebeae6] px-2 py-1">
+                  {show((row as Record<string, unknown>)[c])}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    );
+  }
+  return <span className="font-mono text-[12.5px] break-all">{show(v)}</span>;
+}
+
+function Example({ inputs, expected, react }: { inputs: [string, unknown][]; expected: unknown; react: boolean }) {
+  return (
+    <div className="overflow-hidden rounded-lg border border-border-subtle">
+      {inputs.map(([k, v]) => (
+        <div key={k} className="flex items-start gap-3 border-b border-[#f1f1ef] px-3 py-2">
+          <span className="w-16 shrink-0 pt-0.5 text-xs text-ink-faint">{k}</span>
+          <span className="min-w-0 overflow-x-auto">
+            <Value v={v} />
+          </span>
+        </div>
+      ))}
+      <div className="flex items-start gap-3 px-3 py-2">
+        <span className="w-16 shrink-0 pt-0.5 text-xs text-ink-faint">{react ? "muestra" : "devuelve"}</span>
+        <span className="font-mono text-[12.5px] font-semibold text-[#448361]">{show(expected)}</span>
+      </div>
+    </div>
+  );
+}
+
+// One check, spelled out: what goes in, what should come out, what came out.
+function Case({ inputs, expected, result, react }: { inputs: [string, unknown][]; expected: unknown; result?: { ok: boolean; got?: unknown; error?: string }; react: boolean }) {
+  const failed = result && !result.ok;
+  return (
+    <div className={`grid grid-cols-[76px_1fr] gap-x-3 gap-y-1.5 rounded-lg border px-3.5 py-2.5 text-[13px] ${failed ? "border-[#f4d4d4] bg-[#fdf6f6]" : result ? "border-[#dfeee4] bg-[#f3f8f4]" : "border-border-subtle"}`}>
+      <span className="text-ink-faint">Entrada</span>
+      <span className="font-mono text-[12.5px] break-words">{inputs.map(([k, v]) => `${k} = ${brief(v)}`).join(" · ") || (react ? "sin props" : "—")}</span>
+      <span className="text-ink-faint">Esperado</span>
+      <span className="font-mono text-[12.5px]">{show(expected)}</span>
+      {result && (
+        <>
+          <span className="text-ink-faint">Obtenido</span>
+          <span className={`font-mono text-[12.5px] break-words ${failed ? "text-[#e5484d]" : "text-[#448361]"}`}>{result.error ?? show(result.got)}</span>
+        </>
+      )}
+    </div>
+  );
+}
+
 const REVIEW_STYLE = {
-  good: { label: "Bien", icon: CheckIcon, cls: "text-mint" },
-  fix: { label: "Arreglar", icon: XIcon, cls: "text-crimson" },
-  next: { label: "Siguiente", icon: ArrowRight, cls: "text-tile-sky" },
+  good: { label: "Bien", icon: CheckIcon, cls: "text-[#448361]" },
+  fix: { label: "Arreglar", icon: XIcon, cls: "text-[#e5484d]" },
+  next: { label: "Siguiente", icon: ArrowRight, cls: "text-accent" },
 } as const;
 
 // The code review as three short blocks; `code` shows as code.
 function Review({ text }: { text: string }) {
   const sections = parseReview(text);
-  const empty = !sections.good.length && !sections.fix.length && !sections.next.length;
-  if (empty) return <div className="rounded bg-white/5 p-3 text-sm leading-relaxed whitespace-pre-line">{text}</div>;
+  if (!sections.good.length && !sections.fix.length && !sections.next.length) return <p className="rounded-lg bg-sidebar p-3 text-sm whitespace-pre-line">{text}</p>;
   return (
     <div className="flex flex-col gap-2">
       {(["good", "fix", "next"] as const).map((k) => {
         if (!sections[k].length) return null;
         const { label, icon: Icon, cls } = REVIEW_STYLE[k];
         return (
-          <div key={k} className="rounded-lg bg-white/5 p-3">
-            <span className={`flex items-center gap-1.5 text-xs font-bold tracking-wide uppercase ${cls}`}>
-              <Icon size={13} /> {label}
+          <div key={k} className="rounded-lg bg-sidebar p-3">
+            <span className={`flex items-center gap-1.5 text-[11px] font-semibold tracking-wider uppercase ${cls}`}>
+              <Icon size={12} /> {label}
             </span>
             <ul className="mt-1.5 flex flex-col gap-1 text-sm leading-relaxed">
               {sections[k].map((line, i) => (
                 <li key={i}>
                   {line.split(/`([^`]+)`/).map((part, j) =>
                     j % 2 ? (
-                      <code key={j} className="rounded bg-white/10 px-1 font-mono text-[13px]">
+                      <code key={j} className="rounded bg-chip px-1 font-mono text-[12.5px]">
                         {part}
                       </code>
                     ) : (
@@ -299,15 +365,8 @@ function Review({ text }: { text: string }) {
   );
 }
 
-// Generated prompts start with “From your note "…"” — shown as a chip.
+// Generated prompts start with “De tu nota "…"” — shown as a small line.
 function splitPrompt(prompt: string) {
   const m = prompt.match(/^(?:From your note|De tu nota) “([^”]+)”\s*/);
   return m ? { note: m[1], text: prompt.slice(m[0].length) } : { note: null, text: prompt };
 }
-
-const props = (p: unknown) =>
-  p && typeof p === "object"
-    ? Object.entries(p as Record<string, unknown>)
-        .map(([k, v]) => `${k}={${show(v)}} `)
-        .join("")
-    : "";

@@ -14,16 +14,32 @@ type Props = {
   user: { name: string | null; email: string | null; image: string | null };
   plan: string;
   notebooks: { id: string; name: string; cover: NotebookCover }[];
+  collapsed?: boolean;
 };
+
+// Two panels: the toggle that collapses / expands the sidebar.
+const PanelIcon = () => (
+  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" aria-hidden>
+    <rect x="3" y="4.5" width="18" height="15" rx="2.5" />
+    <path d="M9 4.5v15" />
+  </svg>
+);
 
 const PLAN_LABEL: Record<string, string> = { FREE: "Gratis", PRO: "Student Pro", TEAM: "Team" };
 
 // Notion-style navigation: a fixed sidebar on wide screens (pages, your
 // notebooks, account), a bottom tab bar on phones.
-export function Sidebar({ user, plan, notebooks }: Props) {
+export function Sidebar({ user, plan, notebooks, collapsed: startCollapsed = false }: Props) {
   const pathname = usePathname();
   const [sheet, setSheet] = useState(false);
   const [searching, setSearching] = useState(false);
+  const [collapsed, setCollapsed] = useState(startCollapsed);
+  function toggleCollapsed() {
+    const next = !collapsed;
+    setCollapsed(next);
+    document.documentElement.dataset.sidebar = next ? "collapsed" : "";
+    document.cookie = `sidebar=${next ? "collapsed" : "open"}; path=/; max-age=31536000; samesite=lax`;
+  }
   const [lastPath, setLastPath] = useState(pathname);
   // Ctrl+K / ⌘K opens search from anywhere.
   useEffect(() => {
@@ -58,11 +74,45 @@ export function Sidebar({ user, plan, notebooks }: Props) {
 
   return (
     <>
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col gap-5 border-r border-border-subtle bg-sidebar px-2.5 py-3 lg:flex" aria-label="Navegación">
-        <Link href="/pursuits" className="flex items-center gap-2 px-2 py-1 text-sm font-semibold text-ink">
-          <span className="grid size-5 place-items-center rounded bg-accent text-[11px] font-bold text-white">S</span>
-          Synaptic
-        </Link>
+      {collapsed && (
+        <aside className="fixed inset-y-0 left-0 z-30 hidden w-[52px] flex-col items-center gap-1 border-r border-border-subtle bg-sidebar py-3 lg:flex" aria-label="Navegación">
+          <button type="button" onClick={toggleCollapsed} title="Mostrar la barra lateral" aria-label="Mostrar la barra lateral" className="mb-3 grid size-8 place-items-center rounded-md text-ink-muted hover:bg-[#ebebea] hover:text-ink">
+            <PanelIcon />
+          </button>
+          {[
+            { href: "/pursuits", label: "Inicio", icon: <HomeIcon size={16} className="block" />, on: active("/pursuits", true) },
+            { href: "/calendar", label: "Calendario", icon: <CalendarIcon size={16} className="block" />, on: active("/calendar") },
+            { href: "/review", label: "Repasar", icon: <CardsIcon size={16} className="block" />, on: active("/review") },
+            { href: "/challenges", label: "Retos", icon: <CodeIcon size={16} className="block" />, on: active("/challenges") },
+          ].map((t) => (
+            <Link key={t.href} href={t.href} title={t.label} aria-label={t.label} className={`grid size-8 place-items-center rounded-md ${t.on ? "bg-[#ebebea] text-ink" : "text-ink-muted hover:bg-[#ebebea]/70 hover:text-ink"}`}>
+              {t.icon}
+            </Link>
+          ))}
+          <button type="button" onClick={() => setSearching(true)} title="Buscar (Ctrl K)" aria-label="Buscar" className="grid size-8 place-items-center rounded-md text-ink-muted hover:bg-[#ebebea]/70 hover:text-ink">
+            <SearchIcon size={16} />
+          </button>
+          <span className="my-2 h-px w-6 bg-border-subtle" />
+          {notebooks.map((n) => (
+            <Link key={n.id} href={`/pursuits/s/${n.id}`} title={n.name} aria-label={n.name} className={`grid size-8 place-items-center rounded-md ${active(`/pursuits/s/${n.id}`) ? "bg-[#ebebea]" : "hover:bg-[#ebebea]/70"}`}>
+              <MiniNotebook cover={n.cover} size={18} />
+            </Link>
+          ))}
+          <Link href="/billing" title={user.name ?? user.email ?? "Cuenta"} className="mt-auto grid size-8 place-items-center rounded-md hover:bg-[#ebebea]/70">
+            <Avatar user={user} />
+          </Link>
+        </aside>
+      )}
+      <aside className={`fixed inset-y-0 left-0 z-30 w-60 flex-col gap-5 border-r border-border-subtle bg-sidebar px-2.5 py-3 ${collapsed ? "hidden" : "hidden lg:flex"}`} aria-label="Navegación">
+        <div className="flex items-center justify-between">
+          <Link href="/pursuits" className="flex items-center gap-2 px-2 py-1 text-sm font-semibold text-ink">
+            <span className="grid size-5 place-items-center rounded bg-accent text-[11px] font-bold text-white">S</span>
+            Synaptic
+          </Link>
+          <button type="button" onClick={toggleCollapsed} title="Ocultar la barra lateral" aria-label="Ocultar la barra lateral" className="grid size-7 place-items-center rounded-md text-ink-faint hover:bg-[#ebebea] hover:text-ink">
+            <PanelIcon />
+          </button>
+        </div>
         <nav className="flex flex-col gap-0.5">
           <Link href="/pursuits" className={row(active("/pursuits", true))}>
             <HomeIcon size={16} className="block" /> Inicio
