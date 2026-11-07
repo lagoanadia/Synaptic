@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
-import { refreshUnitMap } from "@/lib/autoMap";
+import { addNamedConcept, refreshUnitMap } from "@/lib/autoMap";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { groq } from "@/lib/groq";
@@ -1358,4 +1358,20 @@ export async function setFolderCover(pursuitId: string, cover: string) {
   await prisma.pursuit.update({ where: { id: pursuitId }, data: { cover } });
   revalidatePath(`/pursuits/${pursuitId}`);
   revalidatePath("/pursuits");
+}
+
+// Selected text in a page -> a concept in that unit's map.
+export async function addToMap(
+  pursuitId: string,
+  page: { dumpId: string | null; noteId: string | null },
+  text: string,
+): Promise<{ error: string | null; href?: string }> {
+  const { session } = await requireAccess(pursuitId);
+  const row = page.noteId
+    ? await prisma.note.findFirst({ where: { id: page.noteId, pursuitId }, select: { sectionId: true } })
+    : page.dumpId
+      ? await prisma.brainDump.findFirst({ where: { id: page.dumpId, pursuitId }, select: { sectionId: true } })
+      : null;
+  const r = await addNamedConcept(session.user.id, pursuitId, { unitId: row?.sectionId ?? null }, text);
+  return r.error === null ? { error: null, href: `/pursuits/${pursuitId}/learn/${r.mapId}?c=${r.conceptId}` } : { error: r.error };
 }

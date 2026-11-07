@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { folderColor, folderCover, sheetsFor, type FolderCover } from "@/lib/covers";
 import { dotState, type MapCluster } from "@/lib/knowledgeMap";
 import { autoTitle, shortMapTitle } from "@/lib/text";
+import type { TermHint } from "@/lib/terms";
 
 // Data behind the page blocks (home, notebooks, folders). Every query is
 // scoped to the signed-in user's own notebook/pursuits by the caller.
@@ -92,4 +93,31 @@ export async function recentPages(userId: string, sectionId: string, take = 6): 
     where: d.pursuit.title,
     at: d.updatedAt,
   }));
+}
+
+// Terms a page can mark: concepts on this subject's maps that have one,
+// the page's own unit first.
+export async function pageTerms(pursuitId: string, unitId: string | null): Promise<TermHint[]> {
+  const rows = await prisma.concept.findMany({
+    where: { term: { not: null }, map: { pursuitId } },
+    orderBy: { order: "asc" },
+    take: 120,
+    select: { id: true, term: true, title: true, summary: true, mapId: true, map: { select: { unitId: true, title: true, unit: { select: { name: true } } } } },
+  });
+  const seen = new Set<string>();
+  return rows
+    .sort((a, b) => Number(b.map.unitId === unitId) - Number(a.map.unitId === unitId))
+    .filter((r) => {
+      const k = r.term!.toLowerCase();
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    })
+    .map((r) => ({
+      term: r.term!,
+      title: r.title,
+      summary: r.summary,
+      href: `/pursuits/${pursuitId}/learn/${r.mapId}?c=${r.id}`,
+      where: shortMapTitle(r.map.unit?.name ?? r.map.title, 28),
+    }));
 }

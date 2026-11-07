@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { autoTitle } from "@/lib/text";
 import { isSlideFile } from "@/lib/slides";
 import { PageView } from "../../PageView";
+import { pageTerms } from "@/lib/blockData";
 
 export default async function DumpPage({ params }: { params: Promise<{ id: string; dumpId: string }> }) {
   const { id, dumpId } = await params;
@@ -35,8 +36,11 @@ export default async function DumpPage({ params }: { params: Promise<{ id: strin
   const note = dump.notes[0] ?? null;
   const p = dump.pursuit;
 
+  const terms = await pageTerms(p.id, dump.sectionId);
+
   return (
     <PageView
+      terms={terms}
       pursuit={{ id: p.id, title: p.title }}
       crumbs={[
         ...(p.section ? [{ label: p.section.name, href: `/pursuits/s/${p.section.id}` }] : []),

@@ -191,3 +191,23 @@ ${source.slice(0, 20000)}`,
   );
   return parseQuiz(data.questions);
 }
+
+// "Añadir al mapa": one concept the student names, explained from their
+// notes (or briefly from general knowledge when the notes don't cover it).
+export async function explainTerm(term: string, source: string, language: string): Promise<DraftConcept | null> {
+  const data = obj(
+    await askJson(
+      `A student wants "${term}" added to the concept map of their notes. Find it in the SOURCE and explain it as one concept. If the source doesn't cover it, explain it briefly from general knowledge (excerpt null).
+
+${RULES(language)}
+
+Respond with ONLY JSON:
+{"concepts": [{"key": "c", "title": "short name (as the student wrote it if it fits)", "term": "the exact word or short phrase, copied as written in the SOURCE, or null", "summary": "one sentence", "explanation": "...", "excerpt": "verbatim or null", "excerpt_from": "... or null"}]}
+
+SOURCE:
+${source.slice(0, 30000)}`,
+      { maxTokens: 2500 },
+    ),
+  );
+  return readConcepts(data, source)[0] ?? null;
+}
