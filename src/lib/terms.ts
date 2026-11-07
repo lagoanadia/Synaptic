@@ -21,3 +21,19 @@ export function termMatches(text: string, terms: string[], seen: Set<number>): {
   }
   return out;
 }
+
+// For concepts saved before terms existed: how the notes write it, guessed
+// from the title ("Interfaz gráfica (GUI)" -> "Interfaz gráfica" or "GUI";
+// "Herencia: reutilizar código" -> "Herencia"). null if it's not there.
+export function termFromTitle(title: string, source: string): string | null {
+  const t = title.trim();
+  const inside = /\(([^)]+)\)/.exec(t)?.[1];
+  const candidates = [t, t.replace(/\s*\([^)]*\)/g, ""), t.split(/[:—–]/)[0], inside ?? ""]
+    .map((c) => c.trim())
+    .filter((c, i, all) => c.length >= 3 && all.indexOf(c) === i);
+  for (const c of candidates) {
+    const m = termMatches(source, [c], new Set());
+    if (m[0]) return source.slice(m[0].from, m[0].to);
+  }
+  return null;
+}

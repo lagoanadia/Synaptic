@@ -2,6 +2,7 @@ import "server-only";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { aiBudget } from "@/lib/access";
+import { termFromTitle } from "@/lib/terms";
 import { MAX_SOURCE_CHARS, breakDown, explainTerm, newConcepts } from "@/lib/internalizeAi";
 
 // Below this much new text, a save doesn't touch the map (no AI call for
@@ -162,4 +163,21 @@ export async function addNamedConcept(
   });
   revalidatePath(`/pursuits/${pursuitId}`);
   return { error: null, mapId: map.id, conceptId: row.id };
+}
+
+// Concepts saved before terms existed get theirs from the title, when the
+// notes write it (no AI). Ones not found are left for next time, in case
+// new notes mention them.
+export async function fillMissingTerms(pursuitId: string): Promise<void> {
+  const maps = await prisma.conceptMap.findMany({
+    where: { pursuitId, concepts: { some: { term: null } } },
+    select: { unitId: true, sourceText: true, concepts: { where: { term: null }, select: { id: true, title: true } } },
+  });
+  for (const m of maps) {
+    const source = `${await unitSource(pursuitId, m.unitId)}\n\n${m.sourceText}`;
+    for (const c of m.concepts) {
+      const term = termFromTitle(c.title, source);
+      if (term) await prisma.concept.update({ where: { id: c.id }, data: { term } });
+    }
+  }
 }

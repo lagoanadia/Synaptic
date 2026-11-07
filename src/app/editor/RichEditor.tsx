@@ -49,7 +49,7 @@ function termDecorations(doc: PmNode, terms: string[]) {
   const seen = new Set<number>();
   const decos: Decoration[] = [];
   doc.descendants((node, pos) => {
-    if (node.type.name === "codeBlock") return false;
+    if (node.type.name === "codeBlock" || node.type.name === "heading") return false;
     if (!node.isText || !node.text) return;
     for (const m of termMatches(node.text, terms, seen)) {
       decos.push(Decoration.inline(pos + m.from, pos + m.to, { class: "key-term", "data-term": String(m.index) }));
