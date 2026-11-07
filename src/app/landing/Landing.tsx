@@ -63,7 +63,9 @@ export function Landing() {
           </div>
         </div>
 
-        <Stage width={1440} height={900} className="mt-4 lg:mt-0">
+        {/* On phones the scene is cropped to its busy part, so the papers stay readable. */}
+        <div className="overflow-hidden lg:overflow-visible">
+        <Stage width={1440} height={900} className="mt-[-10vw] w-[140%] lg:mt-0 lg:w-full">
           <div className="absolute inset-0" style={{ transform: "scale(1.22)", transformOrigin: "0 100%" }}>
             {(
               [
@@ -90,13 +92,14 @@ export function Landing() {
             </Thing>
           ))}
         </Stage>
+        </div>
       </section>
 
       {/* ── How it works ── */}
       <section id="como-funciona" className="mx-auto max-w-[1248px] px-5 pt-20 lg:px-0 lg:pt-28">
         <h2 className="lnd-reveal lnd-serif text-[clamp(2.4rem,4.2vw,3.75rem)] leading-[1.02] font-extrabold tracking-[-0.025em]">
           De tu cabeza al orden,
-          <br />
+          <br className="max-sm:hidden" />
           en tres pasos.
         </h2>
         <div className="mt-14 grid gap-8 md:grid-cols-3">
@@ -140,7 +143,7 @@ export function Landing() {
       <section id="herramientas" className="mx-auto max-w-[1248px] px-5 pt-28 lg:px-0 lg:pt-40">
         <h2 className="lnd-reveal lnd-serif text-[clamp(2.4rem,4.2vw,3.75rem)] leading-[1.02] font-extrabold tracking-[-0.025em]">
           Pensado para estudiar
-          <br />
+          <br className="max-sm:hidden" />
           y para organizarte.
         </h2>
         <div className="mt-14 grid items-start gap-10 lg:grid-cols-[1.45fr_1fr]">
