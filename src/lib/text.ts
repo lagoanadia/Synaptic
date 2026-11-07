@@ -200,11 +200,12 @@ function parseTextBlocks(text: string): NoteBlock[] {
       const tableRows: InlineNode[][][] = [];
       while (i < lines.length && TABLE_ROW.test(lines[i].trim())) {
         // Markdown's "| --- | :---: |" separator is layout, not a row.
-        if (!/^\|[\s:|-]+\|$/.test(lines[i].trim())) tableRows.push(splitTableRow(lines[i].trim()));
+        // (Each cell is dashes; a row of empty cells is still a row.)
+        if (!/^\|(?:\s*:?-+:?\s*\|)+$/.test(lines[i].trim())) tableRows.push(splitTableRow(lines[i].trim()));
         i++;
       }
       const [header, ...rows] = tableRows;
-      blocks.push({ type: "table", header, rows });
+      if (header) blocks.push({ type: "table", header, rows });
       continue;
     }
 
