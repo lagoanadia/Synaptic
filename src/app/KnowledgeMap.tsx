@@ -74,7 +74,8 @@ export function KnowledgeMap({
                 <circle
                   cx={n.x}
                   cy={n.y}
-                  r={n.r * k}
+                  r={n.r * k * (hover?.id === n.id ? 1.4 : 1)}
+                  style={{ transition: "r .12s" }}
                   fill={n.state === "todo" ? "#fff" : c.color}
                   stroke={c.color}
                   strokeWidth={1.7 * k}
@@ -95,7 +96,7 @@ export function KnowledgeMap({
           </g>
         ))}
       </svg>
-      {hover && !labels && (
+      {hover && (!labels || hover.title.length > 20) && (
         <span
           className="pointer-events-none absolute -translate-x-1/2 -translate-y-full rounded-md bg-ink px-2 py-1 text-xs whitespace-nowrap text-white shadow"
           style={{ left: `${(hover.x / W) * 100}%`, top: `calc(${(hover.y / height) * 100}% - 10px)` }}

@@ -229,3 +229,14 @@ export function paramNames(starterCode: string, entry: string, count: number): s
   const clean = names.map((n) => /^\s*\.{0,3}([A-Za-z_$][\w$]*)/.exec(n)?.[1]).filter((n): n is string => !!n && n !== "self");
   return Array.from({ length: count }, (_, i) => clean[i] ?? `arg${i + 1}`);
 }
+
+// Is this text English rather than Spanish? Counts common words of each.
+export function looksEnglish(text: string): boolean {
+  const en = text.match(/\b(the|and|return|returns|given|of|with|which|whose|an|is|are|from|each|that|this|should|will)\b/gi)?.length ?? 0;
+  const es = text.match(/\b(el|la|los|las|de|del|que|devuelve|recibe|con|una|un|y|cada|por|para|es|se)\b/gi)?.length ?? 0;
+  return en > es;
+}
+
+// Starter comments that came out in English → Spanish.
+export const spanishComments = (code: string) =>
+  code.replace(/(\/\/|#)\s*(TODO:?\s*implement(?: me)?|your code here|write your code here|implement me)\b\.?/gi, "$1 Escribe tu código aquí");

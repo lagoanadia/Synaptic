@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { asLanguage, type ChallengeTest } from "@/lib/challenge";
 import { ChallengeIDE } from "./ChallengeIDE";
+import { ensureSpanish } from "@/lib/challengeSpanish";
 
 export default async function ChallengePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -13,18 +14,20 @@ export default async function ChallengePage({ params }: { params: Promise<{ id: 
     include: { pursuit: { select: { title: true } } },
   });
   if (!c) notFound();
+  // Everything in Spanish: older English challenges are translated once.
+  const es = await ensureSpanish(c).catch(() => c);
   return (
     <ChallengeIDE
       challenge={{
         id: c.id,
-        title: c.title,
-        prompt: c.prompt,
+        title: es.title,
+        prompt: es.prompt,
         language: asLanguage(c.language),
         entry: c.entry,
-        starterCode: c.starterCode,
+        starterCode: es.starterCode,
         tests: c.tests as ChallengeTest[],
         difficulty: c.difficulty,
-        code: c.code,
+        code: es.code,
         passed: c.passed,
         review: c.review,
         pursuitTitle: c.pursuit?.title ?? null,

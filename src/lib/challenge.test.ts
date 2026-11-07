@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { paramNames, deepEqual, formatReview, isTheoryLookup, jsHarness, parseChallenge, parseReview, type RunOutput, pickBySkill } from "./challenge";
+import { spanishComments, looksEnglish, paramNames, deepEqual, formatReview, isTheoryLookup, jsHarness, parseChallenge, parseReview, type RunOutput, pickBySkill } from "./challenge";
 
 // The harness is a function body; run it the way the Worker does.
 const run = (code: string, entry: string, tests: { args: unknown[]; expected: unknown }[]) =>
@@ -128,5 +128,16 @@ describe("paramNames", () => {
     expect(paramNames("def media(notas, redondeo=2):\n    pass", "media", 2)).toEqual(["notas", "redondeo"]);
     expect(paramNames("const sum = (a, b) => a + b", "sum", 2)).toEqual(["a", "b"]);
     expect(paramNames("weird", "f", 2)).toEqual(["arg1", "arg2"]);
+  });
+});
+
+describe("looksEnglish / spanishComments", () => {
+  it("tells English tasks from Spanish ones", () => {
+    expect(looksEnglish("Given an array of items, return the total quantity of items whose expiry date is within the next days.")).toBe(true);
+    expect(looksEnglish("Recibes la despensa: devuelve cuántas unidades caducan en los próximos días.")).toBe(false);
+  });
+  it("translates the usual starter comments", () => {
+    expect(spanishComments("  // TODO: implement\n  return 0;")).toBe("  // Escribe tu código aquí\n  return 0;");
+    expect(spanishComments("    # your code here")).toBe("    # Escribe tu código aquí");
   });
 });
