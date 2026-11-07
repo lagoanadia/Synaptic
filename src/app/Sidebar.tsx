@@ -1,5 +1,6 @@
 "use client";
 
+import { BILLING } from "@/lib/billingFlag";
 import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
 import { usePathname, useRouter } from "next/navigation";
@@ -106,9 +107,9 @@ export function Sidebar({ user, plan, notebooks, collapsed: startCollapsed = fal
               <MiniNotebook cover={n.cover} size={18} />
             </Link>
           ))}
-          <Link href="/billing" title={user.name ?? user.email ?? "Cuenta"} className="mt-auto grid size-8 place-items-center rounded-md hover:bg-[#ebebea]/70">
+          <Account href={BILLING ? "/billing" : null} title={user.name ?? user.email ?? "Cuenta"} className="mt-auto grid size-8 place-items-center rounded-md hover:bg-[#ebebea]/70">
             <Avatar user={user} />
-          </Link>
+          </Account>
         </aside>
       )}
       <aside className={`fixed inset-y-0 left-0 z-30 w-60 flex-col gap-5 border-r border-border-subtle bg-sidebar px-2.5 py-3 ${collapsed ? "hidden" : "hidden lg:flex"}`} aria-label="Navegación">
@@ -144,11 +145,11 @@ export function Sidebar({ user, plan, notebooks, collapsed: startCollapsed = fal
           {notebookList}
         </div>
         <div className="mt-auto flex items-center gap-1 border-t border-border-subtle pt-3">
-          <Link href="/billing" className={`${row(active("/billing"))} min-w-0 flex-1`}>
+          <Account href={BILLING ? "/billing" : null} className={`${row(active("/billing"))} min-w-0 flex-1`}>
             <Avatar user={user} />
             <span className="min-w-0 flex-1 truncate">{user.name ?? user.email}</span>
-            <span className="text-[11px] text-accent">{PLAN_LABEL[plan] ?? plan}</span>
-          </Link>
+            {BILLING && <span className="text-[11px] text-accent">{PLAN_LABEL[plan] ?? plan}</span>}
+          </Account>
           <form action={signOutAction}>
             <button type="submit" title="Cerrar sesión" aria-label="Cerrar sesión" className="grid size-8 place-items-center rounded-md text-ink-faint hover:bg-[#ebebea] hover:text-ink">
               <LogoutIcon />
@@ -195,9 +196,9 @@ export function Sidebar({ user, plan, notebooks, collapsed: startCollapsed = fal
             </div>
             {notebookList}
             <div className="flex items-center gap-3 border-t border-border-subtle pt-3 text-sm">
-              <Link href="/billing" className="flex flex-1 items-center gap-2 text-ink-muted">
+              <Account href={BILLING ? "/billing" : null} className="flex flex-1 items-center gap-2 text-ink-muted">
                 <Avatar user={user} /> {user.name ?? user.email}
-              </Link>
+              </Account>
               <form action={signOutAction}>
                 <button type="submit" title="Cerrar sesión" aria-label="Cerrar sesión" className="grid size-8 place-items-center rounded-md text-ink-muted">
                   <LogoutIcon />
@@ -264,5 +265,18 @@ function NewNotebook({ className }: { className: string }) {
       />
       {error && <span className="px-1 text-xs text-red-500">{error}</span>}
     </form>
+  );
+}
+
+// Your name and photo: links to Facturación when paid plans are on.
+function Account({ href, className, title, children }: { href: string | null; className: string; title?: string; children: React.ReactNode }) {
+  return href ? (
+    <Link href={href} title={title} className={className}>
+      {children}
+    </Link>
+  ) : (
+    <span title={title} className={className.replace(/hover:\S+/g, "")}>
+      {children}
+    </span>
   );
 }

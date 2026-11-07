@@ -1,5 +1,6 @@
 "use client";
 
+import { BILLING } from "@/lib/billingFlag";
 import { useState } from "react";
 import { AuthMenu } from "./AuthMenu";
 
@@ -24,9 +25,11 @@ export function LandingNav() {
           <a href="#features" className="transition-colors hover:text-accent">
             Funciones
           </a>
+          {BILLING && (
           <a href="#pricing" className="transition-colors hover:text-accent">
             Precios
           </a>
+          )}
           <a href="#contact" className="transition-colors hover:text-accent">
             Contacto
           </a>

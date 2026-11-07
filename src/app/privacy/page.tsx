@@ -1,4 +1,5 @@
 import { ArrowLeft } from "@/app/icons";
+import { BILLING } from "@/lib/billingFlag";
 import Link from "next/link";
 
 export const metadata = { title: "Política de privacidad — Synaptic" };
@@ -44,6 +45,7 @@ export default function PrivacyPage() {
             diario del plan gratis. No registramos visitas, clics ni comportamiento más
             allá de esto.
           </p>
+          {BILLING && (
           <p>
             <strong>Datos de facturación</strong> — si te suscribes a un plan de pago,
             Stripe gestiona directamente los datos de tu tarjeta; nunca vemos ni
@@ -51,6 +53,7 @@ export default function PrivacyPage() {
             suscripción de Stripe y tu plan actual, para que la app sepa a qué tienes
             acceso.
           </p>
+          )}
         </section>
 
         <section className="flex flex-col gap-2">
@@ -68,11 +71,13 @@ export default function PrivacyPage() {
               entrenar sus modelos más allá de lo que digan sus propias condiciones de
               tratamiento de datos.
             </li>
+          {BILLING && (
             <li>
               <strong>Stripe</strong> — procesa los pagos y gestiona las suscripciones de
               los planes de pago. Stripe tiene su propia política de privacidad para los
               datos de pago que gestiona directamente.
             </li>
+          )}
             <li>
               <strong>Vercel</strong> — aloja la app y su base de datos. Los registros
               normales de infraestructura (dirección IP, fecha y hora) pasan por ellos al

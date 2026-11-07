@@ -1,4 +1,5 @@
 import { ArrowRight, CheckIcon } from "@/app/icons";
+import { BILLING } from "@/lib/billingFlag";
 import { HeroCards } from "./HeroCards";
 import { Reveal } from "./Reveal";
 import { AuthMenu } from "./AuthMenu";
@@ -122,6 +123,7 @@ export function Landing() {
       </section>
 
       {/* ---------- pricing ---------- */}
+      {BILLING && (
       <section id="pricing" className="px-6 py-[clamp(60px,8vw,100px)] text-center">
         <Reveal>
           <h2 className="mb-11 text-[clamp(1.7rem,3.6vw,2.4rem)] font-extrabold">
@@ -201,6 +203,7 @@ export function Landing() {
           </Reveal>
         </div>
       </section>
+      )}
 
       {/* ---------- CTA banner ---------- */}
       <Reveal className="block px-6">
@@ -209,7 +212,7 @@ export function Landing() {
             <h2 className="text-[clamp(1.5rem,3vw,2.1rem)] font-extrabold">
               Empieza tu primera asignatura hoy.
             </h2>
-            <p className="my-2.5 mb-5 opacity-90">Plan gratis para siempre. Sin tarjeta.</p>
+            <p className="my-2.5 mb-5 opacity-90">{BILLING ? "Plan gratis para siempre. Sin tarjeta." : "Gratis. Sin tarjeta."}</p>
             <AuthMenu
               align="left"
               triggerClassName="rounded-full bg-white px-7 py-3.5 text-[0.95rem] font-semibold text-accent transition-transform hover:-translate-y-1 hover:shadow-[0_24px_48px_-12px_rgba(13,13,13,0.22),0_8px_16px_rgba(13,13,13,0.08)]"

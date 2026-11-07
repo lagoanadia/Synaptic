@@ -1,6 +1,7 @@
 import { ArrowLeft } from "@/app/icons";
 import Link from "next/link";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { BILLING } from "@/lib/billingFlag";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { createCheckoutSession, createPortalSession } from "./actions";
@@ -23,6 +24,7 @@ export default async function BillingPage({
 }: {
   searchParams: Promise<{ success?: string; canceled?: string; error?: string }>;
 }) {
+  if (!BILLING) notFound();
   const session = await auth();
   if (!session?.user?.id) {
     redirect("/");
