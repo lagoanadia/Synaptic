@@ -481,6 +481,9 @@ model Concept {
   title       String
   summary     String
   explanation String
+  // The word or phrase as it's written in the notes ("PreparedStatement"),
+  // so a note can mark it and link it here. null for older concepts.
+  term        String?
   // A verbatim piece of the source this concept is about (code or text),
   // and where it's from (file path, page). Only kept when it really
   // appears in the source.

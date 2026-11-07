@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { autoTitle, parseContent, parseNoteBlocks, type ListBlock } from "./text";
+import { autoTitle, parseContent, parseNoteBlocks, shortMapTitle, type ListBlock } from "./text";
 
 // A flat (unnested) list item — most list tests don't care about nesting,
 // so this keeps them readable instead of spelling out { inline, children:
@@ -299,5 +299,18 @@ describe("markdown tables", () => {
     expect(blocks).toHaveLength(1);
     const t = blocks[0] as Extract<(typeof blocks)[number], { type: "table" }>;
     expect(t.rows).toHaveLength(1);
+  });
+});
+
+describe("shortMapTitle", () => {
+  it("drops the 'Mapa de conceptos de' prefix", () => {
+    expect(shortMapTitle("Mapa de conceptos de desarrollo de interfaces")).toBe("Desarrollo de interfaces");
+    expect(shortMapTitle("Mapa conceptual: Bases de datos")).toBe("Bases de datos");
+  });
+  it("cuts long names at a word", () => {
+    expect(shortMapTitle("Programación orientada a objetos avanzada en Java")).toBe("Programación orientada a…");
+  });
+  it("falls back to General", () => {
+    expect(shortMapTitle("Mapa de conceptos")).toBe("General");
   });
 });
