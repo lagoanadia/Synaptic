@@ -1,5 +1,6 @@
 "use client";
 
+import { LogoMark } from "@/app/Logo";
 import { BILLING } from "@/lib/billingFlag";
 import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
@@ -115,7 +116,7 @@ export function Sidebar({ user, plan, notebooks, collapsed: startCollapsed = fal
       <aside className={`fixed inset-y-0 left-0 z-30 w-60 flex-col gap-5 border-r border-border-subtle bg-sidebar px-2.5 py-3 ${collapsed ? "hidden" : "hidden lg:flex"}`} aria-label="Navegación">
         <div className="flex items-center justify-between">
           <Link href="/pursuits" className="flex items-center gap-2 px-2 py-1 text-sm font-semibold text-ink">
-            <span className="grid size-5 place-items-center rounded bg-accent text-[11px] font-bold text-white">S</span>
+            <LogoMark size={20} />
             Synaptic
           </Link>
           <button type="button" onClick={toggleCollapsed} title="Ocultar la barra lateral" aria-label="Ocultar la barra lateral" className="grid size-7 place-items-center rounded-md text-ink-faint hover:bg-[#ebebea] hover:text-ink">

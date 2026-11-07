@@ -1,5 +1,6 @@
 "use client";
 
+import { LogoMark } from "@/app/Logo";
 import { useEffect, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CheckIcon } from "@/app/icons";
@@ -109,7 +110,7 @@ export function Onboarding({ name }: { name: string | null }) {
     >
       <header className="flex items-center justify-between px-5 py-5 sm:px-10">
         <span className="flex items-center gap-2 text-sm font-semibold">
-          <span className="grid size-5 place-items-center rounded bg-accent text-[11px] font-bold text-white">S</span>
+          <LogoMark size={20} />
           <span className="hidden sm:inline">Synaptic</span>
         </span>
         <span className="flex gap-1.5" aria-hidden>
