@@ -5,11 +5,7 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "reac
 import { reviewFlashcard } from "../pursuits/[id]/actions";
 import { reviewConcept } from "../pursuits/[id]/learn/actions";
 import { CheckIcon, XIcon } from "@/app/icons";
-import { Folder } from "@/app/Covers";
-import type { FolderCover } from "@/lib/covers";
 import { qualityFor, type LearnItem } from "@/lib/learn";
-
-type FolderInfo = { id: string; title: string; cover: FolderCover };
 
 // Sessions are shuffled randomly, so they render in the browser only
 // (a server render would never match).
@@ -20,11 +16,13 @@ const useMounted = () => useSyncExternalStore(noop, () => true, () => false);
 const VIB = ["#ff6b57", "#8b5cf6", "#14b8a6", "#f5b82e"];
 const SECONDS = 20;
 
-export function ReviewGames({ backHref, items, folders }: { backHref: string; items: LearnItem[]; folders: FolderInfo[] }) {
+export function ReviewGames({ backHref, items }: { backHref: string; items: LearnItem[] }) {
   const mounted = useMounted();
   const shell = { backHref };
+  // "Repetir los fallos" starts a new round with just those.
+  const [round, setRound] = useState({ n: 0, items });
   if (!mounted) return <Stage {...shell} total={0} done={0} />;
-  return <Game items={items} shell={shell} folders={folders} />;
+  return <Game key={round.n} items={round.items} shell={shell} onAgain={(missed) => setRound((r) => ({ n: r.n + 1, items: missed }))} />;
 }
 
 type Shell = { backHref: string };
@@ -164,13 +162,18 @@ function report(items: LearnItem[], misses: Record<string, number>) {
 // Four options, 1-4 on the keyboard, a timer, a streak. Misses come back
 // at the end of the round.
 
-function Game({ items, shell, folders }: { items: LearnItem[]; shell: Shell; folders: FolderInfo[] }) {
+function Game({ items, shell, onAgain }: { items: LearnItem[]; shell: Shell; onAgain: (missed: LearnItem[]) => void }) {
   const [queue, setQueue] = useState(() => items.map((i) => i.id));
   const [pos, setPos] = useState(0);
   const [misses, setMisses] = useState<Record<string, number>>({});
   const [cleared, setCleared] = useState<Set<string>>(new Set());
   const [streak, setStreak] = useState(0);
   const [result, setResult] = useState<{ picked: string | null; correct: boolean } | null>(null);
+  // For the summary: best streak, first wrong pick per item, time per answer.
+  const [best, setBest] = useState(0);
+  const [firstWrong, setFirstWrong] = useState<Record<string, string | null>>({});
+  const [times, setTimes] = useState<number[]>([]);
+  const askedAt = useRef(0);
   const byId = useMemo(() => new Map(items.map((i) => [i.id, i])), [items]);
   const item = byId.get(queue[pos] ?? "");
   // Fixed per step, so the order doesn't change on re-render.
@@ -184,16 +187,25 @@ function Game({ items, shell, folders }: { items: LearnItem[]; shell: Shell; fol
     report(items, misses);
   }, [finished, items, misses]);
 
+  useEffect(() => {
+    askedAt.current = Date.now();
+  }, [pos]);
+
   function pick(opt: string | null) {
     if (!item || result) return;
     const correct = opt === item.answer;
     setResult({ picked: opt, correct });
+    setTimes((t) => [...t, Date.now() - askedAt.current]);
     if (correct) {
-      setStreak((s) => s + 1);
+      setStreak((s) => {
+        setBest((b) => Math.max(b, s + 1));
+        return s + 1;
+      });
       setCleared((c) => new Set(c).add(item.id));
       window.setTimeout(next, 900);
     } else {
       setStreak(0);
+      if (!(item.id in firstWrong)) setFirstWrong((w) => ({ ...w, [item.id]: opt }));
       setMisses((m) => ({ ...m, [item.id]: (m[item.id] ?? 0) + 1 }));
       setQueue((q) => [...q, item.id]);
     }
@@ -215,7 +227,20 @@ function Game({ items, shell, folders }: { items: LearnItem[]; shell: Shell; fol
     return () => window.removeEventListener("keydown", onKey);
   });
 
-  if (items.length === 0 || finished) return <Done shell={shell} folders={finished ? folders.filter((f) => items.some((i) => i.pursuitId === f.id)) : []} />;
+  if (items.length === 0) return <Done shell={shell} />;
+  if (finished) {
+    const missed = items.filter((i) => (misses[i.id] ?? 0) > 0);
+    return (
+      <Summary
+        shell={shell}
+        total={items.length}
+        missed={missed.map((i) => ({ item: i, wrong: firstWrong[i.id] ?? null }))}
+        best={best}
+        avgSeconds={times.length ? Math.round(times.reduce((a, b) => a + b, 0) / times.length / 100) / 10 : 0}
+        onAgain={missed.length ? () => onAgain(missed) : undefined}
+      />
+    );
+  }
   if (!item) return null;
 
   const state = (opt: string): TileState =>
@@ -235,30 +260,84 @@ function Game({ items, shell, folders }: { items: LearnItem[]; shell: Shell; fol
   );
 }
 
-// ─── Hecho por hoy ───
+// ─── Resumen: how the round went ───
+// Score ring, best streak and time per question (icons, no labels), the
+// ones you missed with the right answer, ↻ to repeat those, ✓ to finish.
 
-function Done({ shell, folders, again }: { shell: Shell; folders: FolderInfo[]; again?: () => void }) {
+function Summary({
+  shell,
+  total,
+  missed,
+  best,
+  avgSeconds,
+  onAgain,
+}: {
+  shell: Shell;
+  total: number;
+  missed: { item: LearnItem; wrong: string | null }[];
+  best: number;
+  avgSeconds: number;
+  onAgain?: () => void;
+}) {
+  const right = total - missed.length;
+  const pct = total ? (right / total) * 100 : 0;
   return (
-    <Stage {...shell} total={1} done={1}>
-      {folders.length > 0 && (
-        <div className="flex flex-wrap justify-center gap-6">
-          {folders.slice(0, 4).map((f) => (
-            <div key={f.id} className="flex w-24 flex-col items-center gap-2 sm:w-30">
-              <Folder cover={f.cover} />
-              <span className="max-w-full truncate text-sm text-white/70">{f.title}</span>
+    <Stage {...shell} total={total} done={total}>
+      <div className="grid size-44 place-items-center rounded-full sm:size-52" style={{ background: `conic-gradient(#22c55e 0 ${pct}%, rgba(255,255,255,.1) ${pct}% 100%)` }} aria-label={`${right} de ${total} a la primera`}>
+        <div className="grid size-[148px] place-items-center rounded-full bg-[#18181b] sm:size-[172px]">
+          <b className="text-5xl leading-none tabular-nums">
+            {right}/{total}
+          </b>
+        </div>
+      </div>
+      <div className="flex gap-3">
+        <span className="flex items-center gap-2 rounded-xl bg-white/8 px-4 py-2.5 text-xl font-bold" title="Mejor racha" aria-label={`Mejor racha: ${best}`}>
+          <span className="text-[#f5b82e]">✦</span> {best}
+        </span>
+        <span className="flex items-center gap-2 rounded-xl bg-white/8 px-4 py-2.5 text-xl font-bold" title="Segundos por pregunta" aria-label={`${avgSeconds} segundos por pregunta`}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-white/60" aria-hidden>
+            <circle cx="12" cy="13" r="8" />
+            <path d="M12 9v4l2.5 2.5M9.5 2.5h5" />
+          </svg>
+          {avgSeconds}s
+        </span>
+      </div>
+      {missed.length > 0 && (
+        <div className="flex w-full max-w-[640px] flex-col gap-2">
+          {missed.slice(0, 6).map(({ item, wrong }) => (
+            <div key={item.id} className="flex flex-col gap-1 rounded-xl bg-white px-4 py-3 text-[#18181b]">
+              <b className="text-[15px] leading-snug">{item.prompt}</b>
+              {wrong && <s className="text-[13px] text-[#e5484d]">{wrong}</s>}
+              <span className="flex items-start gap-1.5 text-sm font-semibold text-[#16a34a]">
+                <CheckIcon size={14} className="mt-0.5 shrink-0" /> {item.answer}
+              </span>
             </div>
           ))}
         </div>
       )}
+      <div className="flex items-center gap-3">
+        {onAgain && (
+          <button type="button" onClick={onAgain} title="Repetir los fallos" aria-label="Repetir los fallos" className="grid size-12 place-items-center rounded-xl bg-[#8b5cf6] text-xl shadow-[inset_0_-4px_0_rgba(0,0,0,.2)]">
+            ↻
+          </button>
+        )}
+        <Link href={shell.backHref} title="Terminar" aria-label="Terminar" className="grid size-12 place-items-center rounded-xl bg-[#22c55e] shadow-[inset_0_-4px_0_rgba(0,0,0,.2)]">
+          <CheckIcon size={22} className="block" />
+        </Link>
+      </div>
+    </Stage>
+  );
+}
+
+// ─── Hecho por hoy ───
+
+function Done({ shell }: { shell: Shell }) {
+  return (
+    <Stage {...shell} total={1} done={1}>
       <span className="grid size-16 place-items-center rounded-full bg-[#22c55e] text-white shadow-[0_10px_30px_rgba(34,197,94,.35)]">
         <CheckIcon size={26} className="block" />
       </span>
       <p className="text-white/60">Hasta mañana</p>
-      {again && (
-        <button type="button" onClick={again} aria-label="Otra vez" title="Otra vez" className="rounded-full px-3 py-1 text-lg text-white/40 hover:text-white">
-          ↻
-        </button>
-      )}
     </Stage>
   );
 }

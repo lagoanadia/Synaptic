@@ -6,7 +6,6 @@ import { shuffle } from "@/lib/review";
 import { answerStandsOut, type LearnItem } from "@/lib/learn";
 import { withDistractors } from "@/lib/quizDistractors";
 import { aiBudget } from "@/lib/access";
-import { folderCover } from "@/lib/covers";
 import { ReviewGames } from "./ReviewGames";
 
 // Never more than this many cards a day, whatever the backlog.
@@ -88,10 +87,5 @@ export default async function ReviewPage({
     i.distractors.length >= 3 ? i : { ...i, distractors: [...i.distractors, ...shuffle(answers.filter((a) => a !== i.answer && !i.distractors.includes(a)))].slice(0, 3) },
   );
 
-  // Folders for the "done" screen.
-  const ids = [...new Set(items.map((i) => i.pursuitId))];
-  const covers = await prisma.pursuit.findMany({ where: { id: { in: ids } }, select: { id: true, title: true, cover: true } });
-  const folders = covers.map((p) => ({ id: p.id, title: p.title, cover: folderCover(p.id, p.cover) }));
-
-  return <ReviewGames backHref={backHref} items={items} folders={folders} />;
+  return <ReviewGames backHref={backHref} items={items} />;
 }
