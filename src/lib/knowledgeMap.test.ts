@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dotState, layoutMap, type MapCluster } from "./knowledgeMap";
+import { dotState, focusHeight, layoutMap, type MapCluster } from "./knowledgeMap";
 
 const now = new Date("2026-11-06").getTime();
 
@@ -29,5 +29,26 @@ describe("layoutMap", () => {
   });
   it("is deterministic", () => {
     expect(layoutMap(clusters, 800, { now })).toEqual(layoutMap(clusters, 800, { now }));
+  });
+});
+
+describe("layoutMap fill (one unit at real size)", () => {
+  const node = (id: string, parentId: string | null) => ({ id, title: id, status: "NEW" as const, statusAt: null, depth: parentId ? 1 : 0, parentId, href: "#" });
+  it("spreads a flat map of many roots without piling dots up", () => {
+    const nodes = Array.from({ length: 30 }, (_, i) => node(`n${i}`, i < 24 ? null : "n0"));
+    const height = focusHeight(nodes.length);
+    const [c] = layoutMap([{ id: "u", label: "U", color: "#000", nodes }], 520, { perRow: 1, rowHeight: height, fill: true, now }).clusters;
+    let closest = Infinity;
+    for (const a of c.nodes) for (const b of c.nodes) if (a !== b) closest = Math.min(closest, Math.hypot(a.x - b.x, a.y - b.y));
+    expect(closest).toBeGreaterThan(30);
+    expect(c.nodes.every((p) => p.x > 40 && p.x < 480 && p.y > 20 && p.y < height - 20)).toBe(true);
+  });
+  it("puts a lone root in the centre", () => {
+    const [c] = layoutMap([{ id: "u", label: "U", color: "#000", nodes: [node("r", null), node("a", "r"), node("b", "r")] }], 520, { perRow: 1, rowHeight: 440, fill: true, now }).clusters;
+    expect(c.nodes[0]).toMatchObject({ id: "r", x: 260 });
+  });
+  it("grows taller with more concepts", () => {
+    expect(focusHeight(8)).toBe(440);
+    expect(focusHeight(40)).toBeGreaterThan(440);
   });
 });

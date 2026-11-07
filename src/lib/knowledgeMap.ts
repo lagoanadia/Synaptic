@@ -27,7 +27,7 @@ export type PlacedCluster = { id: string; label: string; color: string; x: numbe
 
 // Clusters on a grid (up to `perRow` across); inside a cluster the roots
 // sit in the middle and the rest spiral out on the golden angle. `fill`
-// (one unit on its own) spreads the spiral over the whole cell, bigger dots.
+// (one unit on its own) spreads every concept evenly over the whole cell.
 export function layoutMap(clusters: MapCluster[], width: number, opts: { perRow?: number; rowHeight?: number; now?: number; fill?: boolean } = {}) {
   const perRow = Math.max(1, Math.min(opts.perRow ?? 4, clusters.length || 1));
   const rowH = opts.rowHeight ?? 210;
@@ -40,18 +40,19 @@ export function layoutMap(clusters: MapCluster[], width: number, opts: { perRow?
     const spread = Math.min(cellW, rowH) / 2 - 26;
     const roots = c.nodes.filter((n) => !n.parentId || !c.nodes.some((m) => m.id === n.parentId));
     const rest = c.nodes.filter((n) => !roots.includes(n));
-    const nodes: PlacedNode[] = [];
-    roots.forEach((n, k) => {
-      const a = (k / Math.max(1, roots.length)) * Math.PI * 2;
-      const rr = roots.length > 1 ? (opts.fill ? 40 : 14) : 0;
-      nodes.push({ ...n, x: r1(cx + Math.cos(a) * rr), y: r1(cy + Math.sin(a) * rr), r: opts.fill ? 11 : 8, state: dotState(n, opts.now) });
-    });
-    rest.forEach((n, k) => {
-      const a = k * 2.39996;
-      const rr = opts.fill ? spread * (0.4 + 0.6 * Math.sqrt((k + 1) / rest.length)) : Math.min(spread, 22 + 13 * Math.sqrt(k + 1));
-      const r = opts.fill ? (n.depth > 1 ? 6 : 8) : n.depth > 1 ? 3.5 : 5;
-      nodes.push({ ...n, x: r1(cx + Math.cos(a) * rr * (opts.fill ? 1.1 : 1.25)), y: r1(cy + Math.sin(a) * rr), r, state: dotState(n, opts.now) });
-    });
+    const nodes: PlacedNode[] = opts.fill ? sunflower([...roots, ...rest], cx, cy, cellW / 2 - 70, rowH / 2 - 34, roots.length === 1, opts.now) : [];
+    if (!opts.fill) {
+      roots.forEach((n, k) => {
+        const a = (k / Math.max(1, roots.length)) * Math.PI * 2;
+        const rr = roots.length > 1 ? 14 : 0;
+        nodes.push({ ...n, x: r1(cx + Math.cos(a) * rr), y: r1(cy + Math.sin(a) * rr), r: 8, state: dotState(n, opts.now) });
+      });
+      rest.forEach((n, k) => {
+        const a = k * 2.39996;
+        const rr = Math.min(spread, 22 + 13 * Math.sqrt(k + 1));
+        nodes.push({ ...n, x: r1(cx + Math.cos(a) * rr * 1.25), y: r1(cy + Math.sin(a) * rr), r: n.depth > 1 ? 3.5 : 5, state: dotState(n, opts.now) });
+      });
+    }
     const byId = new Map(nodes.map((n) => [n.id, n]));
     const links = nodes.filter((n) => n.parentId && byId.has(n.parentId)).map((n) => [byId.get(n.parentId!)!, n] as [PlacedNode, PlacedNode]);
     return { id: c.id, label: c.label, color: c.color, x: cx, y: cy, nodes, links };
@@ -59,3 +60,21 @@ export function layoutMap(clusters: MapCluster[], width: number, opts: { perRow?
   const rows = Math.ceil(clusters.length / perRow) || 1;
   return { clusters: placed, height: rows * rowH };
 }
+
+// One unit at real size: every concept spread evenly over an ellipse (a
+// sunflower spiral), roots first so they sit nearer the middle, a lone root
+// right in the centre. Even area per dot, so nothing piles up however flat
+// or deep the map is.
+function sunflower(list: MapNode[], cx: number, cy: number, rx: number, ry: number, centreFirst: boolean, now?: number): PlacedNode[] {
+  const n = list.length;
+  return list.map((node, k) => {
+    const place = centreFirst && k === 0 ? null : centreFirst ? k : k + 0.5;
+    const f = place === null ? 0 : Math.sqrt(place / (centreFirst ? n - 0.5 : n));
+    const a = (place ?? 0) * 2.39996;
+    const r = node.parentId ? (node.depth > 1 ? 6 : 8) : 10;
+    return { ...node, x: r1(cx + Math.cos(a) * rx * f), y: r1(cy + Math.sin(a) * ry * f), r, state: dotState(node, now) };
+  });
+}
+
+// How tall a single unit's map should be so its concepts have room.
+export const focusHeight = (count: number) => Math.max(440, Math.round(115 * Math.sqrt(count)));
