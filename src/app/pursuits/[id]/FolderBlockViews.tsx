@@ -1,10 +1,10 @@
 import Link from "next/link";
-import { BoltIcon, CardsIcon, CheckIcon, QuestionIcon } from "@/app/icons";
+import { CheckIcon } from "@/app/icons";
 import { LANGUAGE_INFO, asLanguage } from "@/lib/challenge";
 import { LANGUAGE_STYLE, difficultyOf } from "@/app/challenges/look";
 
-// "Repaso": today's small batch as a stack of cards, and the ways to go
-// through it. No counts.
+// "Repaso": today's small batch as a stack of cards, and one button to
+// play it. No counts.
 export function ReviewToday({ pursuitId }: { pursuitId: string }) {
   const q = `pursuit=${pursuitId}`;
   return (
@@ -18,21 +18,9 @@ export function ReviewToday({ pursuitId }: { pursuitId: string }) {
           />
         ))}
       </div>
-      <div className="flex flex-wrap gap-2">
-        {[
-          { mode: "flash", label: "Tarjetas", icon: CardsIcon, main: true },
-          { mode: "learn", label: "Aprender", icon: QuestionIcon },
-          { mode: "match", label: "Unir", icon: BoltIcon },
-        ].map((m) => (
-          <Link
-            key={m.mode}
-            href={`/review?mode=${m.mode}&${q}`}
-            className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium ${m.main ? "bg-accent text-white" : "border border-border-subtle bg-white hover:bg-chip"}`}
-          >
-            <m.icon size={15} className="block" /> {m.label}
-          </Link>
-        ))}
-      </div>
+      <Link href={`/review?${q}`} className="flex items-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-medium text-white">
+        ▶ Repasar
+      </Link>
     </div>
   );
 }

@@ -3,31 +3,28 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { SHARED, UNSORTED, getCards, getLearnConcepts, type ReviewScope } from "@/lib/reviewData";
 import { shuffle } from "@/lib/review";
-import type { LearnItem } from "@/lib/learn";
+import { answerStandsOut, type LearnItem } from "@/lib/learn";
 import { withDistractors } from "@/lib/quizDistractors";
 import { aiBudget } from "@/lib/access";
 import { folderCover } from "@/lib/covers";
-import { ReviewGames, type Mode } from "./ReviewGames";
-
-// Old links (?mode=quiz/recall/challenge) still land somewhere sensible.
-const MODE_ALIASES: Record<string, Mode> = { learn: "learn", quiz: "learn", recall: "learn", match: "match", challenge: "match", flash: "flash" };
+import { ReviewGames } from "./ReviewGames";
 
 // Never more than this many cards a day, whatever the backlog.
 const DAILY_CAP = 12;
 
-// Review for one scope: ?section= or ?pursuit= (default: everything).
-// Tarjetas is today's review (due cards, capped); Aprender and Unir
-// practise anything in scope.
+// Repasar: one game for any scope (?section=, ?pursuit=, &unit=; default
+// everything). Today's due cards, capped; reviewing a folder or unit with
+// nothing due gives a practice round instead of an empty screen.
+// (?mode= from old links is ignored.)
 export default async function ReviewPage({
   searchParams,
 }: {
-  searchParams: Promise<{ mode?: string; section?: string; pursuit?: string; unit?: string }>;
+  searchParams: Promise<{ section?: string; pursuit?: string; unit?: string }>;
 }) {
   const session = await auth();
   if (!session?.user?.id) redirect("/");
   const userId = session.user.id;
   const params = await searchParams;
-  const mode = MODE_ALIASES[params.mode ?? ""] ?? "flash";
 
   const scope: ReviewScope = params.pursuit
     ? { kind: "pursuit", pursuitId: params.pursuit, unitId: params.unit }
@@ -51,11 +48,9 @@ export default async function ReviewPage({
 
   // Today: due cards up to what's left of the cap, plus a couple of concepts
   // you flagged to reread. Practice: a mix of everything.
-  let pool =
-    mode === "flash"
-      ? dueCards.slice(0, left)
-      : [...dueCards, ...shuffle(allCards.filter((c) => !dueCards.some((d) => d.id === c.id)))].slice(0, DAILY_CAP);
-  if (mode !== "match" && pool.some((c) => (c.distractors?.length ?? 0) < 3 || !c.hint)) {
+  const practice = scope.kind === "pursuit" && dueCards.slice(0, left).length === 0;
+  let pool = practice ? shuffle(allCards).slice(0, DAILY_CAP) : dueCards.slice(0, left);
+  if (pool.some((c) => (c.distractors?.length ?? 0) < 3 || !c.hint || answerStandsOut(c.answer, c.distractors ?? []))) {
     const budget = await aiBudget(userId, session.user.email);
     if (!(await budget.check())) {
       const filled = await withDistractors(pool);
@@ -75,8 +70,8 @@ export default async function ReviewPage({
     hint: c.hint ?? null,
   }));
   const conceptItems: LearnItem[] = concepts
-    .filter((c) => c.summary && (mode === "flash" ? c.status === "REREAD" : c.status !== "MASTERED"))
-    .slice(0, mode === "flash" ? 2 : 4)
+    .filter((c) => c.summary && (practice ? c.status !== "MASTERED" : c.status === "REREAD"))
+    .slice(0, practice ? 4 : 2)
     .map((c) => ({
       id: c.id,
       kind: "concept",
@@ -92,26 +87,11 @@ export default async function ReviewPage({
   const items = [...cardItems, ...conceptItems].map((i) =>
     i.distractors.length >= 3 ? i : { ...i, distractors: [...i.distractors, ...shuffle(answers.filter((a) => a !== i.answer && !i.distractors.includes(a)))].slice(0, 3) },
   );
-  const matchItems = shuffle(items.filter((i) => i.answer.length <= 70 && i.prompt.length <= 120)).slice(0, 6);
 
   // Folders for the "done" screen.
   const ids = [...new Set(items.map((i) => i.pursuitId))];
   const covers = await prisma.pursuit.findMany({ where: { id: { in: ids } }, select: { id: true, title: true, cover: true } });
   const folders = covers.map((p) => ({ id: p.id, title: p.title, cover: folderCover(p.id, p.cover) }));
 
-  const scopeQuery =
-    scope.kind === "pursuit" ? `pursuit=${scope.pursuitId}${scope.unitId ? `&unit=${scope.unitId}` : ""}` : scope.kind === "section" ? `section=${scope.sectionId}` : "";
-
-  return (
-    <ReviewGames
-      key={`${mode}-${scopeQuery}`}
-      mode={mode}
-      scopeQuery={scopeQuery}
-      scopeKey={scopeQuery || "all"}
-      backHref={backHref}
-      items={items}
-      matchItems={matchItems}
-      folders={folders}
-    />
-  );
+  return <ReviewGames backHref={backHref} items={items} folders={folders} />;
 }

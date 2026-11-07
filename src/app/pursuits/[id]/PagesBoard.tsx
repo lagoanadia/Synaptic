@@ -2,8 +2,6 @@
 
 import Link from "next/link";
 import { useState, useTransition } from "react";
-import { BoltIcon, CardsIcon, QuestionIcon, TrashIcon } from "@/app/icons";
-import { DeleteButton } from "../DeleteButton";
 import { createContentSection, deleteContentSection, listClassroomFiles, movePage, renameUnit, setUnitClassroom } from "./actions";
 import { ImportSlides } from "./ImportSlides";
 import { unitCode } from "@/lib/slides";
@@ -36,7 +34,6 @@ export function PagesBoard({
   groupLabel = "Unidad",
   view = "board",
   study = true,
-  color = "#a0523f",
 }: {
   pursuitId: string;
   units: Unit[];
@@ -48,8 +45,6 @@ export function PagesBoard({
   groupLabel?: string;
   view?: "list" | "board";
   study?: boolean;
-  // The folder's colour (dots).
-  color?: string;
 }) {
   const label = groupLabel;
   const none = `Sin ${label.toLowerCase()}`;
@@ -148,42 +143,21 @@ export function PagesBoard({
                 ) : (
                   <span className="min-w-0 flex-1 truncate text-sm font-semibold">{col.name}</span>
                 )}
-                {col.id && classroomCourseId && (
-                  <select
-                    value={col.classroomUnit ?? ""}
-                    onFocus={loadClassroomUnits}
-                    onChange={(e) => startTransition(() => setUnitClassroom(pursuitId, col.id!, e.target.value || null))}
-                    title="Unidad de Classroom para las diapositivas de esta columna"
-                    aria-label={`Unidad de Classroom para ${col.name}`}
-                    className={`rounded border-0 px-1.5 py-0.5 text-[11px] ${col.classroomUnit ? "bg-[#e7f3f8] text-[#337ea9]" : "hidden bg-white text-ink-muted group-hover/col:block"}`}
-                  >
-                    <option value="">Classroom</option>
-                    {(classroomUnits ?? (col.classroomUnit ? [col.classroomUnit] : [])).map((u) => (
-                      <option key={u} value={u}>
-                        {u}
-                      </option>
-                    ))}
-                  </select>
-                )}
-                {study && (
-                  <UnitPlay
-                    pursuitId={pursuitId}
-                    unitKey={colKey}
-                    organized={items.filter((c) => c.organized).length}
-                    pages={items.length}
-                    stats={cardStats[colKey] ?? { cards: 0, due: 0 }}
-                    color={color}
-                  />
-                )}
-                {col.id && (
-                  <DeleteButton
-                    action={deleteContentSection.bind(null, pursuitId, col.id)}
-                    confirmMessage={`¿Eliminar "${col.name}"? Sus páginas pasan a ${none}.`}
-                    className="rounded-full p-1 text-ink-faint opacity-0 group-hover/col:opacity-100 hover:text-red-600 focus:opacity-100"
-                  >
-                    <TrashIcon size={14} title={`Eliminar ${col.name}`} />
-                  </DeleteButton>
-                )}
+                <ColumnMenu
+                  name={col.name}
+                  reviewHref={study && (cardStats[colKey]?.cards ?? 0) > 0 ? `/review?pursuit=${pursuitId}&unit=${colKey}` : null}
+                  classroom={
+                    col.id && classroomCourseId
+                      ? {
+                          value: col.classroomUnit ?? "",
+                          options: classroomUnits ?? (col.classroomUnit ? [col.classroomUnit] : []),
+                          load: loadClassroomUnits,
+                          set: (v) => startTransition(() => setUnitClassroom(pursuitId, col.id!, v || null)),
+                        }
+                      : null
+                  }
+                  onDelete={col.id ? () => window.confirm(`¿Eliminar "${col.name}"? Sus páginas pasan a ${none}.`) && startTransition(() => deleteContentSection(pursuitId, col.id!)) : null}
+                />
               </header>
 
               {items.map((c) => (
@@ -308,55 +282,6 @@ function PagesList({
   );
 }
 
-// A unit's study row: how much of it is organized, and its flashcards as
-// Learn / Flashcards / Match, scoped to just this unit.
-function UnitPlay({
-  pursuitId,
-  unitKey,
-  organized,
-  pages,
-  stats,
-  color,
-}: {
-  color: string;
-  pursuitId: string;
-  unitKey: string;
-  organized: number;
-  pages: number;
-  stats: { cards: number; due: number };
-}) {
-  const href = (mode: string) => `/review?mode=${mode}&pursuit=${pursuitId}&unit=${unitKey}`;
-  const games = [
-    { mode: "learn", label: "Aprender", icon: QuestionIcon, enabled: stats.cards > 0 },
-    { mode: "flash", label: "Tarjetas", icon: CardsIcon, enabled: stats.cards > 0, due: stats.due > 0 },
-    { mode: "match", label: "Unir", icon: BoltIcon, enabled: stats.cards >= 3 },
-  ];
-  // How organized the unit is, as three dots (no numbers); the study
-  // icons only show when you hover the column.
-  const filled = pages ? Math.round((organized / pages) * 3) : 0;
-  return (
-    <span className="flex items-center gap-0.5">
-      <span className="hidden items-center group-hover/col:flex">
-        {games.map((g) =>
-          g.enabled ? (
-            <Link key={g.mode} href={href(g.mode)} title={g.label} aria-label={g.label} className="relative rounded p-1 text-ink-muted hover:bg-white hover:text-ink">
-              <g.icon size={14} className="block" />
-              {g.due && <span className="absolute top-0.5 right-0.5 size-1.5 rounded-full bg-accent" />}
-            </Link>
-          ) : null,
-        )}
-      </span>
-      {pages > 0 && (
-        <span className="ml-1 flex gap-[3px]" title={`${organized} de ${pages} páginas organizadas`} aria-label="Organizada">
-          {[0, 1, 2].map((i) => (
-            <span key={i} className="size-[7px] rounded-full border-[1.5px]" style={{ borderColor: color, background: i < filled ? color : undefined }} />
-          ))}
-        </span>
-      )}
-    </span>
-  );
-}
-
 // Click the unit's name to rename it (Enter saves, Esc cancels).
 function UnitName({ pursuitId, id, name }: { pursuitId: string; id: string; name: string }) {
   const [editing, setEditing] = useState(false);
@@ -416,5 +341,59 @@ function Sparkles() {
       <path d="M10 3.5 11.8 8l4.7 1.8-4.7 1.8L10 16l-1.8-4.4L3.5 9.8 8.2 8z" />
       <path d="M17.5 14l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" />
     </svg>
+  );
+}
+
+// A column's ⋯: review this unit, its Classroom unit (for the slides
+// picker), delete. Nothing else in the header.
+function ColumnMenu({
+  name,
+  reviewHref,
+  classroom,
+  onDelete,
+}: {
+  name: string;
+  reviewHref: string | null;
+  classroom: { value: string; options: string[]; load: () => void; set: (v: string) => void } | null;
+  onDelete: (() => void) | null;
+}) {
+  const [open, setOpen] = useState(false);
+  if (!reviewHref && !classroom && !onDelete) return null;
+  return (
+    <span className="relative">
+      <button type="button" onClick={() => setOpen((o) => !o)} aria-label={`Opciones de ${name}`} title="Opciones" className="rounded px-1.5 text-ink-faint hover:bg-white hover:text-ink">
+        ⋯
+      </button>
+      {open && (
+        <>
+          <button type="button" aria-label="Cerrar" className="fixed inset-0 z-10 cursor-default" onClick={() => setOpen(false)} />
+          <div className="absolute top-full right-0 z-20 mt-1 flex w-56 flex-col rounded-lg bg-white p-1 text-sm shadow-[0_0_0_1px_rgba(15,15,15,.05),0_10px_26px_rgba(15,15,15,.16)]">
+            {reviewHref && (
+              <Link href={reviewHref} className="rounded-md px-2.5 py-1.5 hover:bg-chip">
+                ▶ Repasar esta unidad
+              </Link>
+            )}
+            {classroom && (
+              <label className="flex items-center justify-between gap-2 rounded-md px-2.5 py-1.5 hover:bg-chip">
+                <span>Diapositivas de</span>
+                <select value={classroom.value} onFocus={classroom.load} onChange={(e) => classroom.set(e.target.value)} className="rounded bg-chip px-1.5 py-0.5 text-xs">
+                  <option value="">Classroom…</option>
+                  {classroom.options.map((u) => (
+                    <option key={u} value={u}>
+                      {u}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            {onDelete && (
+              <button type="button" onClick={() => { setOpen(false); onDelete(); }} className="rounded-md px-2.5 py-1.5 text-left text-red-600 hover:bg-chip">
+                Eliminar
+              </button>
+            )}
+          </div>
+        </>
+      )}
+    </span>
   );
 }

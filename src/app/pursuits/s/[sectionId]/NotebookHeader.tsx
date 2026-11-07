@@ -64,8 +64,8 @@ export function NotebookHeader({
       )}
       <span className="relative flex items-center gap-2">
         {study && (
-          <Link href={`/review?mode=flash&section=${id}`} className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-white">
-            Repaso de hoy
+          <Link href={`/review?section=${id}`} className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-white">
+            ▶ Repasar
           </Link>
         )}
         {editable && (

@@ -54,7 +54,7 @@ export default async function PursuitPage({
   const { id } = await params;
   const { tab, classroomConnected, classroomError, edit } = await searchParams;
   // Old tab links: flashcards now live in the review session.
-  if (tab === "cards") redirect(`/review?mode=flash&pursuit=${id}`);
+  if (tab === "cards") redirect(`/review?pursuit=${id}`);
   const editing = edit === "1";
 
   const session = await auth();
@@ -208,7 +208,6 @@ export default async function PursuitPage({
           groupLabel={groupLabel}
           view={b.view ?? (grouped ? "board" : "list")}
           study={study}
-          color={color}
         />
       );
     else if (b.type === "map")
@@ -272,7 +271,7 @@ export default async function PursuitPage({
         <span className="flex items-center gap-2">
           {study && (
             <Link href={`/review?mode=flash&pursuit=${pursuit.id}`} className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-white">
-              Repaso de hoy
+              ▶ Repasar
             </Link>
           )}
           <Link href={editing ? here : `${here}?edit=1`} className={`rounded-md px-3 py-1.5 text-sm ${editing ? "bg-ink font-medium text-white" : "text-ink-faint hover:bg-chip hover:text-ink"}`}>

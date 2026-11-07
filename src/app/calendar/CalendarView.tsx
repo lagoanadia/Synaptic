@@ -310,7 +310,7 @@ function Detail({ item, onDone }: { item: CalItem; onDone: () => void }) {
       <span className="flex items-center gap-2 pt-1">
         {item.kind === "exam" && item.folderId && (
           <Link
-            href={`/review?mode=learn&pursuit=${item.folderId}${item.unitId ? `&unit=${item.unitId}` : ""}`}
+            href={`/review?pursuit=${item.folderId}${item.unitId ? `&unit=${item.unitId}` : ""}`}
             title="Repasar lo que entra"
             aria-label="Repasar lo que entra"
             className="grid size-10 place-items-center rounded-full bg-accent text-white"
