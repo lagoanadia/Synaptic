@@ -8,6 +8,7 @@ import { CoverDefs } from "./CoverDefs";
 import { notebookCover } from "@/lib/covers";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { cookies } from "next/headers";
 
 const appFont = Inter({
   variable: "--font-app",
@@ -46,9 +47,11 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         prisma.section.findMany({ where: { userId }, orderBy: { order: "asc" }, select: { id: true, name: true, cover: true } }),
       ])
     : [null, []];
+  // Sidebar collapsed to icons? Remembered in a cookie so it renders that way.
+  const collapsed = (await cookies()).get("sidebar")?.value === "collapsed";
 
   return (
-    <html lang="es" className={`${appFont.variable} h-full antialiased`}>
+    <html lang="es" data-sidebar={collapsed ? "collapsed" : undefined} className={`${appFont.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
         <RegisterServiceWorker />
         <CoverDefs />
@@ -57,10 +60,11 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
             user={{ name: session.user.name ?? null, email: session.user.email ?? null, image: session.user.image ?? null }}
             plan={user.plan}
             notebooks={sections.map((s) => ({ id: s.id, name: s.name, cover: notebookCover(s.id, s.cover) }))}
+            collapsed={collapsed}
           />
         )}
-        <div className={`flex flex-1 flex-col ${session?.user ? "pb-16 lg:pb-0 lg:pl-60" : ""}`}>{children}</div>
-        <footer className={`px-6 py-4 text-center text-xs text-ink-faint ${session?.user ? "hidden lg:block lg:pl-60" : ""}`}>
+        <div className={`flex flex-1 flex-col ${session?.user ? "app-pad pb-16 lg:pb-0" : ""}`}>{children}</div>
+        <footer className={`px-6 py-4 text-center text-xs text-ink-faint ${session?.user ? "app-pad hidden lg:block" : ""}`}>
           Hecho por{" "}
           <a
             href="https://github.com/lagoanadia"

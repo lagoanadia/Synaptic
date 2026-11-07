@@ -60,6 +60,17 @@ body {
   color: var(--foreground);
 }
 
+/* Room for the sidebar on wide screens: full, or collapsed to icons
+   (Sidebar.tsx sets html[data-sidebar]). */
+@media (min-width: 1024px) {
+  .app-pad {
+    padding-left: 15rem;
+  }
+  html[data-sidebar="collapsed"] .app-pad {
+    padding-left: 52px;
+  }
+}
+
 /* Landing hero cards' slow bob (HeroCards.tsx). */
 @keyframes float {
   0%,

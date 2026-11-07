@@ -203,3 +203,29 @@ export function pickBySkill<T extends { skill: string | null; fromClass: boolean
   }
   return out;
 }
+
+// The parameter names of the function the learner writes, read from the
+// starter code's signature, to label example inputs ("items", "days"…).
+// Falls back to arg1, arg2… when the signature can't be read.
+export function paramNames(starterCode: string, entry: string, count: number): string[] {
+  const esc = entry.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const sig =
+    new RegExp(`(?:function\\s+${esc}|def\\s+${esc}|${esc}\\s*=\\s*(?:async\\s*)?(?:function)?)\\s*(?:<[^>]*>)?\\s*\\(`).exec(starterCode);
+  const names: string[] = [];
+  if (sig) {
+    // Walk to the matching ")" and split on top-level commas.
+    let depth = 0;
+    let part = "";
+    for (const ch of starterCode.slice(sig.index + sig[0].length)) {
+      if (ch === "(" || ch === "{" || ch === "[" || ch === "<") depth++;
+      if ((ch === ")" || ch === "}" || ch === "]" || ch === ">") && depth-- === 0) break;
+      if (ch === "," && depth === 0) {
+        names.push(part);
+        part = "";
+      } else part += ch;
+    }
+    if (part.trim()) names.push(part);
+  }
+  const clean = names.map((n) => /^\s*\.{0,3}([A-Za-z_$][\w$]*)/.exec(n)?.[1]).filter((n): n is string => !!n && n !== "self");
+  return Array.from({ length: count }, (_, i) => clean[i] ?? `arg${i + 1}`);
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { deepEqual, formatReview, isTheoryLookup, jsHarness, parseChallenge, parseReview, type RunOutput, pickBySkill } from "./challenge";
+import { paramNames, deepEqual, formatReview, isTheoryLookup, jsHarness, parseChallenge, parseReview, type RunOutput, pickBySkill } from "./challenge";
 
 // The harness is a function body; run it the way the Worker does.
 const run = (code: string, entry: string, tests: { args: unknown[]; expected: unknown }[]) =>
@@ -116,5 +116,17 @@ describe("pickBySkill", () => {
   it("prefers skills you haven't practised", () => {
     const picked = pickBySkill([c("a", "Acumular"), c("b", "Validar"), c("c", "Recursividad")], ["acumular"], 2);
     expect(picked.map((p) => p.title)).toEqual(["b", "c"]);
+  });
+});
+
+describe("paramNames", () => {
+  it("reads typed TS signatures with nested types", () => {
+    const code = "function totalExpiring(items: {name:string, expiry:string, qty:number}[], days: number, today: string): number {\n  return 0;\n}";
+    expect(paramNames(code, "totalExpiring", 3)).toEqual(["items", "days", "today"]);
+  });
+  it("reads Python and arrow functions, and falls back", () => {
+    expect(paramNames("def media(notas, redondeo=2):\n    pass", "media", 2)).toEqual(["notas", "redondeo"]);
+    expect(paramNames("const sum = (a, b) => a + b", "sum", 2)).toEqual(["a", "b"]);
+    expect(paramNames("weird", "f", 2)).toEqual(["arg1", "arg2"]);
   });
 });
