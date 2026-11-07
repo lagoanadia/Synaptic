@@ -39,7 +39,7 @@ export function GoogleModal({ status, justConnected, onClose }: { status: "off" 
       .then((g) => {
         setConnected(g.connected);
         setCalendars(g.calendars);
-        if (g.settings) setS({ ...g.settings, calendarIds: g.settings.calendarIds.length ? g.settings.calendarIds : g.calendars.filter((c) => c.primary).map((c) => c.id) });
+        if (g.settings) setS({ ...g.settings, calendarIds: g.settings.calendarIds.length ? g.settings.calendarIds : g.calendars.filter((c) => c.selected).map((c) => c.id) });
       })
       .finally(() => setLoaded(true));
   }, []);

@@ -51,7 +51,9 @@ export function CalendarView({
   const [selected, setSelected] = useState(today);
   const [modal, setModal] = useState(justConnected === "connected" || justConnected === "failed");
 
-  const shown = items.filter((i) => !hiddenKinds.has(i.kind) && !(i.folderId && hiddenFolders.has(i.folderId)) && !(i.kind === "google" && hiddenFolders.has("google")));
+  const shown = items.filter((i) => !hiddenKinds.has(i.kind) && !(i.folderId && hiddenFolders.has(i.folderId)) && !(i.calendarId && hiddenFolders.has(`g:${i.calendarId}`)));
+  // Each Google calendar you bring in, with its own colour.
+  const calendars = [...new Map(items.filter((i) => i.calendarId).map((i) => [i.calendarId!, { id: i.calendarId!, name: i.calendarName ?? "Google", color: i.color }])).values()];
   const onDay = (d: string) => sortItems(shown.filter((i) => i.day === d));
   const present = folders.filter((f) => items.some((i) => i.folderId === f.id));
 
@@ -106,13 +108,13 @@ export function CalendarView({
             {f.title}
           </button>
         ))}
-        {google === "on" && (
-          <button type="button" onClick={() => toggle(hiddenFolders, "google", setHiddenFolders)} className={chip(!hiddenFolders.has("google"))}>
-            <i className="size-2 rounded-full bg-[#4285f4]" />
-            Google
+        {calendars.map((c) => (
+          <button key={c.id} type="button" onClick={() => toggle(hiddenFolders, `g:${c.id}`, setHiddenFolders)} className={chip(!hiddenFolders.has(`g:${c.id}`))}>
+            <i className="size-2 rounded-full" style={{ background: c.color }} />
+            {c.name}
           </button>
-        )}
-        {present.length > 0 && <span className="mx-1 w-px shrink-0 bg-border-subtle" />}
+        ))}
+        {present.length + calendars.length > 0 && <span className="mx-1 w-px shrink-0 bg-border-subtle" />}
         {KIND_FILTERS.map((k) => (
           <button key={k.kind} type="button" onClick={() => toggle(hiddenKinds, k.kind, setHiddenKinds)} className={chip(!hiddenKinds.has(k.kind))}>
             {k.label}

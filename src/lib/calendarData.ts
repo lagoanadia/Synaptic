@@ -74,8 +74,8 @@ export async function calendarItems(userId: string, from: string, to: string): P
     else {
       google = "on";
       const all = await listCalendars(token);
-      const chosen = connection.calendarIds.length ? all.filter((c) => connection.calendarIds.includes(c.id)) : all.filter((c) => c.primary);
-      const list = await listEvents(token, chosen.length ? chosen : [{ id: "primary", color: GOOGLE_BLUE }], from, to).catch(() => []);
+      const chosen = connection.calendarIds.length ? all.filter((c) => connection.calendarIds.includes(c.id)) : all.filter((c) => c.selected);
+      const list = await listEvents(token, chosen.length ? chosen : [{ id: "primary", name: "Google", color: GOOGLE_BLUE }], from, to).catch(() => []);
       for (const g of list) {
         items.push({
           id: `g-${g.id}`,
@@ -83,7 +83,7 @@ export async function calendarItems(userId: string, from: string, to: string): P
           kind: "google",
           day: g.allDay && g.dayKey ? g.dayKey : dayKey(g.start),
           time: g.allDay ? null : timeOf(g.start),
-          color: GOOGLE_BLUE,
+          color: g.calendarColor,
           folderId: null,
           folder: null,
           unitId: null,
@@ -91,6 +91,8 @@ export async function calendarItems(userId: string, from: string, to: string): P
           href: null,
           done: false,
           editable: false,
+          calendarId: g.calendarId,
+          calendarName: g.calendarName,
         });
       }
     }
