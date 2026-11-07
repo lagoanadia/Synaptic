@@ -52,6 +52,17 @@ export function homeBlocks(raw: unknown, sections: { id: string; study: boolean 
   ];
 }
 
+// What the browser sent to save → blocks we can store: known types only
+// (from HOME_BLOCK_TYPES, so a new block type can't be forgotten here),
+// notebooks you own, at most 20.
+export function cleanHomeBlocks(blocks: unknown, mine: Set<string>): HomeBlock[] {
+  const types = HOME_BLOCK_TYPES.map((t) => t.type as string);
+  return (Array.isArray(blocks) ? blocks : [])
+    .filter((b): b is HomeBlock => !!b && typeof b === "object" && types.includes((b as HomeBlock).type))
+    .slice(0, 20)
+    .map((b) => ({ id: String(b.id).slice(0, 20), type: b.type, sectionId: b.type !== "week" && b.sectionId && mine.has(b.sectionId) ? b.sectionId : null }));
+}
+
 // A folder: what you saved, or Páginas (+ Mapa and Repaso in a notebook
 // with study tools; + Tareas if it has a board, + Preguntar otherwise).
 // Study blocks are dropped from folders in notebooks without study tools.

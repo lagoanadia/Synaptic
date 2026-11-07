@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { cleanHomeBlocks } from "@/lib/blocks";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
@@ -160,10 +161,7 @@ export async function saveHomeBlocks(blocks: { id: string; type: string; section
   const session = await auth();
   if (!session?.user?.id) return;
   const mine = new Set((await prisma.section.findMany({ where: { userId: session.user.id }, select: { id: true } })).map((s) => s.id));
-  const clean = blocks
-    .filter((b) => ["folders", "map", "recent"].includes(b.type))
-    .slice(0, 20)
-    .map((b) => ({ id: String(b.id).slice(0, 20), type: b.type, sectionId: b.sectionId && mine.has(b.sectionId) ? b.sectionId : null }));
+  const clean = cleanHomeBlocks(blocks, mine);
   await prisma.user.update({ where: { id: session.user.id }, data: { homeBlocks: clean } });
   revalidatePath("/pursuits");
 }
