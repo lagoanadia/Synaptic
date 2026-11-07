@@ -12,6 +12,8 @@ export type DraftConcept = {
   explanation: string;
   excerpt: string | null;
   excerptFrom: string | null;
+  // How the notes write it, when it's really there.
+  term: string | null;
 };
 export type Breakdown = {
   title: string;
@@ -26,6 +28,11 @@ const RULES = (language: string) => `Rules:
 - "excerpt_from" is where the excerpt is (file path from the "=== FILE: ... ===" markers, page, or section), or null.
 - Only describe what the source actually contains.`;
 
+// A term only counts if the notes really contain it (any case).
+function termIn(term: string, source: string): string | null {
+  return term.length >= 2 && source.toLowerCase().includes(term.toLowerCase()) ? term : null;
+}
+
 function readConcepts(data: Record<string, unknown>, source: string): DraftConcept[] {
   return arr(data.concepts)
     .map((c, i) => {
@@ -39,6 +46,7 @@ function readConcepts(data: Record<string, unknown>, source: string): DraftConce
         explanation: str(o.explanation, 3000),
         excerpt: real ? excerpt : null,
         excerptFrom: real ? str(o.excerpt_from, 200) || null : null,
+        term: termIn(str(o.term, 80), source),
       };
     })
     .filter((c) => c.title && c.explanation);
@@ -49,13 +57,13 @@ export async function breakDown(source: string, language: string, hint: string):
     await askJson(
       `Break the SOURCE below into the concepts someone needs to understand it — a map they can explore one concept at a time. ${hint}
 
-Make 8-18 concepts, ordered as a learning path (foundations first). Each concept must be small enough to explain in a few sentences. Add links where one concept is needed to understand another ("needs") or they're closely related ("related").
+Make 4-8 concepts: only the KEY ones, no sub-concepts or details (the student can add more later). Order them as a learning path (foundations first). Each must be small enough to explain in a few sentences. Add links where one concept is needed to understand another ("needs") or they're closely related ("related").
 
 ${RULES(language)}
 
 Respond with ONLY JSON:
-{"title": "short name for this map",
- "concepts": [{"key": "short-id", "title": "...", "summary": "one sentence", "explanation": "...", "excerpt": "verbatim or null", "excerpt_from": "... or null"}],
+{"title": "the topic in 1-3 words, no 'Mapa de', e.g. 'Bases de datos'",
+ "concepts": [{"key": "short-id", "title": "...", "term": "the exact word or short phrase that names it, copied as written in the SOURCE", "summary": "one sentence", "explanation": "...", "excerpt": "verbatim or null", "excerpt_from": "... or null"}],
  "links": [{"from": "key", "to": "key", "label": "needs" | "related"}]}
 
 SOURCE:
@@ -83,7 +91,7 @@ From the SOURCE below (a student's notes), list ONLY the concepts it covers that
 ${RULES(language)}
 
 Respond with ONLY JSON:
-{"concepts": [{"key": "short-id", "title": "...", "summary": "one sentence", "explanation": "...", "excerpt": "verbatim or null", "excerpt_from": "... or null"}],
+{"concepts": [{"key": "short-id", "title": "...", "term": "the exact word or short phrase that names it, copied as written in the SOURCE", "summary": "one sentence", "explanation": "...", "excerpt": "verbatim or null", "excerpt_from": "... or null"}],
  "links": [{"from": "new key", "to_title": "title of an existing concept", "label": "needs" | "related"}]}
 
 SOURCE:

@@ -2,7 +2,7 @@ import "server-only";
 import { prisma } from "@/lib/prisma";
 import { folderColor, folderCover, sheetsFor, type FolderCover } from "@/lib/covers";
 import { dotState, type MapCluster } from "@/lib/knowledgeMap";
-import { autoTitle } from "@/lib/text";
+import { autoTitle, shortMapTitle } from "@/lib/text";
 
 // Data behind the page blocks (home, notebooks, folders). Every query is
 // scoped to the signed-in user's own notebook/pursuits by the caller.
@@ -67,7 +67,7 @@ function clustersOf(pursuitId: string, color: string, maps: MapRow[]): MapCluste
   const clusters = new Map<string, MapCluster & { order: number }>();
   for (const m of maps) {
     const key = m.unit?.id ?? `map-${m.id}`;
-    const name = m.unit?.name ?? m.title;
+    const name = shortMapTitle(m.unit?.name ?? m.title, 28);
     const c = clusters.get(key) ?? { id: key, label: name, color, nodes: [], order: m.unit?.order ?? 999 };
     c.nodes.push(...m.concepts.map((n) => ({ ...n, href: `/pursuits/${pursuitId}/learn/${m.id}?c=${n.id}` })));
     clusters.set(key, c);

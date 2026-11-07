@@ -261,3 +261,17 @@ export function parseNoteBlocks(content: string): NoteBlock[] {
   }
   return blocks;
 }
+
+// A map's name as a short label: "Mapa de conceptos de desarrollo de
+// interfaces" -> "Desarrollo de interfaces", cut at a word near `max`.
+export function shortMapTitle(title: string, max = 24): string {
+  let t = title
+    .replace(/^\s*mapa\s+(de\s+conceptos|conceptual)\s*(de(l)?|sobre|:|-)?\s*/i, "")
+    .replace(/^(la|el|los|las)\s+/i, "")
+    .trim();
+  if (!t) return "General";
+  t = t[0].toUpperCase() + t.slice(1);
+  if (t.length <= max) return t;
+  const cut = t.slice(0, max + 1).replace(/\s+\S*$/, "");
+  return (cut.length >= max / 2 ? cut : t.slice(0, max)).replace(/[\s,:;.-]+$/, "") + "…";
+}

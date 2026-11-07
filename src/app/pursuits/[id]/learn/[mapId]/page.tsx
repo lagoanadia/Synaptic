@@ -1,3 +1,4 @@
+import { shortMapTitle } from "@/lib/text";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
@@ -65,7 +66,7 @@ export default async function ConceptMapPage({
   const crumbs = [
     ...(section ? [{ label: section.name, href: `/pursuits/s/${section.id}` }] : []),
     { label: map.pursuit.title, href: `/pursuits/${pursuitId}` },
-    { label: map.unit?.name ?? map.title },
+    { label: shortMapTitle(map.unit?.name ?? map.title, 28) },
   ];
 
   return (

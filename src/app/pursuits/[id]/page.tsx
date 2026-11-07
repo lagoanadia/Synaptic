@@ -24,6 +24,8 @@ import { UNSORTED, SHARED } from "@/lib/reviewData";
 import { folderBlocks } from "@/lib/blocks";
 import { folderColor, folderCover } from "@/lib/covers";
 import { folderMap } from "@/lib/blockData";
+import { backfillMaps } from "@/lib/autoMap";
+import { after } from "next/server";
 import { KnowledgeMap } from "@/app/KnowledgeMap";
 import { Folder } from "@/app/Covers";
 import { FolderBlocks } from "./FolderBlocks";
@@ -208,13 +210,15 @@ export default async function PursuitPage({
           study={study}
         />
       );
-    else if (b.type === "map")
+    else if (b.type === "map") {
+      // Units with notes from before maps made themselves get theirs now.
+      if (study) after(() => backfillMaps(session.user.id, pursuit.id).catch(() => {}));
       content[b.id] = (
         <div className="flex flex-col gap-3">
           <KnowledgeMap clusters={await folderMap(pursuit.id, color)} perRow={3} empty="El mapa de cada unidad se crea solo cuando guardas apuntes." />
         </div>
       );
-    else if (b.type === "review") content[b.id] = <ReviewToday pursuitId={pursuit.id} />;
+    } else if (b.type === "review") content[b.id] = <ReviewToday pursuitId={pursuit.id} />;
     else if (b.type === "ask") content[b.id] = <AskPursuit pursuitId={pursuit.id} />;
     else if (b.type === "challenges") content[b.id] = <ChallengeCards pursuitId={pursuit.id} items={challenges} />;
     else if (b.type === "deadlines")

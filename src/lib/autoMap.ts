@@ -53,7 +53,7 @@ export async function refreshUnitMap(userId: string, pursuitId: string, unitId: 
     const ids = new Map<string, string>();
     for (const [order, c] of breakdown.concepts.entries()) {
       const row = await prisma.concept.create({
-        data: { mapId: map.id, order, title: c.title, summary: c.summary, explanation: c.explanation, excerpt: c.excerpt, excerptFrom: c.excerptFrom },
+        data: { mapId: map.id, order, title: c.title, term: c.term, summary: c.summary, explanation: c.explanation, excerpt: c.excerpt, excerptFrom: c.excerptFrom },
       });
       ids.set(c.key, row.id);
     }
@@ -72,7 +72,7 @@ export async function refreshUnitMap(userId: string, pursuitId: string, unitId: 
     const start = existing.concepts.length;
     for (const [i, c] of added.concepts.entries()) {
       const row = await prisma.concept.create({
-        data: { mapId: existing.id, order: start + i, title: c.title, summary: c.summary, explanation: c.explanation, excerpt: c.excerpt, excerptFrom: c.excerptFrom },
+        data: { mapId: existing.id, order: start + i, title: c.title, term: c.term, summary: c.summary, explanation: c.explanation, excerpt: c.excerpt, excerptFrom: c.excerptFrom },
       });
       ids.set(c.key, row.id);
     }
@@ -86,4 +86,23 @@ export async function refreshUnitMap(userId: string, pursuitId: string, unitId: 
     await prisma.conceptMap.update({ where: { id: existing.id }, data: { sourceText: source } });
   }
   revalidatePath(`/pursuits/${pursuitId}`);
+}
+
+// Notes written before maps made themselves: on opening a subject, its
+// units that have notes but no map yet get one (a few per visit, in the
+// background).
+export async function backfillMaps(userId: string, pursuitId: string, perVisit = 3): Promise<void> {
+  const [units, maps, loose] = await Promise.all([
+    prisma.pursuitContentSection.findMany({
+      where: { pursuitId, OR: [{ notes: { some: {} } }, { brainDumps: { some: {} } }] },
+      orderBy: { order: "asc" },
+      select: { id: true },
+    }),
+    prisma.conceptMap.findMany({ where: { pursuitId }, select: { unitId: true } }),
+    prisma.brainDump.count({ where: { pursuitId, sectionId: null } }),
+  ]);
+  const mapped = new Set(maps.map((m) => m.unitId));
+  const todo: (string | null)[] = units.map((u) => u.id).filter((id) => !mapped.has(id));
+  if (loose > 0 && !mapped.has(null)) todo.push(null);
+  for (const unitId of todo.slice(0, perVisit)) await refreshUnitMap(userId, pursuitId, unitId).catch(() => {});
 }
