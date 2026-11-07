@@ -18,7 +18,7 @@ export function MemberRow({
   const [isPending, startTransition] = useTransition();
 
   return (
-    <span className="flex items-center gap-1 text-xs text-ink-muted">
+    <span className="flex items-center gap-1 text-sm text-ink-muted">
       · {name} (
       <select
         defaultValue={role}
@@ -28,7 +28,7 @@ export function MemberRow({
             updateMemberRole(pursuitId, memberId, e.target.value),
           )
         }
-        className="border-none bg-transparent text-xs text-ink-muted disabled:opacity-50"
+        className="border-none bg-transparent text-sm text-ink-muted disabled:opacity-50"
       >
         <option value="EDITOR">editor</option>
         <option value="VIEWER">viewer</option>

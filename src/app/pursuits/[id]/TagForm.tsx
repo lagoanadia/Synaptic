@@ -18,7 +18,7 @@ export function TagForm({ pursuitId }: { pursuitId: string }) {
         name="name"
         placeholder="+ etiqueta"
         disabled={isPending}
-        className="w-20 rounded border border-dashed border-border-subtle bg-transparent px-2 py-0.5 text-xs focus:w-28 focus:outline-none disabled:opacity-50"
+        className="w-28 rounded-md border border-dashed border-border-subtle bg-transparent px-2.5 py-1 text-sm focus:w-40 focus:outline-none disabled:opacity-50"
       />
       {state.error && <span className="text-xs text-red-500">{state.error}</span>}
     </form>

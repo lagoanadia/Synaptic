@@ -740,39 +740,6 @@ export async function updateStatusNote(pursuitId: string, note: string) {
   revalidatePath(`/pursuits/${pursuitId}`);
 }
 
-export async function updatePursuitMeta(pursuitId: string, formData: FormData) {
-  const { session } = await requireAccess(pursuitId);
-
-  const type = formData.get("type");
-  const status = formData.get("status");
-  const sectionName = formData.get("section");
-
-  if (typeof status !== "string" || !(status in PursuitStatus)) {
-    throw new Error("Estado no válido");
-  }
-
-  // Sections are free-typed and stored per user, same as PursuitTag — no
-  // fixed preset list, reuse an existing one by name or create it here. An
-  // empty value clears the pursuit's section instead of leaving it as-is.
-  let sectionId: string | null = null;
-  if (typeof sectionName === "string" && sectionName.trim() !== "") {
-    const section = await upsertSection(session.user.id, sectionName);
-    sectionId = section.id;
-  }
-
-  await prisma.pursuit.update({
-    where: { id: pursuitId },
-    data: {
-      type: typeof type === "string" && type.trim() !== "" ? type.trim() : null,
-      status: status as PursuitStatus,
-      sectionId,
-    },
-  });
-
-  revalidatePath(`/pursuits/${pursuitId}`);
-  revalidatePath("/pursuits");
-}
-
 const ASK_CONTEXT_LIMIT = 6;
 
 // "Ask your subject": retrieval with full-text search (shared words) instead of

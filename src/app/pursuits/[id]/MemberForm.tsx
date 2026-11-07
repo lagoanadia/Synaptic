@@ -18,13 +18,13 @@ export function MemberForm({ pursuitId }: { pursuitId: string }) {
         name="email"
         placeholder="+ invitar por email"
         disabled={isPending}
-        className="w-36 rounded border border-dashed border-border-subtle bg-transparent px-2 py-0.5 text-xs focus:w-48 focus:outline-none disabled:opacity-50"
+        className="w-48 rounded-md border border-dashed border-border-subtle bg-transparent px-2.5 py-1 text-sm focus:w-64 focus:outline-none disabled:opacity-50"
       />
       <select
         name="role"
         defaultValue="EDITOR"
         disabled={isPending}
-        className="rounded border border-dashed border-border-subtle bg-transparent px-1 py-0.5 text-xs disabled:opacity-50"
+        className="rounded-md border border-dashed border-border-subtle bg-transparent px-2 py-1 text-sm disabled:opacity-50"
       >
         <option value="EDITOR">editor</option>
         <option value="VIEWER">viewer</option>
