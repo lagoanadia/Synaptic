@@ -2,11 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { layoutMap, type MapCluster, type PlacedNode } from "@/lib/knowledgeMap";
+import { focusHeight, layoutMap, type MapCluster, type PlacedNode } from "@/lib/knowledgeMap";
 
 const WIDE_W = 1000;
 const FOCUS_W = 520;
-const FOCUS_H = 440;
 
 // The dots map. Hover shows the concept's name; click opens it in Aprender.
 // `labels` writes every name (for a single small map), `currentId` rings
@@ -45,7 +44,7 @@ export function KnowledgeMap({
   const k = narrow && !focus ? 2.2 : 1;
   const W = focus ? FOCUS_W : WIDE_W;
   const cols = focus ? 1 : narrow ? Math.min(perRow ?? 2, 2) : perRow;
-  const rowH = focus ? FOCUS_H : narrow ? (rowHeight ?? 210) * 1.6 : rowHeight;
+  const rowH = focus ? focusHeight(clusters[0]?.nodes.length ?? 0) : narrow ? (rowHeight ?? 210) * 1.6 : rowHeight;
   const { clusters: placed, height } = useMemo(() => layoutMap(clusters, W, { perRow: cols, rowHeight: rowH, fill: focus }), [clusters, W, cols, rowH, focus]);
 
   if (clusters.every((c) => c.nodes.length === 0)) {
@@ -83,7 +82,7 @@ export function KnowledgeMap({
                 />
                 {(labels || n.id === currentId) && (
                   <text x={n.x} y={n.y + n.r + 14} textAnchor="middle" fontSize={n.id === currentId ? 13 : 11} fontWeight={n.id === currentId ? 600 : 400} fill={n.id === currentId ? "#37352f" : "#787774"}>
-                    {n.title.length > 28 ? `${n.title.slice(0, 27)}…` : n.title}
+                    {short(n.title, focus && n.id !== currentId ? 20 : 28)}
                   </text>
                 )}
               </g>
@@ -107,3 +106,5 @@ export function KnowledgeMap({
     </div>
   );
 }
+
+const short = (t: string, max: number) => (t.length > max ? `${t.slice(0, max - 1)}…` : t);

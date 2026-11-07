@@ -24,6 +24,10 @@ export type CalItem = {
   dots?: DotState[];
   // Ours, so it can be edited/deleted here.
   editable: boolean;
+  // Google events: which of your calendars it's from (for its own colour
+  // and filter).
+  calendarId?: string;
+  calendarName?: string;
 };
 
 const keyFmt = new Intl.DateTimeFormat("en-CA", { timeZone: APP_TZ, year: "numeric", month: "2-digit", day: "2-digit" });

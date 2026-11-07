@@ -55,20 +55,21 @@ export async function calendarToken(userId: string): Promise<string | null> {
   }
 }
 
-export type GoogleCalendar = { id: string; name: string; color: string; primary: boolean };
+export type GoogleCalendar = { id: string; name: string; color: string; primary: boolean; selected: boolean };
 
 export async function listCalendars(token: string): Promise<GoogleCalendar[]> {
   const res = await fetch(`${API}/users/me/calendarList?minAccessRole=reader`, { headers: { Authorization: `Bearer ${token}` } });
   if (!res.ok) return [];
-  const data = (await res.json()) as { items?: { id: string; summary: string; backgroundColor?: string; primary?: boolean }[] };
-  return (data.items ?? []).map((c) => ({ id: c.id, name: c.summary, color: c.backgroundColor ?? "#4285f4", primary: !!c.primary }));
+  const data = (await res.json()) as { items?: { id: string; summary: string; summaryOverride?: string; backgroundColor?: string; primary?: boolean; selected?: boolean }[] };
+  // "selected" = ticked in Google Calendar's own sidebar.
+  return (data.items ?? []).map((c) => ({ id: c.id, name: c.summaryOverride || c.summary, color: c.backgroundColor ?? "#4285f4", primary: !!c.primary, selected: !!c.selected || !!c.primary }));
 }
 
-export type GoogleEvent = { id: string; title: string; start: Date; allDay: boolean; dayKey?: string; calendarColor: string };
+export type GoogleEvent = { id: string; title: string; start: Date; allDay: boolean; dayKey?: string; calendarId: string; calendarName: string; calendarColor: string };
 
 // Events between two days (inclusive), from each chosen calendar; our own
 // copies (ids starting "s…" that we wrote) are skipped so nothing shows twice.
-export async function listEvents(token: string, calendars: { id: string; color: string }[], fromKey: string, toKey: string): Promise<GoogleEvent[]> {
+export async function listEvents(token: string, calendars: { id: string; name: string; color: string }[], fromKey: string, toKey: string): Promise<GoogleEvent[]> {
   const params = new URLSearchParams({
     timeMin: `${fromKey}T00:00:00Z`,
     timeMax: `${addDays(toKey, 1)}T00:00:00Z`,
@@ -92,6 +93,8 @@ export async function listEvents(token: string, calendars: { id: string; color: 
           start: new Date(e.start!.dateTime ?? `${e.start!.date}T12:00:00Z`),
           allDay: !e.start!.dateTime,
           dayKey: e.start!.date,
+          calendarId: cal.id,
+          calendarName: cal.name,
           calendarColor: cal.color,
         }));
     }),
