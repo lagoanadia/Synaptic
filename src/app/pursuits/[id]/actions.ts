@@ -1,6 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
+import { refreshUnitMap } from "@/lib/autoMap";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { groq } from "@/lib/groq";
@@ -30,6 +32,12 @@ import { diffLineAuthors, normalizeLineAuthors } from "@/lib/lineAuthors";
 const requireAccess = requirePursuitAccess;
 
 export type FormState = { error: string | null; success?: boolean; updatedAt?: string };
+
+// Saving notes keeps that unit's concept map up to date, after the
+// response (it calls the AI, so it mustn't slow the save down).
+function mapLater(userId: string, pursuitId: string, unitIds: (string | null)[]) {
+  for (const unitId of new Set(unitIds)) after(() => refreshUnitMap(userId, pursuitId, unitId).catch(() => {}));
+}
 
 // (pursuitId, prevState, formData) to fit useActionState once bound. They return
 // errors instead of throwing so validation shows inline.
@@ -208,6 +216,7 @@ export async function addBrainDump(
   // No redirect() here — combined with useActionState this crashed the
   // page (minified React error #441). Navigation happens client-side in
   // NewDumpForm once it sees `success: true`.
+  mapLater(session.user.id, pursuitId, [section?.id ?? null]);
   return { error: null, success: true };
 }
 
@@ -271,6 +280,7 @@ export async function updateBrainDump(
 
   revalidatePath(`/pursuits/${pursuitId}`);
   revalidatePath(`/pursuits/${pursuitId}/dump/${dumpId}`);
+  mapLater(session.user.id, pursuitId, [dump.sectionId]);
   return { error: null, success: true, updatedAt: now.toISOString() };
 }
 
@@ -492,6 +502,7 @@ JSON object, no other text: {"content": "...", "tags": ["...", "..."]}`;
   });
 
   revalidatePath(`/pursuits/${pursuitId}`);
+  mapLater(session.user.id, pursuitId, dumps.map((d) => d.sectionId));
   return { error: null };
 }
 
@@ -503,7 +514,8 @@ export async function updateNote(
   content: string,
   expectedUpdatedAt: string,
 ): Promise<{ error: string | null; conflict?: boolean; updatedAt?: string }> {
-  await requireAccess(pursuitId);
+  const { session } = await requireAccess(pursuitId);
+  const userId = session.user.id;
 
   const text = content.trim();
   if (!text) {
@@ -527,6 +539,8 @@ export async function updateNote(
   }
 
   revalidatePath(`/pursuits/${pursuitId}`);
+  const saved = await prisma.note.findFirst({ where: { id: noteId, pursuitId }, select: { sectionId: true } });
+  mapLater(userId, pursuitId, [saved?.sectionId ?? null]);
   return { error: null, updatedAt: now.toISOString() };
 }
 
@@ -892,7 +906,7 @@ export async function generateFlashcards(
     return { error: "Nota no encontrada" };
   }
 
-  const prompt = `${note.content}\n\n---\n\nGenerate 5-10 flashcards (question + answer pairs) that test recall of the key facts and concepts in the note above. Each question should be short and specific — no "explain everything about X" questions. Each answer should be short too — a fact, a definition, a term — not a paragraph. Write them in the same language as the note. A question must make sense on its own, months later, without the note in front of you — name the topic in it. For each card also write 3 plausible WRONG answers (same type and length as the answer, never partially correct) for multiple choice. Respond with ONLY a JSON object, no other text: {"cards": [{"question": "...", "answer": "...", "wrong": ["...", "...", "..."], "hint": "one short nudge that doesn't give the answer away"}, ...]}`;
+  const prompt = `${note.content}\n\n---\n\nGenerate 5-10 flashcards (question + answer pairs) that test recall of the key facts and concepts in the note above. Each question should be short and specific — no "explain everything about X" questions. Each answer should be short too — a fact, a definition, a term — not a paragraph. Write them in the same language as the note. A question must make sense on its own, months later, without the note in front of you — name the topic in it. For each card also write 3 plausible WRONG answers for multiple choice: same type, about as long as the answer (±20%) and with the same level of detail, so the right one never stands out as the longest; never partially correct. Respond with ONLY a JSON object, no other text: {"cards": [{"question": "...", "answer": "...", "wrong": ["...", "...", "..."], "hint": "one short nudge that doesn't give the answer away"}, ...]}`;
 
   let completion;
   try {
@@ -950,7 +964,7 @@ export async function cardFromSelection(
     return { error: `Has llegado al límite del plan gratis: ${FREE_MONTHLY_FLASHCARD_LIMIT} tarjetas este mes.` };
   }
 
-  const prompt = `${text}\n\n---\n\nWrite exactly ONE flashcard that tests the key idea of the passage above. Short, specific question that makes sense on its own months later (name the topic); short answer (a fact, a term, a definition). Same language as the passage. Also 3 plausible WRONG answers of the same type and length. Respond with ONLY a JSON object: {"cards": [{"question": "...", "answer": "...", "wrong": ["...", "...", "..."], "hint": "a short nudge that doesn't give the answer away"}]}`;
+  const prompt = `${text}\n\n---\n\nWrite exactly ONE flashcard that tests the key idea of the passage above. Short, specific question that makes sense on its own months later (name the topic); short answer (a fact, a term, a definition). Same language as the passage. Also 3 plausible WRONG answers of the same type, about as long as the answer (±20%) and as detailed, so the right one never stands out as the longest. Respond with ONLY a JSON object: {"cards": [{"question": "...", "answer": "...", "wrong": ["...", "...", "..."], "hint": "a short nudge that doesn't give the answer away"}]}`;
   let completion;
   try {
     completion = await createJsonCompletion({

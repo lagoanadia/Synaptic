@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState, useTransition } from "react";
-import { BoltIcon, CardsIcon, CheckIcon, QuestionIcon, TrashIcon } from "@/app/icons";
+import { BoltIcon, CardsIcon, QuestionIcon, TrashIcon } from "@/app/icons";
 import { DeleteButton } from "../DeleteButton";
 import { createContentSection, deleteContentSection, listClassroomFiles, movePage, renameUnit, setUnitClassroom } from "./actions";
 import { ImportSlides } from "./ImportSlides";
@@ -213,15 +213,9 @@ export function PagesBoard({
                     dragging === c.key ? "opacity-40" : ""
                   }`}
                 >
-                  <span className="text-sm leading-snug font-medium">{c.title}</span>
-                  <span className="flex">
-                    {c.organized ? (
-                      <span className="flex items-center gap-1 rounded bg-[#edf3ec] px-1.5 py-0.5 text-xs text-[#448361]">
-                        <CheckIcon size={11} /> Organizada
-                      </span>
-                    ) : (
-                      <span className="rounded bg-chip px-1.5 py-0.5 text-xs text-ink-muted">Sin organizar</span>
-                    )}
+                  <span className="flex items-start gap-2">
+                    <span className="min-w-0 flex-1 text-sm leading-snug font-medium">{c.title}</span>
+                    {c.organized && <Sparkles />}
                   </span>
                 </Link>
               ))}
@@ -306,9 +300,7 @@ function PagesList({
               ))}
             </select>
           )}
-          <span className={`hidden rounded px-1.5 py-0.5 text-xs sm:inline ${c.organized ? "bg-[#edf3ec] text-[#448361]" : "bg-chip text-ink-muted"}`}>
-            {c.organized ? "✓ Organizada" : "Sin organizar"}
-          </span>
+          <span className="w-4">{c.organized && <Sparkles />}</span>
           <span className="w-14 text-right text-xs text-ink-faint">{c.date}</span>
         </li>
       ))}
@@ -413,5 +405,16 @@ function UnitName({ pursuitId, id, name }: { pursuitId: string; id: string; name
     >
       {value}
     </button>
+  );
+}
+
+// Organized pages get these little stars; the rest, nothing.
+function Sparkles() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" className="mt-0.5 shrink-0 text-[#c99a2e]" role="img" aria-label="Organizada">
+      <title>Organizada</title>
+      <path d="M10 3.5 11.8 8l4.7 1.8-4.7 1.8L10 16l-1.8-4.4L3.5 9.8 8.2 8z" />
+      <path d="M17.5 14l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" />
+    </svg>
   );
 }

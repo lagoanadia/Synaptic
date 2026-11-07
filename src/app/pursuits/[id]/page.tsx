@@ -20,6 +20,7 @@ import { ProjectsBoard } from "./ProjectsBoard";
 import { PagesBoard, type PageCard } from "./PagesBoard";
 import { autoTitle } from "@/lib/text";
 import { conceptExcerpt } from "@/lib/review";
+import { MapMore } from "./MapMore";
 import { LearnTab } from "./learn/LearnTab";
 import { UNSORTED, SHARED } from "@/lib/reviewData";
 import { folderBlocks } from "@/lib/blocks";
@@ -213,13 +214,10 @@ export default async function PursuitPage({
     else if (b.type === "map")
       content[b.id] = (
         <div className="flex flex-col gap-3">
-          <KnowledgeMap clusters={await folderMap(pursuit.id, color)} perRow={3} empty="Aún no hay mapas. Crea uno abajo." />
-          <details className="text-sm">
-            <summary className="cursor-pointer text-ink-faint select-none hover:text-ink">+ Crear o abrir un mapa</summary>
-            <div className="pt-3">
-              <LearnTab pursuitId={pursuit.id} hasNotes={pursuit.notes.length > 0} />
-            </div>
-          </details>
+          <KnowledgeMap clusters={await folderMap(pursuit.id, color)} perRow={3} empty="El mapa de cada unidad se crea solo cuando guardas apuntes." />
+          <MapMore>
+            <LearnTab pursuitId={pursuit.id} hasNotes={pursuit.notes.length > 0} />
+          </MapMore>
         </div>
       );
     else if (b.type === "review") content[b.id] = <ReviewToday pursuitId={pursuit.id} />;
