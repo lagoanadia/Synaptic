@@ -9,6 +9,7 @@ import { notebookCover } from "@/lib/covers";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { cookies } from "next/headers";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_TAGLINE, SITE_URL } from "@/lib/site";
 
 const appFont = Inter({
   variable: "--font-app",
@@ -16,8 +17,13 @@ const appFont = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Synaptic",
-  description: "Apunta lo que aprendes y organízalo después.",
+  metadataBase: new URL(SITE_URL),
+  title: { default: `${SITE_NAME} — ${SITE_TAGLINE}`, template: `%s — ${SITE_NAME}` },
+  description: SITE_DESCRIPTION,
+  applicationName: SITE_NAME,
+  keywords: ["apuntes", "app de estudio", "mapas de conceptos", "tarjetas de repaso", "IA para estudiar", "Google Classroom", "FP", "estudiantes"],
+  openGraph: { type: "website", url: SITE_URL, siteName: SITE_NAME, title: SITE_NAME, description: SITE_DESCRIPTION, locale: "es_ES" },
+  twitter: { card: "summary_large_image", title: SITE_NAME, description: SITE_DESCRIPTION },
   manifest: "/manifest.webmanifest",
   // iOS ignores most of the web manifest and needs this to open standalone.
   appleWebApp: {

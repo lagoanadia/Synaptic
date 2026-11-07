@@ -2,7 +2,7 @@ import { ArrowLeft } from "@/app/icons";
 import { BILLING } from "@/lib/billingFlag";
 import Link from "next/link";
 
-export const metadata = { title: "Política de privacidad — Synaptic" };
+export const metadata = { title: "Política de privacidad", alternates: { canonical: "/privacy" } };
 
 export default function PrivacyPage() {
   return (

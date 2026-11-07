@@ -2,7 +2,7 @@ import { ArrowLeft } from "@/app/icons";
 import { BILLING } from "@/lib/billingFlag";
 import Link from "next/link";
 
-export const metadata = { title: "Términos del servicio — Synaptic" };
+export const metadata = { title: "Términos del servicio", alternates: { canonical: "/terms" } };
 
 export default function TermsPage() {
   return (
