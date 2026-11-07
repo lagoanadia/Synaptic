@@ -314,3 +314,12 @@ describe("shortMapTitle", () => {
     expect(shortMapTitle("Mapa de conceptos")).toBe("General");
   });
 });
+
+describe("parseNoteBlocks tables", () => {
+  it("keeps rows of empty cells and never makes a table without a header", () => {
+    const blocks = parseNoteBlocks("| a | b |\n| --- | --- |\n|  |  |");
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0].type === "table" && blocks[0].rows).toHaveLength(1);
+    expect(parseNoteBlocks("| --- | --- |")).toEqual([]);
+  });
+});

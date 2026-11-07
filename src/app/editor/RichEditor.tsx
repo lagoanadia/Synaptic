@@ -1,6 +1,7 @@
 "use client";
 
-import { CardsIcon, CheckIcon, ImageIcon, LinkIcon, MapIcon, QuoteIcon, SparkIcon, XIcon } from "@/app/icons";
+import { ArrowDown, CardsIcon, CheckIcon, ImageIcon, LinkIcon, MapIcon, QuoteIcon, SparkIcon, TrashIcon, XIcon } from "@/app/icons";
+import { BlockMoves, blockAt, deleteBlock, dropBlock, endDrag, moveBlock, startDrag } from "./blocks";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { EditorContent, useEditor, useEditorState, type Editor } from "@tiptap/react";
@@ -122,6 +123,9 @@ export function RichEditor({
   terms?: TermHint[];
 }) {
   const [hint, setHint] = useState<{ i: number; top: number; left: number } | null>(null);
+  // The ⋮⋮ handle next to the block under the mouse (drag it, or click for ↑ ↓ 🗑).
+  const [handle, setHandle] = useState<{ pos: number; dom: HTMLElement; top: number; left: number } | null>(null);
+  const [blockMenu, setBlockMenu] = useState(false);
   const hideHint = useRef<number | null>(null);
   const uploadRef = useRef(onUploadImage);
   const onChangeRef = useRef(onChange);
@@ -168,6 +172,7 @@ export function RichEditor({
       Image,
       Placeholder.configure({ placeholder }),
       KeyTerms,
+      BlockMoves,
     ],
     content: textToDoc(initialText),
     editorProps: {
@@ -179,7 +184,8 @@ export function RichEditor({
         insertImages(editorInstance.current, files);
         return true;
       },
-      handleDrop: (_view, event) => {
+      handleDrop: (view, event) => {
+        if (dropBlock(view, event)) return true;
         const files = [...(event.dataTransfer?.files ?? [])].filter((f) => f.type.startsWith("image/"));
         if (files.length === 0 || !uploadRef.current || !editorInstance.current) return false;
         insertImages(editorInstance.current, files);
@@ -187,6 +193,8 @@ export function RichEditor({
       },
     },
     onUpdate: ({ editor }) => {
+      setHandle(null);
+      setBlockMenu(false);
       onChangeRef.current(docToText(editor.getJSON()));
       refreshRef.current(editor);
     },
@@ -216,6 +224,27 @@ export function RichEditor({
     hideHint.current = window.setTimeout(() => setHint(null), 250);
   }
   const hinted = hint ? terms[hint.i] : undefined;
+
+  function placeHandle(pos: number, dom: HTMLElement, item: boolean) {
+    if (!wrap.current) return;
+    const box = wrap.current.getBoundingClientRect();
+    const r = dom.getBoundingClientRect();
+    const line = Math.min(r.height, dom.matches("h1,h2,h3") ? 40 : 26);
+    setHandle({ pos, dom, top: r.top - box.top + line / 2 - 12, left: item ? r.left - box.left - 40 : -30 });
+  }
+  function overBlock(e: React.MouseEvent) {
+    if (!editor || blockMenu) return;
+    const b = blockAt(editor.view, e.target as HTMLElement);
+    if (b && b.pos !== handle?.pos) placeHandle(b.pos, b.dom, b.item);
+  }
+  function moveFromMenu(dir: -1 | 1) {
+    if (!editor || !handle) return;
+    const to = moveBlock(editor, handle.pos, dir);
+    if (to === null) return;
+    const dom = editor.view.nodeDOM(to);
+    if (dom instanceof HTMLElement) placeHandle(to, dom, dom.tagName === "LI");
+    setBlockMenu(true);
+  }
 
   const items = slash ? slashItems(!!onUploadImage).filter((it) => fold(it.label).split(" ").some((w) => w.startsWith(fold(slash.query)))) : [];
   const pick = (it: SlashItem) => {
@@ -273,7 +302,14 @@ export function RichEditor({
 
   if (bare) {
     return (
-      <div ref={wrap} className="relative" onMouseOver={overTerm} onMouseOut={(e) => (e.target as HTMLElement).closest?.(".key-term") && leaveTerm()}>
+      <div
+        ref={wrap}
+        className="relative"
+        onMouseOver={overTerm}
+        onMouseMove={overBlock}
+        onMouseLeave={() => !blockMenu && setHandle(null)}
+        onMouseOut={(e) => (e.target as HTMLElement).closest?.(".key-term") && leaveTerm()}
+      >
         <input
           ref={fileInput}
           type="file"
@@ -287,6 +323,44 @@ export function RichEditor({
           }}
         />
         <EditorContent editor={editor} />
+        {handle && (
+          <div className="absolute z-10" style={{ top: handle.top, left: handle.left }}>
+            <button
+              type="button"
+              draggable
+              onDragStart={(e) => {
+                setBlockMenu(false);
+                startDrag(editor.view, handle.pos, handle.dom, e.nativeEvent);
+              }}
+              onDragEnd={() => {
+                endDrag();
+                setHandle(null);
+              }}
+              onClick={() => setBlockMenu((m) => !m)}
+              title="Arrastra para mover · clic: ↑ ↓"
+              aria-label="Mover bloque"
+              className="grid h-6 w-5 cursor-grab place-items-center rounded text-ink-faint/70 hover:bg-chip hover:text-ink active:cursor-grabbing"
+            >
+              <GripIcon />
+            </button>
+            {blockMenu && (
+              <div className="absolute top-7 left-0 flex gap-0.5 rounded-lg bg-white p-1 shadow-[0_0_0_1px_rgba(15,15,15,.05),0_10px_26px_rgba(15,15,15,.16)]" onMouseLeave={() => setBlockMenu(false)}>
+                <Btn onClick={() => moveFromMenu(-1)} title="Subir (Ctrl+Shift+↑)"><ArrowDown size={14} className="rotate-180" /></Btn>
+                <Btn onClick={() => moveFromMenu(1)} title="Bajar (Ctrl+Shift+↓)"><ArrowDown size={14} /></Btn>
+                <Btn
+                  onClick={() => {
+                    deleteBlock(editor, handle.pos);
+                    setHandle(null);
+                    setBlockMenu(false);
+                  }}
+                  title="Eliminar bloque"
+                >
+                  <TrashIcon size={14} />
+                </Btn>
+              </div>
+            )}
+          </div>
+        )}
         {slash && items.length > 0 && (
           <div
             className="absolute z-20 flex w-60 flex-col rounded-lg bg-white p-1 text-sm shadow-[0_0_0_1px_rgba(15,15,15,.05),0_10px_26px_rgba(15,15,15,.16)]"
@@ -479,6 +553,12 @@ function Btn({
     </button>
   );
 }
+
+const GripIcon = () => (
+  <svg width="10" height="16" viewBox="0 0 10 16" fill="currentColor" aria-hidden>
+    {[3, 8, 13].map((y) => [2.5, 7.5].map((x) => <circle key={`${x}-${y}`} cx={x} cy={y} r="1.4" />))}
+  </svg>
+);
 
 const Sep = () => <span className="mx-1 h-5 w-px bg-border-subtle" aria-hidden />;
 
