@@ -127,7 +127,7 @@ export async function searchEverything(query: string, sectionId: string | null):
       title: c.question,
       snippet: markWords(c.answer, q),
       where: folderName.get(c.pursuitId) ?? "",
-      href: `/review?mode=learn&pursuit=${c.pursuitId}`,
+      href: `/review?pursuit=${c.pursuitId}`,
     });
   }
   return out;
