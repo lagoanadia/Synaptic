@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { CheckIcon } from "@/app/icons";
-import { KnowledgeMap } from "@/app/KnowledgeMap";
+import { DraggableMap } from "@/app/DraggableMap";
 import { looksLikeCode } from "@/lib/internalize";
 import type { MapCluster } from "@/lib/knowledgeMap";
 import { CodeBlock } from "../../CodeBlock";
@@ -106,7 +106,7 @@ export function LearnView({
 
       <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-2">
         <div className="lg:sticky lg:top-6">
-          <KnowledgeMap clusters={map} focus labels currentId={concept.id} />
+          {map[0] && <DraggableMap cluster={map[0]} currentId={concept.id} />}
         </div>
 
         <article className="flex min-w-0 flex-col gap-4 text-[15px] leading-relaxed max-lg:order-first">

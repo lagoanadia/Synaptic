@@ -1,55 +1,10 @@
 import "server-only";
 import { arr, askJson, obj, str } from "@/lib/ai";
-import { excerptInSource, parseRepoUrl, pickRepoFiles } from "@/lib/internalize";
+import { excerptInSource } from "@/lib/internalize";
 import { parseQuiz, type QuizQuestion } from "@/lib/conceptQuiz";
 
 export const MAX_SOURCE_CHARS = 60000;
 
-// ─── Reading a public GitHub repo ──────────────────────────────────────
-// Unauthenticated GitHub API: 60 requests/hour per server IP. Set
-// GITHUB_TOKEN to raise that (a read-only token is enough).
-async function gh(url: string) {
-  const res = await fetch(url, {
-    headers: {
-      Accept: "application/vnd.github+json",
-      ...(process.env.GITHUB_TOKEN ? { Authorization: `Bearer ${process.env.GITHUB_TOKEN}` } : {}),
-    },
-    cache: "no-store",
-  });
-  if (!res.ok) throw new Error(`GitHub ${res.status}`);
-  return res;
-}
-
-export async function readRepo(input: string): Promise<{ ref: string; text: string }> {
-  const parsed = parseRepoUrl(input);
-  if (!parsed) throw new Error("Eso no parece un repositorio de GitHub (usuario/nombre)");
-  const { owner, repo } = parsed;
-  const meta = (await (await gh(`https://api.github.com/repos/${owner}/${repo}`)).json()) as {
-    default_branch: string;
-  };
-  const tree = (await (
-    await gh(`https://api.github.com/repos/${owner}/${repo}/git/trees/${meta.default_branch}?recursive=1`)
-  ).json()) as { tree: { path: string; type: string; size?: number }[] };
-  const files = tree.tree.filter((t) => t.type === "blob").map((t) => ({ path: t.path, size: t.size ?? 0 }));
-  const picked = pickRepoFiles(files);
-  const parts = await Promise.all(
-    picked.map(async (path) => {
-      const res = await fetch(
-        `https://raw.githubusercontent.com/${owner}/${repo}/${meta.default_branch}/${path}`,
-        { cache: "no-store" },
-      );
-      return res.ok ? `=== FILE: ${path} ===\n${(await res.text()).slice(0, 8000)}` : "";
-    }),
-  );
-  // The file list itself is useful context (it's the project's shape).
-  const listing = `=== FILE LIST ===\n${files.map((f) => f.path).filter((p) => !p.includes("node_modules")).slice(0, 400).join("\n")}`;
-  return {
-    ref: `github.com/${owner}/${repo}`,
-    text: [listing, ...parts.filter(Boolean)].join("\n\n").slice(0, MAX_SOURCE_CHARS),
-  };
-}
-
-// ─── Breaking a source into concepts ───────────────────────────────────
 export type DraftConcept = {
   key: string;
   title: string;

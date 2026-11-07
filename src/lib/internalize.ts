@@ -68,50 +68,6 @@ export function excerptInSource(excerpt: string, source: string): boolean {
   return e.length >= 8 && squash(source).includes(e);
 }
 
-const CODE_EXT = /\.(ts|tsx|js|jsx|mjs|py|java|kt|cs|go|rs|rb|php|swift|c|cc|cpp|h|sql|prisma|vue|svelte)$/i;
-const SKIP = /(^|\/)(node_modules|dist|build|out|\.next|vendor|coverage|generated|__pycache__|\.git)\//;
-const SKIP_FILE = /(lock\.json|\.lock|\.min\.js|\.d\.ts|\.map)$/i;
-
-// From a repo's file tree, which files to read (up to `budget` bytes):
-// README and manifests first, then source files, shallow before deep,
-// small before huge (a 3,000-line file is rarely where you learn the shape).
-export function pickRepoFiles(
-  files: { path: string; size: number }[],
-  budget = 60000,
-  perFile = 8000,
-): string[] {
-  const score = (p: string) => {
-    const name = p.split("/").pop()!.toLowerCase();
-    if (/^readme(\.md)?$/.test(name) && !p.includes("/")) return 0;
-    if (["package.json", "pyproject.toml", "pom.xml", "build.gradle", "schema.prisma"].includes(name)) return 1;
-    return 2 + p.split("/").length;
-  };
-  const candidates = files
-    .filter((f) => !SKIP.test(f.path) && !SKIP_FILE.test(f.path))
-    .filter((f) => score(f.path) < 2 || CODE_EXT.test(f.path))
-    .filter((f) => f.size > 0 && f.size < 200000)
-    .sort((a, b) => score(a.path) - score(b.path) || a.size - b.size);
-  const picked: string[] = [];
-  let used = 0;
-  for (const f of candidates) {
-    const cost = Math.min(f.size, perFile);
-    if (used + cost > budget) continue;
-    picked.push(f.path);
-    used += cost;
-  }
-  return picked;
-}
-
-// "owner/repo", "github.com/owner/repo", "https://github.com/owner/repo/tree/main/src"
-export function parseRepoUrl(input: string): { owner: string; repo: string } | null {
-  const m = input
-    .trim()
-    .replace(/^https?:\/\//, "")
-    .replace(/^github\.com\//, "")
-    .match(/^([\w.-]+)\/([\w.-]+?)(?:\.git)?(?:\/.*)?$/);
-  return m ? { owner: m[1], repo: m[2] } : null;
-}
-
 // An excerpt from notes can be a table, a list or plain prose — only show
 // it as code when most of its lines look like code.
 const CODE_LINE = /[;{}]\s*$|=>|^\s*(def|class|function|import|from|return|const|let|var|public|private|protected|static|if|for|while|switch|try|catch|SELECT|INSERT|UPDATE|CREATE|#include|package|fun|val)\b|^\s*(<\/?[a-z][\w-]*[\s>/]|\/\/|#\s|\/\*)/;

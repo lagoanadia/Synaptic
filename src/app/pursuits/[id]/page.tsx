@@ -20,8 +20,6 @@ import { ProjectsBoard } from "./ProjectsBoard";
 import { PagesBoard, type PageCard } from "./PagesBoard";
 import { autoTitle } from "@/lib/text";
 import { conceptExcerpt } from "@/lib/review";
-import { MapMore } from "./MapMore";
-import { LearnTab } from "./learn/LearnTab";
 import { UNSORTED, SHARED } from "@/lib/reviewData";
 import { folderBlocks } from "@/lib/blocks";
 import { folderColor, folderCover } from "@/lib/covers";
@@ -214,9 +212,6 @@ export default async function PursuitPage({
       content[b.id] = (
         <div className="flex flex-col gap-3">
           <KnowledgeMap clusters={await folderMap(pursuit.id, color)} perRow={3} empty="El mapa de cada unidad se crea solo cuando guardas apuntes." />
-          <MapMore>
-            <LearnTab pursuitId={pursuit.id} hasNotes={pursuit.notes.length > 0} />
-          </MapMore>
         </div>
       );
     else if (b.type === "review") content[b.id] = <ReviewToday pursuitId={pursuit.id} />;
