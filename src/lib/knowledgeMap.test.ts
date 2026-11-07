@@ -48,7 +48,20 @@ describe("layoutMap fill (one unit at real size)", () => {
     expect(c.nodes[0]).toMatchObject({ id: "r", x: 260 });
   });
   it("grows taller with more concepts", () => {
-    expect(focusHeight(8)).toBe(440);
-    expect(focusHeight(40)).toBeGreaterThan(440);
+    expect(focusHeight(8)).toBe(460);
+    expect(focusHeight(40)).toBeGreaterThan(460);
+  });
+});
+
+describe("layoutMap overview (one small cluster per folder)", () => {
+  const node = (id: string, parentId: string | null) => ({ id, title: id, status: "NEW" as const, statusAt: null, depth: parentId ? 1 : 0, parentId, href: "#" });
+  it("doesn't pile up a folder whose concepts are all at the same level", () => {
+    const nodes = Array.from({ length: 25 }, (_, i) => node(`n${i}`, i < 20 ? null : "n0"));
+    const [c] = layoutMap([{ id: "f", label: "DI", color: "#000", nodes }, { id: "g", label: "G", color: "#000", nodes: [node("x", null)] }], 1000, { now }).clusters;
+    let closest = Infinity;
+    for (const a of c.nodes) for (const b of c.nodes) if (a !== b) closest = Math.min(closest, Math.hypot(a.x - b.x, a.y - b.y) - a.r - b.r);
+    expect(closest).toBeGreaterThan(2);
+    // Stays inside its own cell (two folders → 500 wide each, 210 tall).
+    expect(c.nodes.every((p) => p.x > 0 && p.x < 500 && p.y > 0 && p.y < 210)).toBe(true);
   });
 });

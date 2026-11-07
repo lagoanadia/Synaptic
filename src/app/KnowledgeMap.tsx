@@ -89,7 +89,7 @@ export function KnowledgeMap({
             ))}
             {!labels && (
               <text x={c.x} y={c.y + ((rowHeight ?? 210) * (narrow ? 1.6 : 1)) / 2 - 8} textAnchor="middle" fontSize={narrow ? 22 : 12} fontWeight={600} fill={c.color}>
-                {c.label}
+                {short(c.label, narrow ? 18 : 30)}
               </text>
             )}
           </g>
