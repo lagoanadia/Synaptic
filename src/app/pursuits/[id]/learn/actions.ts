@@ -3,15 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { aiBudget, requirePursuitAccess } from "@/lib/access";
-import {
-  MAX_SOURCE_CHARS,
-  answerQuestion,
-  breakDown,
-  deepen,
-  readRepo,
-  writeConceptQuiz,
-} from "@/lib/internalizeAi";
+import { aiBudget } from "@/lib/access";
+import { answerQuestion, deepen, writeConceptQuiz } from "@/lib/internalizeAi";
 import { quizVerdict, type QuizQuestion } from "@/lib/conceptQuiz";
 import { statusAfterCheck, statusAfterOpen, statusAfterReview, type Status } from "@/lib/internalize";
 
@@ -40,88 +33,6 @@ const mapPath = (pursuitId: string, mapId: string) => `/pursuits/${pursuitId}/le
 
 async function setStatus(conceptId: string, status: Status) {
   await prisma.concept.update({ where: { id: conceptId }, data: { status, statusAt: new Date() } });
-}
-
-export async function createConceptMap(
-  pursuitId: string,
-  input: { kind: "text" | "pdf" | "pptx" | "notes" | "repo"; text?: string; ref?: string; language: string },
-): Promise<Result<{ mapId: string }>> {
-  const { session, userId } = await requirePursuitAccess(pursuitId);
-  const budget = await aiBudget(userId, session.user.email);
-  const limited = await budget.check();
-  if (limited) return { error: limited };
-
-  let source = "";
-  let ref: string | null = input.ref?.slice(0, 200) ?? null;
-  let hint = "";
-  try {
-    if (input.kind === "repo") {
-      const repo = await readRepo(input.ref ?? "");
-      source = repo.text;
-      ref = repo.ref;
-      hint = "The source is a code repository (file list + key files). Cover the architecture, the main moving parts and how a request flows through them — not every file.";
-    } else if (input.kind === "notes") {
-      const notes = await prisma.note.findMany({
-        where: { pursuitId },
-        orderBy: { createdAt: "asc" },
-        select: { content: true },
-      });
-      source = notes.map((n) => n.content).join("\n\n---\n\n");
-      ref = "Your notes";
-      hint = "The source is a student's own notes on one subject.";
-    } else {
-      source = (input.text ?? "").trim();
-      hint =
-        input.kind === "pdf"
-          ? "The source is text extracted from a PDF ([p3] marks page 3)."
-          : input.kind === "pptx"
-            ? "The source is a teacher's slide deck: each '##' is a slide title, '- ' its bullets, '!' the speaker notes. Slides are terse — fill in the reasoning between bullets, and use the slide title as excerpt_from."
-            : "";
-    }
-  } catch (err) {
-    return { error: err instanceof Error ? err.message : "Couldn't read that source" };
-  }
-  source = source.slice(0, MAX_SOURCE_CHARS);
-  if (source.length < 40) return { error: "No hay suficiente material para dividir" };
-
-  const language = input.language.slice(0, 30) || "Español";
-  const breakdown = await breakDown(source, language, hint);
-  if (!breakdown) return { error: "La IA no ha podido dividirlo ahora — inténtalo de nuevo" };
-  await budget.charge();
-
-  const map = await prisma.conceptMap.create({
-    data: {
-      pursuitId,
-      title: breakdown.title,
-      sourceKind: input.kind,
-      sourceRef: ref,
-      sourceText: source,
-      language,
-    },
-  });
-  const idByKey = new Map<string, string>();
-  for (const [order, c] of breakdown.concepts.entries()) {
-    const row = await prisma.concept.create({
-      data: {
-        mapId: map.id,
-        order,
-        title: c.title,
-        summary: c.summary,
-        explanation: c.explanation,
-        excerpt: c.excerpt,
-        excerptFrom: c.excerptFrom,
-      },
-    });
-    idByKey.set(c.key, row.id);
-  }
-  if (breakdown.links.length > 0) {
-    await prisma.conceptLink.createMany({
-      data: breakdown.links.map((l) => ({ fromId: idByKey.get(l.from)!, toId: idByKey.get(l.to)!, label: l.label })),
-      skipDuplicates: true,
-    });
-  }
-  revalidatePath(`/pursuits/${pursuitId}`);
-  return { error: null, mapId: map.id };
 }
 
 export async function openConcept(conceptId: string) {
@@ -289,8 +200,3 @@ export async function unlinkConcepts(fromId: string, toId: string) {
   revalidatePath(mapPath(concept.map.pursuitId, concept.mapId));
 }
 
-export async function deleteConceptMap(pursuitId: string, mapId: string) {
-  await requirePursuitAccess(pursuitId);
-  await prisma.conceptMap.deleteMany({ where: { id: mapId, pursuitId } });
-  revalidatePath(`/pursuits/${pursuitId}`);
-}

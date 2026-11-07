@@ -3,8 +3,6 @@ import {
   excerptInSource,
   looksLikeCode,
   nextUp,
-  parseRepoUrl,
-  pickRepoFiles,
   progress,
   statusAfterCheck,
   statusAfterOpen,
@@ -57,25 +55,6 @@ describe("helpers", () => {
     expect(excerptInSource("return   a + b;", src)).toBe(true);
     expect(excerptInSource("return a - b;", src)).toBe(false);
     expect(excerptInSource("a", src)).toBe(false);
-  });
-  it("picks readme first and skips junk", () => {
-    const picked = pickRepoFiles([
-      { path: "src/deep/nested/big.ts", size: 5000 },
-      { path: "README.md", size: 2000 },
-      { path: "node_modules/x/index.js", size: 10 },
-      { path: "package-lock.json", size: 10 },
-      { path: "src/app.ts", size: 3000 },
-      { path: "logo.png", size: 3000 },
-    ]);
-    expect(picked).toEqual(["README.md", "src/app.ts", "src/deep/nested/big.ts"]);
-  });
-  it("respects the byte budget", () => {
-    expect(pickRepoFiles([{ path: "a.ts", size: 9000 }, { path: "b.ts", size: 9000 }], 10000)).toEqual(["a.ts"]);
-  });
-  it("parses repo urls", () => {
-    expect(parseRepoUrl("https://github.com/lagoanadia/Synaptic/tree/main/src")).toEqual({ owner: "lagoanadia", repo: "Synaptic" });
-    expect(parseRepoUrl("vercel/next.js.git")).toEqual({ owner: "vercel", repo: "next.js" });
-    expect(parseRepoUrl("nope")).toBeNull();
   });
 });
 
