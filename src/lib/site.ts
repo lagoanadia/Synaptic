@@ -3,4 +3,4 @@ export const SITE_URL = "https://synapticnotes.app";
 export const SITE_NAME = "Synaptic Notes";
 export const SITE_TAGLINE = "Tu cabeza, en orden.";
 export const SITE_DESCRIPTION =
-  "Haz tu brain dump y la IA lo convierte en mapas de conceptos, tarjetas y quizzes. Gratis.";
+  "Tienes mil cosas en la cabeza y ninguna en su sitio. Suéltalas aquí: Synaptic pone el orden.";
