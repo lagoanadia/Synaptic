@@ -1,15 +1,20 @@
 "use client";
 
-import { CardsIcon, ImageIcon, LinkIcon, QuoteIcon, SparkIcon, XIcon } from "@/app/icons";
+import { CardsIcon, CheckIcon, ImageIcon, LinkIcon, MapIcon, QuoteIcon, SparkIcon, XIcon } from "@/app/icons";
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { EditorContent, useEditor, useEditorState, type Editor } from "@tiptap/react";
 import { Extension, wrappingInputRule } from "@tiptap/core";
+import { Plugin, PluginKey } from "@tiptap/pm/state";
+import { Decoration, DecorationSet } from "@tiptap/pm/view";
+import type { Node as PmNode } from "@tiptap/pm/model";
 import StarterKit from "@tiptap/starter-kit";
 import { OrderedList } from "@tiptap/extension-list";
 import { TableKit } from "@tiptap/extension-table";
 import Image from "@tiptap/extension-image";
 import { Placeholder } from "@tiptap/extensions";
 import { docToText, textToDoc } from "@/lib/richText";
+import { termMatches, type TermHint } from "@/lib/terms";
 
 // Ordered lists can be numbered (1. 2.) or lettered (a. b.) — the stored
 // format has both, so the editor needs to tell them apart.
@@ -35,6 +40,43 @@ const CalloutShortcut = Extension.create({
   },
 });
 
+// Key terms: the first time each one appears gets a dotted underline
+// (not stored; recomputed as you type or when the terms change).
+type TermsState = { terms: string[]; decos: DecorationSet };
+const termsKey = new PluginKey<TermsState>("keyTerms");
+function termDecorations(doc: PmNode, terms: string[]) {
+  if (terms.length === 0) return DecorationSet.empty;
+  const seen = new Set<number>();
+  const decos: Decoration[] = [];
+  doc.descendants((node, pos) => {
+    if (node.type.name === "codeBlock") return false;
+    if (!node.isText || !node.text) return;
+    for (const m of termMatches(node.text, terms, seen)) {
+      decos.push(Decoration.inline(pos + m.from, pos + m.to, { class: "key-term", "data-term": String(m.index) }));
+    }
+  });
+  return DecorationSet.create(doc, decos);
+}
+// The terms arrive with a transaction (meta) whenever they change.
+const KeyTerms = Extension.create({
+  name: "keyTerms",
+  addProseMirrorPlugins() {
+    return [
+      new Plugin<TermsState>({
+        key: termsKey,
+        state: {
+          init: () => ({ terms: [], decos: DecorationSet.empty }),
+          apply: (tr, old) => {
+            const terms = (tr.getMeta(termsKey) as string[] | undefined) ?? old.terms;
+            return tr.docChanged || terms !== old.terms ? { terms, decos: termDecorations(tr.doc, terms) } : old;
+          },
+        },
+        props: { decorations: (state) => termsKey.getState(state)?.decos },
+      }),
+    ];
+  },
+});
+
 const CODE_LANGUAGES = [
   { value: "", label: "Texto" },
   { value: "js", label: "JavaScript" },
@@ -57,6 +99,8 @@ export function RichEditor({
   bare = false,
   onAsk,
   onCard,
+  onMap,
+  terms = [],
 }: {
   initialText: string;
   onChange: (text: string) => void;
@@ -72,7 +116,13 @@ export function RichEditor({
   bare?: boolean;
   onAsk?: (text: string) => Promise<{ error: string | null; answer?: string }>;
   onCard?: (text: string) => Promise<{ error: string | null }>;
+  // "Añadir al mapa" on a selection; returns the new concept's link.
+  onMap?: (text: string) => Promise<{ error: string | null; href?: string }>;
+  // Words that name a concept on a map: underlined, with a card on hover.
+  terms?: TermHint[];
 }) {
+  const [hint, setHint] = useState<{ i: number; top: number; left: number } | null>(null);
+  const hideHint = useRef<number | null>(null);
   const uploadRef = useRef(onUploadImage);
   const onChangeRef = useRef(onChange);
   useEffect(() => {
@@ -117,6 +167,7 @@ export function RichEditor({
       TableKit.configure({ table: { resizable: false } }),
       Image,
       Placeholder.configure({ placeholder }),
+      KeyTerms,
     ],
     content: textToDoc(initialText),
     editorProps: {
@@ -146,6 +197,25 @@ export function RichEditor({
     editorInstance.current = editor;
     if (editorRef) editorRef.current = editor;
   }, [editor, editorRef]);
+
+  const termKey = terms.map((t) => t.term).join("\u0000");
+  useEffect(() => {
+    if (editor && !editor.isDestroyed) editor.view.dispatch(editor.state.tr.setMeta(termsKey, termKey ? termKey.split("\u0000") : []));
+  }, [editor, termKey]);
+
+  function overTerm(e: React.MouseEvent) {
+    const el = (e.target as HTMLElement).closest?.(".key-term");
+    if (!el || !wrap.current) return;
+    if (hideHint.current) window.clearTimeout(hideHint.current);
+    const box = wrap.current.getBoundingClientRect();
+    const r = el.getBoundingClientRect();
+    setHint({ i: Number(el.getAttribute("data-term")), top: r.bottom - box.top + 6, left: Math.max(0, r.left - box.left) });
+  }
+  function leaveTerm() {
+    if (hideHint.current) window.clearTimeout(hideHint.current);
+    hideHint.current = window.setTimeout(() => setHint(null), 250);
+  }
+  const hinted = hint ? terms[hint.i] : undefined;
 
   const items = slash ? slashItems(!!onUploadImage).filter((it) => fold(it.label).split(" ").some((w) => w.startsWith(fold(slash.query)))) : [];
   const pick = (it: SlashItem) => {
@@ -203,7 +273,7 @@ export function RichEditor({
 
   if (bare) {
     return (
-      <div ref={wrap} className="relative">
+      <div ref={wrap} className="relative" onMouseOver={overTerm} onMouseOut={(e) => (e.target as HTMLElement).closest?.(".key-term") && leaveTerm()}>
         <input
           ref={fileInput}
           type="file"
@@ -240,7 +310,21 @@ export function RichEditor({
             ))}
           </div>
         )}
-        {sel && <SelectionBar editor={editor} sel={sel} onAsk={onAsk} onCard={onCard} />}
+        {sel && <SelectionBar editor={editor} sel={sel} onAsk={onAsk} onCard={onCard} onMap={onMap} />}
+        {hint && hinted && !sel && (
+          <div
+            className="absolute z-20 flex w-72 flex-col gap-1 rounded-lg bg-white p-3 text-sm shadow-[0_0_0_1px_rgba(15,15,15,.05),0_10px_26px_rgba(15,15,15,.16)]"
+            style={{ top: hint.top, left: hint.left }}
+            onMouseEnter={() => hideHint.current && window.clearTimeout(hideHint.current)}
+            onMouseLeave={leaveTerm}
+          >
+            <span className="font-semibold">{hinted.title}</span>
+            {hinted.summary && <p className="text-ink-muted">{hinted.summary}</p>}
+            <Link href={hinted.href} className="mt-1 flex items-center gap-1.5 self-start text-xs text-accent hover:underline">
+              <MapIcon size={14} /> {hinted.where}
+            </Link>
+          </div>
+        )}
         {uploading && <span className="absolute top-0 right-0 text-xs text-ink-faint">Subiendo…</span>}
       </div>
     );
@@ -425,22 +509,24 @@ function SelectionBar({
   sel,
   onAsk,
   onCard,
+  onMap,
 }: {
   editor: Editor;
   sel: Sel;
   onAsk?: (text: string) => Promise<{ error: string | null; answer?: string }>;
   onCard?: (text: string) => Promise<{ error: string | null }>;
+  onMap?: (text: string) => Promise<{ error: string | null; href?: string }>;
 }) {
   const [busy, setBusy] = useState(false);
-  const [out, setOut] = useState<{ text: string; tone: "answer" | "ok" | "error" } | null>(null);
+  const [out, setOut] = useState<{ text: string; tone: "answer" | "ok" | "error"; href?: string } | null>(null);
   const s = useEditorState({ editor, selector: ({ editor: e }) => ({ bold: e.isActive("bold"), italic: e.isActive("italic"), link: e.isActive("link") }) });
   const c = () => editor.chain().focus();
-  async function go(fn: () => Promise<{ error: string | null; answer?: string }>, ok: string) {
+  async function go(fn: () => Promise<{ error: string | null; answer?: string; href?: string }>, ok: string) {
     setBusy(true);
     setOut(null);
     const r = await fn();
     setBusy(false);
-    setOut(r.error ? { text: r.error, tone: "error" } : r.answer ? { text: r.answer, tone: "answer" } : { text: ok, tone: "ok" });
+    setOut(r.error ? { text: r.error, tone: "error" } : r.answer ? { text: r.answer, tone: "answer" } : { text: ok, tone: "ok", href: r.href });
   }
   return (
     <div className="absolute z-20 flex max-w-[min(420px,100%)] -translate-y-full flex-col gap-1 pb-2" style={{ top: sel.top, left: sel.left }}>
@@ -458,7 +544,7 @@ function SelectionBar({
         >
           <LinkIcon />
         </Btn>
-        {(onAsk || onCard) && <Sep />}
+        {(onAsk || onCard || onMap) && <Sep />}
         {onAsk && (
           <button type="button" disabled={busy} onMouseDown={(e) => e.preventDefault()} onClick={() => go(() => onAsk(sel.text), "")} className="flex items-center gap-1.5 rounded-md px-2 py-1 text-accent hover:bg-chip disabled:opacity-50">
             <SparkIcon size={14} /> Preguntar a la IA
@@ -469,10 +555,23 @@ function SelectionBar({
             <CardsIcon size={15} />
           </button>
         )}
+        {onMap && (
+          <button type="button" disabled={busy} onMouseDown={(e) => e.preventDefault()} onClick={() => go(() => onMap(sel.text), "En el mapa")} title="Añadir al mapa" aria-label="Añadir al mapa" className="rounded-md px-2 py-1 text-ink-muted hover:bg-chip hover:text-ink disabled:opacity-50">
+            <MapIcon size={15} />
+          </button>
+        )}
       </div>
       {(busy || out) && (
         <div className={`rounded-lg bg-white px-3 py-2 text-sm shadow-[0_0_0_1px_rgba(15,15,15,.05),0_10px_26px_rgba(15,15,15,.16)] ${out?.tone === "error" ? "text-red-500" : out?.tone === "ok" ? "text-[#448361]" : ""}`}>
-          {busy ? <span className="block h-2 w-28 animate-pulse rounded bg-chip" /> : <p className="max-h-60 overflow-y-auto whitespace-pre-line">{out?.text}</p>}
+          {busy ? (
+            <span className="block h-2 w-28 animate-pulse rounded bg-chip" />
+          ) : out?.href ? (
+            <Link href={out.href} className="flex items-center gap-1.5 hover:underline">
+              <CheckIcon size={13} /> <MapIcon size={14} />
+            </Link>
+          ) : (
+            <p className="max-h-60 overflow-y-auto whitespace-pre-line">{out?.text}</p>
+          )}
         </div>
       )}
     </div>

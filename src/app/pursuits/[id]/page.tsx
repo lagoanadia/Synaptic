@@ -5,7 +5,6 @@ import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { removePursuitTag, setClassroomEnabled } from "./actions";
-import { PursuitMeta } from "./PursuitMeta";
 import { TagForm } from "./TagForm";
 import { MemberForm } from "./MemberForm";
 import { MemberRow } from "./MemberRow";
@@ -62,7 +61,7 @@ export default async function PursuitPage({
     redirect("/");
   }
 
-  const [pursuit, sections, distinctTypes, classroomConnection, otherLinked, cardUnits, challenges] =
+  const [pursuit, classroomConnection, otherLinked, cardUnits, challenges] =
     await Promise.all([
       prisma.pursuit.findFirst({
         where: {
@@ -95,15 +94,6 @@ export default async function PursuitPage({
             include: { cards: { select: { status: true } } },
           },
         },
-      }),
-      prisma.section.findMany({
-        where: { userId: session.user.id },
-        orderBy: { name: "asc" },
-      }),
-      prisma.pursuit.findMany({
-        where: { ownerId: session.user.id, type: { not: null } },
-        select: { type: true },
-        distinct: ["type"],
       }),
       prisma.googleClassroomConnection.findUnique({
         where: { userId: session.user.id },
@@ -299,17 +289,9 @@ export default async function PursuitPage({
       {editing && (
         <FolderSettings pursuitId={pursuit.id} cover={cover} groupLabel={grouped ? groupLabel : null}>
           <StatusNote pursuitId={pursuit.id} initialNote={pursuit.statusNote} />
-          <PursuitMeta
-            pursuitId={pursuit.id}
-            type={pursuit.type}
-            status={pursuit.status}
-            sectionName={pursuit.section?.name ?? null}
-            availableTypes={distinctTypes.map((p) => p.type).filter((t) => t !== null)}
-            availableSections={sections.map((s) => s.name)}
-          />
-          <div className="flex flex-wrap items-center gap-1.5">
+          <div className="flex flex-wrap items-center gap-2">
             {pursuit.pursuitTags.map((t) => (
-              <span key={t.id} className="flex items-center gap-1 rounded bg-chip px-2 py-0.5 text-xs text-ink-muted">
+              <span key={t.id} className="flex items-center gap-1.5 rounded-md bg-chip px-2.5 py-1 text-sm text-ink-muted">
                 {t.name}
                 <DeleteButton action={removePursuitTag.bind(null, pursuit.id, t.id)} className="text-ink-faint hover:text-red-500">
                   ×
@@ -319,13 +301,13 @@ export default async function PursuitPage({
             <TagForm pursuitId={pursuit.id} />
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs text-ink-faint">Compartido con</span>
-            <span className="text-xs text-ink-muted">{pursuit.owner.name ?? pursuit.owner.email} (propietaria)</span>
+            <span className="text-sm text-ink-faint">Compartido con</span>
+            <span className="text-sm text-ink-muted">{pursuit.owner.name ?? pursuit.owner.email} (propietaria)</span>
             {pursuit.members.map((m) =>
               isOwner ? (
                 <MemberRow key={m.id} pursuitId={pursuit.id} memberId={m.id} name={m.user.name ?? m.user.email} role={m.role} />
               ) : (
-                <span key={m.id} className="text-xs text-ink-muted">
+                <span key={m.id} className="text-sm text-ink-muted">
                   · {m.user.name ?? m.user.email} ({m.role.toLowerCase()})
                 </span>
               ),

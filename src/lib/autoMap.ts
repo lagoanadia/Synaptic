@@ -2,11 +2,23 @@ import "server-only";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { aiBudget } from "@/lib/access";
-import { MAX_SOURCE_CHARS, breakDown, newConcepts } from "@/lib/internalizeAi";
+import { MAX_SOURCE_CHARS, breakDown, explainTerm, newConcepts } from "@/lib/internalizeAi";
 
 // Below this much new text, a save doesn't touch the map (no AI call for
 // fixing a typo).
 const MIN_NEW_CHARS = 300;
+
+// The unit's material: organized notes, plus pages not organized yet.
+async function unitSource(pursuitId: string, unitId: string | null): Promise<string> {
+  const [notes, dumps] = await Promise.all([
+    prisma.note.findMany({ where: { pursuitId, sectionId: unitId }, orderBy: { createdAt: "asc" }, select: { content: true } }),
+    prisma.brainDump.findMany({ where: { pursuitId, sectionId: unitId, notes: { none: {} } }, orderBy: { createdAt: "asc" }, select: { content: true } }),
+  ]);
+  return [...notes.map((n) => n.content), ...dumps.map((d) => d.content ?? "")]
+    .filter((t) => t.trim())
+    .join("\n\n---\n\n")
+    .slice(0, MAX_SOURCE_CHARS);
+}
 
 // The concept map of one unit, kept in step with its notes: created the
 // first time there's enough material, then extended with whatever new
@@ -20,16 +32,10 @@ export async function refreshUnitMap(userId: string, pursuitId: string, unitId: 
   });
   if (!pursuit || pursuit.section?.study === false) return;
 
-  // The unit's material: organized notes, plus pages not organized yet.
-  const [notes, dumps, unit] = await Promise.all([
-    prisma.note.findMany({ where: { pursuitId, sectionId: unitId }, orderBy: { createdAt: "asc" }, select: { content: true } }),
-    prisma.brainDump.findMany({ where: { pursuitId, sectionId: unitId, notes: { none: {} } }, orderBy: { createdAt: "asc" }, select: { content: true } }),
+  const [source, unit] = await Promise.all([
+    unitSource(pursuitId, unitId),
     unitId ? prisma.pursuitContentSection.findFirst({ where: { id: unitId, pursuitId }, select: { name: true } }) : null,
   ]);
-  const source = [...notes.map((n) => n.content), ...dumps.map((d) => d.content ?? "")]
-    .filter((t) => t.trim())
-    .join("\n\n---\n\n")
-    .slice(0, MAX_SOURCE_CHARS);
   if (source.length < MIN_NEW_CHARS) return;
 
   const existing = await prisma.conceptMap.findFirst({
@@ -105,4 +111,55 @@ export async function backfillMaps(userId: string, pursuitId: string, perVisit =
   const todo: (string | null)[] = units.map((u) => u.id).filter((id) => !mapped.has(id));
   if (loose > 0 && !mapped.has(null)) todo.push(null);
   for (const unitId of todo.slice(0, perVisit)) await refreshUnitMap(userId, pursuitId, unitId).catch(() => {});
+}
+
+// "Añadir al mapa" (from a selection in a note, or the map's +): a concept
+// the student names, explained from the unit's notes. Goes into the given
+// map, or the unit's own (made empty if there's none yet). An existing
+// concept with that name is returned instead of a copy.
+export async function addNamedConcept(
+  userId: string,
+  pursuitId: string,
+  where: { mapId: string } | { unitId: string | null },
+  text: string,
+): Promise<{ error: string } | { error: null; mapId: string; conceptId: string }> {
+  const name = text.replace(/\s+/g, " ").trim().slice(0, 80);
+  if (name.length < 2) return { error: "Selecciona una palabra o frase" };
+  const pursuit = await prisma.pursuit.findFirst({
+    where: { id: pursuitId, OR: [{ ownerId: userId }, { members: { some: { userId } } }] },
+    select: { owner: { select: { email: true } } },
+  });
+  if (!pursuit) return { error: "No encontrado" };
+
+  let map =
+    "mapId" in where
+      ? await prisma.conceptMap.findFirst({ where: { id: where.mapId, pursuitId }, select: { id: true, unitId: true, language: true } })
+      : await prisma.conceptMap.findFirst({ where: { pursuitId, unitId: where.unitId, sourceKind: "auto" }, select: { id: true, unitId: true, language: true } });
+  if (!map && "unitId" in where) {
+    const unit = where.unitId ? await prisma.pursuitContentSection.findFirst({ where: { id: where.unitId, pursuitId }, select: { name: true } }) : null;
+    map = await prisma.conceptMap.create({
+      data: { pursuitId, unitId: where.unitId, title: unit?.name ?? "General", sourceKind: "auto", sourceRef: "Tus apuntes", sourceText: "", language: "Español" },
+      select: { id: true, unitId: true, language: true },
+    });
+  }
+  if (!map) return { error: "Mapa no encontrado" };
+
+  const same = await prisma.concept.findFirst({
+    where: { mapId: map.id, OR: [{ title: { equals: name, mode: "insensitive" } }, { term: { equals: name, mode: "insensitive" } }] },
+    select: { id: true },
+  });
+  if (same) return { error: null, mapId: map.id, conceptId: same.id };
+
+  const budget = await aiBudget(userId, pursuit.owner.email);
+  const limited = await budget.check();
+  if (limited) return { error: limited };
+  const c = await explainTerm(name, await unitSource(pursuitId, map.unitId), map.language || "Español");
+  if (!c) return { error: "No se ha podido explicar. Prueba otra vez." };
+  await budget.charge();
+  const order = await prisma.concept.count({ where: { mapId: map.id, parentId: null } });
+  const row = await prisma.concept.create({
+    data: { mapId: map.id, order, title: c.title, term: c.term, summary: c.summary, explanation: c.explanation, excerpt: c.excerpt, excerptFrom: c.excerptFrom },
+  });
+  revalidatePath(`/pursuits/${pursuitId}`);
+  return { error: null, mapId: map.id, conceptId: row.id };
 }

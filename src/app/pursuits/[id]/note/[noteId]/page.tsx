@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { autoTitle } from "@/lib/text";
 import { isSlideFile } from "@/lib/slides";
 import { PageView } from "../../PageView";
+import { pageTerms } from "@/lib/blockData";
 
 // A note whose original pages are gone.
 export default async function NotePage({ params }: { params: Promise<{ id: string; noteId: string }> }) {
@@ -34,8 +35,11 @@ export default async function NotePage({ params }: { params: Promise<{ id: strin
   if (!note) notFound();
   const p = note.pursuit;
 
+  const terms = await pageTerms(p.id, note.sectionId);
+
   return (
     <PageView
+      terms={terms}
       pursuit={{ id: p.id, title: p.title }}
       crumbs={[
         ...(p.section ? [{ label: p.section.name, href: `/pursuits/s/${p.section.id}` }] : []),

@@ -10,7 +10,7 @@ import type { MapCluster } from "@/lib/knowledgeMap";
 import { CodeBlock } from "../../CodeBlock";
 import { RichContent } from "../../RichContent";
 import { ConceptQuiz } from "./ConceptQuiz";
-import { askAboutConcept, deleteConcept, editConcept, goDeeper, openConcept } from "../actions";
+import { addConceptByName, askAboutConcept, deleteConcept, editConcept, goDeeper, openConcept } from "../actions";
 
 export type LearnConcept = {
   id: string;
@@ -106,7 +106,18 @@ export function LearnView({
 
       <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-2">
         <div className="lg:sticky lg:top-6">
-          {map[0] && <DraggableMap cluster={map[0]} currentId={concept.id} />}
+          {map[0] && (
+            <DraggableMap
+              cluster={map[0]}
+              currentId={concept.id}
+              onAdd={async (text) => {
+                const r = await addConceptByName(mapId, text);
+                if (r.error !== null) return r.error;
+                router.push(`/pursuits/${pursuitId}/learn/${mapId}?c=${r.conceptId}`);
+                return null;
+              }}
+            />
+          )}
         </div>
 
         <article className="flex min-w-0 flex-col gap-4 text-[15px] leading-relaxed max-lg:order-first">

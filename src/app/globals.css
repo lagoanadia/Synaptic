@@ -166,3 +166,12 @@ body {
   height: 0;
   pointer-events: none;
 }
+
+/* Key terms in a note (they name a concept on a map). */
+.rich-editor .key-term {
+  text-decoration: underline dotted;
+  text-decoration-color: color-mix(in srgb, var(--color-accent) 70%, transparent);
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 4px;
+  cursor: help;
+}

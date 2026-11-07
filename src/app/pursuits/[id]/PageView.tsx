@@ -7,7 +7,9 @@ import { CheckIcon, SlidesIcon } from "@/app/icons";
 import { RichEditor } from "../../editor/RichEditor";
 import { uploadToBlob } from "@/lib/blobUpload";
 import { SlidePanel } from "./SlidePanel";
+import type { TermHint } from "@/lib/terms";
 import {
+  addToMap,
   askPursuit,
   cardFromSelection,
   deleteBrainDump,
@@ -25,6 +27,7 @@ type Props = {
   dump: { id: string; content: string; updatedAt: string } | null;
   note: { id: string; content: string; updatedAt: string } | null;
   slides: { decks: { name: string; url: string }[]; classroomCourseId: string | null; classroomUnit: string | null };
+  terms: TermHint[];
 };
 
 const SparklesIcon = () => (
@@ -48,7 +51,7 @@ const SaveIcon = () => (
 // A page, editable in place. Top right, icons only: organized ✦ /
 // original ✎, the slides split, save (Ctrl+S; a ✓ shows for a moment),
 // and ⋯ for the rest.
-export function PageView({ pursuit, crumbs, title, dump, note, slides }: Props) {
+export function PageView({ pursuit, crumbs, title, dump, note, slides, terms }: Props) {
   const router = useRouter();
   const [view, setView] = useState<"organized" | "original">(note ? "organized" : "original");
   const [drafts, setDrafts] = useState({ organized: note?.content ?? "", original: dump?.content ?? "" });
@@ -139,6 +142,12 @@ export function PageView({ pursuit, crumbs, title, dump, note, slides }: Props) 
         onUploadImage={(file) => uploadToBlob(pursuit.id, file, file.name, "image")}
         onAsk={(text) => askPursuit(pursuit.id, `Explícame esto de forma sencilla: "${text}"`)}
         onCard={(text) => cardFromSelection(pursuit.id, text, note?.id ?? null)}
+        onMap={async (text) => {
+          const r = await addToMap(pursuit.id, { dumpId: dump?.id ?? null, noteId: note?.id ?? null }, text);
+          if (!r.error) router.refresh();
+          return r;
+        }}
+        terms={terms}
         placeholder="Escribe, o pulsa / para añadir un bloque"
       />
     </article>

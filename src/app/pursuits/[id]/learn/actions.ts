@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { aiBudget } from "@/lib/access";
+import { addNamedConcept } from "@/lib/autoMap";
 import { answerQuestion, deepen, writeConceptQuiz } from "@/lib/internalizeAi";
 import { quizVerdict, type QuizQuestion } from "@/lib/conceptQuiz";
 import { statusAfterCheck, statusAfterOpen, statusAfterReview, type Status } from "@/lib/internalize";
@@ -200,3 +201,15 @@ export async function unlinkConcepts(fromId: string, toId: string) {
   revalidatePath(mapPath(concept.map.pursuitId, concept.mapId));
 }
 
+
+// The map's +: a concept by name, explained from the unit's notes.
+export async function addConceptByName(mapId: string, text: string): Promise<Result<{ conceptId: string }>> {
+  const session = await auth();
+  if (!session?.user?.id) return { error: "No has iniciado sesión" };
+  const map = await prisma.conceptMap.findUnique({ where: { id: mapId }, select: { pursuitId: true } });
+  if (!map) return { error: "Mapa no encontrado" };
+  const r = await addNamedConcept(session.user.id, map.pursuitId, { mapId }, text);
+  if (r.error !== null) return { error: r.error };
+  revalidatePath(mapPath(map.pursuitId, mapId));
+  return { error: null, conceptId: r.conceptId };
+}

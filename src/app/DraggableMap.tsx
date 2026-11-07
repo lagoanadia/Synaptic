@@ -12,7 +12,16 @@ const W = 520;
 // dot, drag the background to pan, wheel to zoom, click a dot to open it.
 // A small hand-rolled force simulation keeps dots apart and linked ones
 // close. Dots: hollow = to learn, filled = known, faded = slipping.
-export function DraggableMap({ cluster, currentId }: { cluster: MapCluster; currentId?: string }) {
+export function DraggableMap({
+  cluster,
+  currentId,
+  onAdd,
+}: {
+  cluster: MapCluster;
+  currentId?: string;
+  // The +: type a concept and the AI finds it in the notes. Returns an error.
+  onAdd?: (text: string) => Promise<string | null>;
+}) {
   const router = useRouter();
   const nodes = cluster.nodes;
   const H = focusHeight(nodes.length);
@@ -23,6 +32,7 @@ export function DraggableMap({ cluster, currentId }: { cluster: MapCluster; curr
   const [view, setView] = useState({ x: 0, y: 0, k: 1 });
   const drag = useRef<{ id: string | null; startX: number; startY: number; moved: boolean; vx: number; vy: number } | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
+  const [adding, setAdding] = useState<{ text: string; busy: boolean; error: string | null } | null>(null);
   // Read once (lazy initial state), so render stays pure.
   const [now] = useState(Date.now);
 
@@ -213,6 +223,37 @@ export function DraggableMap({ cluster, currentId }: { cluster: MapCluster; curr
           })}
         </g>
       </svg>
+      {onAdd &&
+        (adding ? (
+          <form
+            className="absolute top-2 left-2 flex flex-col gap-1"
+            onSubmit={async (e) => {
+              e.preventDefault();
+              const text = adding.text.trim();
+              if (!text || adding.busy) return;
+              setAdding({ ...adding, busy: true, error: null });
+              const error = await onAdd(text);
+              setAdding(error ? { text, busy: false, error } : null);
+            }}
+          >
+            <input
+              autoFocus
+              value={adding.text}
+              disabled={adding.busy}
+              onChange={(e) => setAdding({ ...adding, text: e.target.value, error: null })}
+              onKeyDown={(e) => e.key === "Escape" && setAdding(null)}
+              onBlur={() => !adding.text.trim() && setAdding(null)}
+              placeholder="Concepto…"
+              aria-label="Nuevo concepto"
+              className={`w-56 rounded-md bg-white px-2.5 py-1.5 text-sm shadow-sm outline-none ring-1 ring-border-subtle focus:ring-ink/30 ${adding.busy ? "animate-pulse" : ""}`}
+            />
+            {adding.error && <span className="max-w-56 text-xs text-red-500">{adding.error}</span>}
+          </form>
+        ) : (
+          <button type="button" onClick={() => setAdding({ text: "", busy: false, error: null })} title="Añadir concepto" aria-label="Añadir concepto" className="absolute top-2 left-2 grid size-8 place-items-center rounded-md bg-white text-lg text-ink-muted shadow-sm hover:text-ink">
+            +
+          </button>
+        ))}
       {(view.k !== 1 || view.x !== 0 || view.y !== 0) && (
         <button type="button" onClick={() => setView({ x: 0, y: 0, k: 1 })} title="Centrar" aria-label="Centrar" className="absolute right-2 bottom-2 grid size-8 place-items-center rounded-md bg-white text-ink-muted shadow-sm hover:text-ink">
           ⌖
