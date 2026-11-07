@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Folder } from "../Covers";
+import { FolderTiles } from "./FolderTiles";
 import type { FolderItem, RecentPage } from "@/lib/blockData";
 
 // Subjects as folders; the sheets peeking out are what's left.
@@ -7,12 +7,7 @@ export function FolderRow({ items, empty, after }: { items: FolderItem[]; empty?
   if (items.length === 0 && !after) return <p className="py-6 text-sm text-ink-faint">{empty ?? "Aún no hay carpetas."}</p>;
   return (
     <div className="grid grid-cols-3 items-end gap-x-4 gap-y-5 pt-2 sm:flex sm:flex-wrap sm:gap-x-6">
-      {items.map((f) => (
-        <Link key={f.id} href={f.href} className="group flex min-w-0 flex-col gap-2 sm:w-28">
-          <Folder cover={f.cover} sheets={f.sheets} className="transition-transform group-hover:-translate-y-0.5" />
-          <span className="truncate text-sm font-medium">{f.title}</span>
-        </Link>
-      ))}
+      <FolderTiles items={items} />
       {after}
     </div>
   );

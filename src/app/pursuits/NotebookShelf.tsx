@@ -6,15 +6,23 @@ import { useRouter } from "next/navigation";
 import { Notebook } from "../Covers";
 import type { NotebookCover } from "@/lib/covers";
 import { createSection, reorderSections } from "./actions";
+import { EditMenu, menuAt, type EditTarget } from "./EditMenu";
 
 export type ShelfItem = { id: string; name: string; cover: NotebookCover; href: string; movable: boolean };
 
 // Your notebooks as composition notebooks. Drag one onto another to
-// reorder; "+" makes a new one.
+// reorder, right-click to rename or change its cover; "+" makes a new one.
 export function NotebookShelf({ items: initial, width = 92 }: { items: ShelfItem[]; width?: number }) {
   const [items, setItems] = useState(initial);
   const [dragging, setDragging] = useState<string | null>(null);
+  const [editing, setEditing] = useState<EditTarget | null>(null);
   const [, start] = useTransition();
+  // New names/covers from the server after an edit.
+  const [seen, setSeen] = useState(initial);
+  if (seen !== initial) {
+    setSeen(initial);
+    setItems(initial);
+  }
 
   function drop(targetId: string) {
     const from = items.findIndex((t) => t.id === dragging);
@@ -40,6 +48,11 @@ export function NotebookShelf({ items: initial, width = 92 }: { items: ShelfItem
             setDragging(n.id);
           }}
           onDragEnd={() => setDragging(null)}
+          onContextMenu={(e) => {
+            if (!n.movable) return;
+            e.preventDefault();
+            setEditing({ kind: "notebook", id: n.id, name: n.name, cover: n.cover, ...menuAt(e) });
+          }}
           onDragOver={(e) => dragging && n.movable && e.preventDefault()}
           onDrop={(e) => {
             e.preventDefault();
@@ -52,6 +65,7 @@ export function NotebookShelf({ items: initial, width = 92 }: { items: ShelfItem
         </Link>
       ))}
       <NewNotebookTile width={width} />
+      {editing && <EditMenu target={editing} onClose={() => setEditing(null)} />}
     </div>
   );
 }
