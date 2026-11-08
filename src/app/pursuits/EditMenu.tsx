@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Folder, MiniNotebook } from "../Covers";
-import { FOLDER_COVERS, NOTEBOOK_COVERS, type FolderCover, type NotebookCover } from "@/lib/covers";
+import { FOLDER_GROUPS, NOTEBOOK_COVERS, type FolderCover, type NotebookCover } from "@/lib/covers";
 import { setNotebook } from "./actions";
 import { renamePursuit, setFolderCover } from "./[id]/actions";
 
@@ -57,7 +57,7 @@ export function EditMenu({ target, onClose }: { target: EditTarget; onClose: () 
     });
   }
 
-  const covers = target.kind === "notebook" ? [...NOTEBOOK_COVERS] : (Object.keys(FOLDER_COVERS) as FolderCover[]);
+  const groups: { name: string | null; covers: string[] }[] = target.kind === "notebook" ? [{ name: null, covers: [...NOTEBOOK_COVERS] }] : FOLDER_GROUPS;
 
   return (
     <>
@@ -76,19 +76,26 @@ export function EditMenu({ target, onClose }: { target: EditTarget; onClose: () 
           aria-label="Nombre"
           className="rounded-md border border-border-subtle px-2 py-1.5 text-sm font-medium outline-none focus:border-ink-faint"
         />
-        <div className={`grid gap-1.5 ${target.kind === "notebook" ? "grid-cols-9" : "grid-cols-6"}`}>
-          {covers.map((c) => (
-            <button
-              key={c}
-              type="button"
-              title={c}
-              aria-label={c}
-              aria-pressed={cover === c}
-              onClick={() => pick(c)}
-              className={`grid place-items-center rounded-sm p-0.5 ${cover === c ? "ring-2 ring-ink ring-offset-1" : "hover:bg-chip"}`}
-            >
-              {target.kind === "notebook" ? <MiniNotebook cover={c as NotebookCover} size={24} /> : <Folder cover={c as FolderCover} width={34} />}
-            </button>
+        <div className="flex max-h-[60vh] flex-col gap-2.5 overflow-y-auto">
+          {groups.map((g) => (
+            <div key={g.name ?? "all"}>
+              {g.name && <div className="mb-1 text-[10px] font-semibold tracking-wide text-ink-faint uppercase">{g.name}</div>}
+              <div className={`grid gap-1.5 ${target.kind === "notebook" ? "grid-cols-9" : "grid-cols-6"}`}>
+                {g.covers.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    title={c}
+                    aria-label={c}
+                    aria-pressed={cover === c}
+                    onClick={() => pick(c)}
+                    className={`grid place-items-center rounded-sm p-0.5 ${cover === c ? "ring-2 ring-ink ring-offset-1" : "hover:bg-chip"}`}
+                  >
+                    {target.kind === "notebook" ? <MiniNotebook cover={c as NotebookCover} size={24} /> : <Folder cover={c as FolderCover} width={34} />}
+                  </button>
+                ))}
+              </div>
+            </div>
           ))}
         </div>
         {error && <p className="text-xs text-red-500">{error}</p>}
