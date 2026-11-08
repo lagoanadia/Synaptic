@@ -9,7 +9,7 @@ import { PromptText } from "../PromptText";
 import { DIFFICULTIES, difficultyOf } from "../look";
 import { Badge, Bars } from "../ChallengeList";
 import { runInSandbox, warmSandbox } from "../sandbox";
-import { deleteChallenge, draftChallenge, getHint, reviewSolution, saveRun } from "../actions";
+import { deleteChallenge, draftChallenge, explainSolution, getHint, reviewSolution, saveRun } from "../actions";
 import { checkAndSave } from "../checkAndSave";
 import { paramNames, parseReview, type ChallengeTest, type Language, type RunOutput } from "@/lib/challenge";
 
@@ -75,6 +75,8 @@ export function ChallengeIDE({ challenge }: { challenge: Challenge }) {
   const [hints, setHints] = useState<string[]>([]);
   const [note, setNote] = useState<string | null>(null);
   const [isHinting, startHint] = useTransition();
+  const [explained, setExplained] = useState<{ steps: string[]; code: string } | null>(null);
+  const [isExplaining, startExplain] = useTransition();
   const [isReviewing, startReview] = useTransition();
   const [isDeleting, startDelete] = useTransition();
   const router = useRouter();
@@ -132,6 +134,16 @@ export function ChallengeIDE({ challenge }: { challenge: Challenge }) {
     });
   }
 
+  function dontKnow() {
+    startExplain(async () => {
+      setNote(null);
+      const r = await explainSolution(challenge.id);
+      if (r.error || !r.steps || !r.code) return setNote(r.error ?? "Inténtalo de nuevo");
+      setExplained({ steps: r.steps, code: r.code });
+      toggleTask(true);
+    });
+  }
+
   const react = challenge.language === "react";
   const names = react ? [] : paramNames(challenge.starterCode, challenge.entry, challenge.tests[0]?.args.length ?? 0);
   const inputs = (t: ChallengeTest): [string, unknown][] =>
@@ -159,6 +171,9 @@ export function ChallengeIDE({ challenge }: { challenge: Challenge }) {
         <span className="flex-1" />
         <button type="button" onClick={hint} disabled={isHinting || hints.length >= 3} title={hints.length >= 3 ? "No quedan pistas" : "Pista"} aria-label="Pista" className={icon}>
           {isHinting ? "…" : "💡"}
+        </button>
+        <button type="button" onClick={dontKnow} disabled={isExplaining || !!explained} title="Explícame cómo se hace" className="rounded-md px-2.5 py-1.5 text-sm text-ink-muted hover:bg-chip hover:text-ink disabled:opacity-40">
+          {isExplaining ? "Explicando…" : "No lo sé"}
         </button>
         <button
           type="button"
@@ -219,6 +234,7 @@ export function ChallengeIDE({ challenge }: { challenge: Challenge }) {
                 {h}
               </p>
             ))}
+            {explained && <Explained steps={explained.steps} code={explained.code} challenge={challenge} />}
             {review && <Review text={review} challenge={challenge} />}
             {note && <p className="text-xs text-red-500">{note}</p>}
           </section>
@@ -376,6 +392,40 @@ function Case({ inputs, expected, result, react }: { inputs: [string, unknown][]
           <span className={`font-mono text-[12.5px] break-words ${failed ? "text-[#ff7b7b]" : "text-[#3fa36b]"}`}>{result.error ?? show(result.got)}</span>
         </>
       )}
+    </div>
+  );
+}
+
+// "No lo sé": the idea and steps, the commented solution to read (not
+// paste: you write it yourself), and a similar, easier one to try alone.
+function Explained({ steps, code, challenge }: { steps: string[]; code: string; challenge: Challenge }) {
+  const router = useRouter();
+  const [making, setMaking] = useState(false);
+  const [failed, setFailed] = useState<string | null>(null);
+  async function similar() {
+    setMaking(true);
+    setFailed(null);
+    const r = await draftChallenge({
+      language: challenge.language,
+      difficulty: "easy",
+      pursuitId: challenge.pursuitId,
+      topic: `the same idea as the challenge "${challenge.title}", a bit easier, with different data, so the learner can now do it alone`,
+    });
+    const [id] = r.drafts ? await checkAndSave(challenge.language, r.drafts, 1) : [];
+    setMaking(false);
+    if (id) router.push(`/challenges/${id}`);
+    else setFailed(r.error ?? "No ha salido bien — inténtalo de nuevo");
+  }
+  return (
+    <div className="flex flex-col gap-3 rounded-lg bg-sidebar p-3">
+      <span className="text-[11px] font-semibold tracking-wider text-accent uppercase">Cómo se hace</span>
+      <PromptText prompt={steps.map((st, i) => `${i + 1}. ${st}`).join("\n")} />
+      <PromptText prompt={"```\n" + code + "\n```"} />
+      <p className="text-xs text-ink-faint">Léelo, entiéndelo y escríbelo tú en el editor sin copiarlo.</p>
+      <button type="button" onClick={similar} disabled={making} className="flex items-center gap-1 self-start text-xs font-medium text-accent hover:underline disabled:opacity-50">
+        {making ? "Creando reto…" : <>Dame uno parecido más fácil <ArrowRight size={11} /></>}
+      </button>
+      {failed && <p className="text-xs text-red-500">{failed}</p>}
     </div>
   );
 }
