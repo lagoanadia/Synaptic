@@ -9,7 +9,8 @@ import { PromptText } from "../PromptText";
 import { DIFFICULTIES, difficultyOf } from "../look";
 import { Badge, Bars } from "../ChallengeList";
 import { runInSandbox, warmSandbox } from "../sandbox";
-import { deleteChallenge, getHint, reviewSolution, saveRun } from "../actions";
+import { deleteChallenge, draftChallenge, getHint, reviewSolution, saveRun } from "../actions";
+import { checkAndSave } from "../checkAndSave";
 import { paramNames, parseReview, type ChallengeTest, type Language, type RunOutput } from "@/lib/challenge";
 
 type Challenge = {
@@ -25,6 +26,7 @@ type Challenge = {
   passed: boolean;
   review: string | null;
   pursuitTitle: string | null;
+  pursuitId: string | null;
 };
 
 const show = (v: unknown) => {
@@ -197,7 +199,7 @@ export function ChallengeIDE({ challenge }: { challenge: Challenge }) {
                 {h}
               </p>
             ))}
-            {review && <Review text={review} />}
+            {review && <Review text={review} challenge={challenge} />}
             {note && <p className="text-xs text-red-500">{note}</p>}
           </section>
         ) : (
@@ -356,8 +358,27 @@ const REVIEW_STYLE = {
   next: { label: "Siguiente", icon: ArrowRight, cls: "text-accent" },
 } as const;
 
-// The code review as three short blocks; `code` shows as code.
-function Review({ text }: { text: string }) {
+// The code review as three short blocks; `code` shows as code. Each
+// "Siguiente" idea can become a new challenge that practises it.
+function Review({ text, challenge }: { text: string; challenge: Challenge }) {
+  const router = useRouter();
+  const [making, setMaking] = useState<number | null>(null);
+  const [failed, setFailed] = useState<string | null>(null);
+  async function practise(i: number, idea: string) {
+    setMaking(i);
+    setFailed(null);
+    const difficulty = (["easy", "medium", "hard"] as const).find((d) => d === challenge.difficulty) ?? "easy";
+    const r = await draftChallenge({
+      language: challenge.language,
+      difficulty,
+      pursuitId: challenge.pursuitId,
+      topic: `${idea.replace(/`/g, "")} (follow-up to the challenge "${challenge.title}": same kind of data, a new situation)`,
+    });
+    const [id] = r.drafts ? await checkAndSave(challenge.language, r.drafts, 1) : [];
+    setMaking(null);
+    if (id) router.push(`/challenges/${id}`);
+    else setFailed(r.error ?? "No ha salido bien — inténtalo de nuevo");
+  }
   const sections = parseReview(text);
   if (!sections.good.length && !sections.fix.length && !sections.next.length) return <p className="rounded-lg bg-sidebar p-3 text-sm whitespace-pre-line">{text}</p>;
   return (
@@ -382,9 +403,20 @@ function Review({ text }: { text: string }) {
                       part
                     ),
                   )}
+                  {k === "next" && (
+                    <button
+                      type="button"
+                      onClick={() => practise(i, line)}
+                      disabled={making !== null}
+                      className="mt-1 flex items-center gap-1 text-xs font-medium text-accent hover:underline disabled:opacity-50"
+                    >
+                      {making === i ? "Creando reto…" : <>Practicarlo en un reto <ArrowRight size={11} /></>}
+                    </button>
+                  )}
                 </li>
               ))}
             </ul>
+            {k === "next" && failed && <p className="mt-1.5 text-xs text-red-500">{failed}</p>}
           </div>
         );
       })}

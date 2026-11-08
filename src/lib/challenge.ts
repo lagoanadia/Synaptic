@@ -4,11 +4,11 @@
 
 export const LANGUAGES = ["javascript", "typescript", "python", "react"] as const;
 export type Language = (typeof LANGUAGES)[number];
-export const LANGUAGE_INFO: Record<Language, { label: string; short: string }> = {
-  javascript: { label: "JavaScript", short: "JS" },
-  typescript: { label: "TypeScript", short: "TS" },
-  python: { label: "Python", short: "PY" },
-  react: { label: "React", short: "JSX" },
+export const LANGUAGE_INFO: Record<Language, { label: string; short: string; hint: string }> = {
+  javascript: { label: "JavaScript", short: "JS", hint: "El lenguaje de la web: funciones, listas y objetos." },
+  typescript: { label: "TypeScript", short: "TS", hint: "JavaScript con tipos: dices qué es cada dato (number, string…) y te avisa de errores." },
+  python: { label: "Python", short: "PY", hint: "Sencillo de leer; el de datos y scripts." },
+  react: { label: "React", short: "JSX", hint: "Componentes de pantalla: funciones que devuelven HTML (JSX) según sus props." },
 };
 export const asLanguage = (v: unknown): Language => (LANGUAGES as readonly unknown[]).includes(v) ? (v as Language) : "javascript";
 // TypeScript and React are compiled (Babel, in the sandbox) before running.
@@ -175,8 +175,10 @@ export const formatReview = (r: ReviewSections) =>
 
 // "Theory turned into code": the answers are sentences, or the solution is
 // mostly a table of prewritten strings. Those aren't coding practice.
-export function isTheoryLookup(d: Pick<ChallengeDraft, "tests" | "solution">): boolean {
-  const strings = d.tests.map((t) => t.expected).filter((e): e is string => typeof e === "string");
+// A React component's expected value is the whole text it renders, so long
+// strings are normal there: only its solution's literals are checked.
+export function isTheoryLookup(d: Pick<ChallengeDraft, "tests" | "solution">, react = false): boolean {
+  const strings = react ? [] : d.tests.map((t) => t.expected).filter((e): e is string => typeof e === "string");
   if (strings.some((e) => e.length > 60)) return true;
   if (new Set(strings.filter((e) => e.length > 20)).size >= 3) return true;
   const literals = d.solution.match(/(["'`])(?:(?!\1)[^\\\n]|\\.){20,}\1/g) ?? [];
