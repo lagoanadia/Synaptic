@@ -242,3 +242,8 @@ body {
 .lnd-js .in .lnd-ring { stroke-dasharray: 200 239; }
 .lnd-tilt { transition: transform .25s ease; transform-style: preserve-3d; }
 }
+@layer components {
+  /* Big notes on the error pages, with the word centred. */
+  .lnd-big { width: calc(var(--k) * 230); height: calc(var(--k) * 300); }
+  .lnd-big .lnd-hand { inset: 0; display: grid; place-items: center; font-size: calc(var(--k) * 56); color: #1c4f9c; line-height: 1; }
+}
