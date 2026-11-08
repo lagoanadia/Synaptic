@@ -90,6 +90,8 @@ export async function deletePursuit(pursuitId: string) {
   ]);
 
   revalidatePath("/pursuits", "layout");
+  // Called from the folder's own page: back to its notebook.
+  redirect(pursuit.sectionId ? `/pursuits/s/${pursuit.sectionId}` : "/pursuits");
 }
 
 // The new order of the user's sections, from dragging tiles on the home

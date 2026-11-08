@@ -299,7 +299,7 @@ export default async function PursuitPage({
       )}
 
       {editing && (
-        <FolderSettings pursuitId={pursuit.id} cover={cover} groupLabel={grouped ? groupLabel : null}>
+        <FolderSettings pursuitId={pursuit.id} cover={cover} groupLabel={grouped ? groupLabel : null} title={pursuit.title} canDelete={isOwner}>
           <StatusNote pursuitId={pursuit.id} initialNote={pursuit.statusNote} />
           <div className="flex flex-wrap items-center gap-2">
             {pursuit.pursuitTags.map((t) => (

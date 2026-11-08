@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Folder } from "@/app/Covers";
 import { FOLDER_GROUPS, type FolderCover } from "@/lib/covers";
 import { setFolderCover, setGroupLabel } from "./actions";
+import { deletePursuit } from "../actions";
 
 // Shown in "Editar": the folder's look (cover pattern), what its groups
 // are called, and the rest of its settings (passed in as children).
@@ -12,11 +13,15 @@ export function FolderSettings({
   pursuitId,
   cover,
   groupLabel,
+  title,
+  canDelete,
   children,
 }: {
   pursuitId: string;
   cover: FolderCover;
   groupLabel: string | null;
+  title: string;
+  canDelete: boolean;
   children: React.ReactNode;
 }) {
   const [label, setLabel] = useState(groupLabel ?? "");
@@ -66,6 +71,21 @@ export function FolderSettings({
         </form>
       )}
       {children}
+      {canDelete && (
+        <button
+          type="button"
+          onClick={() => {
+            if (window.confirm(`¿Eliminar la carpeta "${title}"? Se borra todo lo de dentro (notas, tarjetas, tareas, mapas) y no se puede deshacer.`))
+              start(() => deletePursuit(pursuitId));
+          }}
+          className="flex items-center gap-1.5 self-start border-t border-border-subtle pt-3 text-xs text-ink-faint hover:text-red-600"
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v6M14 11v6" />
+          </svg>
+          Eliminar carpeta
+        </button>
+      )}
     </section>
   );
 }
