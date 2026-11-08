@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { autoTitle, parseContent, parseNoteBlocks, shortMapTitle, type ListBlock } from "./text";
+import { autoTitle, parseContent, parseNoteBlocks, shortMapTitle, splitTitle, withTitle, type ListBlock } from "./text";
 
 // A flat (unnested) list item — most list tests don't care about nesting,
 // so this keeps them readable instead of spelling out { inline, children:
@@ -321,5 +321,17 @@ describe("parseNoteBlocks tables", () => {
     expect(blocks).toHaveLength(1);
     expect(blocks[0].type === "table" && blocks[0].rows).toHaveLength(1);
     expect(parseNoteBlocks("| --- | --- |")).toEqual([]);
+  });
+});
+
+describe("splitTitle / withTitle", () => {
+  it("takes the first heading as the title", () => {
+    expect(splitTitle("# Tema 4\n\nEl color")).toEqual({ title: "Tema 4", body: "El color" });
+    expect(splitTitle("El color")).toEqual({ title: null, body: "El color" });
+    expect(splitTitle("## Sub\ntexto").title).toBeNull();
+  });
+  it("puts it back, or leaves the body alone without one", () => {
+    expect(withTitle("Tema 4", "El color")).toBe("# Tema 4\n\nEl color");
+    expect(withTitle("  ", "El color")).toBe("El color");
   });
 });

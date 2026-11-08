@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { CheckIcon, SlidesIcon } from "@/app/icons";
 import { RichEditor } from "../../editor/RichEditor";
+import { splitTitle, withTitle } from "@/lib/text";
 import { uploadToBlob } from "@/lib/blobUpload";
 import { SlidePanel } from "./SlidePanel";
 import type { TermHint } from "@/lib/terms";
@@ -23,7 +24,6 @@ import {
 type Props = {
   pursuit: { id: string; title: string };
   crumbs: { label: string; href?: string }[];
-  title: string;
   dump: { id: string; content: string; updatedAt: string } | null;
   note: { id: string; content: string; updatedAt: string } | null;
   slides: { decks: { name: string; url: string }[]; classroomCourseId: string | null; classroomUnit: string | null };
@@ -51,10 +51,17 @@ const SaveIcon = () => (
 // A page, editable in place. Top right, icons only: organized ✦ /
 // original ✎, the slides split, save (Ctrl+S; a ✓ shows for a moment),
 // and ⋯ for the rest.
-export function PageView({ pursuit, crumbs, title, dump, note, slides, terms }: Props) {
+export function PageView({ pursuit, crumbs, dump, note, slides, terms }: Props) {
   const router = useRouter();
   const [view, setView] = useState<"organized" | "original">(note ? "organized" : "original");
-  const [drafts, setDrafts] = useState({ organized: note?.content ?? "", original: dump?.content ?? "" });
+  // The title has its own field; the editor holds the rest. Stored as the
+  // content's first "# " line, like before.
+  const [parts] = useState(() => ({ organized: splitTitle(note?.content ?? ""), original: splitTitle(dump?.content ?? "") }));
+  const [drafts, setDrafts] = useState({ organized: parts.organized.body, original: parts.original.body });
+  const [titles, setTitles] = useState({
+    organized: parts.organized.title ?? parts.original.title ?? "",
+    original: parts.original.title ?? parts.organized.title ?? "",
+  });
   const [dirty, setDirty] = useState({ organized: false, original: false });
   const versions = useRef({ organized: note?.updatedAt ?? "", original: dump?.updatedAt ?? "" });
   const [split, setSplit] = useState(false);
@@ -67,7 +74,7 @@ export function PageView({ pursuit, crumbs, title, dump, note, slides, terms }: 
   function save() {
     if (!dirty[view] || pending) return;
     const v = view;
-    const text = drafts[v];
+    const text = withTitle(titles[v], drafts[v]);
     setMessage(null);
     start(async () => {
       let r: { error: string | null; updatedAt?: string };
@@ -126,11 +133,19 @@ export function PageView({ pursuit, crumbs, title, dump, note, slides, terms }: 
 
   const icon = "grid size-8 place-items-center rounded-md text-ink-muted hover:bg-chip hover:text-ink disabled:opacity-40";
   const content = drafts[view];
-  const startsWithTitle = /^#\s/.test(content.trimStart());
 
   const page = (
     <article className="flex min-w-0 flex-col gap-4">
-      {!startsWithTitle && <h1 className="text-[2.1rem] leading-tight font-bold tracking-tight">{title}</h1>}
+      <input
+        value={titles[view]}
+        onChange={(e) => {
+          setTitles((t) => ({ ...t, [view]: e.target.value }));
+          setDirty((d) => ({ ...d, [view]: true }));
+        }}
+        placeholder="Sin título"
+        aria-label="Título"
+        className="w-full bg-transparent text-[2.1rem] leading-tight font-bold tracking-tight outline-none placeholder:text-ink-faint/50"
+      />
       <RichEditor
         key={view}
         bare

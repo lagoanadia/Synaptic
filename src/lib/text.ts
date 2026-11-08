@@ -276,3 +276,15 @@ export function shortMapTitle(title: string, max = 24): string {
   const cut = t.slice(0, max + 1).replace(/\s+\S*$/, "");
   return (cut.length >= max / 2 ? cut : t.slice(0, max)).replace(/[\s,:;.-]+$/, "") + "…";
 }
+
+// A page's title is its first line when that's a "# " heading.
+export function splitTitle(content: string | null): { title: string | null; body: string } {
+  const text = content ?? "";
+  const m = /^\s*#[ \t]+(.+?)[ \t]*(?:\r?\n|$)/.exec(text);
+  return m ? { title: m[1].trim(), body: text.slice(m[0].length).replace(/^\s*\n/, "") } : { title: null, body: text };
+}
+
+export function withTitle(title: string, body: string): string {
+  const t = title.replace(/\s+/g, " ").trim();
+  return t ? `# ${t}\n\n${body.replace(/^\s+/, "")}` : body;
+}

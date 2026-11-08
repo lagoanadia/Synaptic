@@ -1,7 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { autoTitle } from "@/lib/text";
 import { isSlideFile } from "@/lib/slides";
 import { PageView } from "../../PageView";
 import { pageTerms } from "@/lib/blockData";
@@ -42,6 +41,7 @@ export default async function DumpPage({ params }: { params: Promise<{ id: strin
 
   return (
     <PageView
+      key={dump.id}
       terms={terms}
       pursuit={{ id: p.id, title: p.title }}
       crumbs={[
@@ -49,7 +49,6 @@ export default async function DumpPage({ params }: { params: Promise<{ id: strin
         { label: p.title, href: `/pursuits/${p.id}` },
         ...(dump.section ? [{ label: dump.section.name }] : []),
       ]}
-      title={autoTitle(note?.content ?? dump.content, 14)}
       dump={{ id: dump.id, content: dump.content ?? "", updatedAt: dump.updatedAt.toISOString() }}
       note={note && { id: note.id, content: note.content, updatedAt: note.updatedAt.toISOString() }}
       slides={{

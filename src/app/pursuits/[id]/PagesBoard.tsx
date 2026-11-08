@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useTransition } from "react";
-import { createContentSection, deleteContentSection, listClassroomFiles, movePage, renameUnit, setUnitClassroom } from "./actions";
+import { useRef, useState, useTransition } from "react";
+import { createContentSection, deleteContentSection, listClassroomFiles, movePage, renamePage, renameUnit, setUnitClassroom } from "./actions";
+import { useRouter } from "next/navigation";
 import { ImportSlides } from "./ImportSlides";
 import { unitCode } from "@/lib/slides";
 
@@ -54,7 +55,23 @@ export function PagesBoard({
   const [over, setOver] = useState<string | null>(null);
   const [newUnit, setNewUnit] = useState<string | null>(null);
   const [classroomUnits, setClassroomUnits] = useState<string[] | null>(null);
+  const [renaming, setRenaming] = useState<{ card: PageCard; x: number; y: number } | null>(null);
   const [, startTransition] = useTransition();
+  const router = useRouter();
+
+  const renameDone = useRef(false);
+  function rename(card: PageCard, title: string) {
+    setRenaming(null);
+    if (renameDone.current) return;
+    renameDone.current = true;
+    const t = title.trim();
+    if (!t || t === card.title) return;
+    setCards((cs) => cs.map((c) => (c.key === card.key ? { ...c, title: t } : c)));
+    startTransition(async () => {
+      await renamePage(pursuitId, { dumpId: card.dumpId, noteId: card.noteId }, t);
+      router.refresh();
+    });
+  }
 
   const columns: (Unit | { id: null; name: string; classroomUnit: null })[] = [
     ...units,
@@ -79,6 +96,29 @@ export function PagesBoard({
 
   return (
     <div className="flex flex-col gap-4">
+      {renaming && (
+        <div className="fixed inset-0 z-50" onMouseDown={(e) => e.target === e.currentTarget && setRenaming(null)}>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              rename(renaming.card, new FormData(e.currentTarget).get("title") as string);
+            }}
+            className="absolute w-72 rounded-lg bg-white p-2 shadow-[0_0_0_1px_rgba(15,15,15,.05),0_10px_26px_rgba(15,15,15,.16)]"
+            style={{ left: renaming.x, top: renaming.y }}
+          >
+            <input
+              name="title"
+              autoFocus
+              defaultValue={renaming.card.title}
+              onFocus={(e) => e.currentTarget.select()}
+              onKeyDown={(e) => e.key === "Escape" && setRenaming(null)}
+              onBlur={(e) => rename(renaming.card, e.currentTarget.value)}
+              aria-label="Título de la página"
+              className="w-full rounded-md border border-border-subtle px-2 py-1.5 text-sm outline-none focus:border-ink/30"
+            />
+          </form>
+        </div>
+      )}
       {!asBoard && <div className="flex flex-wrap items-center gap-2">
         <Link href={`/pursuits/${pursuitId}/dump/new`} className="rounded-md bg-ink px-3 py-1.5 text-sm font-medium text-white">
           + Página
@@ -182,6 +222,11 @@ export function PagesBoard({
                     e.preventDefault();
                     e.stopPropagation();
                     drop(col.id);
+                  }}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    renameDone.current = false;
+                    setRenaming({ card: c, x: Math.min(e.clientX, window.innerWidth - 300), y: Math.min(e.clientY, window.innerHeight - 80) });
                   }}
                   className={`flex flex-col gap-2 rounded-md bg-white px-3 py-2.5 shadow-[0_0_0_1px_rgba(15,15,15,.06),0_1px_2px_rgba(15,15,15,.06)] transition-shadow hover:shadow-[0_0_0_1px_rgba(15,15,15,.08),0_4px_10px_rgba(15,15,15,.08)] ${
                     dragging === c.key ? "opacity-40" : ""
