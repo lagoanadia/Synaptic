@@ -142,7 +142,9 @@ export async function unsubscribeFromPush(endpoint: string) {
 
 // The round "+" on the home screen. Returns { error } instead of throwing
 // so the inline input can show a message in place.
-export async function createSection(name: string): Promise<{ error: string | null; id?: string }> {
+// template: "study" (subjects with flashcards, maps, review) or "projects"
+// (projects with tasks and a calendar). Changeable later in ⚙.
+export async function createSection(name: string, template: "study" | "projects" = "study"): Promise<{ error: string | null; id?: string }> {
   const session = await auth();
   if (!session?.user?.id) {
     return { error: "No has iniciado sesión" };
@@ -151,7 +153,7 @@ export async function createSection(name: string): Promise<{ error: string | nul
   if (trimmed === "") return { error: "Ponle un nombre" };
   if (trimmed.length > 40) return { error: "Máximo 40 caracteres" };
 
-  const section = await upsertSection(session.user.id, trimmed);
+  const section = await upsertSection(session.user.id, trimmed, template !== "projects");
   revalidatePath("/pursuits", "layout");
   return { error: null, id: section.id };
 }

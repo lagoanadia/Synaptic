@@ -7,6 +7,7 @@ import { useEffect, useState, useTransition } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { signOutAction } from "./actions";
 import { createSection } from "./pursuits/actions";
+import { TemplatePick, type Template } from "./pursuits/TemplatePick";
 import { MiniNotebook } from "./Covers";
 import { SearchIcon, SearchPalette } from "./SearchPalette";
 import { CalendarIcon, CardsIcon, CodeIcon, HomeIcon, XIcon } from "./icons";
@@ -228,6 +229,7 @@ function Avatar({ user }: { user: Props["user"] }) {
 function NewNotebook({ className }: { className: string }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
+  const [template, setTemplate] = useState<Template>("study");
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const router = useRouter();
@@ -244,7 +246,7 @@ function NewNotebook({ className }: { className: string }) {
         const n = name.trim();
         if (!n) return setOpen(false);
         start(async () => {
-          const r = await createSection(n);
+          const r = await createSection(n, template);
           if (r.error) return setError(r.error);
           setName("");
           setOpen(false);
@@ -258,12 +260,22 @@ function NewNotebook({ className }: { className: string }) {
         value={name}
         disabled={pending}
         onChange={(e) => setName(e.target.value)}
-        onBlur={() => !name.trim() && setOpen(false)}
         onKeyDown={(e) => e.key === "Escape" && setOpen(false)}
         placeholder="Nombre"
         aria-label="Nombre de la libreta"
         className="w-full rounded-md border border-border-subtle bg-white px-2 py-1 text-sm"
       />
+      <div className="mt-1.5">
+        <TemplatePick value={template} onChange={setTemplate} compact />
+      </div>
+      <div className="mt-1.5 flex gap-1.5">
+        <button type="submit" disabled={pending || !name.trim()} className="flex-1 rounded-md bg-ink px-2 py-1 text-xs font-medium text-white disabled:opacity-40">
+          Crear
+        </button>
+        <button type="button" onClick={() => setOpen(false)} className="rounded-md px-2 py-1 text-xs text-ink-faint hover:bg-chip">
+          Cancelar
+        </button>
+      </div>
       {error && <span className="px-1 text-xs text-red-500">{error}</span>}
     </form>
   );
