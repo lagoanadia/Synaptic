@@ -268,7 +268,9 @@ Respond with ONLY JSON: {"hint": "..."}`,
 
 // "No lo sé": how to solve it, explained like a teacher at the board —
 // the idea, the steps, then a solution with every line commented.
-export async function explainSolution(id: string): Promise<{ error: string | null; steps?: string[]; code?: string }> {
+export type ExplainStep = { say: string; code: string };
+
+export async function explainSolution(id: string): Promise<{ error: string | null; steps?: ExplainStep[]; code?: string }> {
   const { userId, email } = await signedIn();
   const challenge = await prisma.challenge.findFirst({ where: { id, userId } });
   if (!challenge) return { error: "Reto no encontrado" };
@@ -283,14 +285,17 @@ Starter code:
 ${challenge.starterCode}
 
 In Spanish, plain simple words:
-- "steps": 3-5 steps from the idea to the code. The first says the idea in one sentence ("Hay que recorrer la lista e ir sumando"). Each ONE short sentence; code in \`backticks\`.
-- "code": a simple, readable solution a beginner can follow (no clever one-liners), with a short Spanish comment above each important line explaining WHY.
+- "steps": 3-5 steps that build the solution piece by piece. Each step: "say" = ONE short, friendly sentence (max ~14 words) saying what we do and why; "code" = ONLY the 1-4 lines this step adds (no comments).
+- "code": the whole solution put together: simple and readable (no clever one-liners), NO comments, short lines (under 45 characters; break long ones).
 
-Respond with ONLY JSON: {"steps": ["..."], "code": "..."}`,
+Respond with ONLY JSON: {"steps": [{"say": "...", "code": "..."}], "code": "..."}`,
       { maxTokens: 2500 },
     ),
   );
-  const steps = arr(data.steps).map((x) => str(x, 300)).filter(Boolean).slice(0, 6);
+  const steps = arr(data.steps)
+    .map((x) => ({ say: str(obj(x).say, 300), code: str(obj(x).code, 1500) }))
+    .filter((x) => x.say)
+    .slice(0, 6);
   const code = str(data.code, 6000);
   if (!steps.length || !code) return { error: "No se ha podido contactar con la IA ahora mismo" };
   await budget.charge();
