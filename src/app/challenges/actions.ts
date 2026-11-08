@@ -265,3 +265,34 @@ Respond with ONLY JSON: {"hint": "..."}`,
   await budget.charge();
   return { error: null, hint };
 }
+
+// "No lo sé": how to solve it, explained like a teacher at the board —
+// the idea, the steps, then a solution with every line commented.
+export async function explainSolution(id: string): Promise<{ error: string | null; steps?: string[]; code?: string }> {
+  const { userId, email } = await signedIn();
+  const challenge = await prisma.challenge.findFirst({ where: { id, userId } });
+  if (!challenge) return { error: "Reto no encontrado" };
+  const budget = await aiBudget(userId, email);
+  const limited = await budget.check();
+  if (limited) return { error: limited };
+  const data = obj(
+    await askJson(
+      `A beginner is stuck on this ${challenge.language} challenge and pressed "I don't know". Teach them how to solve it, like a patient teacher at the board.
+Task: ${challenge.prompt}
+Starter code:
+${challenge.starterCode}
+
+In Spanish, plain simple words:
+- "steps": 3-5 steps from the idea to the code. The first says the idea in one sentence ("Hay que recorrer la lista e ir sumando"). Each ONE short sentence; code in \`backticks\`.
+- "code": a simple, readable solution a beginner can follow (no clever one-liners), with a short Spanish comment above each important line explaining WHY.
+
+Respond with ONLY JSON: {"steps": ["..."], "code": "..."}`,
+      { maxTokens: 2500 },
+    ),
+  );
+  const steps = arr(data.steps).map((x) => str(x, 300)).filter(Boolean).slice(0, 6);
+  const code = str(data.code, 6000);
+  if (!steps.length || !code) return { error: "No se ha podido contactar con la IA ahora mismo" };
+  await budget.charge();
+  return { error: null, steps, code };
+}
