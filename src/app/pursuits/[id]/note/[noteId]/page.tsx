@@ -1,7 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { autoTitle } from "@/lib/text";
 import { isSlideFile } from "@/lib/slides";
 import { PageView } from "../../PageView";
 import { pageTerms } from "@/lib/blockData";
@@ -41,6 +40,7 @@ export default async function NotePage({ params }: { params: Promise<{ id: strin
 
   return (
     <PageView
+      key={note.id}
       terms={terms}
       pursuit={{ id: p.id, title: p.title }}
       crumbs={[
@@ -48,7 +48,6 @@ export default async function NotePage({ params }: { params: Promise<{ id: strin
         { label: p.title, href: `/pursuits/${p.id}` },
         ...(note.section ? [{ label: note.section.name }] : []),
       ]}
-      title={autoTitle(note.content, 14)}
       dump={null}
       note={{ id: note.id, content: note.content, updatedAt: note.updatedAt.toISOString() }}
       slides={{

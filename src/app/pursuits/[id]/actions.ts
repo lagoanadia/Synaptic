@@ -8,8 +8,9 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { groq } from "@/lib/groq";
 import type { ChatCompletionContentPartImage } from "groq-sdk/resources/chat/completions";
-import { PursuitStatus, MemberRole, ProjectCardStatus } from "@/generated/prisma/client";
-import { upsertSection, upsertContentSection } from "@/lib/sections";
+import { MemberRole, ProjectCardStatus } from "@/generated/prisma/client";
+import { upsertContentSection } from "@/lib/sections";
+import { splitTitle, withTitle } from "@/lib/text";
 import { buildOrTsQuery } from "@/lib/search";
 import { parseOrganizeResponse } from "@/lib/organize";
 import { parseJsonLoosely } from "@/lib/json";
@@ -1375,4 +1376,23 @@ export async function addToMap(
       : null;
   const r = await addNamedConcept(session.user.id, pursuitId, { unitId: row?.sectionId ?? null }, text);
   return r.error === null ? { error: null, href: `/pursuits/${pursuitId}/learn/${r.mapId}?c=${r.conceptId}` } : { error: r.error };
+}
+
+// Right-click → rename on the board: the title is the first "# " line of
+// both versions of the page.
+export async function renamePage(pursuitId: string, page: { dumpId: string | null; noteId: string | null }, title: string): Promise<{ error: string | null }> {
+  await requireAccess(pursuitId);
+  const t = title.replace(/\s+/g, " ").trim().slice(0, 140);
+  if (!t) return { error: "Escribe un título" };
+  const [dump, note] = await Promise.all([
+    page.dumpId ? prisma.brainDump.findFirst({ where: { id: page.dumpId, pursuitId }, select: { id: true, content: true } }) : null,
+    page.noteId ? prisma.note.findFirst({ where: { id: page.noteId, pursuitId }, select: { id: true, content: true } }) : null,
+  ]);
+  if (!dump && !note) return { error: "Página no encontrada" };
+  await Promise.all([
+    dump && prisma.brainDump.update({ where: { id: dump.id }, data: { content: withTitle(t, splitTitle(dump.content).body) } }),
+    note && prisma.note.update({ where: { id: note.id }, data: { content: withTitle(t, splitTitle(note.content).body) } }),
+  ]);
+  revalidatePath(`/pursuits/${pursuitId}`);
+  return { error: null };
 }
