@@ -52,7 +52,7 @@ function ProjectCardTile({ pursuitId, project }: { pursuitId: string; project: P
       <DeleteButton
         action={deleteProject.bind(null, pursuitId, project.id)}
         confirmMessage={`¿Eliminar "${project.title}"? Se borran también su tablero y tarjetas — no se puede deshacer.`}
-        className="absolute top-3 right-3 text-ink-faint opacity-0 hover:text-red-500 group-hover:opacity-100"
+        className="absolute top-3 right-3 text-ink-faint opacity-40 hover:text-red-500 group-hover:opacity-100"
       >
         ×
       </DeleteButton>
