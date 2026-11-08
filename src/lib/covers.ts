@@ -68,9 +68,9 @@ export const FOLDER_COVERS = {
   ...Object.fromEntries(COLLECTIONS.flatMap((c) => COLLECTION_KINDS.map((k) => [`${c.id}${k}`, tabOf(c, k)]))),
 } as Record<FolderCover, string>;
 
-// How the cover picker lists them: the originals, then each collection.
+// How the cover picker lists them, one collection per row. The older
+// single covers still draw for folders that chose one, but aren't offered.
 export const FOLDER_GROUPS: { name: string; covers: FolderCover[] }[] = [
-  { name: "Clásicas", covers: ["ikat", "stripes", "gingham", "sage", "forest", "dots", "plum", "azulejo", "rainbow", "madras"] },
   { name: "Burdeos y oliva", covers: ["orchid", "regency", "olive", "oxblood", "olivecroc", "damask"] },
   ...COLLECTIONS.map((c) => ({ name: c.name, covers: COLLECTION_KINDS.map((k) => `${c.id}${k}` as FolderCover) })),
 ];
@@ -82,8 +82,8 @@ export function mix(a: string, b: string, t: number): string {
   return `#${x.map((v, i) => Math.round(v + (y[i] - v) * t).toString(16).padStart(2, "0")).join("")}`;
 }
 
-// Unset folders are picked from the originals only (see notebooks above).
-const FOLDER_KEYS: FolderCover[] = ["ikat", "stripes", "gingham", "sage", "forest", "dots", "plum"];
+// Unset folders get one of the collections' covers, picked from their id.
+const FOLDER_KEYS: FolderCover[] = FOLDER_GROUPS.flatMap((g) => g.covers);
 // Drawn with a noise filter rather than a repeating pattern.
 export const FILTER_FOLDERS: readonly FolderCover[] = ["oxblood", "olivecroc", ...COLLECTIONS.flatMap((c) => [`${c.id}Croc`, `${c.id}LightCroc`] as FolderCover[])];
 
