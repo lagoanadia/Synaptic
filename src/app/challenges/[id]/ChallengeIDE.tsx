@@ -1,14 +1,15 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
-import { ArrowLeft, ArrowRight, CheckIcon, XIcon } from "@/app/icons";
+import { ArrowLeft, ArrowRight, CheckIcon, TrashIcon, XIcon } from "@/app/icons";
 import { CodeEditor } from "../CodeEditor";
 import { PromptText } from "../PromptText";
 import { DIFFICULTIES, difficultyOf } from "../look";
 import { Badge, Bars } from "../ChallengeList";
 import { runInSandbox, warmSandbox } from "../sandbox";
-import { getHint, reviewSolution, saveRun } from "../actions";
+import { deleteChallenge, getHint, reviewSolution, saveRun } from "../actions";
 import { paramNames, parseReview, type ChallengeTest, type Language, type RunOutput } from "@/lib/challenge";
 
 type Challenge = {
@@ -71,6 +72,8 @@ export function ChallengeIDE({ challenge }: { challenge: Challenge }) {
   const [note, setNote] = useState<string | null>(null);
   const [isHinting, startHint] = useTransition();
   const [isReviewing, startReview] = useTransition();
+  const [isDeleting, startDelete] = useTransition();
+  const router = useRouter();
 
   useEffect(warmSandbox, []);
   // Remember whether you hid the task (browser storage, after mount).
@@ -146,6 +149,22 @@ export function ChallengeIDE({ challenge }: { challenge: Challenge }) {
           className={`${icon} text-lg`}
         >
           ↺
+        </button>
+        <button
+          type="button"
+          onClick={() =>
+            window.confirm(`¿Eliminar "${challenge.title}"?`) &&
+            startDelete(async () => {
+              await deleteChallenge(challenge.id);
+              router.push("/challenges");
+            })
+          }
+          disabled={isDeleting}
+          title="Eliminar reto"
+          aria-label="Eliminar reto"
+          className={`${icon} hover:text-red-600`}
+        >
+          <TrashIcon size={15} />
         </button>
         <button type="button" onClick={run} disabled={running} className="flex items-center gap-2 rounded-lg bg-[#448361] px-3.5 py-2 text-sm font-semibold text-white hover:brightness-105 disabled:opacity-60">
           {running ? "Ejecutando…" : "▶ Ejecutar"}
