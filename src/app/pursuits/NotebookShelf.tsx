@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Notebook } from "../Covers";
 import type { NotebookCover } from "@/lib/covers";
 import { createSection, reorderSections } from "./actions";
+import { TemplatePick, type Template } from "./TemplatePick";
 import { EditMenu, menuAt, type EditTarget } from "./EditMenu";
 
 export type ShelfItem = { id: string; name: string; cover: NotebookCover; href: string; movable: boolean };
@@ -73,6 +74,7 @@ export function NotebookShelf({ items: initial, width = 92 }: { items: ShelfItem
 function NewNotebookTile({ width }: { width: number }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
+  const [template, setTemplate] = useState<Template>("study");
   const [pending, start] = useTransition();
   const router = useRouter();
   return (
@@ -84,24 +86,32 @@ function NewNotebookTile({ width }: { width: number }) {
             const n = name.trim();
             if (!n) return setOpen(false);
             start(async () => {
-              const r = await createSection(n);
+              const r = await createSection(n, template);
               if (r.id) router.push(`/pursuits/s/${r.id}`);
             });
           }}
-          className="grid place-items-center rounded-md border-[1.5px] border-dashed border-[#d3d1cb] p-2"
-          style={{ width, height: Math.round(width * 1.3) }}
+          className="flex flex-col justify-center gap-1.5 rounded-md border-[1.5px] border-dashed border-[#d3d1cb] p-2"
+          style={{ width: Math.max(width, 190), minHeight: Math.round(width * 1.3) }}
         >
           <input
             autoFocus
             value={name}
             disabled={pending}
             onChange={(e) => setName(e.target.value)}
-            onBlur={() => !name.trim() && setOpen(false)}
             onKeyDown={(e) => e.key === "Escape" && setOpen(false)}
             placeholder="Nombre"
             aria-label="Nombre de la libreta"
             className="w-full rounded border border-border-subtle bg-white px-1.5 py-1 text-xs"
           />
+          <TemplatePick value={template} onChange={setTemplate} compact />
+          <div className="flex gap-1.5">
+            <button type="submit" disabled={pending || !name.trim()} className="flex-1 rounded bg-ink px-2 py-1 text-xs font-medium text-white disabled:opacity-40">
+              Crear
+            </button>
+            <button type="button" onClick={() => setOpen(false)} className="rounded px-2 py-1 text-xs text-ink-faint hover:bg-chip">
+              ✕
+            </button>
+          </div>
         </form>
       ) : (
         <button

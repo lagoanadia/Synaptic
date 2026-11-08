@@ -10,8 +10,9 @@ import type { NotebookCover } from "@/lib/covers";
 import { saveHomeBlocks } from "./actions";
 
 type Notebook = { id: string; name: string; cover: NotebookCover };
+type Project = { id: string; title: string; cover: string };
 
-const TITLE: Record<HomeBlockType, string> = { week: "Esta semana", folders: "Carpetas de", map: "Mapa de", recent: "Recientes de" };
+const TITLE: Record<HomeBlockType, string> = { week: "Esta semana", today: "Para hoy", project: "Proyecto", folders: "Carpetas de", map: "Mapa de", recent: "Recientes de" };
 
 // The home page's blocks. Normally just the content; "Editar" lets you
 // pick each block's notebook, reorder, remove and add blocks. Changes
@@ -19,10 +20,12 @@ const TITLE: Record<HomeBlockType, string> = { week: "Esta semana", folders: "Ca
 export function HomeBlocks({
   blocks: initial,
   notebooks,
+  projects = [],
   content,
 }: {
   blocks: HomeBlock[];
   notebooks: Notebook[];
+  projects?: Project[];
   // Server-rendered content per block id (missing for a just-added block
   // until the refresh lands).
   content: Record<string, React.ReactNode>;
@@ -60,7 +63,21 @@ export function HomeBlocks({
                 {editing ? (
                   <>
                     {TITLE[b.type]}
-                    {b.type !== "week" && (
+                    {b.type === "project" && (
+                      <select
+                        value={b.pursuitId ?? ""}
+                        onChange={(e) => save(blocks.map((x) => (x.id === b.id ? { ...x, pursuitId: e.target.value || null } : x)))}
+                        aria-label="Proyecto"
+                        className="rounded-md bg-chip px-2 py-0.5 text-sm font-medium"
+                      >
+                        {projects.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.title}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                    {b.type !== "week" && b.type !== "today" && b.type !== "project" && (
                     <select
                       value={b.sectionId ?? ""}
                       onChange={(e) => save(blocks.map((x) => (x.id === b.id ? { ...x, sectionId: e.target.value || null } : x)))}
@@ -77,8 +94,8 @@ export function HomeBlocks({
                   </>
                 ) : (
                   <>
-                    {nb && b.type !== "week" && <MiniNotebook cover={nb.cover} size={14} />}
-                    {b.type === "week" ? "Esta semana" : b.type === "map" ? "Tu mapa" : b.type === "recent" ? "Recientes" : nb?.name}
+                    {nb && !["week", "today", "project"].includes(b.type) && <MiniNotebook cover={nb.cover} size={14} />}
+                    {b.type === "week" ? "Esta semana" : b.type === "today" ? "Para hoy" : b.type === "project" ? "Proyecto" : b.type === "map" ? "Tu mapa" : b.type === "recent" ? "Recientes" : nb?.name}
                   </>
                 )}
               </h2>
@@ -120,7 +137,7 @@ export function HomeBlocks({
                     type="button"
                     onClick={() => {
                       setAdding(false);
-                      save([...blocks, { ...newBlock(t.type), sectionId: notebooks[0]?.id ?? null }]);
+                      save([...blocks, { ...newBlock(t.type), sectionId: notebooks[0]?.id ?? null, ...(t.type === "project" ? { pursuitId: projects[0]?.id ?? null } : {}) }]);
                     }}
                     className="block w-full rounded-md px-2.5 py-1.5 text-left text-sm hover:bg-chip"
                   >

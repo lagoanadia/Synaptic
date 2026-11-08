@@ -53,7 +53,7 @@ export function AskPursuit({ pursuitId }: { pursuitId: string }) {
               handleAsk();
             }
           }}
-          placeholder="Pregunta sobre esta asignatura…"
+          placeholder="Pregunta sobre lo que hay aquí…"
           disabled={isPending}
           className="flex-1 rounded-lg border border-border-subtle bg-white px-3.5 py-2 text-sm disabled:opacity-50"
         />

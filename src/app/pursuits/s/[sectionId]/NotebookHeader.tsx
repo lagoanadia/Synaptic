@@ -6,9 +6,10 @@ import { useRouter } from "next/navigation";
 import { MiniNotebook, Notebook } from "@/app/Covers";
 import { NOTEBOOK_COVERS, type NotebookCover } from "@/lib/covers";
 import { deleteSection, setNotebook } from "../../actions";
+import { TemplatePick } from "../../TemplatePick";
 
-// A notebook's header: its cover, name (click to rename), "Repaso de hoy"
-// when it has study tools, and ⚙ for study tools on/off, cover, delete.
+// A notebook's header: its cover, name (click to rename), "Repasar" for
+// study notebooks, and ⚙ for its template (estudios / proyectos), cover, delete.
 export function NotebookHeader({
   id,
   name: initialName,
@@ -75,21 +76,11 @@ export function NotebookHeader({
         )}
         {menu && (
           <div className="absolute top-full right-0 z-20 mt-2 flex w-72 flex-col gap-4 rounded-xl bg-white p-4 text-sm shadow-[0_0_0_1px_rgba(15,15,15,.05),0_12px_32px_rgba(15,15,15,.18)]">
-            <label className="flex items-center justify-between gap-3">
-              <span>
-                Herramientas de estudio
-                <span className="block text-xs text-ink-faint">Tarjetas, mapa, repaso y retos</span>
-              </span>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={study}
-                onClick={() => update({ study: !study })}
-                className={`relative h-[22px] w-[38px] shrink-0 rounded-full transition-colors ${study ? "bg-accent" : "bg-[#e3e2de]"}`}
-              >
-                <span className={`absolute top-[3px] size-4 rounded-full bg-white shadow transition-all ${study ? "left-[19px]" : "left-[3px]"}`} />
-              </button>
-            </label>
+            <div className="flex flex-col gap-2">
+              <span className="text-xs text-ink-faint">Plantilla</span>
+              <TemplatePick value={study ? "study" : "projects"} onChange={(t) => update({ study: t === "study" })} />
+              <span className="text-[11px] text-ink-faint">Cambiarla no borra nada: solo cambia lo que ves.</span>
+            </div>
             <div className="flex flex-col gap-2">
               <span className="text-xs text-ink-faint">Tapa</span>
               <div className="flex flex-wrap gap-2">
