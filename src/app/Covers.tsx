@@ -89,7 +89,7 @@ export function Folder({
           ))}
         </span>
       )}
-      <span className="relative z-[1] block h-0 w-[42%] rounded-t-[5px] pt-[clamp(3px,4%,7px)]" style={{ background: color }} />
+      <span className="relative z-[1] block h-0 w-[42%] rounded-t-[5px] pt-[min(max(1.5px,5.5%),15px)]" style={{ background: color }} />
       <span className="relative z-[2] block aspect-[3/2] overflow-hidden rounded-[0_6px_6px_6px] shadow-[0_1px_1px_rgba(0,0,0,.08),0_8px_18px_-8px_rgba(40,30,20,.35)]" style={{ background: color }}>
         <svg className="absolute inset-0 h-full w-full" preserveAspectRatio="none" aria-hidden>
           {/* Bigger folders get a bigger print, so the pattern reads instead of turning to noise. */}
