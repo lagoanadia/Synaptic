@@ -64,6 +64,8 @@ function brief(v: unknown): string {
 export function ChallengeIDE({ challenge }: { challenge: Challenge }) {
   const [code, setCode] = useState(challenge.code ?? challenge.starterCode);
   const [output, setOutput] = useState<RunOutput | null>(null);
+  // "Ejecutar": a free run with the example only, nothing marked.
+  const [trial, setTrial] = useState<RunOutput | null>(null);
   const [running, setRunning] = useState(false);
   const [solved, setSolved] = useState(challenge.passed);
   const [picked, setPicked] = useState<number | null>(null);
@@ -92,11 +94,26 @@ export function ChallengeIDE({ challenge }: { challenge: Challenge }) {
     } catch {}
   }
 
+  // Runs your code with the example's input: shows what it returns and
+  // what you console.log, like a terminal. Doesn't check anything.
+  async function tryRun() {
+    if (running) return;
+    setRunning(true);
+    const out = await runInSandbox(challenge.language, code, challenge.entry, challenge.tests.slice(0, 1));
+    setTrial(out);
+    setOutput(null);
+    setRunning(false);
+    setTermOpen(true);
+    saveRun(challenge.id, code, false).catch(() => {});
+  }
+
+  // "Listo": every check.
   async function run() {
     if (running) return;
     setRunning(true);
     const out = await runInSandbox(challenge.language, code, challenge.entry, challenge.tests);
     setOutput(out);
+    setTrial(null);
     setRunning(false);
     setPicked(null);
     setTermOpen(true);
@@ -168,9 +185,12 @@ export function ChallengeIDE({ challenge }: { challenge: Challenge }) {
         >
           <TrashIcon size={15} />
         </button>
-        <button type="button" onClick={run} disabled={running} className="flex items-center gap-2 rounded-lg bg-[#448361] px-3.5 py-2 text-sm font-semibold text-white hover:brightness-105 disabled:opacity-60">
-          {running ? "Ejecutando…" : "▶ Ejecutar"}
-          <kbd className="hidden text-xs font-normal opacity-70 sm:inline">Ctrl ↵</kbd>
+        <button type="button" onClick={tryRun} disabled={running} title="Prueba tu código con el ejemplo" className="flex items-center gap-2 rounded-lg border border-border-subtle px-3.5 py-2 text-sm font-semibold text-ink hover:bg-chip disabled:opacity-60">
+          ▶ Ejecutar
+          <kbd className="hidden text-xs font-normal text-ink-faint sm:inline">Ctrl ↵</kbd>
+        </button>
+        <button type="button" onClick={run} disabled={running} title="Pasa todas las comprobaciones" className="flex items-center gap-1.5 rounded-lg bg-[#448361] px-3.5 py-2 text-sm font-semibold text-white hover:brightness-105 disabled:opacity-60">
+          <CheckIcon size={14} /> Listo
         </button>
       </header>
 
@@ -210,7 +230,7 @@ export function ChallengeIDE({ challenge }: { challenge: Challenge }) {
 
         <section className="flex min-h-0 min-w-0 flex-1 flex-col" aria-label="Código">
           <div className="min-h-[220px] flex-1">
-            <CodeEditor value={code} language={challenge.language} onChange={setCode} onRun={run} />
+            <CodeEditor value={code} language={challenge.language} onChange={setCode} onRun={tryRun} />
           </div>
 
           {/* Terminal: one dot per check; open it to see the failing case. */}
@@ -238,7 +258,7 @@ export function ChallengeIDE({ challenge }: { challenge: Challenge }) {
                 );
               })}
               <span className="ml-1.5 text-white/50">
-                {running ? "Ejecutando…" : output ? (output.error ? "No se ha podido ejecutar" : `${passedCount} de ${output.results.length}`) : "Ctrl + Enter para comprobar"}
+                {running ? "Ejecutando…" : output ? (output.error ? "No se ha podido ejecutar" : `${passedCount} de ${output.results.length}`) : trial ? "Prueba con el ejemplo" : "Ejecutar para probar · Listo para comprobar"}
               </span>
               {allGreen && (
                 <button
@@ -260,7 +280,15 @@ export function ChallengeIDE({ challenge }: { challenge: Challenge }) {
             </div>
             {termOpen && (
               <div className="flex max-h-[38vh] flex-col gap-2.5 overflow-y-auto px-4 pt-1 pb-4 font-mono text-[12.5px]">
-                {!output && !running && <p className="text-white/40">Ejecuta tu código para ver aquí cada comprobación.</p>}
+                {!output && !trial && !running && <p className="text-white/40">Ejecutar prueba tu código con el ejemplo y enseña tus console.log. Listo pasa todas las comprobaciones.</p>}
+                {trial?.error && <pre className="whitespace-pre-wrap text-[#ff7b7b]">{trial.error}</pre>}
+                {trial && !trial.error && challenge.tests[0] && <Case inputs={inputs(challenge.tests[0])} expected={challenge.tests[0].expected} result={trial.results[0]} react={react} />}
+                {trial && trial.logs.length > 0 && (
+                  <div className="border-t border-white/10 pt-2">
+                    <p className="mb-1 text-white/40">console.log</p>
+                    <pre className="whitespace-pre-wrap text-white/80">{trial.logs.slice(0, 200).join("\n")}</pre>
+                  </div>
+                )}
                 {output?.error && <pre className="whitespace-pre-wrap text-[#ff7b7b]">{output.error}</pre>}
                 {shown !== null && challenge.tests[shown] && output && (
                   <Case inputs={inputs(challenge.tests[shown])} expected={challenge.tests[shown].expected} result={output.results[shown]} react={react} />
