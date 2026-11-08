@@ -109,7 +109,7 @@ export function ChallengeList({ items }: { items: ChallengeItem[] }) {
                   <DeleteButton
                     action={deleteChallenge.bind(null, c.id)}
                     confirmMessage={`¿Eliminar "${c.title}"?`}
-                    className="relative z-10 rounded p-1 text-ink-faint opacity-0 group-hover:opacity-100 hover:text-red-600 focus:opacity-100"
+                    className="relative z-10 rounded p-1 text-ink-faint/60 hover:bg-chip hover:text-red-600"
                   >
                     <TrashIcon size={14} title="Eliminar reto" />
                   </DeleteButton>
