@@ -3,6 +3,8 @@
 // Notebook textures are turbulence noise posterized into 2–4 colours,
 // which reads as marbled / zebra / croc / leopard paper.
 
+import { COLLECTIONS, mix, type Collection } from "@/lib/covers";
+
 type Noise = { type: "fractalNoise" | "turbulence"; freq: string; oct: number; seed: number; r: string; g: string; b: string; smooth?: boolean; srgb?: boolean };
 
 const FILTERS: Record<string, Noise> = {
@@ -26,11 +28,56 @@ const FILTERS: Record<string, Noise> = {
   ember: { type: "fractalNoise", freq: "0.003 0.04", oct: 2, seed: 31, r: "0.3 0.75 0.95 0.55", g: "0.03 0.12 0.42 0.08", b: "0.1 0.08 0.12 0.12", smooth: true, srgb: true },
 };
 
+// Croc noise in a given colour: the colour, then darker steps.
+function crocOf(hex: string, seed: number): Noise {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
+  const steps = (v: number) => [1, 0.72, 0.47, 0.72].map((k) => (v * k).toFixed(3)).join(" ");
+  return { type: "turbulence", freq: "0.07", oct: 2, seed, r: steps(r), g: steps(g), b: steps(b), srgb: true };
+}
+
 // Folder textures that need noise (glossy croc).
 const FOLDER_FILTERS: Record<string, Noise> = {
   oxblood: { type: "turbulence", freq: "0.07", oct: 2, seed: 6, r: "0.36 0.26 0.17 0.26", g: "0.05 0.04 0.03 0.04", b: "0.07 0.05 0.04 0.05", srgb: true },
   olivecroc: { type: "turbulence", freq: "0.07", oct: 2, seed: 8, r: "0.37 0.27 0.19 0.27", g: "0.38 0.28 0.2 0.28", b: "0.1 0.08 0.05 0.08", srgb: true },
+  ...Object.fromEntries(COLLECTIONS.flatMap((c, i) => [[`${c.id}Croc`, crocOf(c.dark, 40 + i)], [`${c.id}LightCroc`, crocOf(mix(c.light, "#000000", 0.3), 50 + i)]])),
 };
+
+// One collection's patterns, after the "Burdeos y oliva" originals.
+function CollectionPatterns({ c }: { c: Collection }) {
+  const darker = (h: string, t: number) => mix(h, "#000000", t);
+  const lighter = (h: string, t: number) => mix(h, "#ffffff", t);
+  return (
+    <>
+      <pattern id={`fp-${c.id}Flower`} width="36" height="36" patternUnits="userSpaceOnUse">
+        <rect width="36" height="36" fill={c.dark} />
+        {[[4, 4], [22, 10], [10, 24], [30, 30], [28, 20]].map(([x, y]) => (
+          <circle key={`${x}${y}`} cx={x} cy={y} r="2.2" fill="none" stroke={lighter(c.dark, 0.15)} strokeWidth=".8" />
+        ))}
+        <Flower x={26} y={9} r={7} petal={c.light} heart={darker(c.light, 0.5)} />
+        <Flower x={8} y={27} r={4.5} petal={darker(c.light, 0.12)} heart={darker(c.light, 0.5)} />
+      </pattern>
+      <pattern id={`fp-${c.id}Stripe`} width="16" height="10" patternUnits="userSpaceOnUse">
+        <rect width="16" height="10" fill={darker(c.dark, 0.25)} />
+        <rect width="3" height="10" fill={c.light} />
+        <rect x="5" width="1" height="10" fill={c.accent} />
+        <rect x="8" width="4" height="10" fill={c.dark} />
+        <rect x="13" width="1" height="10" fill={lighter(c.light, 0.2)} />
+      </pattern>
+      <pattern id={`fp-${c.id}Bloom`} width="40" height="40" patternUnits="userSpaceOnUse">
+        <rect width="40" height="40" fill={c.light} />
+        <circle cx="12" cy="30" r="14" fill={darker(c.light, 0.2)} opacity=".6" />
+        <Flower x={30} y={12} r={8} petal={c.dark} heart={c.accent} />
+      </pattern>
+      <pattern id={`fp-${c.id}Damask`} width="28" height="28" patternUnits="userSpaceOnUse">
+        <rect width="28" height="28" fill={c.mid} />
+        <path d="M14 3c5 4 5 9 0 12-5-3-5-8 0-12Z" fill={darker(c.mid, 0.22)} />
+        <path d="M14 15c-3 2-6 2-8 0M14 15c3 2 6 2 8 0" fill="none" stroke={darker(c.mid, 0.22)} strokeWidth="1.4" strokeLinecap="round" />
+        <circle cx="14" cy="21" r="1.6" fill={darker(c.mid, 0.22)} />
+        <path d="M0 24c3-2 3-6 0-8M28 24c-3-2-3-6 0-8" fill="none" stroke={darker(c.mid, 0.22)} strokeWidth="1.2" />
+      </pattern>
+    </>
+  );
+}
 
 // A five-petal flower centred on (x, y).
 function Flower({ x, y, r, petal, heart }: { x: number; y: number; r: number; petal: string; heart: string }) {
@@ -71,6 +118,9 @@ export function CoverDefs() {
         ))}
         <NotebookPatterns />
         <FolderPatterns />
+        {COLLECTIONS.map((c) => (
+          <CollectionPatterns key={c.id} c={c} />
+        ))}
         <pattern id="fp-stripes" width="14" height="14" patternUnits="userSpaceOnUse" patternTransform="rotate(90)">
           <rect width="14" height="14" fill="#d9a441" />
           <rect width="3" height="14" fill="#b6423a" />
