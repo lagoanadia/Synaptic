@@ -5,9 +5,19 @@ import { useRef, useState, useTransition } from "react";
 import { Folder } from "../Covers";
 import { TASK_COLUMNS, dueLabel, progress, type ProjectItem, type TaskItem, type TaskStatus } from "@/lib/projects";
 import type { FolderCover } from "@/lib/covers";
-import { addTask, updateTask } from "./actions";
+import { TrashIcon } from "@/app/icons";
+import { addTask, deleteTask, updateTask } from "./actions";
 
-function Check({ task, today, onToggle, project }: { task: TaskItem; today: string; onToggle: () => void; project?: { title: string; cover: string } }) {
+// Always visible (faint): hover-only buttons never show on touch screens.
+function Trash({ onClick }: { onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick} title="Eliminar tarea" aria-label="Eliminar tarea" className="shrink-0 rounded p-0.5 text-ink-faint/50 hover:bg-chip hover:text-red-600">
+      <TrashIcon size={13} />
+    </button>
+  );
+}
+
+function Check({ task, today, onToggle, onDelete, project }: { task: TaskItem; today: string; onToggle: () => void; onDelete?: () => void; project?: { title: string; cover: string } }) {
   const done = task.status === "DONE";
   const due = task.dueDate && !done ? dueLabel(task.dueDate, today) : null;
   return (
@@ -28,6 +38,7 @@ function Check({ task, today, onToggle, project }: { task: TaskItem; today: stri
           <span className="truncate">{project.title}</span>
         </span>
       )}
+      {onDelete && <Trash onClick={onDelete} />}
     </div>
   );
 }
@@ -43,6 +54,10 @@ export function ProjectChecklist({ project, today }: { project: ProjectItem; tod
     const status: TaskStatus = t.status === "DONE" ? "TODO" : "DONE";
     setTasks((ts) => ts.map((x) => (x.id === t.id ? { ...x, status } : x)));
     start(() => updateTask(t.id, { status }));
+  };
+  const remove = (t: TaskItem) => {
+    setTasks((ts) => ts.filter((x) => x.id !== t.id));
+    start(() => deleteTask(t.id));
   };
   return (
     <div className="rounded-xl p-4 shadow-[0_0_0_1px_rgba(15,15,15,.07)]">
@@ -60,7 +75,7 @@ export function ProjectChecklist({ project, today }: { project: ProjectItem; tod
         </div>
       )}
       {sorted.map((t) => (
-        <Check key={t.id} task={t} today={today} onToggle={() => toggle(t)} />
+        <Check key={t.id} task={t} today={today} onToggle={() => toggle(t)} onDelete={() => remove(t)} />
       ))}
       <QuickAdd
         onAdd={(title) => {
@@ -85,6 +100,10 @@ export function TodayFocus({ projects, today, focus }: { projects: ProjectItem[]
   const set = (t: TaskItem, status: TaskStatus) => {
     setTasks((ts) => ts.map((x) => (x.id === t.id ? { ...x, status } : x)));
     start(() => updateTask(t.id, { status }));
+  };
+  const remove = (t: TaskItem) => {
+    setTasks((ts) => ts.filter((x) => x.id !== t.id));
+    start(() => deleteTask(t.id));
   };
   if (projects.length === 0) return <p className="py-6 text-sm text-ink-faint">Crea una libreta sin herramientas de estudio para tus proyectos y sus tareas saldrán aquí.</p>;
   return (
@@ -124,6 +143,7 @@ export function TodayFocus({ projects, today, focus }: { projects: ProjectItem[]
                       ▶
                     </button>
                   )}
+                  <Trash onClick={() => remove(t)} />
                 </div>
               );
             })}

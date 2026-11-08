@@ -132,7 +132,7 @@ function Card({
           </div>
           <DeleteButton
             action={deleteProjectCard.bind(null, pursuitId, projectId, card.id)}
-            className="text-ink-faint opacity-0 hover:text-red-500 group-hover:opacity-100"
+            className="text-ink-faint opacity-40 hover:text-red-500 group-hover:opacity-100"
           >
             ×
           </DeleteButton>
