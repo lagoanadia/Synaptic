@@ -72,60 +72,69 @@ ${picked.map((n, i) => `--- NOTE ${i + 1} (${n.pursuit.title}) ---\n${n.content.
   // Skills already trained (solved), so new ones go to the gaps.
   const practised = [...new Set(existing.filter((c) => c.passed && c.skill).map((c) => c.skill!))].slice(0, 20);
 
-  const data = obj(
-    await askJson(
-      `Create FIVE different small coding challenges in ${LANGUAGE_INFO[language].label} for someone getting back into coding after a break. Difficulty: ${difficulty} (easy = 5-15 lines, medium = loops/conditions/data structures, hard = a small algorithm).
-${context}
-${topic ? `Topic requested: ${topic}.` : ""}
-FIRST work out the SKILL MAP for this material: the 4-6 concrete programming skills someone who learned it should be able to APPLY (e.g. "recorrer una lista acumulando un total", "contar apariciones con un diccionario", "validar datos con condiciones", "transformar una lista de objetos", "recursividad sobre una estructura"). Skills, not topics or facts. ${practised.length ? `Already practised (put these last): ${practised.map((p) => `"${p}"`).join(", ")}.` : ""}
-THEN write each challenge to train ONE skill from the map, every challenge a DIFFERENT skill. If the notes contain exercises from class, AT MOST ONE challenge may be close to one of them ("from_class": true); every other one must be ORIGINAL — a new situation that needs the same skill, never a copy or light rewording of a class exercise.
-None may be the same as or a variant of these existing challenges: ${taken.length ? taken.map((t) => `"${t}"`).join(", ") : "(none yet)"}.
+  const ask = async (context: string): Promise<DraftForBrowser[]> => {
+    const data = obj(
+      await askJson(
+        `Create FIVE different small coding challenges in ${LANGUAGE_INFO[language].label} for someone getting back into coding after a break. Difficulty: ${difficulty} (easy = 5-15 lines, medium = loops/conditions/data structures, hard = a small algorithm).
+  ${context}
+  ${topic ? `The learner asked for this — EVERY challenge must practise it: ${topic}` : ""}
+  FIRST work out the SKILL MAP for this material: the 4-6 concrete programming skills someone who learned it should be able to APPLY (e.g. "recorrer una lista acumulando un total", "contar apariciones con un diccionario", "validar datos con condiciones", "transformar una lista de objetos", "recursividad sobre una estructura"). Skills, not topics or facts. ${practised.length ? `Already practised (put these last): ${practised.map((p) => `"${p}"`).join(", ")}.` : ""}
+  THEN write each challenge to train ONE skill from the map, every challenge a DIFFERENT skill. If the notes contain exercises from class, AT MOST ONE challenge may be close to one of them ("from_class": true); every other one must be ORIGINAL — a new situation that needs the same skill, never a copy or light rewording of a class exercise.
+  None may be the same as or a variant of these existing challenges: ${taken.length ? taken.map((t) => `"${t}"`).join(", ") : "(none yet)"}.
 
-Be strict about what makes a GOOD coding challenge: solving it must take real programming — processing input data with loops, conditions, accumulating, transforming, validating, counting, searching or simulating. The notes give the DOMAIN (the kind of data and rules), never text to copy.
-REJECT (never write) challenges that are theory turned into code:
-- mapping a number/key to a description or definition from the notes ("phase 3 → 'Execution: …'")
-- returning memorized sentences, names or facts; lookup tables of strings
-- anything whose solution is mostly copied text or a big switch/if-chain of constants
-Instead, turn the idea into DATA + RULES. Example: a note on an app's lifecycle phases → "Given a list of lifecycle events, return the final state, or 'invalid' if a transition isn't allowed" (a state machine), not "return the description of phase N". A note on colour theory → "Given a list of RGB colours, return those that are greys", not "return the name of a colour".
-EVERYTHING the learner reads is in Spanish (title, prompt, comments); identifiers in code may stay in English.
-Expected outputs are short values: numbers, booleans, short strings (< 40 characters), arrays or objects — never sentences.
+  Be strict about what makes a GOOD coding challenge: solving it must take real programming — processing input data with loops, conditions, accumulating, transforming, validating, counting, searching or simulating. The notes give the DOMAIN (the kind of data and rules), never text to copy.
+  REJECT (never write) challenges that are theory turned into code:
+  - mapping a number/key to a description or definition from the notes ("phase 3 → 'Execution: …'")
+  - returning memorized sentences, names or facts; lookup tables of strings
+  - anything whose solution is mostly copied text or a big switch/if-chain of constants
+  Instead, turn the idea into DATA + RULES. Example: a note on an app's lifecycle phases → "Given a list of lifecycle events, return the final state, or 'invalid' if a transition isn't allowed" (a state machine), not "return the description of phase N". A note on colour theory → "Given a list of RGB colours, return those that are greys", not "return the name of a colour".
+  EVERYTHING the learner reads is in Spanish (title, prompt, comments); identifiers in code may stay in English.
+  Expected outputs are short values: numbers, booleans, short strings (< 40 characters), arrays or objects — never sentences.
 
-${SHAPE[language]}
+  ${SHAPE[language]}
 
-Respond with ONLY JSON: {"skills": ["…", "…"], "challenges": [
-  {
-    "skill": "the skill from the map it trains, in Spanish, short",
-    "from_class": false,
-    "title": "short title, in Spanish",
-    "prompt": "the task, in Spanish, as markdown: one or two plain sentences on what to do; then a line **Recibe:** followed by one '- \`param\`: what it is' line per parameter; then **Devuelve:** and what it returns; then one example as a fenced code block (\`\`\`), e.g. \`\`\`\\nnombreFuncion(...) → resultado\\n\`\`\`. Never glue the example into the prose.",
-    "entry": "functionName",
-    "starter_code": "the function signature with a placeholder body and a short comment IN SPANISH (e.g. // Escribe tu código aquí)",
-    "tests": [{"args": [...], "expected": ...}],
-    "solution": "a correct reference solution",
-    "based_on": "title of the note it practices, or null"
-  }
-]}
-5-8 tests each, normal and edge cases. Only JSON values in args/expected.`,
-      { maxTokens: 12000 },
-    ),
-  );
-  const seen = new Set(taken.map(titleKey));
-  const candidates: (DraftForBrowser & { fromClass: boolean })[] = [];
-  for (const raw of arr(data.challenges)) {
-    const draft = parseChallenge(raw);
-    if (!draft || seen.has(titleKey(draft.title)) || isTheoryLookup(draft)) continue;
-    seen.add(titleKey(draft.title));
-    const o = obj(raw);
-    const basedOn = str(o.based_on, 120);
-    const prompt = basedOn ? `De tu nota “${basedOn}”\n\n${draft.prompt}` : draft.prompt;
-    candidates.push({ ...draft, prompt, skill: str(o.skill, 80) || null, fromClass: o.from_class === true, language, difficulty, pursuitId });
-  }
-  // fromClass only matters for picking; the rest goes to the browser.
-  const drafts: DraftForBrowser[] = pickBySkill(candidates, practised).map((d) => ({ ...d, fromClass: undefined }));
+  Respond with ONLY JSON: {"skills": ["…", "…"], "challenges": [
+    {
+      "skill": "the skill from the map it trains, in Spanish, short",
+      "from_class": false,
+      "title": "short title, in Spanish",
+      "prompt": "the task, in Spanish, as markdown: one or two plain sentences on what to do; then a line **Recibe:** followed by one '- \`param\`: what it is' line per parameter; then **Devuelve:** and what it returns; then one example as a fenced code block (\`\`\`), e.g. \`\`\`\\nnombreFuncion(...) → resultado\\n\`\`\`. Never glue the example into the prose.",
+      "entry": "functionName",
+      "starter_code": "the function signature with a placeholder body and a short comment IN SPANISH (e.g. // Escribe tu código aquí)",
+      "tests": [{"args": [...], "expected": ...}],
+      "solution": "a correct reference solution",
+      "based_on": "title of the note it practices, or null"
+    }
+  ]}
+  5-8 tests each, normal and edge cases. Only JSON values in args/expected.`,
+        { maxTokens: 12000 },
+      ),
+    );
+    const seen = new Set(taken.map(titleKey));
+    const candidates: (DraftForBrowser & { fromClass: boolean })[] = [];
+    for (const raw of arr(data.challenges)) {
+      const draft = parseChallenge(raw);
+      if (!draft || seen.has(titleKey(draft.title)) || isTheoryLookup(draft, language === "react")) continue;
+      seen.add(titleKey(draft.title));
+      const o = obj(raw);
+      const basedOn = str(o.based_on, 120);
+      const prompt = basedOn ? `De tu nota “${basedOn}”\n\n${draft.prompt}` : draft.prompt;
+      candidates.push({ ...draft, prompt, skill: str(o.skill, 80) || null, fromClass: o.from_class === true, language, difficulty, pursuitId });
+    }
+    // fromClass only matters for picking; the rest goes to the browser. Up
+    // to 5 go back: some fail the sandbox check, the browser keeps 3.
+    return pickBySkill(candidates, practised, 5).map((d) => ({ ...d, fromClass: undefined }));
+  };
+  let drafts = await ask(context);
+  // Nothing good came out of the notes: small general exercises instead,
+  // a step up from what's already solved.
+  if (drafts.length === 0 && picked.length) drafts = await ask(LADDER);
   if (drafts.length === 0) return { error: "No eran retos de programación de verdad — inténtalo de nuevo" };
   await budget.charge();
   return { error: null, drafts };
 }
+
+const LADDER = "Make small, general exercises that build the basics step by step (accumulate a total, filter a list, count with an object/dictionary, find a max, transform strings…), each a small step up from the previous one. No notes needed.";
 
 // How each language's challenges are tested, for the prompt.
 const SHAPE: Record<Language, string> = {
@@ -208,8 +217,8 @@ ${code.slice(0, 8000)}
 Write in the same language as the task, in plain, simple words — like a friend explaining, not a textbook. Be specific to THEIR code.
 - "good": what they did right (1-2 points)
 - "fix": what's wrong or missing, most important first (0-3 points; empty if nothing)
-- "next": one or two things to try or learn next
-Each point: ONE short sentence (max ~12 words). Put code in \`backticks\`. No full solutions.
+- "next": one or two things to try next, each something they can do RIGHT HERE in plain ${challenge.language} code (another way to write it, a method worth learning, an edge case to handle) — never tools, libraries, testing frameworks or setup (no Jest, npm, linters). Say it so a beginner knows what it means.
+Each point: ONE short sentence (max ~16 words). Put code in \`backticks\`. No full solutions.
 
 Respond with ONLY JSON: {"good": ["..."], "fix": ["..."], "next": ["..."]}`,
       { maxTokens: 2000 },

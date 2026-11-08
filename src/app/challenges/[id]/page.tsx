@@ -31,6 +31,7 @@ export default async function ChallengePage({ params }: { params: Promise<{ id: 
         passed: c.passed,
         review: c.review,
         pursuitTitle: c.pursuit?.title ?? null,
+        pursuitId: c.pursuitId,
       }}
     />
   );

@@ -107,6 +107,14 @@ describe("isTheoryLookup", () => {
   });
 });
 
+describe("isTheoryLookup for React", () => {
+  it("allows long rendered text in a component's tests", () => {
+    const tests = ["Total: 3 productos · Leche Huevos Pan", "Total: 0 productos · Carrito vacío", "Total: 1 producto · Manzanas rojas"].map((expected) => ({ args: [{}], expected }));
+    expect(isTheoryLookup({ tests, solution: "" }, true)).toBe(false);
+    expect(isTheoryLookup({ tests, solution: "" })).toBe(true);
+  });
+});
+
 describe("pickBySkill", () => {
   const c = (title: string, skill: string | null, fromClass = false) => ({ title, skill, fromClass });
   it("keeps one challenge per skill and at most one from class", () => {

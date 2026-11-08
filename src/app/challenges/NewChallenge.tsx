@@ -2,8 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { draftChallenge, saveChallenge } from "./actions";
-import { runInSandbox } from "./sandbox";
+import { draftChallenge } from "./actions";
+import { checkAndSave } from "./checkAndSave";
 import { LANGUAGE_INFO, LANGUAGES, type Language } from "@/lib/challenge";
 import { DIFFICULTIES } from "./look";
 import { Badge, Bars } from "./ChallengeList";
@@ -28,16 +28,8 @@ export function NewChallenge({ subjects, defaultSubject }: { subjects: { id: str
         setStatus(null);
         return setError(r.error ?? "Inténtalo de nuevo");
       }
-      // Check each answer key in the sandbox; keep only tests its reference
-      // solution actually passes, and only challenges with 2+ of them.
       setStatus(language === "javascript" ? "Comprobando…" : `Comprobando (cargando ${LANGUAGE_INFO[language].label})…`);
-      let saved = 0;
-      for (const draft of r.drafts) {
-        const check = await runInSandbox(language, draft.solution, draft.entry, draft.tests);
-        const passing = check.error ? [] : draft.tests.filter((_, i) => check.results[i]?.ok);
-        if (passing.length < 2) continue;
-        if (!(await saveChallenge(draft, passing)).error) saved++;
-      }
+      const saved = (await checkAndSave(language, r.drafts, 3)).length;
       setStatus(null);
       if (saved === 0) return setError("No han pasado la comprobación — inténtalo de nuevo");
       router.refresh();
@@ -55,6 +47,9 @@ export function NewChallenge({ subjects, defaultSubject }: { subjects: { id: str
           </button>
         ))}
       </div>
+      <p className="-mt-1 text-xs leading-snug text-ink-faint">
+        <span className="font-medium text-ink-muted">{LANGUAGE_INFO[language].label}:</span> {LANGUAGE_INFO[language].hint}
+      </p>
       <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Dificultad">
         {DIFFICULTIES.map((d, n) => (
           <button key={d.key} type="button" role="radio" aria-checked={difficulty === d.key} title={d.label} onClick={() => setDifficulty(d.key)} className={`${tile(difficulty === d.key)} py-3.5`}>
