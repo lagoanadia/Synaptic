@@ -1,11 +1,9 @@
-import { Fraunces, Caveat } from "next/font/google";
 import Link from "next/link";
 import { AuthMenu } from "./AuthMenu";
 import { Motion } from "./Motion";
 import { Stage, Thing } from "./Scene";
+import { lndHand, lndSerif } from "./fonts";
 
-const serif = Fraunces({ subsets: ["latin"], weight: ["700", "800"], variable: "--font-lnd-serif" });
-const hand = Caveat({ subsets: ["latin"], weight: ["600"], variable: "--font-lnd-hand" });
 
 // The hero map: the same notes as the pile on the left, now tidy and tied together.
 const NODES: [number, number][] = [[880, 220], [1110, 150], [1310, 300], [1040, 460], [1290, 640], [880, 680]];
@@ -23,7 +21,7 @@ const cta = "inline-block rounded-full bg-white px-7 py-3.5 text-[15px] font-sem
 
 export function Landing() {
   return (
-    <main id="landing" className={`lnd ${serif.variable} ${hand.variable} relative overflow-hidden text-white`}>
+    <main id="landing" className={`lnd ${lndSerif.variable} ${lndHand.variable} relative overflow-hidden text-white`}>
       <Motion rootId="landing" />
 
       {/* ── Hero ── */}
