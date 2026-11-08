@@ -27,7 +27,8 @@ describe("folderBlocks", () => {
   });
   it("has sensible defaults", () => {
     expect(folderBlocks(undefined, true).map((b) => b.type)).toEqual(["pages", "map", "review"]);
-    expect(folderBlocks(undefined, false).map((b) => b.type)).toEqual(["pages", "ask"]);
+    expect(folderBlocks(undefined, false).map((b) => b.type)).toEqual(["project", "pages"]);
+    expect(folderBlocks(undefined, false, true).map((b) => b.type)).toEqual(["project", "tasks", "pages"]);
   });
 });
 
@@ -47,5 +48,20 @@ describe("cleanHomeBlocks", () => {
   });
   it("survives garbage", () => {
     expect(cleanHomeBlocks(null, new Set())).toEqual([]);
+  });
+});
+
+describe("cleanHomeBlocks projects", () => {
+  it("keeps a project block's project only if it's yours", () => {
+    const sent = [
+      { id: "p", type: "project", sectionId: null, pursuitId: "mine" },
+      { id: "q", type: "project", sectionId: null, pursuitId: "theirs" },
+      { id: "t", type: "today", sectionId: "x" },
+    ];
+    expect(cleanHomeBlocks(sent, new Set(), new Set(["mine"]))).toEqual([
+      { id: "p", type: "project", sectionId: null, pursuitId: "mine" },
+      { id: "q", type: "project", sectionId: null, pursuitId: null },
+      { id: "t", type: "today", sectionId: null },
+    ]);
   });
 });

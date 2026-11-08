@@ -10,6 +10,11 @@ import { KnowledgeMap } from "@/app/KnowledgeMap";
 import { FolderRow, RecentList } from "../../BlockViews";
 import { NotebookHeader } from "./NotebookHeader";
 import { NewFolder } from "./NewFolder";
+import { notebookProjects } from "@/lib/projectData";
+import { dayOf } from "@/lib/projects";
+import { ProjectGrid } from "@/app/projects/ProjectGrid";
+import { TaskBoard } from "@/app/projects/TaskBoard";
+import { ProjectTimeline } from "@/app/projects/ProjectTimeline";
 
 // A notebook: its folders, then — with study tools — its map and this
 // week's pages; without — open tasks and recent pages.
@@ -44,10 +49,12 @@ export default async function NotebookPage({ params }: { params: Promise<{ secti
     return { id: p.id, title: p.title, cover: folderCover(p.id, p.cover), sheets: sheetsFor(study ? p._count.flashcards + left : tasks), href: `/pursuits/${p.id}` };
   });
 
-  const [map, recent] = await Promise.all([
+  const [map, recent, projects] = await Promise.all([
     study && section ? notebookMap(userId, section.id) : Promise.resolve([]),
     section ? recentPages(userId, section.id, 8) : Promise.resolve([]),
+    !study && section ? notebookProjects(userId, section.id) : Promise.resolve([]),
   ]);
+  const today = dayOf(now);
   const openTasks = study
     ? []
     : pursuits.flatMap((p) =>
@@ -70,10 +77,31 @@ export default async function NotebookPage({ params }: { params: Promise<{ secti
         <NotebookHeader id={sectionId} name={name} cover={notebookCover(sectionId, section?.cover)} study={study} editable={!isVirtual} />
       </div>
 
-      <section className="flex flex-col gap-3">
-        {sectionHeader(study ? "Asignaturas" : "Carpetas")}
-        <FolderRow items={folders} after={!isVirtual && <NewFolder sectionName={name} label={study ? "Nueva asignatura" : "Nueva carpeta"} />} />
-      </section>
+      {study || !section ? (
+        <section className="flex flex-col gap-3">
+          {sectionHeader(study ? "Asignaturas" : "Carpetas")}
+          <FolderRow items={folders} after={!isVirtual && <NewFolder sectionName={name} label={study ? "Nueva asignatura" : "Nueva carpeta"} />} />
+        </section>
+      ) : (
+        <>
+          <section className="flex flex-col gap-3">
+            <h2 className="text-[22px] font-bold">Proyectos</h2>
+            <ProjectGrid projects={projects} today={today} after={<NewFolder sectionName={name} label="Nuevo proyecto" />} />
+          </section>
+          <section className="flex flex-col gap-3">
+            <h2 className="text-[22px] font-bold">Tareas</h2>
+            <TaskBoard
+              tasks={projects.flatMap((p) => p.tasks)}
+              projects={projects.filter((p) => !p.finished || p.tasks.some((t) => t.status !== "DONE")).map((p) => ({ id: p.id, title: p.title, cover: p.cover }))}
+              today={today}
+            />
+          </section>
+          <section className="flex flex-col gap-3">
+            <h2 className="text-[22px] font-bold">Calendario</h2>
+            <ProjectTimeline projects={projects} today={today} />
+          </section>
+        </>
+      )}
 
       {study && map.length > 0 && (
         <section className="flex flex-col gap-3">
@@ -84,7 +112,7 @@ export default async function NotebookPage({ params }: { params: Promise<{ secti
 
       {openTasks.length > 0 && (
         <section className="flex flex-col gap-1">
-          {sectionHeader("Tareas abiertas")}
+          {sectionHeader("Tableros por entrega")}
           <ul>
             {openTasks.map((t) => (
               <li key={t.id}>

@@ -184,6 +184,11 @@ model Pursuit {
   groupLabel String?
   blocks     Json?
 
+  // As a project (folders in notebooks without study tools): its dates,
+  // shown on the notebook's calendar.
+  startDate DateTime?
+  dueDate   DateTime?
+
   members         PursuitMember[]
   pursuitTags     PursuitTag[]
   brainDumps      BrainDump[]
@@ -193,6 +198,7 @@ model Pursuit {
   flashcards      Flashcard[]
   contentSections PursuitContentSection[]
   projects        Project[]
+  tasks           Task[]
   conceptMaps     ConceptMap[]
   challenges      Challenge[]
   calendarEvents  CalendarEvent[]
@@ -254,6 +260,23 @@ model ProjectCard {
 
   projectId String
   project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+// A project's to-do: on the folder, its notebook's board and the home page.
+model Task {
+  id        String            @id @default(cuid())
+  title     String
+  status    ProjectCardStatus @default(TODO)
+  // Position within its status column.
+  order     Int               @default(0)
+  dueDate   DateTime?
+  doneAt    DateTime?
+  createdAt DateTime          @default(now())
+
+  pursuitId String
+  pursuit   Pursuit @relation(fields: [pursuitId], references: [id], onDelete: Cascade)
+
+  @@index([pursuitId, status])
 }
 
 // Who else (besides the owner) can see/edit a shared Pursuit, and at what level.

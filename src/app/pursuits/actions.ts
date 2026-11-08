@@ -157,11 +157,14 @@ export async function createSection(name: string): Promise<{ error: string | nul
 }
 
 // The home page's blocks (lib/blocks.ts), as arranged in edit mode.
-export async function saveHomeBlocks(blocks: { id: string; type: string; sectionId: string | null }[]) {
+export async function saveHomeBlocks(blocks: { id: string; type: string; sectionId: string | null; pursuitId?: string | null }[]) {
   const session = await auth();
   if (!session?.user?.id) return;
-  const mine = new Set((await prisma.section.findMany({ where: { userId: session.user.id }, select: { id: true } })).map((s) => s.id));
-  const clean = cleanHomeBlocks(blocks, mine);
+  const [sections, pursuits] = await Promise.all([
+    prisma.section.findMany({ where: { userId: session.user.id }, select: { id: true } }),
+    prisma.pursuit.findMany({ where: { OR: [{ ownerId: session.user.id }, { members: { some: { userId: session.user.id } } }] }, select: { id: true } }),
+  ]);
+  const clean = cleanHomeBlocks(blocks, new Set(sections.map((s) => s.id)), new Set(pursuits.map((p) => p.id)));
   await prisma.user.update({ where: { id: session.user.id }, data: { homeBlocks: clean } });
   revalidatePath("/pursuits");
 }

@@ -15,6 +15,9 @@ import { SampleNote } from "./SampleNote";
 import { NotebookShelf, type ShelfItem } from "./NotebookShelf";
 import { HomeBlocks } from "./HomeBlocks";
 import { FolderRow, RecentList } from "./BlockViews";
+import { allProjects } from "@/lib/projectData";
+import { dayOf, isFocus } from "@/lib/projects";
+import { ProjectChecklist, TodayFocus } from "@/app/projects/HomeTasks";
 
 // Home: your notebooks, then the blocks you chose (folders of a notebook,
 // its map, recent pages). Editable like a Notion page.
@@ -43,6 +46,8 @@ export default async function HomePage() {
   const sample = viewer.sampleContent as { topic: string; flashcards?: string[] } | null;
   const blocks = homeBlocks(viewer.homeBlocks, sections);
   const studyOf = new Map(sections.map((s) => [s.id, s.study]));
+  const today = dayOf(new Date());
+  const projects = await allProjects(userId);
   const entries = await Promise.all(
     blocks.map(async (b) => {
       if (b.type === "week") {
@@ -50,6 +55,14 @@ export default async function HomePage() {
         const days = weekOf(today);
         const { items } = await calendarItems(userId, days[0], days[6]);
         return [b.id, <WeekStrip key={b.id} days={days} today={today} items={items} />] as const;
+      }
+      if (b.type === "today") {
+        const focus = projects.flatMap((p) => p.tasks.filter((t) => isFocus(t, today, p.doneToday.has(t.id))));
+        return [b.id, <TodayFocus key={b.id} projects={projects} today={today} focus={focus} />] as const;
+      }
+      if (b.type === "project") {
+        const p = projects.find((x) => x.id === b.pursuitId);
+        return [b.id, p ? <ProjectChecklist key={b.id} project={p} today={today} /> : <p key={b.id} className="text-sm text-ink-faint">Elige un proyecto en «Editar inicio».</p>] as const;
       }
       if (!b.sectionId) return [b.id, <p key={b.id} className="text-sm text-ink-faint">Elige una libreta.</p>] as const;
       if (b.type === "folders") return [b.id, <FolderRow key={b.id} items={await folderItems(userId, b.sectionId, studyOf.get(b.sectionId) ?? true)} />] as const;
@@ -67,6 +80,7 @@ export default async function HomePage() {
       <HomeBlocks
         blocks={blocks}
         notebooks={sections.map((s) => ({ id: s.id, name: s.name, cover: notebookCover(s.id, s.cover) }))}
+        projects={projects.map((p) => ({ id: p.id, title: p.title, cover: p.cover }))}
         content={Object.fromEntries(entries)}
       />
     </div>

@@ -29,6 +29,10 @@ import { KnowledgeMap } from "@/app/KnowledgeMap";
 import { Folder } from "@/app/Covers";
 import { FolderBlocks } from "./FolderBlocks";
 import { FolderSettings } from "./FolderSettings";
+import { oneProject } from "@/lib/projectData";
+import { dayOf } from "@/lib/projects";
+import { ProjectInfo } from "@/app/projects/ProjectInfo";
+import { TaskBoard } from "@/app/projects/TaskBoard";
 import { ChallengeCards, ReviewToday } from "./FolderBlockViews";
 
 const CLASSROOM_ERROR_COPY: Record<string, string> = {
@@ -206,6 +210,14 @@ export default async function PursuitPage({
       content[b.id] = (
         <div className="flex flex-col gap-3">
           <KnowledgeMap clusters={await folderMap(pursuit.id, color)} perRow={3} empty="El mapa de cada unidad se crea solo cuando guardas apuntes." />
+        </div>
+      );
+    } else if (b.type === "project") {
+      const project = await oneProject(session.user.id, pursuit.id);
+      content[b.id] = project && (
+        <div className="flex flex-col gap-5">
+          <ProjectInfo project={project} />
+          <TaskBoard tasks={project.tasks} projects={[{ id: project.id, title: project.title, cover: project.cover }]} today={dayOf(new Date())} />
         </div>
       );
     } else if (b.type === "review") content[b.id] = <ReviewToday pursuitId={pursuit.id} />;
