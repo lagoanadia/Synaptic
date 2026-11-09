@@ -16,6 +16,8 @@ export type ReviewCard = {
   // Short versions for the quiz (see Flashcard.quizQuestion/quizAnswer).
   quizQuestion?: string | null;
   quizAnswer?: string | null;
+  tfStatement?: string | null;
+  tfTrue?: boolean | null;
 };
 
 // A quiz question is about either a flashcard or an Internalize concept;

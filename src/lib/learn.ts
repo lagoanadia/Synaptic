@@ -13,6 +13,8 @@ export type LearnItem = {
   answer: string;
   distractors: string[];
   hint?: string | null;
+  // A true/false version; the quiz uses it for some of the questions.
+  tf?: { statement: string; isTrue: boolean } | null;
 };
 
 export type Stage = 0 | 1 | 2; // new/recognising → producing → mastered
