@@ -169,7 +169,8 @@ export function FolderBlocks({
                 </span>
               )}
             </header>
-            {card ? <div className="p-5">{content[b.id]}</div> : (content[b.id] ?? <div className="h-24 animate-pulse rounded-lg bg-chip" />)}
+            {/* Just added: shimmer until the server sends its content. */}
+            {card ? <div className="p-5">{content[b.id] ?? <div className="h-24 animate-pulse rounded-lg bg-chip" />}</div> : (content[b.id] ?? <div className="h-24 animate-pulse rounded-lg bg-chip" />)}
           </section>
         );
       })}
@@ -181,7 +182,8 @@ export function FolderBlocks({
           </button>
           {adding && (
             <div className="absolute top-full left-0 z-10 mt-1 w-80 rounded-xl bg-white p-1.5 shadow-[0_0_0_1px_rgba(15,15,15,.05),0_12px_32px_rgba(15,15,15,.18)]">
-              {available.map((t) => (
+              {/* A folder has one task list: a second Tareas block would only repeat it. */}
+              {available.filter((t) => t.type !== "project" || !blocks.some((b) => b.type === "project")).map((t) => (
                 <button
                   key={t.type}
                   type="button"
