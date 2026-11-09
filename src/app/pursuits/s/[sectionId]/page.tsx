@@ -86,7 +86,7 @@ export default async function NotebookPage({ params }: { params: Promise<{ secti
         <>
           <section className="flex flex-col gap-3">
             <h2 className="text-[22px] font-bold">Proyectos</h2>
-            <ProjectGrid projects={projects} today={today} after={<NewFolder sectionName={name} label="Nuevo proyecto" />} />
+            <ProjectGrid projects={projects} today={today} after={<NewFolder sectionName={name} label="Nuevo proyecto" fill />} />
           </section>
           <section className="flex flex-col gap-3">
             <h2 className="text-[22px] font-bold">Tareas</h2>

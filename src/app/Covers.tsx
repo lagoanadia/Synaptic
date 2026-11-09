@@ -58,17 +58,20 @@ export function Folder({
   cover,
   width,
   sheets = 0,
+  reserveSheets = false,
   className = "",
 }: {
   cover: FolderCover;
   width?: number;
   sheets?: number;
+  // Keep the room for sheets even without any, so folders in a row line up.
+  reserveSheets?: boolean;
   className?: string;
 }) {
   const color = FOLDER_COVERS[cover];
   const scale = width === undefined ? 2.2 : width >= 120 ? 2 : width >= 60 ? 1.5 : 1;
   return (
-    <span className={`relative block shrink-0 ${className}`} style={{ width: width ?? "100%", paddingTop: sheets ? "12%" : 0 }}>
+    <span className={`relative block shrink-0 ${className}`} style={{ width: width ?? "100%", paddingTop: sheets || reserveSheets ? "12%" : 0 }}>
       {sheets > 0 && (
         <span className="absolute inset-x-[10%] top-0 h-[30%]" aria-hidden>
           {[...Array(Math.min(3, sheets))].map((_, i) => (
