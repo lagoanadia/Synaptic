@@ -9,7 +9,7 @@ import { PromptText } from "../PromptText";
 import { DIFFICULTIES, difficultyOf } from "../look";
 import { Badge, Bars } from "../ChallengeList";
 import { runInSandbox, warmSandbox } from "../sandbox";
-import { deleteChallenge, draftChallenge, explainSolution, getHint, reviewSolution, saveRun, type ExplainStep } from "../actions";
+import { askAboutSolution, deleteChallenge, draftChallenge, explainSolution, getHint, reviewSolution, saveRun, type ExplainStep } from "../actions";
 import { checkAndSave } from "../checkAndSave";
 import { paramNames, parseReview, type ChallengeTest, type Language, type RunOutput } from "@/lib/challenge";
 
@@ -446,6 +446,23 @@ function Explained({ steps, code, challenge }: { steps: ExplainStep[]; code: str
   const [making, setMaking] = useState(false);
   const [failed, setFailed] = useState<string | null>(null);
   const last = steps.length; // index `last` = everything together
+  const [chat, setChat] = useState<{ q: string; a: string }[]>([]);
+  const [asking, setAsking] = useState<string | null>(null);
+  async function ask(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const input = e.currentTarget.elements.namedItem("q") as HTMLInputElement;
+    const q = input.value.trim();
+    if (!q || asking) return;
+    input.value = "";
+    setAsking(q);
+    setFailed(null);
+    const explanation = `${steps.map((st, i) => `${i + 1}. ${st.say}\n${st.code}`).join("\n")}\n\nFull solution:\n${code}`;
+    const r = await askAboutSolution(challenge.id, explanation, chat, q);
+    setAsking(null);
+    if (r.answer) setChat((c) => [...c, { q, a: r.answer! }]);
+    else setFailed(r.error ?? "Inténtalo de nuevo");
+  }
+  const inline = (t: string) => t.split(/`([^`]+)`/).map((part, j) => (j % 2 ? <code key={j} className="rounded bg-chip px-1 font-mono text-[12px]">{part}</code> : part));
   async function similar() {
     setMaking(true);
     setFailed(null);
@@ -495,10 +512,26 @@ function Explained({ steps, code, challenge }: { steps: ExplainStep[]; code: str
           </button>
         ) : (
           <button type="button" onClick={similar} disabled={making} className="ml-auto flex items-center gap-1 font-medium text-accent hover:underline disabled:opacity-50">
-            {making ? "Creando reto…" : <>Uno parecido más fácil <ArrowRight size={11} /></>}
+            {making ? "Creando reto…" : <>Practícalo tú <ArrowRight size={11} /></>}
           </button>
         )}
       </div>
+      {(chat.length > 0 || asking) && (
+        <div className="flex flex-col gap-2 border-t border-border-subtle pt-2 text-[13px] leading-snug">
+          {[...chat, ...(asking ? [{ q: asking, a: "" }] : [])].map((m, i) => (
+            <div key={i} className="flex flex-col gap-1">
+              <p className="self-end rounded-lg bg-white px-2.5 py-1.5 text-ink-muted">{m.q}</p>
+              <p>{m.a ? inline(m.a) : <span className="text-ink-faint">Pensando…</span>}</p>
+            </div>
+          ))}
+        </div>
+      )}
+      <form onSubmit={ask} className="flex items-center gap-2 rounded-md border border-border-subtle bg-white px-2.5 py-1.5">
+        <input name="q" placeholder="Pregunta lo que no entiendas…" aria-label="Pregunta sobre la explicación" className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-ink-faint" />
+        <button type="submit" disabled={!!asking} aria-label="Preguntar" className="text-accent disabled:opacity-40">
+          <ArrowRight size={13} />
+        </button>
+      </form>
       {failed && <p className="text-xs text-red-500">{failed}</p>}
     </div>
   );

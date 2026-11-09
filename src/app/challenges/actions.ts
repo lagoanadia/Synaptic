@@ -287,6 +287,7 @@ ${challenge.starterCode}
 In Spanish, plain simple words:
 - "steps": 3-5 steps that build the solution piece by piece. Each step: "say" = ONE short, friendly sentence (max ~14 words) saying what we do and why; "code" = ONLY the 1-4 lines this step adds (no comments).
 - "code": the whole solution put together: simple and readable (no clever one-liners), NO comments, short lines (under 45 characters; break long ones).
+Use ONLY first-year basics: variables, if/else, for loops, arrays, plain objects, simple functions. Never \`??\`, \`?.\`, reduce, map/filter chains, destructuring, spread, ternaries, regex or utility types — unless the starter code already uses them.
 
 Respond with ONLY JSON: {"steps": [{"say": "...", "code": "..."}], "code": "..."}`,
       { maxTokens: 2500 },
@@ -300,4 +301,41 @@ Respond with ONLY JSON: {"steps": [{"say": "...", "code": "..."}], "code": "..."
   if (!steps.length || !code) return { error: "No se ha podido contactar con la IA ahora mismo" };
   await budget.charge();
   return { error: null, steps, code };
+}
+
+// A question about the "No lo sé" explanation ("¿qué es Record?"),
+// answered for a beginner, with the conversation so far.
+export async function askAboutSolution(
+  id: string,
+  explanation: string,
+  history: { q: string; a: string }[],
+  question: string,
+): Promise<{ error: string | null; answer?: string }> {
+  const { userId, email } = await signedIn();
+  const challenge = await prisma.challenge.findFirst({ where: { id, userId }, select: { prompt: true, language: true } });
+  if (!challenge) return { error: "Reto no encontrado" };
+  const q = question.trim().slice(0, 500);
+  if (!q) return { error: "Escribe tu pregunta" };
+  const budget = await aiBudget(userId, email);
+  const limited = await budget.check();
+  if (limited) return { error: limited };
+  const data = obj(
+    await askJson(
+      `A first-year programming student is reading how to solve this ${challenge.language} challenge and has a question.
+Task: ${challenge.prompt}
+The explanation they're reading:
+${explanation.slice(0, 4000)}
+${history.slice(-4).map((h) => `They asked: ${h.q}\nYou answered: ${h.a}`).join("\n")}
+
+Their question: ${q}
+
+Answer in Spanish, like a patient friend: 1-4 short sentences, plain words, a tiny example in \`backticks\` if it helps. If they ask what something is, say what it does and why it's used here.
+Respond with ONLY JSON: {"answer": "..."}`,
+      { maxTokens: 800 },
+    ),
+  );
+  const answer = str(data.answer, 1200);
+  if (!answer) return { error: "No se ha podido contactar con la IA ahora mismo" };
+  await budget.charge();
+  return { error: null, answer };
 }
