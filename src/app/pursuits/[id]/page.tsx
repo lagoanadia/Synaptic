@@ -189,7 +189,10 @@ export default async function PursuitPage({
   const isOwner = pursuit.owner.id === session.user.id;
   const here = `/pursuits/${pursuit.id}`;
 
+  // A project folder shows its state and dates under the title.
+  const project = blocks.some((b) => b.type === "project") ? await oneProject(session.user.id, pursuit.id) : null;
   const content: Record<string, React.ReactNode> = {};
+  const summaries: Record<string, string> = {};
   for (const b of blocks) {
     if (b.type === "pages")
       content[b.id] = (
@@ -213,13 +216,10 @@ export default async function PursuitPage({
         </div>
       );
     } else if (b.type === "project") {
-      const project = await oneProject(session.user.id, pursuit.id);
       content[b.id] = project && (
-        <div className="flex flex-col gap-5">
-          <ProjectInfo project={project} />
-          <TaskBoard tasks={project.tasks} projects={[{ id: project.id, title: project.title, cover: project.cover }]} today={dayOf(new Date())} />
-        </div>
+        <TaskBoard tasks={project.tasks} projects={[{ id: project.id, title: project.title, cover: project.cover }]} today={dayOf(new Date())} view={b.view === "list" ? "list" : "board"} />
       );
+      if (project?.tasks.length) summaries[b.id] = `${project.tasks.filter((t) => t.status === "DONE").length} de ${project.tasks.length} hechas`;
     } else if (b.type === "review") content[b.id] = <ReviewToday pursuitId={pursuit.id} />;
     else if (b.type === "ask") content[b.id] = <AskPursuit pursuitId={pursuit.id} />;
     else if (b.type === "challenges") content[b.id] = <ChallengeCards pursuitId={pursuit.id} items={challenges} />;
@@ -280,6 +280,8 @@ export default async function PursuitPage({
           </Link>
         </span>
       </header>
+
+      {project && <ProjectInfo project={project} today={dayOf(new Date())} />}
 
       {props.length > 0 && (
         <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm">
@@ -350,7 +352,7 @@ export default async function PursuitPage({
         </FolderSettings>
       )}
 
-      <FolderBlocks key={blocks.map((b) => `${b.id}${b.view ?? ""}`).join()} pursuitId={pursuit.id} blocks={blocks} study={study} grouped={grouped} content={content} editing={editing} />
+      <FolderBlocks key={blocks.map((b) => `${b.id}${b.view ?? ""}`).join()} pursuitId={pursuit.id} blocks={blocks} study={study} grouped={grouped} content={content} summaries={summaries} editing={editing} />
     </div>
   );
 }

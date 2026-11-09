@@ -12,9 +12,11 @@ type View = "board" | "list" | "project";
 // Tasks as a board (drag between columns), a list, or grouped by project.
 // With one project it's that project's board; with several, each card
 // shows which project it's from. Changes show at once and save behind.
-export function TaskBoard({ tasks: initial, projects, today }: { tasks: TaskItem[]; projects: BoardProject[]; today: string }) {
+// `view`: set from outside (a folder block's header), which hides the tabs.
+export function TaskBoard({ tasks: initial, projects, today, view: fixed }: { tasks: TaskItem[]; projects: BoardProject[]; today: string; view?: "board" | "list" }) {
   const [tasks, setTasks] = useState(initial);
-  const [view, setView] = useState<View>("board");
+  const [picked, setView] = useState<View>("board");
+  const view = fixed ?? picked;
   const [dragging, setDragging] = useState<string | null>(null);
   const [over, setOver] = useState<{ status: TaskStatus; before: string | null } | null>(null);
   const [, start] = useTransition();
@@ -99,19 +101,21 @@ export function TaskBoard({ tasks: initial, projects, today }: { tasks: TaskItem
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex gap-5 border-b border-[#ededeb] text-sm text-ink-faint">
-        {(
-          [
-            ["board", "Tablero"],
-            ["list", "Lista"],
-            ...(many ? [["project", "Por proyecto"]] : []),
-          ] as [View, string][]
-        ).map(([v, label]) => (
-          <button key={v} type="button" onClick={() => setView(v)} className={`-mb-px pb-2 ${view === v ? "border-b-2 border-ink font-medium text-ink" : "hover:text-ink"}`}>
-            {label}
-          </button>
-        ))}
-      </div>
+      {!fixed && (
+        <div className="flex gap-5 border-b border-[#ededeb] text-sm text-ink-faint">
+          {(
+            [
+              ["board", "Tablero"],
+              ["list", "Lista"],
+              ...(many ? [["project", "Por proyecto"]] : []),
+            ] as [View, string][]
+          ).map(([v, label]) => (
+            <button key={v} type="button" onClick={() => setView(v)} className={`-mb-px pb-2 ${view === v ? "border-b-2 border-ink font-medium text-ink" : "hover:text-ink"}`}>
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {view === "board" && (
         <div className="grid gap-3 md:grid-cols-3">

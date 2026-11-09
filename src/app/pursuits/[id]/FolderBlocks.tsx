@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowDown, XIcon } from "@/app/icons";
+import { ArrowDown, CheckIcon, KanbanIcon, MenuIcon, XIcon } from "@/app/icons";
 import { FOLDER_BLOCK_TYPES, newBlock, type FolderBlock } from "@/lib/blocks";
 import { saveFolderBlocks, setGroupLabel } from "./actions";
 
@@ -18,6 +18,7 @@ export function FolderBlocks({
   study,
   grouped,
   content,
+  summaries = {},
   editing,
 }: {
   pursuitId: string;
@@ -26,6 +27,8 @@ export function FolderBlocks({
   // Does it have groups (units/themes)? Board view needs them.
   grouped: boolean;
   content: Record<string, React.ReactNode>;
+  // A short line next to a block's title ("1 de 4 hechas").
+  summaries?: Record<string, string>;
   editing: boolean;
 }) {
   const [blocks, setBlocks] = useState(initial);
@@ -55,10 +58,51 @@ export function FolderBlocks({
     <div className="flex flex-col gap-10">
       {blocks.map((b, i) => {
         const view = b.view ?? (grouped ? "board" : "list");
+        // A project's tasks sit in their own card, so they stand apart from the rest.
+        const card = b.type === "project";
+        const outline = editing ? "outline-[1.5px] outline-offset-4 outline-[#d3d1cb] outline-dashed" : "";
         return (
-          <section key={b.id} className={`relative flex flex-col gap-3 ${editing ? "rounded-lg p-3 outline-[1.5px] outline-offset-4 outline-[#d3d1cb] outline-dashed" : ""}`}>
-            <header className="flex items-center gap-2 border-b border-border-subtle pb-2">
-              <h2 className="flex-1 text-sm font-semibold">{LABEL[b.type]}</h2>
+          <section
+            key={b.id}
+            className={
+              card
+                ? `relative rounded-xl border border-border-subtle bg-white shadow-[0_1px_2px_rgba(0,0,0,.04)] ${outline}`
+                : `relative flex flex-col gap-3 ${editing ? `rounded-lg p-3 ${outline}` : ""}`
+            }
+          >
+            <header className={card ? "flex items-center gap-3 rounded-t-xl border-b border-border-subtle bg-callout px-5 py-3" : "flex items-center gap-2 border-b border-border-subtle pb-2"}>
+              {card && (
+                <span className="grid size-8 place-items-center rounded-lg bg-white text-ink shadow-[0_0_0_1px_rgba(55,53,47,.09)]">
+                  <CheckIcon size={15} />
+                </span>
+              )}
+              <h2 className={card ? "text-[17px] font-semibold" : "flex-1 text-sm font-semibold"}>{LABEL[b.type]}</h2>
+              {card && <span className="flex-1 text-sm text-ink-faint">{summaries[b.id]}</span>}
+              {card && !editing && (
+                <span className="flex rounded-md bg-white p-0.5 shadow-[0_0_0_1px_rgba(55,53,47,.09)]" role="group" aria-label="Vista">
+                  {(
+                    [
+                      ["board", "Tablero", KanbanIcon],
+                      ["list", "Lista", MenuIcon],
+                    ] as const
+                  ).map(([v, label, Icon]) => {
+                    const on = (b.view ?? "board") === v;
+                    return (
+                      <button
+                        key={v}
+                        type="button"
+                        title={label}
+                        aria-label={label}
+                        aria-pressed={on}
+                        onClick={() => !on && save(blocks.map((x) => (x.id === b.id ? { ...x, view: v } : x)))}
+                        className={`grid size-7 place-items-center rounded ${on ? "bg-chip text-ink" : "text-ink-faint hover:text-ink"}`}
+                      >
+                        <Icon size={15} />
+                      </button>
+                    );
+                  })}
+                </span>
+              )}
               {b.type === "pages" && !editing && (
                 <span className="relative flex items-center gap-2">
                   {!grouped && (
@@ -125,7 +169,7 @@ export function FolderBlocks({
                 </span>
               )}
             </header>
-            {content[b.id] ?? <div className="h-24 animate-pulse rounded-lg bg-chip" />}
+            {card ? <div className="p-5">{content[b.id]}</div> : (content[b.id] ?? <div className="h-24 animate-pulse rounded-lg bg-chip" />)}
           </section>
         );
       })}
