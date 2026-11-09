@@ -32,7 +32,7 @@ const para = (inline: InlineNode[]): JSONContent => {
 function listToNode(list: ListBlock): JSONContent {
   return {
     type: list.type === "bulletList" ? "bulletList" : "orderedList",
-    ...(list.type === "letteredList" ? { attrs: { kind: "alpha" } } : {}),
+    ...(list.type === "letteredList" ? { attrs: { kind: "alpha" } } : list.type === "numberedList" && list.start ? { attrs: { start: list.start } } : {}),
     content: list.items.map((item) => ({
       type: "listItem",
       content: [para(item.inline), ...item.children.map(listToNode)],
@@ -65,7 +65,7 @@ function blockToNode(b: NoteBlock): JSONContent {
       });
       return {
         type: "table",
-        content: [row(b.header, "tableHeader"), ...b.rows.map((r) => row(r, "tableCell"))],
+        content: [...(b.header.length ? [row(b.header, "tableHeader")] : []), ...b.rows.map((r) => row(r, "tableCell"))],
       };
     }
     case "paragraph":
@@ -105,16 +105,28 @@ function inlineToText(nodes: JSONContent[] = []): string {
 const firstLine = (n: JSONContent) =>
   inlineToText((n.content ?? []).find((c) => c.type === "paragraph")?.content).replace(/\n/g, " ");
 
+// An item's text keeps its line breaks (Shift+Enter): the extra lines go
+// under it, indented, so they stay part of the item.
+const itemText = (item: JSONContent, pad: string) =>
+  (item.content ?? [])
+    .filter((c) => c.type === "paragraph")
+    .map((c) => inlineToText(c.content))
+    .join("\n")
+    .split("\n")
+    .map((line, i) => (i ? `${pad}${line}` : line))
+    .join("\n");
+
 function listToText(list: JSONContent, indent: number): string {
   const alpha = list.type === "orderedList" && list.attrs?.kind === "alpha";
+  const start = Number(list.attrs?.start) || 1;
   return (list.content ?? [])
     .map((item, i) => {
       const marker =
-        list.type === "bulletList" ? "-" : alpha ? `${String.fromCharCode(97 + (i % 26))}.` : `${i + 1}.`;
+        list.type === "bulletList" ? "-" : alpha ? `${String.fromCharCode(97 + (i % 26))}.` : `${start + i}.`;
       const nested = (item.content ?? [])
         .filter((c) => c.type === "bulletList" || c.type === "orderedList")
         .map((c) => listToText(c, indent + 2));
-      return [`${" ".repeat(indent)}${marker} ${firstLine(item)}`, ...nested].join("\n");
+      return [`${" ".repeat(indent)}${marker} ${itemText(item, " ".repeat(indent + marker.length + 1))}`, ...nested].join("\n");
     })
     .join("\n");
 }
@@ -140,10 +152,14 @@ function nodeToText(n: JSONContent): string {
       const code = (n.content ?? []).map((c) => c.text ?? "").join("");
       return `<${String(n.attrs?.language ?? "")}\n${code}\n>`;
     }
-    case "table":
-      return (n.content ?? [])
-        .map((row) => `| ${(row.content ?? []).map((cell) => firstLine(cell).replace(/\|/g, "/")).join(" | ")} |`)
-        .join("\n");
+    case "table": {
+      const rows = n.content ?? [];
+      const lines = rows.map((row) => `| ${(row.content ?? []).map((cell) => firstLine(cell).replace(/\|/g, "/")).join(" | ")} |`);
+      // No header row: a "| --- |" line first says so.
+      const headed = rows[0]?.content?.some((cell) => cell.type === "tableHeader");
+      const cols = rows[0]?.content?.length ?? 0;
+      return [...(headed || !cols ? [] : [`| ${Array(cols).fill("---").join(" | ")} |`]), ...lines].join("\n");
+    }
     case "horizontalRule":
       return "";
     default:

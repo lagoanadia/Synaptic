@@ -45,7 +45,7 @@ function ListItems({ items, depth }: { items: ListItem[]; depth: number }) {
   return (
     <>
       {items.map((item, j) => (
-        <li key={j}>
+        <li key={j} className="whitespace-pre-line">
           <Inline nodes={item.inline} />
           {item.children.map((child, k) => (
             <ListBlockView key={k} block={child} depth={depth + 1} />
@@ -69,7 +69,7 @@ function ListBlockView({ block, depth }: { block: ListBlock; depth: number }) {
       );
     case "numberedList":
       return (
-        <ol className="list-decimal space-y-1 pl-5 text-sm leading-relaxed">
+        <ol start={block.start} className="list-decimal space-y-1 pl-5 text-sm leading-relaxed">
           <ListItems items={block.items} depth={depth} />
         </ol>
       );
@@ -147,6 +147,7 @@ export function RichContent({
             return (
               <div key={i} className="overflow-x-auto">
                 <table className="w-full border-collapse text-sm leading-relaxed">
+                  {block.header.length > 0 && (
                   <thead>
                     <tr>
                       {block.header.map((cell, j) => (
@@ -159,6 +160,7 @@ export function RichContent({
                       ))}
                     </tr>
                   </thead>
+                  )}
                   {block.rows.length > 0 && (
                     <tbody>
                       {block.rows.map((row, j) => (

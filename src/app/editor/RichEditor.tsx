@@ -138,6 +138,8 @@ export function RichEditor({
   const wrap = useRef<HTMLDivElement>(null);
   const [slash, setSlash] = useState<Slash | null>(null);
   const [sel, setSel] = useState<Sel | null>(null);
+  // Cursor in a table: its little bar (header on/off, rows, columns).
+  const [tbl, setTbl] = useState<{ top: number; left: number; header: boolean } | null>(null);
   const dismissed = useRef<number | null>(null);
   // Set below, once the editor exists; the editor's callbacks read them.
   const refreshRef = useRef<(e: Editor) => void>(() => {});
@@ -261,6 +263,12 @@ export function RichEditor({
     if (!bare || !wrap.current) return;
     const box = wrap.current.getBoundingClientRect();
     const { from, to, empty, $from } = e.state.selection;
+    const at = e.view.domAtPos(from).node;
+    const table = (at instanceof HTMLElement ? at : at.parentElement)?.closest("table");
+    if (table && e.isActive("table")) {
+      const r = (table.parentElement ?? table).getBoundingClientRect();
+      setTbl({ top: r.top - box.top - 30, left: r.left - box.left, header: !!table.querySelector("tr:first-child th") });
+    } else setTbl(null);
     if (!empty) {
       const text = e.state.doc.textBetween(from, to, " ").trim();
       const a = e.view.coordsAtPos(from);
@@ -362,6 +370,16 @@ export function RichEditor({
                 </Btn>
               </div>
             )}
+          </div>
+        )}
+        {tbl && (
+          <div className="absolute z-10 flex items-center gap-0.5 rounded-lg bg-white p-0.5 text-xs text-ink-muted shadow-[0_0_0_1px_rgba(15,15,15,.06),0_4px_12px_rgba(15,15,15,.08)]" style={{ top: tbl.top, left: tbl.left }} onMouseDown={(e) => e.preventDefault()}>
+            <Btn on={tbl.header} onClick={() => editor.chain().focus().toggleHeaderRow().run()} title="Primera fila como cabecera">Cabecera</Btn>
+            <Btn onClick={() => editor.chain().focus().addRowAfter().run()} title="Añadir fila">+fila</Btn>
+            <Btn onClick={() => editor.chain().focus().addColumnAfter().run()} title="Añadir columna">+col</Btn>
+            <Btn onClick={() => editor.chain().focus().deleteRow().run()} title="Eliminar fila">−fila</Btn>
+            <Btn onClick={() => editor.chain().focus().deleteColumn().run()} title="Eliminar columna">−col</Btn>
+            <Btn onClick={() => editor.chain().focus().deleteTable().run()} title="Eliminar tabla"><TrashIcon size={13} /></Btn>
           </div>
         )}
         {slash && items.length > 0 && (
@@ -511,6 +529,7 @@ function Toolbar({
       <Btn on={s.table} onClick={() => c().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()} title="Insertar tabla">▦</Btn>
       {s.table && (
         <span className="flex items-center gap-0.5 rounded-md bg-chip px-1 text-xs">
+          <Btn onClick={() => c().toggleHeaderRow().run()} title="Primera fila como cabecera">Cabecera</Btn>
           <Btn onClick={() => c().addRowAfter().run()} title="Añadir fila">+fila</Btn>
           <Btn onClick={() => c().addColumnAfter().run()} title="Añadir columna">+col</Btn>
           <Btn onClick={() => c().deleteRow().run()} title="Eliminar fila">−fila</Btn>
