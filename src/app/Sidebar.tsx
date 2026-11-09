@@ -83,6 +83,9 @@ export function Sidebar({ user, plan, notebooks, collapsed: startCollapsed = fal
     </div>
   );
 
+  // The public website and the login page show without the app around them.
+  if (pathname === "/web" || pathname === "/login") return null;
+
   return (
     <>
       {collapsed && (

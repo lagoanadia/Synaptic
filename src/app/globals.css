@@ -60,6 +60,12 @@ body {
   color: var(--foreground);
 }
 
+/* /web and /login: no sidebar, so no room for it (pure CSS, no flash). */
+body:has(#landing, #login) .app-pad {
+  padding-left: 0 !important;
+  padding-bottom: 0 !important;
+}
+
 /* Room for the sidebar on wide screens: full, or collapsed to icons
    (Sidebar.tsx sets html[data-sidebar]). */
 @media (min-width: 1024px) {
