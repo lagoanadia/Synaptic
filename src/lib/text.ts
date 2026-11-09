@@ -53,7 +53,7 @@ export type ListItem = { inline: InlineNode[]; children: ListBlock[] };
 
 export type ListBlock =
   | { type: "bulletList"; items: ListItem[] }
-  | { type: "numberedList"; items: ListItem[] }
+  | { type: "numberedList"; items: ListItem[]; start?: number }
   | { type: "letteredList"; items: ListItem[] };
 
 export type NoteBlock =
@@ -62,6 +62,7 @@ export type NoteBlock =
   | ListBlock
   | { type: "paragraph"; inline: InlineNode[] }
   | { type: "image"; url: string }
+  // No header row: `header` is empty and every row is in `rows`.
   | { type: "table"; header: InlineNode[][]; rows: InlineNode[][][] }
   | { type: "codeBlock"; code: string; language: string };
 
@@ -115,7 +116,7 @@ type ListLineType = ListBlock["type"];
 
 function parseListLine(
   line: string,
-): { indent: number; type: ListLineType; text: string } | null {
+): { indent: number; type: ListLineType; text: string; num: number } | null {
   const m = LIST_LINE.exec(line);
   if (!m) return null;
   const marker = m[2];
@@ -125,7 +126,7 @@ function parseListLine(
       : /^\d+\.$/.test(marker)
         ? "numberedList"
         : "letteredList";
-  return { indent: m[1].length, type, text: m[3] };
+  return { indent: m[1].length, type, text: m[3], num: parseInt(marker, 10) || 1 };
 }
 
 // One contiguous run of list lines → a tree of lists. A deeper indent nests
@@ -147,11 +148,19 @@ function parseListBlocks(lines: string[], i: { pos: number }, minIndent: number)
       const p = parseListLine(lines[i.pos]);
       if (!p || p.indent !== indent || p.type !== type) break;
       i.pos++;
+      // An item's own extra lines (a description under it) are indented
+      // further and aren't list lines.
+      let text = p.text;
+      while (i.pos < lines.length && !parseListLine(lines[i.pos]) && lines[i.pos].trim() && /^ */.exec(lines[i.pos])![0].length > indent) {
+        text += `\n${lines[i.pos].trim()}`;
+        i.pos++;
+      }
       const children = parseListBlocks(lines, i, indent + 1);
-      items.push({ inline: parseInline(p.text), children });
+      items.push({ inline: parseInline(text), children });
     }
 
-    blocks.push({ type, items } as ListBlock);
+    // A numbered list can carry on from an earlier one: "2." after a paragraph.
+    blocks.push((type === "numberedList" && parsed.num !== 1 ? { type, items, start: parsed.num } : { type, items }) as ListBlock);
   }
 
   return blocks;
@@ -198,14 +207,17 @@ function parseTextBlocks(text: string): NoteBlock[] {
 
     if (TABLE_ROW.test(trimmed)) {
       const tableRows: InlineNode[][][] = [];
+      let noHeader = false;
       while (i < lines.length && TABLE_ROW.test(lines[i].trim())) {
         // Markdown's "| --- | :---: |" separator is layout, not a row.
         // (Each cell is dashes; a row of empty cells is still a row.)
+        // One BEFORE any row means the table has no header row.
         if (!/^\|(?:\s*:?-+:?\s*\|)+$/.test(lines[i].trim())) tableRows.push(splitTableRow(lines[i].trim()));
+        else if (tableRows.length === 0) noHeader = true;
         i++;
       }
       const [header, ...rows] = tableRows;
-      if (header) blocks.push({ type: "table", header, rows });
+      if (header) blocks.push(noHeader ? { type: "table", header: [], rows: tableRows } : { type: "table", header, rows });
       continue;
     }
 

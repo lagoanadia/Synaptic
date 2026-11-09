@@ -65,8 +65,10 @@ function blockToMarkdown(block: NoteBlock): string {
     case "letteredList":
       return listBlockToMarkdown(block);
     case "table": {
-      const headerRow = `| ${block.header.map(inlineToMarkdown).join(" | ")} |`;
-      const separatorRow = `| ${block.header.map(() => "---").join(" | ")} |`;
+      // Markdown needs a header row: a headerless table gets an empty one.
+      const cols = block.header.length || block.rows[0]?.length || 0;
+      const headerRow = `| ${block.header.length ? block.header.map(inlineToMarkdown).join(" | ") : Array(cols).fill(" ").join(" | ")} |`;
+      const separatorRow = `| ${Array(cols).fill("---").join(" | ")} |`;
       const bodyRows = block.rows.map(
         (row) => `| ${row.map(inlineToMarkdown).join(" | ")} |`,
       );
