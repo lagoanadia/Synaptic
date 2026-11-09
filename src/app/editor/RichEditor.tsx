@@ -322,6 +322,9 @@ export function RichEditor({
             if (files.length) insertImages(editor, files);
           }}
         />
+        {/* The handle sits left of the text, outside this box: this strip
+            keeps the mouse "inside" on its way there, so it doesn't vanish. */}
+        <div className="absolute inset-y-0 -left-12 w-12" aria-hidden />
         <EditorContent editor={editor} />
         {handle && (
           <div className="absolute z-10" style={{ top: handle.top, left: handle.left }}>
