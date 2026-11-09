@@ -140,6 +140,9 @@ const Continue = ({ onClick }: { onClick: () => void }) => (
   </button>
 );
 
+const TRUE = "Verdadero";
+const FALSE = "Falso";
+
 function shuffled<T>(xs: T[]): T[] {
   const out = [...xs];
   for (let n = out.length - 1; n > 0; n--) {
@@ -175,10 +178,21 @@ function Game({ items, shell, onAgain }: { items: LearnItem[]; shell: Shell; onA
   const [times, setTimes] = useState<number[]>([]);
   const askedAt = useRef(0);
   const byId = useMemo(() => new Map(items.map((i) => [i.id, i])), [items]);
-  const item = byId.get(queue[pos] ?? "");
-  // Fixed per step, so the order doesn't change on re-render.
-  const options = useMemo(() => (item ? shuffled([item.answer, ...item.distractors.slice(0, 3)]) : []), [item, pos]); // eslint-disable-line react-hooks/exhaustive-deps
-  const finished = items.length > 0 && !item;
+  const base = byId.get(queue[pos] ?? "");
+  // Each step is a 4-option question or, for cards that have one, about a
+  // third of the time a true/false. Fixed per step, so nothing changes on
+  // re-render.
+  const step = useMemo(() => {
+    if (!base) return null;
+    if (base.tf && Math.random() < 0.35) {
+      const answer = base.tf.isTrue ? TRUE : FALSE;
+      return { item: { ...base, prompt: base.tf.statement, answer }, options: [TRUE, FALSE], tf: true };
+    }
+    return { item: base, options: shuffled([base.answer, ...base.distractors.slice(0, 3)]), tf: false };
+  }, [base, pos]); // eslint-disable-line react-hooks/exhaustive-deps
+  const item = step?.item;
+  const options = step?.options ?? [];
+  const finished = items.length > 0 && !base;
   const reported = useRef(false);
 
   useEffect(() => {
@@ -205,7 +219,8 @@ function Game({ items, shell, onAgain }: { items: LearnItem[]; shell: Shell; onA
       window.setTimeout(next, 900);
     } else {
       setStreak(0);
-      if (!(item.id in firstWrong)) setFirstWrong((w) => ({ ...w, [item.id]: opt }));
+      // The summary shows the card's own question; a "Verdadero" pick means nothing there.
+      if (!(item.id in firstWrong)) setFirstWrong((w) => ({ ...w, [item.id]: step?.tf ? null : opt }));
       setMisses((m) => ({ ...m, [item.id]: (m[item.id] ?? 0) + 1 }));
       setQueue((q) => [...q, item.id]);
     }
@@ -249,11 +264,19 @@ function Game({ items, shell, onAgain }: { items: LearnItem[]; shell: Shell; onA
   return (
     <Stage {...shell} total={items.length} done={cleared.size} streak={streak}>
       <QuestionCard key={`${item.id}-${pos}`} item={item} timer onTimeout={result ? undefined : () => pick(null)} />
-      <Grid>
-        {options.map((opt, i) => (
-          <Tile key={opt} i={i} label={opt} keycap={String(i + 1)} state={state(opt)} onClick={() => pick(opt)} />
-        ))}
-      </Grid>
+      {step?.tf ? (
+        <div className="grid w-full max-w-[900px] grid-cols-2 gap-2.5 sm:gap-4">
+          {options.map((opt, i) => (
+            <Tile key={opt} i={opt === TRUE ? 2 : 0} label={opt} keycap={String(i + 1)} state={state(opt)} onClick={() => pick(opt)} />
+          ))}
+        </div>
+      ) : (
+        <Grid>
+          {options.map((opt, i) => (
+            <Tile key={opt} i={i} label={opt} keycap={String(i + 1)} state={state(opt)} onClick={() => pick(opt)} />
+          ))}
+        </Grid>
+      )}
       <Streak n={streak} className="flex sm:hidden" />
       {result && !result.correct && <Continue onClick={next} />}
     </Stage>

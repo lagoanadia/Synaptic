@@ -17,28 +17,32 @@ export async function withDistractors(cards: ReviewCard[], limit = 12): Promise<
   const data = obj(
     await askJson(
       `For each flashcard below, write a SHORT multiple-choice version, read on a phone in a second:
-- "q": the question in at most 12 words, same meaning (rephrase it so a very short answer works, e.g. "¿Qué cambio de contexto es más barato?").
-- "a": the correct answer in 2-6 words ("El de hilos"). Not a sentence.
-- "wrong": exactly 3 WRONG answers, each 2-6 words, same shape and length as "a" (±2 words), plausible to someone who half-remembers. Never correct or partially correct; no "all/none of the above".
+- "q": the question in at most 16 words, same meaning (rephrase it so a short answer works).
+- "a": the correct answer in 4-10 words: a short phrase that fully answers, with the key detail ("El de hilos: comparten la memoria del proceso"). Not a long sentence, not a bare word.
+- "wrong": exactly 3 WRONG answers, each 4-10 words, same shape and length as "a" (±2 words), plausible to someone who half-remembers. Never correct or partially correct; no "all/none of the above".
+- "tf": a true/false version: "s" = one statement of at most 16 words about the same idea, "t" = whether it's true. Make it FALSE about half the time, by changing one key detail (never by adding "no").
 - "hint": one short sentence that nudges toward the answer WITHOUT giving it away.
 All in the card's language.
 
 ${missing.map((c) => `id: ${c.id}\nsubject: ${c.pursuitTitle}${c.context ? ` / ${c.context}` : ""}\nQ: ${c.question}\nA: ${c.answer}`).join("\n\n")}
 
-Respond with ONLY JSON: {"items": [{"id": "...", "q": "...", "a": "...", "wrong": ["...", "...", "..."], "hint": "..."}]}`,
+Respond with ONLY JSON: {"items": [{"id": "...", "q": "...", "a": "...", "wrong": ["...", "...", "..."], "tf": {"s": "...", "t": true}, "hint": "..."}]}`,
       { maxTokens: 5000 },
     ),
   );
-  const byId = new Map<string, { distractors?: string[]; hint?: string; quizQuestion?: string; quizAnswer?: string }>();
+  const byId = new Map<string, { distractors?: string[]; hint?: string; quizQuestion?: string; quizAnswer?: string; tfStatement?: string; tfTrue?: boolean }>();
   for (const item of arr(data.items)) {
     const o = obj(item);
     const wrong = arr(o.wrong).map((w) => str(w, 80)).filter(Boolean).slice(0, 3);
     const hint = str(o.hint, 300);
-    const q = str(o.q, 160);
-    const a = str(o.a, 60);
+    const q = str(o.q, 200);
+    const a = str(o.a, 120);
+    const tf = obj(o.tf);
+    const tfStatement = str(tf.s, 200);
     // Short answer and short wrong ones come together, or not at all.
     const short = a && wrong.length === 3 ? { quizAnswer: a, distractors: wrong, ...(q ? { quizQuestion: q } : {}) } : {};
-    const update = { ...short, ...(hint ? { hint } : {}) };
+    const tfPart = tfStatement && typeof tf.t === "boolean" ? { tfStatement, tfTrue: tf.t } : {};
+    const update = { ...short, ...tfPart, ...(hint ? { hint } : {}) };
     if (Object.keys(update).length) byId.set(str(o.id, 60), update);
   }
   const updates = [...byId].filter(([id]) => missing.some((c) => c.id === id));
@@ -50,5 +54,5 @@ Respond with ONLY JSON: {"items": [{"id": "...", "q": "...", "a": "...", "wrong"
 
 // A card still lacking its short quiz version, wrong answers or hint.
 export function needsQuizText(c: ReviewCard): boolean {
-  return !c.quizAnswer || (c.distractors?.length ?? 0) < 3 || !c.hint || answerStandsOut(c.quizAnswer, c.distractors ?? []);
+  return !c.quizAnswer || !c.tfStatement || (c.distractors?.length ?? 0) < 3 || !c.hint || answerStandsOut(c.quizAnswer, c.distractors ?? []);
 }

@@ -106,6 +106,8 @@ export async function getCards(
       hint: true,
       quizQuestion: true,
       quizAnswer: true,
+      tfStatement: true,
+      tfTrue: true,
       note: { select: { content: true } },
       pursuit: { select: { id: true, title: true } },
     },
@@ -120,6 +122,8 @@ export async function getCards(
     hint: c.hint,
     quizQuestion: c.quizQuestion,
     quizAnswer: c.quizAnswer,
+    tfStatement: c.tfStatement,
+    tfTrue: c.tfTrue,
     context: c.note ? autoTitle(c.note.content) : null,
   }));
 }

@@ -68,6 +68,7 @@ export default async function ReviewPage({
     answer: c.quizAnswer || c.answer,
     distractors: c.distractors ?? [],
     hint: c.hint ?? null,
+    tf: c.tfStatement && typeof c.tfTrue === "boolean" ? { statement: c.tfStatement, isTrue: c.tfTrue } : null,
   }));
   const conceptItems: LearnItem[] = concepts
     .filter((c) => c.summary && (practice ? c.status !== "MASTERED" : c.status === "REREAD"))
