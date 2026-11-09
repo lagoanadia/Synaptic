@@ -9,7 +9,7 @@ import { notebookCover } from "@/lib/covers";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { cookies } from "next/headers";
-import { SITE_DESCRIPTION, SITE_NAME, SITE_TAGLINE, SITE_URL } from "@/lib/site";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
 
 const appFont = Inter({
   variable: "--font-app",
@@ -18,7 +18,8 @@ const appFont = Inter({
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: { default: `${SITE_NAME} — ${SITE_TAGLINE}`, template: `%s — ${SITE_NAME}` },
+  // The browser tab just says "Synaptic"; search results use openGraph below.
+  title: { default: "Synaptic", template: "%s — Synaptic" },
   description: SITE_DESCRIPTION,
   applicationName: SITE_NAME,
   keywords: ["apuntes", "app de estudio", "mapas de conceptos", "tarjetas de repaso", "IA para estudiar", "Google Classroom", "FP", "estudiantes"],
