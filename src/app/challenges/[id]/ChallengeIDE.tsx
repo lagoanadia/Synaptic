@@ -38,6 +38,8 @@ const show = (v: unknown) => {
 };
 
 const KEY = "synaptic.challenge.task";
+const WIDTH_KEY = "synaptic.challenge.taskWidth";
+const clampW = (w: number) => Math.min(Math.max(w, 260), 760);
 
 // A value in one short line: a list of objects reads "Milk (2023-01-02, 2),
 // Cheese (2023-01-10, 1)" instead of raw JSON.
@@ -70,6 +72,7 @@ export function ChallengeIDE({ challenge }: { challenge: Challenge }) {
   const [solved, setSolved] = useState(challenge.passed);
   const [picked, setPicked] = useState<number | null>(null);
   const [taskOpen, setTaskOpen] = useState(true);
+  const [taskW, setTaskW] = useState(380);
   const [termOpen, setTermOpen] = useState(false);
   const [review, setReview] = useState(challenge.review);
   const [hints, setHints] = useState<string[]>([]);
@@ -87,8 +90,29 @@ export function ChallengeIDE({ challenge }: { challenge: Challenge }) {
     try {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       if (window.localStorage.getItem(KEY) === "hidden") setTaskOpen(false);
+      const w = Number(window.localStorage.getItem(WIDTH_KEY));
+      if (w) setTaskW(clampW(w));
     } catch {}
   }, []);
+  // Drag the line between the task and the editor to resize the task.
+  function startResize(e: React.PointerEvent) {
+    e.preventDefault();
+    const x0 = e.clientX;
+    const w0 = taskW;
+    let w = w0;
+    const move = (ev: PointerEvent) => setTaskW((w = clampW(w0 + ev.clientX - x0)));
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      document.body.style.userSelect = "";
+      try {
+        window.localStorage.setItem(WIDTH_KEY, String(w));
+      } catch {}
+    };
+    document.body.style.userSelect = "none";
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  }
   function toggleTask(open: boolean) {
     setTaskOpen(open);
     try {
@@ -211,7 +235,11 @@ export function ChallengeIDE({ challenge }: { challenge: Challenge }) {
 
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
         {taskOpen ? (
-          <section className="relative flex max-h-[45vh] shrink-0 flex-col gap-5 overflow-y-auto border-b border-border-subtle px-6 py-5 lg:max-h-none lg:w-[380px] lg:border-r lg:border-b-0" aria-label="Enunciado">
+          <section
+            style={{ "--task-w": `${taskW}px` } as React.CSSProperties}
+            className="relative flex max-h-[45vh] shrink-0 flex-col gap-5 overflow-y-auto border-b border-border-subtle px-6 py-5 lg:max-h-none lg:w-[var(--task-w)] lg:border-b-0"
+            aria-label="Enunciado"
+          >
             <button type="button" onClick={() => toggleTask(false)} title="Ocultar el enunciado" aria-label="Ocultar el enunciado" className="absolute top-4 right-3 rounded px-1.5 text-ink-faint hover:bg-chip hover:text-ink">
               «
             </button>
@@ -238,6 +266,19 @@ export function ChallengeIDE({ challenge }: { challenge: Challenge }) {
             {review && <Review text={review} challenge={challenge} />}
             {note && <p className="text-xs text-red-500">{note}</p>}
           </section>
+        ) : null}
+        {taskOpen ? (
+          <div
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Ancho del enunciado"
+            title="Arrastra para cambiar el ancho"
+            onPointerDown={startResize}
+            onDoubleClick={() => setTaskW(380)}
+            className="group hidden w-[5px] shrink-0 cursor-col-resize justify-center lg:flex"
+          >
+            <span className="w-px bg-border-subtle transition-colors group-hover:w-[3px] group-hover:bg-accent/60" />
+          </div>
         ) : (
           <button type="button" onClick={() => toggleTask(true)} title="Mostrar el enunciado" aria-label="Mostrar el enunciado" className="hidden w-8 shrink-0 items-start justify-center border-r border-border-subtle pt-4 text-ink-faint hover:bg-chip hover:text-ink lg:flex">
             »
@@ -420,47 +461,41 @@ function Explained({ steps, code, challenge }: { steps: ExplainStep[]; code: str
     else setFailed(r.error ?? "No ha salido bien — inténtalo de nuevo");
   }
   const block = (src: string) => (
-    <pre className="overflow-x-auto rounded-lg bg-[#16161a] px-3.5 py-3 font-mono text-[12.5px] leading-relaxed text-[#e4e4e7]">{src}</pre>
+    <pre className="rounded-md border border-border-subtle bg-white px-2.5 py-2 font-mono text-[11.5px] leading-[1.55] whitespace-pre-wrap text-ink [overflow-wrap:anywhere]">{src}</pre>
   );
   const step = steps[at];
   return (
-    <div className="flex flex-col gap-3 rounded-lg bg-sidebar p-3.5">
+    <div className="flex flex-col gap-2 rounded-lg bg-sidebar px-3 py-2.5">
       <div className="flex items-center justify-between">
-        <span className="text-[11px] font-semibold tracking-wider text-accent uppercase">Cómo se hace</span>
-        <span className="flex gap-1" aria-hidden>
-          {[...steps, null].map((_, i) => (
-            <span key={i} className={`h-1.5 rounded-full transition-all ${i === at ? "w-4 bg-accent" : "w-1.5 bg-[#d9d8d4]"}`} />
-          ))}
-        </span>
+        <span className="text-[10.5px] font-semibold tracking-wider text-accent uppercase">Cómo se hace</span>
+        <span className="text-[11px] text-ink-faint">{at < last ? `${at + 1}/${last}` : "todo"}</span>
       </div>
       {step ? (
         <>
-          <p className="text-[15px] leading-snug">
-            <span className="mr-1.5 font-semibold text-ink-faint">{at + 1}.</span>
-            {step.say.split(/`([^`]+)`/).map((part, j) => (j % 2 ? <code key={j} className="rounded bg-chip px-1 font-mono text-[13px]">{part}</code> : part))}
+          <p className="text-[13px] leading-snug">
+            {step.say.split(/`([^`]+)`/).map((part, j) => (j % 2 ? <code key={j} className="rounded bg-chip px-1 font-mono text-[12px]">{part}</code> : part))}
           </p>
           {step.code && block(step.code)}
         </>
       ) : (
         <>
-          <p className="text-[15px] leading-snug">Todo junto:</p>
           {block(code)}
-          <p className="text-xs text-ink-faint">Ahora escríbelo tú en el editor, sin copiar.</p>
+          <p className="text-[11px] text-ink-faint">Ahora escríbelo tú en el editor, sin copiar.</p>
         </>
       )}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-3 text-xs">
         {at > 0 && (
-          <button type="button" onClick={() => setAt(at - 1)} className="rounded-md px-2.5 py-1.5 text-sm text-ink-muted hover:bg-chip">
-            Atrás
+          <button type="button" onClick={() => setAt(at - 1)} className="text-ink-faint hover:text-ink">
+            ← Atrás
           </button>
         )}
         {at < last ? (
-          <button type="button" onClick={() => setAt(at + 1)} className="ml-auto flex items-center gap-1 rounded-md bg-ink px-3 py-1.5 text-sm font-medium text-white">
-            {at === last - 1 ? "Ver todo junto" : "Siguiente"} <ArrowRight size={12} />
+          <button type="button" onClick={() => setAt(at + 1)} className="ml-auto flex items-center gap-1 font-medium text-accent hover:underline">
+            {at === last - 1 ? "Ver todo junto" : "Siguiente"} <ArrowRight size={11} />
           </button>
         ) : (
-          <button type="button" onClick={similar} disabled={making} className="ml-auto flex items-center gap-1 rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50">
-            {making ? "Creando reto…" : <>Uno parecido más fácil <ArrowRight size={12} /></>}
+          <button type="button" onClick={similar} disabled={making} className="ml-auto flex items-center gap-1 font-medium text-accent hover:underline disabled:opacity-50">
+            {making ? "Creando reto…" : <>Uno parecido más fácil <ArrowRight size={11} /></>}
           </button>
         )}
       </div>
