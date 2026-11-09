@@ -13,6 +13,9 @@ export type ReviewCard = {
   // AI-written wrong answers; used before any drawn from other cards.
   distractors?: string[];
   hint?: string | null;
+  // Short versions for the quiz (see Flashcard.quizQuestion/quizAnswer).
+  quizQuestion?: string | null;
+  quizAnswer?: string | null;
 };
 
 // A quiz question is about either a flashcard or an Internalize concept;

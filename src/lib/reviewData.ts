@@ -104,6 +104,8 @@ export async function getCards(
       answer: true,
       distractors: true,
       hint: true,
+      quizQuestion: true,
+      quizAnswer: true,
       note: { select: { content: true } },
       pursuit: { select: { id: true, title: true } },
     },
@@ -116,6 +118,8 @@ export async function getCards(
     answer: c.answer,
     distractors: c.distractors,
     hint: c.hint,
+    quizQuestion: c.quizQuestion,
+    quizAnswer: c.quizAnswer,
     context: c.note ? autoTitle(c.note.content) : null,
   }));
 }

@@ -434,6 +434,10 @@ model Flashcard {
   distractors String[] @default([])
   // A vague nudge for when you're stuck; never the answer itself.
   hint        String?
+  // The quiz shows short versions: the question in a few words and a 2-6
+  // word answer, matched by the distractors. Null until generated.
+  quizQuestion String?
+  quizAnswer   String?
 
   pursuitId String
   pursuit   Pursuit @relation(fields: [pursuitId], references: [id])
