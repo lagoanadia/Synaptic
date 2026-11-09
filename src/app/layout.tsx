@@ -81,7 +81,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
             Nadia
           </a>{" "}
           · © {new Date().getFullYear()}{" "}
-          <Link href="/" className="hover:underline">
+          <Link href="/web" className="hover:underline">
             Synaptic
           </Link>{" "}
           ·{" "}

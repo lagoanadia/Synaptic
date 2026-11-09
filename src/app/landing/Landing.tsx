@@ -19,7 +19,20 @@ const STEPS = [
 
 const cta = "inline-block rounded-full bg-white px-7 py-3.5 text-[15px] font-semibold text-[#111] transition-transform hover:-translate-y-0.5";
 
-export function Landing() {
+// Signed in (on /web), every "entrar" button just goes to your space.
+function Enter({ signedIn, align, className, children }: { signedIn: boolean; align: "left" | "right"; className: string; children: React.ReactNode }) {
+  return signedIn ? (
+    <Link href="/pursuits" className={className}>
+      {children}
+    </Link>
+  ) : (
+    <AuthMenu align={align} triggerClassName={className}>
+      {children}
+    </AuthMenu>
+  );
+}
+
+export function Landing({ signedIn = false }: { signedIn?: boolean }) {
   return (
     <main id="landing" className={`lnd ${lndSerif.variable} ${lndHand.variable} relative overflow-hidden text-white`}>
       <Motion rootId="landing" />
@@ -35,9 +48,9 @@ export function Landing() {
           <a href="#herramientas" className="hidden opacity-90 hover:opacity-100 md:inline">Herramientas</a>
           <a href="#sobre" className="hidden opacity-90 hover:opacity-100 md:inline">Sobre Synaptic</a>
           <span className="flex-1" />
-          <AuthMenu align="right" triggerClassName="rounded-full bg-white px-[18px] py-2 text-[13px] font-semibold text-[#1c6fd1]">
-            Entrar
-          </AuthMenu>
+          <Enter signedIn={signedIn} align="right" className="rounded-full bg-white px-[18px] py-2 text-[13px] font-semibold text-[#1c6fd1]">
+            {signedIn ? "Mi espacio" : "Entrar"}
+          </Enter>
         </nav>
 
         <div className="lnd-glass relative z-10 mx-4 mt-6 px-7 pt-5 pb-8 lg:absolute lg:top-[11.5%] lg:left-[4.4%] lg:m-0 lg:w-[37.5%] lg:px-[2.6vw] lg:pt-[1.4vw] lg:pb-[2.2vw]">
@@ -55,9 +68,9 @@ export function Landing() {
             Tienes mil cosas en la cabeza y ninguna en su sitio. Suéltalas aquí: Synaptic pone el orden.
           </p>
           <div className="mt-7">
-            <AuthMenu align="left" triggerClassName={cta}>
+            <Enter signedIn={signedIn} align="left" className={cta}>
               Vacía tu cabeza →
-            </AuthMenu>
+            </Enter>
           </div>
         </div>
 
@@ -215,9 +228,9 @@ export function Landing() {
             tu cabeza hoy.
           </h2>
           <div className="mt-8">
-            <AuthMenu align="left" triggerClassName={cta}>
+            <Enter signedIn={signedIn} align="left" className={cta}>
               Empieza gratis →
-            </AuthMenu>
+            </Enter>
           </div>
         </div>
         <div className="lnd-reveal" style={{ transitionDelay: ".15s" }}>
