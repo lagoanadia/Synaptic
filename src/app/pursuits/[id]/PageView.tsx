@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { CheckIcon, SlidesIcon } from "@/app/icons";
 import { RichEditor } from "../../editor/RichEditor";
 import { splitTitle, withTitle } from "@/lib/text";
+import { textToDoc } from "@/lib/richText";
+import type { Editor } from "@tiptap/core";
 import { uploadToBlob } from "@/lib/blobUpload";
 import { SlidePanel } from "./SlidePanel";
 import type { TermHint } from "@/lib/terms";
@@ -18,6 +20,7 @@ import {
   generateFlashcards,
   organizeDumps,
   updateBrainDump,
+  transcribeSlide,
   updateNote,
 } from "./actions";
 
@@ -63,6 +66,7 @@ export function PageView({ pursuit, crumbs, dump, note, slides, terms }: Props) 
     original: parts.original.title ?? parts.organized.title ?? "",
   });
   const [dirty, setDirty] = useState({ organized: false, original: false });
+  const editorRef = useRef<Editor | null>(null);
   const versions = useRef({ organized: note?.updatedAt ?? "", original: dump?.updatedAt ?? "" });
   const [split, setSplit] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -148,6 +152,7 @@ export function PageView({ pursuit, crumbs, dump, note, slides, terms }: Props) 
       />
       <RichEditor
         key={view}
+        editorRef={editorRef}
         bare
         initialText={content}
         onChange={(t) => {
@@ -284,6 +289,13 @@ export function PageView({ pursuit, crumbs, dump, note, slides, terms }: Props) 
           classroomUnit={slides.classroomUnit}
           dumpId={dump?.id}
           onClose={() => setSplit(false)}
+          onTranscribe={async (image) => {
+            const r = await transcribeSlide(pursuit.id, image);
+            if (r.error || !r.text) return r.error ?? "Inténtalo de nuevo";
+            // Into the note where the cursor is (the end if it never was in it).
+            editorRef.current?.chain().focus().insertContent(textToDoc(r.text).content ?? []).run();
+            return null;
+          }}
         >
           <div className="lg:pl-6">{page}</div>
         </SlidePanel>

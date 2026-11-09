@@ -1396,3 +1396,52 @@ export async function renamePage(pursuitId: string, page: { dumpId: string | nul
   revalidatePath(`/pursuits/${pursuitId}`);
   return { error: null };
 }
+
+// A slide (or the part of it you selected) → clean note text: only what
+// it teaches, no header, footer, logo, school, course or slide number.
+// The image is a JPEG data URL cropped in the browser.
+export async function transcribeSlide(pursuitId: string, image: string): Promise<{ error: string | null; text?: string }> {
+  const { userId, session } = await requireAccess(pursuitId);
+  const email = session.user?.email;
+  if (!/^data:image\/(jpeg|png|webp);base64,/.test(image) || image.length > 6_000_000) return { error: "Imagen no válida" };
+  const budget = await aiBudget(userId, email);
+  const limited = await budget.check();
+  if (limited) return { error: limited };
+  let content = "";
+  try {
+    const completion = await createJsonCompletion({
+      model: VISION_MODEL,
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: `Transcribe this slide (or slide fragment) into a student's notes, smartly.
+SKIP everything that isn't content: headers and footers, logos, school/teacher/course/subject names, dates, slide numbers, copyright, "índice"/navigation, decorative text.
+KEEP the real content, faithfully and in its original language: titles, explanations, lists, tables, code, formulas. Describe a diagram or picture in one short line only if it carries meaning.
+Write it in this plain-text note format:
+- "# Title" / "## Subtitle" for headings (only if the fragment has one)
+- "- item" for bullets (indent 2 spaces per level), "1. item" for numbered lists
+- **bold** where the slide emphasises
+- tables as "| a | b |" lines, one per row (first row = header)
+- code as a block: a line "<java" (or the language), the code verbatim, then a line ">"
+Respond with ONLY JSON: {"text": "..."}`,
+            },
+            { type: "image_url", image_url: { url: image } },
+          ],
+        },
+      ],
+      response_format: { type: "json_object" },
+      max_completion_tokens: 4000,
+    });
+    const raw = completion.choices[0]?.message?.content ?? "";
+    const parsed = parseJsonLoosely(raw) as { text?: unknown } | null;
+    content = typeof parsed?.text === "string" ? parsed.text.trim() : "";
+  } catch {
+    return { error: "No se ha podido contactar con la IA ahora mismo" };
+  }
+  if (!content) return { error: "No he encontrado contenido en esa parte" };
+  await budget.charge();
+  return { error: null, text: content.slice(0, 20000) };
+}
