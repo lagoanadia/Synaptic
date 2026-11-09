@@ -26,7 +26,7 @@ export function ProjectGrid({ projects, today, after }: { projects: ProjectItem[
           </button>
         ))}
       </div>
-      <div className="grid grid-cols-2 gap-x-6 gap-y-8 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-[repeat(auto-fill,150px)]">
         {shown.map((p) => {
           const state = projectState(p);
           const { done, total } = progress(p.tasks);
@@ -36,7 +36,7 @@ export function ProjectGrid({ projects, today, after }: { projects: ProjectItem[
           return (
             <Link key={p.id} href={`/pursuits/${p.id}`} className="group flex flex-col gap-3">
               <span className="transition-transform group-hover:-translate-y-0.5">
-                <Folder cover={p.cover as FolderCover} sheets={Math.min(3, total - done)} />
+                <Folder cover={p.cover as FolderCover} sheets={Math.min(3, total - done)} reserveSheets />
               </span>
               <span className="flex flex-col">
                 <span className="leading-snug font-semibold">{p.title}</span>
@@ -62,7 +62,14 @@ export function ProjectGrid({ projects, today, after }: { projects: ProjectItem[
             </Link>
           );
         })}
-        {after}
+        {after && (
+          // Same room above as a folder (sheets + tab), so "+" lines up with the covers.
+          <div>
+            <div className="pt-[12%]" />
+            <div className="pt-[min(max(1.5px,5.5%),15px)]" />
+            {after}
+          </div>
+        )}
       </div>
     </div>
   );
