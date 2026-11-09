@@ -36,6 +36,7 @@ export function SlidePanel({
   classroomUnit = null,
   dumpId,
   onClose,
+  onTranscribe,
   children,
 }: {
   pursuitId: string;
@@ -47,6 +48,8 @@ export function SlidePanel({
   dumpId?: string;
   // Opened from a toggle elsewhere: no button of its own; ✕ hands back.
   onClose?: () => void;
+  // Selected part of a slide (JPEG data URL) → into the note; an error or null.
+  onTranscribe?: (image: string, page: number) => Promise<string | null>;
   children: React.ReactNode;
 }) {
   const [showAllUnits, setShowAllUnits] = useState(false);
@@ -262,7 +265,7 @@ export function SlidePanel({
           {source && (
             <div className="min-h-[50vh] flex-1 bg-[#2a2a2a]">
               {source.kind === "pdf" ? (
-                <PdfSlides src={source.src} />
+                <PdfSlides src={source.src} onTranscribe={onTranscribe} />
               ) : (
                 <iframe
                   key={source.src}
