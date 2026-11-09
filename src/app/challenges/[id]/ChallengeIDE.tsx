@@ -9,7 +9,7 @@ import { PromptText } from "../PromptText";
 import { DIFFICULTIES, difficultyOf } from "../look";
 import { Badge, Bars } from "../ChallengeList";
 import { runInSandbox, warmSandbox } from "../sandbox";
-import { deleteChallenge, draftChallenge, explainSolution, getHint, reviewSolution, saveRun } from "../actions";
+import { deleteChallenge, draftChallenge, explainSolution, getHint, reviewSolution, saveRun, type ExplainStep } from "../actions";
 import { checkAndSave } from "../checkAndSave";
 import { paramNames, parseReview, type ChallengeTest, type Language, type RunOutput } from "@/lib/challenge";
 
@@ -75,7 +75,7 @@ export function ChallengeIDE({ challenge }: { challenge: Challenge }) {
   const [hints, setHints] = useState<string[]>([]);
   const [note, setNote] = useState<string | null>(null);
   const [isHinting, startHint] = useTransition();
-  const [explained, setExplained] = useState<{ steps: string[]; code: string } | null>(null);
+  const [explained, setExplained] = useState<{ steps: ExplainStep[]; code: string } | null>(null);
   const [isExplaining, startExplain] = useTransition();
   const [isReviewing, startReview] = useTransition();
   const [isDeleting, startDelete] = useTransition();
@@ -396,12 +396,15 @@ function Case({ inputs, expected, result, react }: { inputs: [string, unknown][]
   );
 }
 
-// "No lo sé": the idea and steps, the commented solution to read (not
-// paste: you write it yourself), and a similar, easier one to try alone.
-function Explained({ steps, code, challenge }: { steps: string[]; code: string; challenge: Challenge }) {
+// "No lo sé": one step at a time — a short sentence and the few lines it
+// adds — then everything together. To read and write yourself, not paste.
+// Code scrolls sideways instead of wrapping, so lines stay lines.
+function Explained({ steps, code, challenge }: { steps: ExplainStep[]; code: string; challenge: Challenge }) {
   const router = useRouter();
+  const [at, setAt] = useState(0);
   const [making, setMaking] = useState(false);
   const [failed, setFailed] = useState<string | null>(null);
+  const last = steps.length; // index `last` = everything together
   async function similar() {
     setMaking(true);
     setFailed(null);
@@ -416,15 +419,51 @@ function Explained({ steps, code, challenge }: { steps: string[]; code: string; 
     if (id) router.push(`/challenges/${id}`);
     else setFailed(r.error ?? "No ha salido bien — inténtalo de nuevo");
   }
+  const block = (src: string) => (
+    <pre className="overflow-x-auto rounded-lg bg-[#16161a] px-3.5 py-3 font-mono text-[12.5px] leading-relaxed text-[#e4e4e7]">{src}</pre>
+  );
+  const step = steps[at];
   return (
-    <div className="flex flex-col gap-3 rounded-lg bg-sidebar p-3">
-      <span className="text-[11px] font-semibold tracking-wider text-accent uppercase">Cómo se hace</span>
-      <PromptText prompt={steps.map((st, i) => `${i + 1}. ${st}`).join("\n")} />
-      <PromptText prompt={"```\n" + code + "\n```"} />
-      <p className="text-xs text-ink-faint">Léelo, entiéndelo y escríbelo tú en el editor sin copiarlo.</p>
-      <button type="button" onClick={similar} disabled={making} className="flex items-center gap-1 self-start text-xs font-medium text-accent hover:underline disabled:opacity-50">
-        {making ? "Creando reto…" : <>Dame uno parecido más fácil <ArrowRight size={11} /></>}
-      </button>
+    <div className="flex flex-col gap-3 rounded-lg bg-sidebar p-3.5">
+      <div className="flex items-center justify-between">
+        <span className="text-[11px] font-semibold tracking-wider text-accent uppercase">Cómo se hace</span>
+        <span className="flex gap-1" aria-hidden>
+          {[...steps, null].map((_, i) => (
+            <span key={i} className={`h-1.5 rounded-full transition-all ${i === at ? "w-4 bg-accent" : "w-1.5 bg-[#d9d8d4]"}`} />
+          ))}
+        </span>
+      </div>
+      {step ? (
+        <>
+          <p className="text-[15px] leading-snug">
+            <span className="mr-1.5 font-semibold text-ink-faint">{at + 1}.</span>
+            {step.say.split(/`([^`]+)`/).map((part, j) => (j % 2 ? <code key={j} className="rounded bg-chip px-1 font-mono text-[13px]">{part}</code> : part))}
+          </p>
+          {step.code && block(step.code)}
+        </>
+      ) : (
+        <>
+          <p className="text-[15px] leading-snug">Todo junto:</p>
+          {block(code)}
+          <p className="text-xs text-ink-faint">Ahora escríbelo tú en el editor, sin copiar.</p>
+        </>
+      )}
+      <div className="flex items-center gap-2">
+        {at > 0 && (
+          <button type="button" onClick={() => setAt(at - 1)} className="rounded-md px-2.5 py-1.5 text-sm text-ink-muted hover:bg-chip">
+            Atrás
+          </button>
+        )}
+        {at < last ? (
+          <button type="button" onClick={() => setAt(at + 1)} className="ml-auto flex items-center gap-1 rounded-md bg-ink px-3 py-1.5 text-sm font-medium text-white">
+            {at === last - 1 ? "Ver todo junto" : "Siguiente"} <ArrowRight size={12} />
+          </button>
+        ) : (
+          <button type="button" onClick={similar} disabled={making} className="ml-auto flex items-center gap-1 rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50">
+            {making ? "Creando reto…" : <>Uno parecido más fácil <ArrowRight size={12} /></>}
+          </button>
+        )}
+      </div>
       {failed && <p className="text-xs text-red-500">{failed}</p>}
     </div>
   );
