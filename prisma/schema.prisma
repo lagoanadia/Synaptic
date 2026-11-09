@@ -20,6 +20,10 @@ model User {
   image         String?
   createdAt     DateTime  @default(now())
 
+  // Profile: @handle (unique, lowercase) and the drawn avatar (lib/avatar.ts).
+  username String? @unique
+  avatar   Json?
+
   // Billing: written only by the Stripe webhook, so it mirrors Stripe.
   plan                   Plan      @default(FREE)
   stripeCustomerId       String?   @unique
