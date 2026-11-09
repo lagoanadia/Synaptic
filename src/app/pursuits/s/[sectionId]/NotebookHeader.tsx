@@ -15,12 +15,14 @@ export function NotebookHeader({
   name: initialName,
   cover,
   study,
+  kind = null,
   editable,
 }: {
   id: string;
   name: string;
   cover: NotebookCover;
   study: boolean;
+  kind?: "study" | "projects" | "general" | null;
   editable: boolean;
 }) {
   const [name, setName] = useState(initialName);
@@ -78,7 +80,7 @@ export function NotebookHeader({
           <div className="absolute top-full right-0 z-20 mt-2 flex w-72 flex-col gap-4 rounded-xl bg-white p-4 text-sm shadow-[0_0_0_1px_rgba(15,15,15,.05),0_12px_32px_rgba(15,15,15,.18)]">
             <div className="flex flex-col gap-2">
               <span className="text-xs text-ink-faint">Plantilla</span>
-              <TemplatePick value={study ? "study" : "projects"} onChange={(t) => update({ study: t === "study" })} />
+              <TemplatePick value={kind ?? (study ? "study" : "projects")} onChange={(t) => update({ kind: t })} />
               <span className="text-[11px] text-ink-faint">Cambiarla no borra nada: solo cambia lo que ves.</span>
             </div>
             <div className="flex flex-col gap-2">

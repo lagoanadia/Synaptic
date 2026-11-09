@@ -3,7 +3,8 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowDown, CheckIcon, KanbanIcon, MenuIcon, XIcon } from "@/app/icons";
-import { FOLDER_BLOCK_TYPES, newBlock, type FolderBlock } from "@/lib/blocks";
+import { BLOCK_ICONS, FOLDER_BLOCK_TYPES, newBlock, type FolderBlock } from "@/lib/blocks";
+import { BlockIconSvg } from "./TripBlocks";
 import { saveFolderBlocks, setGroupLabel } from "./actions";
 
 const LABEL = Object.fromEntries(FOLDER_BLOCK_TYPES.map((t) => [t.type, t.label]));
@@ -19,6 +20,7 @@ export function FolderBlocks({
   grouped,
   content,
   summaries = {},
+  extras = {},
   editing,
 }: {
   pursuitId: string;
@@ -29,6 +31,8 @@ export function FolderBlocks({
   content: Record<string, React.ReactNode>;
   // A short line next to a block's title ("1 de 4 hechas").
   summaries?: Record<string, string>;
+  // Something on the right of a block's header ("4 personas").
+  extras?: Record<string, React.ReactNode>;
   editing: boolean;
 }) {
   const [blocks, setBlocks] = useState(initial);
@@ -59,7 +63,7 @@ export function FolderBlocks({
       {blocks.map((b, i) => {
         const view = b.view ?? (grouped ? "board" : "list");
         // A project's tasks sit in their own card, so they stand apart from the rest.
-        const card = b.type === "project";
+        const card = b.type === "project" || b.type === "options" || b.type === "budget";
         const outline = editing ? "outline-[1.5px] outline-offset-4 outline-[#d3d1cb] outline-dashed" : "";
         return (
           <section
@@ -72,13 +76,32 @@ export function FolderBlocks({
           >
             <header className={card ? "flex items-center gap-3 rounded-t-xl border-b border-border-subtle bg-callout px-5 py-3" : "flex items-center gap-2 border-b border-border-subtle pb-2"}>
               {card && (
-                <span className="grid size-8 place-items-center rounded-lg bg-white text-ink shadow-[0_0_0_1px_rgba(55,53,47,.09)]">
-                  <CheckIcon size={15} />
-                </span>
+                <button
+                  type="button"
+                  disabled={!editing || b.type !== "options"}
+                  title={editing && b.type === "options" ? "Cambiar icono" : undefined}
+                  onClick={() => {
+                    const i = BLOCK_ICONS.indexOf(b.icon ?? "list");
+                    save(blocks.map((x) => (x.id === b.id ? { ...x, icon: BLOCK_ICONS[(i + 1) % BLOCK_ICONS.length] } : x)));
+                  }}
+                  className="grid size-8 place-items-center rounded-lg bg-white text-ink shadow-[0_0_0_1px_rgba(55,53,47,.09)]"
+                >
+                  {b.type === "options" ? <BlockIconSvg icon={b.icon ?? "list"} /> : b.type === "budget" ? <BlockIconSvg icon="budget" /> : <CheckIcon size={15} />}
+                </button>
               )}
-              <h2 className={card ? "text-[17px] font-semibold" : "flex-1 text-sm font-semibold"}>{LABEL[b.type]}</h2>
-              {card && <span className="flex-1 text-sm text-ink-faint">{summaries[b.id]}</span>}
-              {card && !editing && (
+              {b.type === "options" && editing ? (
+                <input
+                  defaultValue={b.title}
+                  aria-label="Nombre del bloque"
+                  onBlur={(e) => e.target.value.trim() && e.target.value !== b.title && save(blocks.map((x) => (x.id === b.id ? { ...x, title: e.target.value } : x)))}
+                  className="rounded bg-white px-1.5 text-[17px] font-semibold"
+                />
+              ) : (
+                <h2 className={card ? "text-[17px] font-semibold" : "flex-1 text-sm font-semibold"}>{b.type === "options" ? b.title : LABEL[b.type]}</h2>
+              )}
+              {card && <span className={`flex-1 text-sm text-ink-faint ${b.type === "project" ? "" : "text-right"}`}>{summaries[b.id]}</span>}
+              {card && !editing && extras[b.id]}
+              {b.type === "project" && !editing && (
                 <span className="flex rounded-md bg-white p-0.5 shadow-[0_0_0_1px_rgba(55,53,47,.09)]" role="group" aria-label="Vista">
                   {(
                     [

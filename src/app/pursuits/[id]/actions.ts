@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { cleanFolderBlock, type FolderBlock } from "@/lib/blocks";
 import { after } from "next/server";
 import { addNamedConcept, refreshUnitMap } from "@/lib/autoMap";
 import { BILLING } from "@/lib/billingFlag";
@@ -1328,14 +1329,13 @@ export async function renameUnit(pursuitId: string, sectionId: string, name: str
 
 // ─── Folder layout ─────────────────────────────────────────────────────
 
-const FOLDER_BLOCKS = ["pages", "map", "review", "ask", "challenges", "deadlines", "tasks"];
 
-export async function saveFolderBlocks(pursuitId: string, blocks: { id: string; type: string; view?: string }[]) {
+export async function saveFolderBlocks(pursuitId: string, blocks: Partial<FolderBlock>[]) {
   await requireAccess(pursuitId);
   const clean = blocks
-    .filter((b) => FOLDER_BLOCKS.includes(b.type))
-    .slice(0, 20)
-    .map((b) => ({ id: String(b.id).slice(0, 20), type: b.type, ...(b.view === "list" || b.view === "board" ? { view: b.view } : {}) }));
+    .map(cleanFolderBlock)
+    .filter((b): b is FolderBlock => b !== null)
+    .slice(0, 20);
   await prisma.pursuit.update({ where: { id: pursuitId }, data: { blocks: clean } });
   revalidatePath(`/pursuits/${pursuitId}`);
 }

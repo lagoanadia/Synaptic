@@ -57,6 +57,7 @@ model User {
   pushSubscriptions   PushSubscription[]
   sentNotifications   SentDeadlineNotification[]
   challenges          Challenge[]
+  choiceVotes         ChoiceVote[]
 }
 
 enum Plan {
@@ -199,6 +200,8 @@ model Pursuit {
   contentSections PursuitContentSection[]
   projects        Project[]
   tasks           Task[]
+  choices         Choice[]
+  budgetLines     BudgetLine[]
   conceptMaps     ConceptMap[]
   challenges      Challenge[]
   calendarEvents  CalendarEvent[]
@@ -304,6 +307,8 @@ model Section {
   cover String?
   // Study tools (flashcards, review, maps, challenges) for its subjects.
   study Boolean @default(true)
+  // Template it was made with: "study" | "projects" | "general" (null: from study).
+  kind  String?
 
   userId String
   user   User   @relation(fields: [userId], references: [id])
@@ -640,4 +645,49 @@ model GoogleCalendarConnection {
 
   userId String @unique
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// An option in an "Opciones" block of a folder (a flat, a flight…): a
+// link, a price in cents, a state, and the members' votes.
+model Choice {
+  id        String   @id @default(cuid())
+  pursuitId String
+  pursuit   Pursuit  @relation(fields: [pursuitId], references: [id], onDelete: Cascade)
+  // The block it belongs to, by its id in Pursuit.blocks.
+  blockId   String
+  title     String
+  url       String?
+  // IDEA | VOTING | CHOSEN
+  status    String   @default("IDEA")
+  price     Int?
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  votes     ChoiceVote[]
+
+  @@index([pursuitId, blockId])
+}
+
+model ChoiceVote {
+  choiceId String
+  choice   Choice @relation(fields: [choiceId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([choiceId, userId])
+}
+
+// A line you add to a "Presupuesto" block: "Comida · 40 € × 4 días × 4".
+// unit in cents; perPerson multiplies by the folder's people.
+model BudgetLine {
+  id        String  @id @default(cuid())
+  pursuitId String
+  pursuit   Pursuit @relation(fields: [pursuitId], references: [id], onDelete: Cascade)
+  blockId   String
+  label     String
+  unit      Int     @default(0)
+  days      Int     @default(1)
+  perPerson Boolean @default(true)
+  order     Int     @default(0)
+
+  @@index([pursuitId, blockId])
 }

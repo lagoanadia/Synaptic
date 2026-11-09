@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { cleanHomeBlocks, folderBlocks, homeBlocks } from "./blocks";
+import { cleanFolderBlock, templateBlocks } from "./blocks";
 
 describe("homeBlocks", () => {
   const sections = [
@@ -63,5 +64,30 @@ describe("cleanHomeBlocks projects", () => {
       { id: "q", type: "project", sectionId: null, pursuitId: null },
       { id: "t", type: "today", sectionId: null },
     ]);
+  });
+});
+
+describe("folder templates and options/budget blocks", () => {
+  it("a trip starts with Alojamiento, Vuelos and Presupuesto", () => {
+    const b = templateBlocks("trip");
+    expect(b.map((x) => [x.type, x.title ?? null, x.icon ?? null])).toEqual([
+      ["options", "Alojamiento", "bed"],
+      ["options", "Vuelos", "plane"],
+      ["budget", null, null],
+    ]);
+  });
+
+  it("a blank folder is just pages; a project has tasks first", () => {
+    expect(templateBlocks("blank").map((b) => b.type)).toEqual(["pages"]);
+    expect(templateBlocks("project").map((b) => b.type)).toEqual(["project", "pages"]);
+  });
+
+  it("cleans what the browser sends", () => {
+    expect(cleanFolderBlock({ id: "a", type: "options", title: "  Restaurantes ", icon: "food" })).toEqual({ id: "a", type: "options", title: "Restaurantes", icon: "food" });
+    expect(cleanFolderBlock({ id: "b", type: "options", icon: "nope" as never })).toEqual({ id: "b", type: "options", title: "Opciones", icon: "list" });
+    expect(cleanFolderBlock({ id: "c", type: "budget", people: 4 })).toEqual({ id: "c", type: "budget", people: 4 });
+    expect(cleanFolderBlock({ id: "d", type: "budget", people: 0 })).toEqual({ id: "d", type: "budget", people: null });
+    expect(cleanFolderBlock({ id: "e", type: "hack" as never })).toBeNull();
+    expect(cleanFolderBlock({ id: "f", type: "project", view: "list" })).toEqual({ id: "f", type: "project", view: "list" });
   });
 });

@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 
 // Reuse a section by name, or append one at the end of the user's order.
-export async function upsertSection(userId: string, name: string, study = true) {
+export async function upsertSection(userId: string, name: string, study = true, kind: string | null = null) {
   const trimmed = name.trim();
 
   const existing = await prisma.section.findUnique({
@@ -15,7 +15,7 @@ export async function upsertSection(userId: string, name: string, study = true) 
   });
 
   return prisma.section.create({
-    data: { userId, name: trimmed, study, order: (_max.order ?? -1) + 1 },
+    data: { userId, name: trimmed, study, kind, order: (_max.order ?? -1) + 1 },
   });
 }
 

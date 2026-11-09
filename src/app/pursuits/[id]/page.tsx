@@ -34,6 +34,7 @@ import { dayOf } from "@/lib/projects";
 import { ProjectInfo } from "@/app/projects/ProjectInfo";
 import { TaskBoard } from "@/app/projects/TaskBoard";
 import { ChallengeCards, ReviewToday } from "./FolderBlockViews";
+import { BudgetBlock, Faces, OptionsBlock, PeopleCount, VotesBanner, type Person } from "./TripBlocks";
 
 const CLASSROOM_ERROR_COPY: Record<string, string> = {
   denied: "Conexión con Google Classroom cancelada.",
@@ -191,9 +192,71 @@ export default async function PursuitPage({
 
   // A project folder shows its state and dates under the title.
   const project = blocks.some((b) => b.type === "project") ? await oneProject(session.user.id, pursuit.id) : null;
+  // Everyone in the folder, as coloured initials (owner first).
+  const FACE_COLORS = ["#2f7fdc", "#ee6a35", "#1fae7c", "#e2a21b", "#8b7bf5", "#e5605a"];
+  const people: Person[] = [pursuit.owner, ...pursuit.members.map((m) => m.user)].map((u, i) => {
+    const name = u.name ?? u.email;
+    return { id: u.id, name, initial: name.trim().charAt(0).toUpperCase(), color: FACE_COLORS[i % FACE_COLORS.length] };
+  });
+  // Options and budget blocks (a trip, a move…): their rows.
+  const hasChoices = blocks.some((b) => b.type === "options" || b.type === "budget");
+  const [choices, budgetLines] = hasChoices
+    ? await Promise.all([
+        prisma.choice.findMany({ where: { pursuitId: pursuit.id }, orderBy: { order: "asc" }, include: { votes: { select: { userId: true } } } }),
+        prisma.budgetLine.findMany({ where: { pursuitId: pursuit.id }, orderBy: { order: "asc" } }),
+      ])
+    : [[], []];
+  const pendingVotes = choices.filter((c) => c.status === "VOTING" && !c.votes.some((v) => v.userId === session.user!.id)).map((c) => c.id);
+  const euros = (cents: number) => `${(cents / 100).toLocaleString("es-ES", { maximumFractionDigits: 2 })} €`;
+
   const content: Record<string, React.ReactNode> = {};
   const summaries: Record<string, string> = {};
+  const extras: Record<string, React.ReactNode> = {};
   for (const b of blocks) {
+    if (b.type === "options") {
+      const items = choices.filter((c) => c.blockId === b.id);
+      content[b.id] = (
+        <OptionsBlock
+          pursuitId={pursuit.id}
+          blockId={b.id}
+          me={session.user.id}
+          people={people}
+          items={items.map((c) => ({ id: c.id, title: c.title, url: c.url, status: c.status as "IDEA" | "VOTING" | "CHOSEN", price: c.price, voters: c.votes.map((v) => v.userId) }))}
+        />
+      );
+      const chosen = items.filter((c) => c.status === "CHOSEN");
+      const voting = items.filter((c) => c.status === "VOTING").length;
+      summaries[b.id] = chosen.length
+        ? `Elegido${chosen[0].price !== null ? ` · ${euros(chosen.reduce((t, c) => t + (c.price ?? 0), 0))}` : ""}`
+        : items.length
+          ? `${items.length} ${items.length === 1 ? "opción" : "opciones"}${voting ? ` · ${voting} en votación` : ""}`
+          : "";
+      continue;
+    }
+    if (b.type === "budget") {
+      const n = b.people ?? people.length;
+      const chosen = blocks
+        .filter((o) => o.type === "options")
+        .map((o) => {
+          const picked = choices.filter((c) => c.blockId === o.id && c.status === "CHOSEN");
+          return {
+            label: o.title ?? "Opciones",
+            what: picked.map((c) => c.title).join(", "),
+            cents: picked.length ? picked.reduce((t, c) => t + (c.price ?? 0), 0) : null,
+          };
+        });
+      content[b.id] = (
+        <BudgetBlock
+          pursuitId={pursuit.id}
+          blockId={b.id}
+          people={n}
+          chosen={chosen}
+          lines={budgetLines.filter((l) => l.blockId === b.id).map((l) => ({ id: l.id, label: l.label, unit: l.unit, days: l.days, perPerson: l.perPerson }))}
+        />
+      );
+      extras[b.id] = <PeopleCount pursuitId={pursuit.id} blockId={b.id} people={n} />;
+      continue;
+    }
     if (b.type === "pages")
       content[b.id] = (
         <PagesBoard
@@ -275,6 +338,17 @@ export default async function PursuitPage({
               ▶ Repasar
             </Link>
           )}
+          {hasChoices && (
+            <>
+              <Faces people={people} size={26} />
+              <Link href={`${here}?edit=1#compartir`} className="flex items-center gap-1.5 rounded-md bg-chip px-3 py-1.5 text-sm text-ink-muted hover:text-ink">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M12 15V3M7.5 7.5 12 3l4.5 4.5M5 13v6.5h14V13" />
+                </svg>
+                Compartir
+              </Link>
+            </>
+          )}
           <Link href={editing ? here : `${here}?edit=1`} className={`rounded-md px-3 py-1.5 text-sm ${editing ? "bg-ink font-medium text-white" : "text-ink-faint hover:bg-chip hover:text-ink"}`}>
             {editing ? "Listo" : "Editar"}
           </Link>
@@ -282,6 +356,8 @@ export default async function PursuitPage({
       </header>
 
       {project && <ProjectInfo project={project} today={dayOf(new Date())} />}
+
+      <VotesBanner pending={pendingVotes} />
 
       {props.length > 0 && (
         <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm">
@@ -314,7 +390,7 @@ export default async function PursuitPage({
             ))}
             <TagForm pursuitId={pursuit.id} />
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div id="compartir" className="flex flex-wrap items-center gap-2">
             <span className="text-sm text-ink-faint">Compartido con</span>
             <span className="text-sm text-ink-muted">{pursuit.owner.name ?? pursuit.owner.email} (propietaria)</span>
             {pursuit.members.map((m) =>
@@ -352,7 +428,7 @@ export default async function PursuitPage({
         </FolderSettings>
       )}
 
-      <FolderBlocks key={blocks.map((b) => `${b.id}${b.view ?? ""}`).join()} pursuitId={pursuit.id} blocks={blocks} study={study} grouped={grouped} content={content} summaries={summaries} editing={editing} />
+      <FolderBlocks key={blocks.map((b) => `${b.id}${b.view ?? ""}`).join()} pursuitId={pursuit.id} blocks={blocks} study={study} grouped={grouped} content={content} summaries={summaries} extras={extras} editing={editing} />
     </div>
   );
 }

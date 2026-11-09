@@ -51,7 +51,7 @@ describe("upsertSection", () => {
     const result = await upsertSection("u1", "Trabajo");
 
     expect(create).toHaveBeenCalledWith({
-      data: { userId: "u1", name: "Trabajo", study: true, order: 5 },
+      data: { userId: "u1", name: "Trabajo", study: true, kind: null, order: 5 },
     });
     expect(result.order).toBe(5);
   });
@@ -64,7 +64,7 @@ describe("upsertSection", () => {
     await upsertSection("u1", "Primero");
 
     expect(create).toHaveBeenCalledWith({
-      data: { userId: "u1", name: "Primero", study: true, order: 0 },
+      data: { userId: "u1", name: "Primero", study: true, kind: null, order: 0 },
     });
   });
 });
