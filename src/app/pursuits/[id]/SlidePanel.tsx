@@ -267,14 +267,24 @@ export function SlidePanel({
               {source.kind === "pdf" ? (
                 <PdfSlides src={source.src} onTranscribe={onTranscribe} />
               ) : (
-                <iframe
-                  key={source.src}
-                  src={source.src}
-                  title={deck?.name ?? "Diapositivas"}
-                  className="h-full min-h-[50vh] w-full border-0"
-                  allow="fullscreen"
-                  referrerPolicy="no-referrer"
-                />
+                <div className="flex h-full flex-col">
+                  <iframe
+                    key={source.src}
+                    src={source.src}
+                    title={deck?.name ?? "Diapositivas"}
+                    className="min-h-[50vh] w-full flex-1 border-0"
+                    allow="fullscreen"
+                    referrerPolicy="no-referrer"
+                  />
+                  {/* Safari (and other browsers that block third-party
+                      cookies) can't show a private Drive file inside the
+                      page: Google answers 400. Opening it there works. */}
+                  {deck && (
+                    <a href={deck.url} target="_blank" rel="noopener noreferrer" className="bg-white py-2 text-center text-xs text-ink-muted hover:text-ink">
+                      ¿No se ve? Abrir en Google ↗
+                    </a>
+                  )}
+                </div>
               )}
             </div>
           )}
