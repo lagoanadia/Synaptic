@@ -3,8 +3,8 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { SHARED, UNSORTED, getCards, getLearnConcepts, type ReviewScope } from "@/lib/reviewData";
 import { shuffle } from "@/lib/review";
-import { answerStandsOut, type LearnItem } from "@/lib/learn";
-import { withDistractors } from "@/lib/quizDistractors";
+import type { LearnItem } from "@/lib/learn";
+import { needsQuizText, withDistractors } from "@/lib/quizDistractors";
 import { aiBudget } from "@/lib/access";
 import { ReviewGames } from "./ReviewGames";
 
@@ -49,7 +49,7 @@ export default async function ReviewPage({
   // you flagged to reread. Practice: a mix of everything.
   const practice = scope.kind === "pursuit" && dueCards.slice(0, left).length === 0;
   let pool = practice ? shuffle(allCards).slice(0, DAILY_CAP) : dueCards.slice(0, left);
-  if (pool.some((c) => (c.distractors?.length ?? 0) < 3 || !c.hint || answerStandsOut(c.answer, c.distractors ?? []))) {
+  if (pool.some(needsQuizText)) {
     const budget = await aiBudget(userId, session.user.email);
     if (!(await budget.check())) {
       const filled = await withDistractors(pool);
@@ -63,8 +63,9 @@ export default async function ReviewPage({
     pursuitId: c.pursuitId,
     pursuitTitle: c.pursuitTitle,
     context: c.context ?? null,
-    prompt: c.question,
-    answer: c.answer,
+    // The short quiz version once it exists; the card's own text until then.
+    prompt: c.quizQuestion || c.question,
+    answer: c.quizAnswer || c.answer,
     distractors: c.distractors ?? [],
     hint: c.hint ?? null,
   }));
