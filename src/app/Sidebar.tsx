@@ -6,8 +6,6 @@ import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { signOutAction } from "./actions";
-import { Avatar as DrawnAvatar } from "./Avatar";
-import type { Avatar as AvatarData } from "@/lib/avatar";
 import { createSection } from "./pursuits/actions";
 import { TemplatePick, type Template } from "./pursuits/TemplatePick";
 import { MiniNotebook } from "./Covers";
@@ -16,7 +14,7 @@ import { CalendarIcon, CardsIcon, CodeIcon, HomeIcon, XIcon } from "./icons";
 import type { NotebookCover } from "@/lib/covers";
 
 type Props = {
-  user: { name: string | null; email: string | null; image: string | null; avatar: AvatarData };
+  user: { name: string | null; email: string | null; image: string | null };
   plan: string;
   notebooks: { id: string; name: string; cover: NotebookCover }[];
   collapsed?: boolean;
@@ -114,7 +112,7 @@ export function Sidebar({ user, plan, notebooks, collapsed: startCollapsed = fal
               <MiniNotebook cover={n.cover} size={18} />
             </Link>
           ))}
-          <Account href="/profile" title={user.name ?? user.email ?? "Cuenta"} className="mt-auto grid size-8 place-items-center rounded-md hover:bg-[#ebebea]/70">
+          <Account href={BILLING ? "/billing" : null} title={user.name ?? user.email ?? "Cuenta"} className="mt-auto grid size-8 place-items-center rounded-md hover:bg-[#ebebea]/70">
             <Avatar user={user} />
           </Account>
         </aside>
@@ -152,7 +150,7 @@ export function Sidebar({ user, plan, notebooks, collapsed: startCollapsed = fal
           {notebookList}
         </div>
         <div className="mt-auto flex items-center gap-1 border-t border-border-subtle pt-3">
-          <Account href="/profile" className={`${row(active("/profile"))} min-w-0 flex-1`}>
+          <Account href={BILLING ? "/billing" : null} className={`${row(active("/billing"))} min-w-0 flex-1`}>
             <Avatar user={user} />
             <span className="min-w-0 flex-1 truncate">{user.name ?? user.email}</span>
             {BILLING && <span className="text-[11px] text-accent">{PLAN_LABEL[plan] ?? plan}</span>}
@@ -203,7 +201,7 @@ export function Sidebar({ user, plan, notebooks, collapsed: startCollapsed = fal
             </div>
             {notebookList}
             <div className="flex items-center gap-3 border-t border-border-subtle pt-3 text-sm">
-              <Account href="/profile" className="flex flex-1 items-center gap-2 text-ink-muted">
+              <Account href={BILLING ? "/billing" : null} className="flex flex-1 items-center gap-2 text-ink-muted">
                 <Avatar user={user} /> {user.name ?? user.email}
               </Account>
               <form action={signOutAction}>
@@ -219,9 +217,15 @@ export function Sidebar({ user, plan, notebooks, collapsed: startCollapsed = fal
   );
 }
 
-// Your drawn avatar (/profile).
 function Avatar({ user }: { user: Props["user"] }) {
-  return <DrawnAvatar avatar={user.avatar} size={22} className="shrink-0" />;
+  return user.image ? (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={user.image} alt="" width={18} height={18} className="size-[18px] rounded-full" />
+  ) : (
+    <span className="grid size-[18px] place-items-center rounded-full bg-accent text-[10px] font-bold text-white">
+      {(user.name ?? user.email ?? "?").charAt(0).toUpperCase()}
+    </span>
+  );
 }
 
 // "+ Nueva libreta": click, type the name, Enter.

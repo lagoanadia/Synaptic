@@ -1,6 +1,6 @@
 "use client";
 
-export type Template = "study" | "projects";
+export type Template = "study" | "projects" | "general";
 
 const StudyIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round" aria-hidden>
@@ -15,15 +15,25 @@ const ProjectsIcon = () => (
   </svg>
 );
 
+const GeneralIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round" aria-hidden>
+    <rect x="4" y="4" width="7" height="7" rx="1.5" />
+    <rect x="13" y="4" width="7" height="7" rx="1.5" />
+    <rect x="4" y="13" width="7" height="7" rx="1.5" />
+    <path d="M16.5 13.5v6M13.5 16.5h6" />
+  </svg>
+);
+
 export const TEMPLATES: { id: Template; icon: () => React.ReactElement; label: string; hint: string }[] = [
   { id: "study", icon: StudyIcon, label: "Estudios", hint: "Asignaturas, mapa, tarjetas y repaso" },
   { id: "projects", icon: ProjectsIcon, label: "Proyectos", hint: "Proyectos, tareas y calendario" },
+  { id: "general", icon: GeneralIcon, label: "General", hint: "Libre: tú eliges los bloques" },
 ];
 
-// The two notebook templates, as a pair of buttons.
+// The notebook templates, as a row of buttons.
 export function TemplatePick({ value, onChange, compact = false }: { value: Template; onChange: (t: Template) => void; compact?: boolean }) {
   return (
-    <div className={`grid grid-cols-2 gap-1.5 ${compact ? "text-xs" : "text-sm"}`} role="radiogroup" aria-label="Plantilla">
+    <div className={`grid grid-cols-3 gap-1.5 ${compact ? "text-xs" : "text-sm"}`} role="radiogroup" aria-label="Plantilla">
       {TEMPLATES.map((t) => (
         <button
           key={t.id}

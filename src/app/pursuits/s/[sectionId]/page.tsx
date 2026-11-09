@@ -29,6 +29,8 @@ export default async function NotebookPage({ params }: { params: Promise<{ secti
   if (!isVirtual && !section) notFound();
   const name = section?.name ?? (sectionId === SHARED ? "Compartido" : "Sin clasificar");
   const study = section?.study ?? true;
+  // A "General" notebook: free folders, each with its own blocks.
+  const general = section?.kind === "general";
   const now = new Date();
 
   const pursuits = await prisma.pursuit.findMany({
@@ -74,19 +76,19 @@ export default async function NotebookPage({ params }: { params: Promise<{ secti
           </Link>{" "}
           / <span className="text-ink-muted">{name}</span>
         </nav>
-        <NotebookHeader id={sectionId} name={name} cover={notebookCover(sectionId, section?.cover)} study={study} editable={!isVirtual} />
+        <NotebookHeader id={sectionId} name={name} cover={notebookCover(sectionId, section?.cover)} study={study} kind={(section?.kind as "study" | "projects" | "general" | null) ?? null} editable={!isVirtual} />
       </div>
 
-      {study || !section ? (
+      {study || !section || general ? (
         <section className="flex flex-col gap-3">
           {sectionHeader(study ? "Asignaturas" : "Carpetas")}
-          <FolderRow items={folders} after={!isVirtual && <NewFolder sectionName={name} label={study ? "Nueva asignatura" : "Nueva carpeta"} />} />
+          <FolderRow items={folders} after={!isVirtual && <NewFolder sectionName={name} label={study ? "Nueva asignatura" : "Nueva carpeta"} template={study ? undefined : "blank"} />} />
         </section>
       ) : (
         <>
           <section className="flex flex-col gap-3">
             <h2 className="text-[22px] font-bold">Proyectos</h2>
-            <ProjectGrid projects={projects} today={today} after={<NewFolder sectionName={name} label="Nuevo proyecto" fill />} />
+            <ProjectGrid projects={projects} today={today} after={<NewFolder sectionName={name} label="Nuevo proyecto" template="project" fill />} />
           </section>
           <section className="flex flex-col gap-3">
             <h2 className="text-[22px] font-bold">Tareas</h2>

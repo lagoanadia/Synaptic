@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { templateBlocks } from "@/lib/blocks";
 import { cleanHomeBlocks } from "@/lib/blocks";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
@@ -16,6 +17,7 @@ export async function createPursuit(formData: FormData) {
   const title = formData.get("title");
   const type = formData.get("type");
   const sectionName = formData.get("section");
+  const template = formData.get("template");
 
   if (typeof title !== "string" || title.trim() === "") {
     throw new Error("Falta el título");
@@ -35,6 +37,8 @@ export async function createPursuit(formData: FormData) {
       type: typeof type === "string" && type.trim() !== "" ? type.trim() : null,
       ownerId: session.user.id,
       sectionId,
+      // A folder template (En blanco / Proyecto / Viaje) sets its blocks.
+      ...(template === "blank" || template === "project" || template === "trip" ? { blocks: templateBlocks(template) } : {}),
     },
   });
 
@@ -146,7 +150,7 @@ export async function unsubscribeFromPush(endpoint: string) {
 // so the inline input can show a message in place.
 // template: "study" (subjects with flashcards, maps, review) or "projects"
 // (projects with tasks and a calendar). Changeable later in ⚙.
-export async function createSection(name: string, template: "study" | "projects" = "study"): Promise<{ error: string | null; id?: string }> {
+export async function createSection(name: string, template: "study" | "projects" | "general" = "study"): Promise<{ error: string | null; id?: string }> {
   const session = await auth();
   if (!session?.user?.id) {
     return { error: "No has iniciado sesión" };
@@ -155,7 +159,7 @@ export async function createSection(name: string, template: "study" | "projects"
   if (trimmed === "") return { error: "Ponle un nombre" };
   if (trimmed.length > 40) return { error: "Máximo 40 caracteres" };
 
-  const section = await upsertSection(session.user.id, trimmed, template !== "projects");
+  const section = await upsertSection(session.user.id, trimmed, template === "study", template);
   revalidatePath("/pursuits", "layout");
   return { error: null, id: section.id };
 }
@@ -174,7 +178,7 @@ export async function saveHomeBlocks(blocks: { id: string; type: string; section
 }
 
 // Notebook settings: study tools on/off and its cover.
-export async function setNotebook(sectionId: string, data: { study?: boolean; cover?: string; name?: string }): Promise<{ error: string | null }> {
+export async function setNotebook(sectionId: string, data: { study?: boolean; kind?: "study" | "projects" | "general"; cover?: string; name?: string }): Promise<{ error: string | null }> {
   const session = await auth();
   if (!session?.user?.id) return { error: "No has iniciado sesión" };
   const section = await prisma.section.findFirst({ where: { id: sectionId, userId: session.user.id } });
@@ -187,6 +191,7 @@ export async function setNotebook(sectionId: string, data: { study?: boolean; co
       where: { id: sectionId },
       data: {
         ...(typeof data.study === "boolean" ? { study: data.study } : {}),
+        ...(data.kind && ["study", "projects", "general"].includes(data.kind) ? { kind: data.kind, study: data.kind === "study" } : {}),
         ...(data.cover && (NOTEBOOK_COVERS as readonly string[]).includes(data.cover) ? { cover: data.cover } : {}),
         ...(name ? { name } : {}),
       },
