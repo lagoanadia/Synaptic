@@ -309,7 +309,6 @@ export default async function PursuitPage({
   const props = [
     pursuit.classroomEnabled && pursuit.classroomCourseName ? ["Classroom", pursuit.classroomCourseName] : null,
     grouped ? ["Agrupado por", groupLabel] : null,
-    pursuit.members.length > 0 ? ["Compartida con", String(pursuit.members.length)] : null,
   ].filter((x): x is string[] => !!x);
 
   return (
@@ -379,31 +378,54 @@ export default async function PursuitPage({
 
       {editing && (
         <FolderSettings pursuitId={pursuit.id} cover={cover} groupLabel={grouped ? groupLabel : null} title={pursuit.title} canDelete={isOwner}>
-          <StatusNote pursuitId={pursuit.id} initialNote={pursuit.statusNote} />
-          <div className="flex flex-wrap items-center gap-2">
-            {pursuit.pursuitTags.map((t) => (
-              <span key={t.id} className="flex items-center gap-1.5 rounded-md bg-chip px-2.5 py-1 text-sm text-ink-muted">
-                {t.name}
-                <DeleteButton action={removePursuitTag.bind(null, pursuit.id, t.id)} className="text-ink-faint hover:text-red-500">
-                  ×
-                </DeleteButton>
-              </span>
-            ))}
-            <TagForm pursuitId={pursuit.id} />
-          </div>
-          <div id="compartir" className="flex flex-wrap items-center gap-2">
-            <span className="text-sm text-ink-faint">Compartido con</span>
-            <span className="text-sm text-ink-muted">{pursuit.owner.name ?? pursuit.owner.email} (propietaria)</span>
-            {pursuit.members.map((m) =>
-              isOwner ? (
-                <MemberRow key={m.id} pursuitId={pursuit.id} memberId={m.id} name={m.user.name ?? m.user.email} role={m.role} />
-              ) : (
-                <span key={m.id} className="text-sm text-ink-muted">
-                  · {m.user.name ?? m.user.email} ({m.role.toLowerCase()})
-                </span>
-              ),
-            )}
-            {isOwner && <MemberForm pursuitId={pursuit.id} />}
+          <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]">
+            {/* Quick note: a sticky note, so it doesn't get lost among the settings. */}
+            <div className="flex flex-col gap-2 self-start rounded-lg bg-[#fdf3c4] p-4 shadow-[0_1px_2px_rgba(0,0,0,.06),0_6px_14px_-8px_rgba(120,90,10,.35)]">
+              <span className="text-xs font-semibold tracking-wide text-[#8a6d1f] uppercase">Nota rápida</span>
+              <StatusNote pursuitId={pursuit.id} initialNote={pursuit.statusNote} />
+            </div>
+            <div className="flex flex-col gap-4">
+              <div id="compartir" className="flex flex-col gap-2 rounded-lg border border-border-subtle bg-white p-4">
+                <span className="text-xs font-semibold tracking-wide text-ink-faint uppercase">Compartido con</span>
+                <div className="flex items-center gap-2.5 text-sm">
+                  <Faces people={people.slice(0, 1)} size={28} />
+                  <span className="text-ink">{pursuit.owner.name ?? pursuit.owner.email}</span>
+                  <span className="flex-1" />
+                  <span className="text-xs text-ink-faint">Propietaria</span>
+                </div>
+                {pursuit.members.map((m, i) => (
+                  <div key={m.id} className="flex items-center gap-2.5 text-sm">
+                    <Faces people={people.slice(i + 1, i + 2)} size={28} />
+                    {isOwner ? (
+                      <span className="flex-1">
+                        <MemberRow pursuitId={pursuit.id} memberId={m.id} name={m.user.name ?? m.user.email} role={m.role} />
+                      </span>
+                    ) : (
+                      <>
+                        <span className="flex-1 text-ink">{m.user.name ?? m.user.email}</span>
+                        <span className="text-xs text-ink-faint">{m.role === "VIEWER" ? "Lee" : "Edita"}</span>
+                      </>
+                    )}
+                  </div>
+                ))}
+                {isOwner && <MemberForm pursuitId={pursuit.id} />}
+              </div>
+              <div className="flex flex-col gap-2 rounded-lg border border-border-subtle bg-white p-4">
+                <span className="text-xs font-semibold tracking-wide text-ink-faint uppercase">Etiquetas</span>
+                <div className="flex flex-wrap items-center gap-2">
+                  {pursuit.pursuitTags.map((t) => (
+                    <span key={t.id} className="flex items-center gap-1 rounded-full bg-chip px-3 py-1 text-sm text-ink">
+                      <span className="text-ink-faint">#</span>
+                      {t.name}
+                      <DeleteButton action={removePursuitTag.bind(null, pursuit.id, t.id)} className="ml-0.5 text-ink-faint hover:text-red-500">
+                        ×
+                      </DeleteButton>
+                    </span>
+                  ))}
+                  <TagForm pursuitId={pursuit.id} />
+                </div>
+              </div>
+            </div>
           </div>
           {pursuit.classroomEnabled ? (
             <div className="flex flex-col gap-1.5">

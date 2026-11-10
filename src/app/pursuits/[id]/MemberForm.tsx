@@ -26,8 +26,8 @@ export function MemberForm({ pursuitId }: { pursuitId: string }) {
         disabled={isPending}
         className="rounded-md border border-dashed border-border-subtle bg-transparent px-2 py-1 text-sm disabled:opacity-50"
       >
-        <option value="EDITOR">editor</option>
-        <option value="VIEWER">viewer</option>
+        <option value="EDITOR">Edita</option>
+        <option value="VIEWER">Lee</option>
       </select>
       {state.error && (
         <span className="max-w-xs text-xs text-red-500">{state.error}</span>
