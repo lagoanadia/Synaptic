@@ -1,5 +1,16 @@
 // Spanish source text → translation. Missing keys fall back to Spanish.
 export const en: Record<string, string> = {
+  "resumen": "summary",
+  "tu_usuario": "your_username",
+  "Hola, {name}": "Hi, {name}",
+  "Ley aplicable": "Governing law",
+  "Transferencias internacionales": "International transfers",
+  "Edad": "Age",
+  "Cambios": "Changes",
+  "Cookies": "Cookies",
+  "Empieza aquí": "Start here",
+  "Escribe tu primera página": "Write your first page",
+  "Cuando tengas apuntes, aquí aparecen el mapa, el repaso y el resto de herramientas.": "Once you have notes, the map, review and the other tools show up here.",
   "Compartido": "Shared",
   "Elige un amigo o escribe un email o @usuario": "Pick a friend or type an email or @username",
   "No hay ninguna cuenta con ese email o @usuario — tiene que entrar en Synaptic una vez primero": "No account with that email or @username — they need to sign in to Synaptic once first",

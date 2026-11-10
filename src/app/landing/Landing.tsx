@@ -85,7 +85,7 @@ export async function Landing({ signedIn = false }: { signedIn?: boolean }) {
             {(
               [
                 ["notebook", 470, 640, -14, null],
-                ["paper", 90, 640, -16, <>{t("tema 3")}<br />{t("¿¿JOIN??")}</>],
+                ["paper", 90, 640, -16, <>{t("tema 3")}<br />{t("resumen")}</>],
                 ["sticky", 270, 680, 14, t("examen jueves!!")],
                 ["paper", 360, 620, 24, <>{t("apuntes")}<br />{t("clase 12")}</>],
                 ["pink", 180, 750, -10, t("repasar UD2")],
