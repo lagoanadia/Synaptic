@@ -79,10 +79,10 @@ export async function removeFriend(friendshipId: string) {
   revalidatePath("/profile");
 }
 
-// "Eliminar cuenta": only after typing ELIMINAR; deletes everything and signs out.
+// "Eliminar cuenta": only after typing the confirm word (any language); deletes everything and signs out.
 export async function deleteAccount(confirm: string): Promise<{ error: string | null }> {
   const id = await me();
-  if (confirm.trim().toUpperCase() !== "ELIMINAR") return { error: "Escribe ELIMINAR para confirmar" };
+  if (!["ELIMINAR", "DELETE", "LÖSCHEN"].includes(confirm.trim().toUpperCase())) return { error: "No se ha confirmado" };
   await wipeUser(id);
   await signOut({ redirectTo: "/" });
   return { error: null };

@@ -1,5 +1,8 @@
 // Spanish source text → translation. Missing keys fall back to Spanish.
 export const de: Record<string, string> = {
+  "ELIMINAR": "LÖSCHEN",
+  "Escribe {word} para confirmar": "Tippe {word} zur Bestätigung",
+  "No se ha confirmado": "Nicht bestätigt",
   "Solicitudes pendientes": "Offene Anfragen",
   "Nada pendiente.": "Nichts offen.",
   "Enviadas": "Gesendet",
