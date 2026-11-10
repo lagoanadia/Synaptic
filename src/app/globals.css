@@ -269,6 +269,9 @@ body:has(#landing, #login) .app-pad {
     inset: 0 auto auto 0;
     width: 100%;
   }
+  html.print-page [data-no-print] {
+    display: none !important;
+  }
   html.print-page [data-print-root] input::placeholder,
   html.print-page [data-print-root] .is-empty::before {
     color: transparent !important;
