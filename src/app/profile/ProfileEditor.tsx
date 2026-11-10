@@ -24,6 +24,7 @@ const DiceIcon = () => (
 
 export function ProfileEditor({ name, username, suggested, initial, saved: wasSaved }: { name: string; username: string | null; suggested: string; initial: Avatar; saved: boolean }) {
   const t = useT();
+  const tr = t;
   const [avatar, setAvatar] = useState(initial);
   const [tab, setTab] = useState<Tab>("Cara");
   const [dirty, setDirty] = useState(!wasSaved);
@@ -92,7 +93,7 @@ export function ProfileEditor({ name, username, suggested, initial, saved: wasSa
   );
   const row = (label: string, body: React.ReactNode) => (
     <div className="flex flex-col gap-2">
-      <span className="text-xs font-semibold tracking-wide text-ink-faint uppercase">{label}</span>
+      <span className="text-xs font-semibold tracking-wide text-ink-faint uppercase">{t(label)}</span>
       {body}
     </div>
   );
@@ -138,7 +139,7 @@ export function ProfileEditor({ name, username, suggested, initial, saved: wasSa
         <div className="flex w-fit max-w-full gap-0.5 overflow-x-auto rounded-[10px] bg-chip p-[3px] text-sm" role="tablist">
           {TABS.map((t) => (
             <button key={t} type="button" role="tab" aria-selected={tab === t} onClick={() => setTab(t)} className={`rounded-lg px-4 py-1.5 ${tab === t ? "bg-white font-medium text-ink shadow-sm" : "text-ink-muted hover:text-ink"}`}>
-              {t}
+              {tr(t)}
             </button>
           ))}
         </div>

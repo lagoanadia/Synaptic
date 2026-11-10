@@ -1,3 +1,4 @@
+import { getT } from "@/lib/i18n/server";
 import Link from "next/link";
 import { CheckIcon } from "@/app/icons";
 import { LANGUAGE_INFO, asLanguage } from "@/lib/challenge";
@@ -5,7 +6,8 @@ import { LANGUAGE_STYLE, difficultyOf } from "@/app/challenges/look";
 
 // "Repaso": today's small batch as a stack of cards, and one button to
 // play it. No counts.
-export function ReviewToday({ pursuitId }: { pursuitId: string }) {
+export async function ReviewToday({ pursuitId }: { pursuitId: string }) {
+  const t = await getT();
   const q = `pursuit=${pursuitId}`;
   return (
     <div className="flex flex-wrap items-center gap-8 rounded-lg bg-sidebar px-6 py-5">
@@ -19,20 +21,21 @@ export function ReviewToday({ pursuitId }: { pursuitId: string }) {
         ))}
       </div>
       <Link href={`/review?${q}`} className="flex items-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-medium text-white">
-        ▶ Repasar
+        {t("▶ Repasar")}
       </Link>
     </div>
   );
 }
 
 // "Retos": this subject's coding challenges, and a way to get more.
-export function ChallengeCards({
+export async function ChallengeCards({
   pursuitId,
   items,
 }: {
   pursuitId: string;
   items: { id: string; title: string; language: string; difficulty: string; passed: boolean }[];
 }) {
+  const t = await getT();
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {items.map((c) => {
@@ -43,10 +46,10 @@ export function ChallengeCards({
             <span className={`grid size-8 place-items-center rounded-md font-mono text-[11px] font-bold ${LANGUAGE_STYLE[lang].badge}`}>{LANGUAGE_INFO[lang].short}</span>
             <span className="text-sm font-semibold">{c.title}</span>
             <span className="flex items-center gap-2 text-xs text-ink-muted">
-              <span className={`size-2 rounded-full ${d.bar}`} /> {d.label}
+              <span className={`size-2 rounded-full ${d.bar}`} /> {t(d.label)}
               {c.passed && (
                 <span className="ml-auto flex items-center gap-1 font-semibold text-[#448361]">
-                  <CheckIcon size={12} /> Resuelto
+                  <CheckIcon size={12} />{" "}{t("Resuelto")}
                 </span>
               )}
             </span>
@@ -54,7 +57,7 @@ export function ChallengeCards({
         );
       })}
       <Link href={`/challenges?pursuit=${pursuitId}`} className="grid min-h-28 place-items-center rounded-lg border border-dashed border-[#d3d1cb] text-sm text-ink-faint hover:text-ink">
-        + Dame 3 retos
+        {t("+ Dame 3 retos")}
       </Link>
     </div>
   );

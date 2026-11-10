@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { getT } from "@/lib/i18n/server";
 import { AuthMenu } from "./AuthMenu";
 import { LangPicker } from "../LangPicker";
 import { Motion } from "./Motion";
@@ -33,7 +34,8 @@ function Enter({ signedIn, align, className, children }: { signedIn: boolean; al
   );
 }
 
-export function Landing({ signedIn = false }: { signedIn?: boolean }) {
+export async function Landing({ signedIn = false }: { signedIn?: boolean }) {
+  const t = await getT();
   return (
     <main id="landing" className={`lnd ${lndSerif.variable} ${lndHand.variable} relative overflow-hidden text-white`}>
       <Motion rootId="landing" />
@@ -45,13 +47,13 @@ export function Landing({ signedIn = false }: { signedIn?: boolean }) {
             <img src="/logo-mark.png" alt="" width={24} height={24} className="rounded-md" />
             Synaptic Notes
           </span>
-          <a href="#como-funciona" className="hidden opacity-90 hover:opacity-100 md:inline">Cómo funciona</a>
-          <a href="#herramientas" className="hidden opacity-90 hover:opacity-100 md:inline">Herramientas</a>
-          <a href="#sobre" className="hidden opacity-90 hover:opacity-100 md:inline">Sobre Synaptic</a>
+          <a href="#como-funciona" className="hidden opacity-90 hover:opacity-100 md:inline">{t("Cómo funciona")}</a>
+          <a href="#herramientas" className="hidden opacity-90 hover:opacity-100 md:inline">{t("Herramientas")}</a>
+          <a href="#sobre" className="hidden opacity-90 hover:opacity-100 md:inline">{t("Sobre Synaptic")}</a>
           <span className="flex-1" />
           <LangPicker className="!bg-white/85" />
           <Enter signedIn={signedIn} align="right" className="rounded-full bg-white px-[18px] py-2 text-[13px] font-semibold text-[#1c6fd1]">
-            {signedIn ? "Mi espacio" : "Crear cuenta / Entrar"}
+            {signedIn ? t("Mi espacio") : t("Crear cuenta / Entrar")}
           </Enter>
         </nav>
 
@@ -62,16 +64,16 @@ export function Landing({ signedIn = false }: { signedIn?: boolean }) {
             <span className="size-[11px] rounded-full bg-[#2bc840]" />
           </div>
           <h1 className="lnd-serif text-[clamp(3.2rem,5.85vw,6.5rem)] leading-[.95] font-extrabold tracking-[-0.03em]">
-            Tu cabeza,
+            {t("Tu cabeza,")}
             <br />
-            en orden.
+            {t("en orden.")}
           </h1>
           <p className="mt-5 max-w-[470px] text-[clamp(1rem,1.32vw,1.25rem)] leading-normal font-medium">
-            Tienes mil cosas en la cabeza y ninguna en su sitio. Suéltalas aquí: Synaptic pone el orden.
+            {t("Tienes mil cosas en la cabeza y ninguna en su sitio. Suéltalas aquí: Synaptic pone el orden.")}
           </p>
           <div className="mt-7">
             <Enter signedIn={signedIn} align="left" className={cta}>
-              Vacía tu cabeza →
+              {t("Vacía tu cabeza →")}
             </Enter>
           </div>
         </div>
@@ -83,10 +85,10 @@ export function Landing({ signedIn = false }: { signedIn?: boolean }) {
             {(
               [
                 ["notebook", 470, 640, -14, null],
-                ["paper", 90, 640, -16, <>tema 3<br />¿¿JOIN??</>],
-                ["sticky", 270, 680, 14, "examen jueves!!"],
-                ["paper", 360, 620, 24, <>apuntes<br />clase 12</>],
-                ["pink", 180, 750, -10, "repasar UD2"],
+                ["paper", 90, 640, -16, <>{t("tema 3")}<br />¿¿JOIN??</>],
+                ["sticky", 270, 680, 14, t("examen jueves!!")],
+                ["paper", 360, 620, 24, <>{t("apuntes")}<br />{t("clase 12")}</>],
+                ["pink", 180, 750, -10, t("repasar UD2")],
                 ["pencil", 300, 800, 30, null],
                 ["coffee", 470, 760, 0, null],
               ] as const
@@ -101,7 +103,7 @@ export function Landing({ signedIn = false }: { signedIn?: boolean }) {
           </svg>
           {NODES.map(([x, y], i) => (
             <Thing key={i} kind={i % 3 === 1 ? "note" : "paper"} x={x - 60} y={y - 78} className="lnd-pop" style={{ transitionDelay: `${0.5 + i * 0.18}s` }}>
-              {LABELS[i]}
+              {t(LABELS[i])}
             </Thing>
           ))}
         </Stage>
@@ -111,9 +113,9 @@ export function Landing({ signedIn = false }: { signedIn?: boolean }) {
       {/* ── How it works ── */}
       <section id="como-funciona" className="mx-auto max-w-[1248px] px-5 pt-20 lg:px-0 lg:pt-28">
         <h2 className="lnd-reveal lnd-serif text-[clamp(2.4rem,4.2vw,3.75rem)] leading-[1.02] font-extrabold tracking-[-0.025em]">
-          De tu cabeza al orden,
+          {t("De tu cabeza al orden,")}
           <br className="max-sm:hidden" />
-          en tres pasos.
+          {t("en tres pasos.")}
         </h2>
         <div className="mt-14 grid gap-8 md:grid-cols-3">
           {STEPS.map((s, i) => (
@@ -121,15 +123,15 @@ export function Landing({ signedIn = false }: { signedIn?: boolean }) {
               <Stage width={390} height={220}>
                 {i === 0 && (
                   <>
-                    <Thing kind="paper" x={20} y={0} r={-12}><>¿qué era<br />un índice?</></Thing>
-                    <Thing kind="sticky" x={160} y={70} r={10}>¡ojo!</Thing>
-                    <Thing kind="paper" x={250} y={6} r={16}><>viaje<br />Lisboa</></Thing>
+                    <Thing kind="paper" x={20} y={0} r={-12}><>{t("¿qué era")}<br />{t("un índice?")}</></Thing>
+                    <Thing kind="sticky" x={160} y={70} r={10}>{t("¡ojo!")}</Thing>
+                    <Thing kind="paper" x={250} y={6} r={16}><>{t("viaje")}<br />{t("Lisboa")}</></Thing>
                   </>
                 )}
                 {i === 1 && (
                   <>
-                    <Thing kind="paper" x={30} y={10}>Estudios</Thing>
-                    <Thing kind="note" x={250} y={30}>Planes</Thing>
+                    <Thing kind="paper" x={30} y={10}>{t("Estudios")}</Thing>
+                    <Thing kind="note" x={250} y={30}>{t("Planes")}</Thing>
                     <svg className="lnd-draw-on-view lnd-draw absolute inset-0 h-full w-full overflow-visible" viewBox="0 0 390 220" fill="none" aria-hidden>
                       <path d="M150 85 Q 200 100 250 75" stroke="#fff" strokeWidth={3} />
                     </svg>
@@ -144,8 +146,8 @@ export function Landing({ signedIn = false }: { signedIn?: boolean }) {
                 )}
               </Stage>
               <div className="lnd-glass mt-4 px-7 py-6">
-                <h3 className="lnd-serif text-[38px] font-extrabold">{s.title}</h3>
-                <p className="mt-2 text-base leading-relaxed opacity-95">{s.text}</p>
+                <h3 className="lnd-serif text-[38px] font-extrabold">{t(s.title)}</h3>
+                <p className="mt-2 text-base leading-relaxed opacity-95">{t(s.text)}</p>
               </div>
             </div>
           ))}
@@ -155,31 +157,31 @@ export function Landing({ signedIn = false }: { signedIn?: boolean }) {
       {/* ── Tools: pieces of the app lying on the sheet ── */}
       <section id="herramientas" className="mx-auto max-w-[1248px] px-5 pt-28 lg:px-0 lg:pt-40">
         <h2 className="lnd-reveal lnd-serif text-[clamp(2.4rem,4.2vw,3.75rem)] leading-[1.02] font-extrabold tracking-[-0.025em]">
-          Pensado para estudiar
+          {t("Pensado para estudiar")}
           <br className="max-sm:hidden" />
-          y para organizarte.
+          {t("y para organizarte.")}
         </h2>
         <div className="mt-14 grid items-start gap-10 lg:grid-cols-[1.45fr_1fr]">
           <div className="lnd-reveal lnd-lie" style={{ rotate: "-1.2deg" }}>
             <div className="lnd-card lnd-tilt px-9 py-8">
-              <div className="mb-3 text-xs text-[#9b9a97]">Estudios · Bases de datos</div>
-              <div className="lnd-serif mb-3.5 text-[30px] font-bold">Consultas con varias tablas</div>
+              <div className="mb-3 text-xs text-[#9b9a97]">{t("Estudios · Bases de datos")}</div>
+              <div className="lnd-serif mb-3.5 text-[30px] font-bold">{t("Consultas con varias tablas")}</div>
               <p className="text-base leading-[1.75]">
-                Para unir dos tablas se usa un <span className="lnd-term">JOIN</span> sobre la <span className="lnd-term">clave foránea</span>. Si la consulta es lenta, un{" "}
-                <span className="lnd-term">índice</span> en esa columna lo resuelve.
+                {t("Para unir dos tablas se usa un")} <span className="lnd-term">JOIN</span> {t("sobre la")} <span className="lnd-term">{t("clave foránea")}</span>{t(". Si la consulta es lenta, un")}{" "}
+                <span className="lnd-term">{t("índice")}</span> {t("en esa columna lo resuelve.")}
               </p>
               <div className="lnd-card mt-5 ml-auto w-[300px] max-w-full px-[18px] py-4 shadow-[0_12px_30px_rgba(0,0,0,.14)] sm:mr-16">
                 <b>JOIN</b>
-                <p className="mt-1 text-sm text-[#787774]">Combina filas de dos tablas que comparten un valor.</p>
-                <p className="mt-2 text-xs text-[#2383e2]">↗ en el mapa del tema</p>
+                <p className="mt-1 text-sm text-[#787774]">{t("Combina filas de dos tablas que comparten un valor.")}</p>
+                <p className="mt-2 text-xs text-[#2383e2]">{t("↗ en el mapa del tema")}</p>
               </div>
-              <p className="mt-5 text-sm text-[#787774]">Los conceptos clave se destacan automáticamente y muestran su definición al pasar el cursor.</p>
+              <p className="mt-5 text-sm text-[#787774]">{t("Los conceptos clave se destacan automáticamente y muestran su definición al pasar el cursor.")}</p>
             </div>
           </div>
           <div className="grid gap-8">
             <div className="lnd-reveal lnd-lie" style={{ rotate: "1.8deg", transitionDelay: ".12s" }}>
               <div className="lnd-card lnd-tilt px-7 py-7">
-                <div className="lnd-serif text-2xl font-bold">Mapa de conceptos interactivo</div>
+                <div className="lnd-serif text-2xl font-bold">{t("Mapa de conceptos interactivo")}</div>
                 <svg width="100%" height="120" viewBox="0 0 360 120" aria-hidden>
                   <g stroke="#d8d3c9" strokeWidth="2">
                     <line x1="60" y1="60" x2="160" y2="30" /><line x1="160" y1="30" x2="270" y2="70" /><line x1="160" y1="30" x2="180" y2="100" /><line x1="270" y1="70" x2="330" y2="30" />
@@ -188,7 +190,7 @@ export function Landing({ signedIn = false }: { signedIn?: boolean }) {
                     <circle cx="60" cy="60" r="9" /><circle cx="160" cy="30" r="11" /><circle cx="270" cy="70" r="9" fill="#fff" /><circle cx="180" cy="100" r="7" fill="#fff" /><circle cx="330" cy="30" r="7" />
                   </g>
                 </svg>
-                <p className="text-sm text-[#787774]">Cada concepto muestra tu nivel: dominado o pendiente de repaso.</p>
+                <p className="text-sm text-[#787774]">{t("Cada concepto muestra tu nivel: dominado o pendiente de repaso.")}</p>
               </div>
             </div>
             <div className="lnd-reveal lnd-lie" style={{ rotate: "-2deg", transitionDelay: ".24s" }}>
@@ -199,16 +201,16 @@ export function Landing({ signedIn = false }: { signedIn?: boolean }) {
                   <text x="46" y="53" textAnchor="middle" fontSize="20" fontWeight="700" fill="#37352f">10/12</text>
                 </svg>
                 <div>
-                  <div className="lnd-serif text-2xl font-bold">Repaso diario</div>
-                  <p className="mt-1.5 text-sm text-[#787774]">Hasta 12 preguntas al día, adaptadas a tu progreso.</p>
+                  <div className="lnd-serif text-2xl font-bold">{t("Repaso diario")}</div>
+                  <p className="mt-1.5 text-sm text-[#787774]">{t("Hasta 12 preguntas al día, adaptadas a tu progreso.")}</p>
                 </div>
               </div>
             </div>
           </div>
         </div>
         <div className="lnd-reveal mt-12 flex flex-wrap gap-3.5 text-[15px]">
-          {["Libretas y carpetas", "Google Classroom", "Google Calendar", "Retos de código"].map((t) => (
-            <span key={t} className="rounded-full border-[1.5px] border-white/85 px-[18px] py-2">{t}</span>
+          {["Libretas y carpetas", "Google Classroom", "Google Calendar", "Retos de código"].map((tag) => (
+            <span key={tag} className="rounded-full border-[1.5px] border-white/85 px-[18px] py-2">{t(tag)}</span>
           ))}
         </div>
       </section>
@@ -216,29 +218,29 @@ export function Landing({ signedIn = false }: { signedIn?: boolean }) {
       {/* ── Why ── */}
       <section id="sobre" className="lnd-reveal mx-auto max-w-[1100px] px-5 pt-32 text-center lg:pt-44">
         <p className="lnd-serif text-[clamp(1.9rem,3.05vw,2.75rem)] leading-[1.22] font-bold">
-          “Quería un sistema que se ordenara solo. Yo pongo las ideas; Synaptic, el orden.”
+          “{t("Quería un sistema que se ordenara solo. Yo pongo las ideas; Synaptic, el orden.")}”
         </p>
-        <p className="mt-6 text-[15px] opacity-85">Nadia Lagoa · estudiante de Desarrollo de Aplicaciones Multiplataforma</p>
+        <p className="mt-6 text-[15px] opacity-85">{t("Nadia Lagoa · estudiante de Desarrollo de Aplicaciones Multiplataforma")}</p>
       </section>
 
       {/* ── Final call ── */}
       <section className="mx-auto grid max-w-[1312px] items-center gap-6 px-5 pt-32 pb-10 lg:grid-cols-[1fr_.85fr] lg:px-0 lg:pt-44">
         <div className="lnd-reveal lnd-glass px-10 py-10 lg:px-11">
           <h2 className="lnd-serif text-[clamp(2.4rem,4.4vw,4rem)] leading-[1.02] font-extrabold tracking-[-0.025em]">
-            Empieza a ordenar
+            {t("Empieza a ordenar")}
             <br />
-            tu cabeza hoy.
+            {t("tu cabeza hoy.")}
           </h2>
           <div className="mt-8">
             <Enter signedIn={signedIn} align="left" className={cta}>
-              Empieza gratis →
+              {t("Empieza gratis →")}
             </Enter>
           </div>
         </div>
         <div className="lnd-reveal" style={{ transitionDelay: ".15s" }}>
           <Stage width={560} height={380}>
-            <Thing kind="paper" x={150} y={50} r={12}><>hoy:<br />ordenar<br />apuntes</></Thing>
-            <Thing kind="sticky" x={310} y={210} r={-10}>y descansar</Thing>
+            <Thing kind="paper" x={150} y={50} r={12}><>{t("hoy:")}<br />{t("ordenar")}<br />{t("apuntes")}</></Thing>
+            <Thing kind="sticky" x={310} y={210} r={-10}>{t("y descansar")}</Thing>
             <Thing kind="coffee" x={20} y={230} />
             <Thing kind="notebook" x={380} y={10} r={8} />
           </Stage>
@@ -248,7 +250,7 @@ export function Landing({ signedIn = false }: { signedIn?: boolean }) {
       <footer className="flex justify-between px-10 pt-10 pb-8 text-xs opacity-85">
         <span>synapticnotes.app</span>
         <span>
-          <Link href="/privacy" className="hover:underline">Privacidad</Link> · <Link href="/terms" className="hover:underline">Términos</Link>
+          <Link href="/privacy" className="hover:underline">{t("Privacidad")}</Link> · <Link href="/terms" className="hover:underline">{t("Términos")}</Link>
         </span>
       </footer>
     </main>

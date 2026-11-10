@@ -243,9 +243,9 @@ export default async function PursuitPage({
       const chosen = items.filter((c) => c.status === "CHOSEN");
       const voting = items.filter((c) => c.status === "VOTING").length;
       summaries[b.id] = chosen.length
-        ? `Elegido${chosen[0].price !== null ? ` · ${euros(chosen.reduce((t, c) => t + (c.price ?? 0), 0))}` : ""}`
+        ? `${t("Elegido")}${chosen[0].price !== null ? ` · ${euros(chosen.reduce((sum, c) => sum + (c.price ?? 0), 0))}` : ""}`
         : items.length
-          ? `${items.length} ${items.length === 1 ? "opción" : "opciones"}${voting ? ` · ${voting} en votación` : ""}`
+          ? `${items.length === 1 ? t("1 opción") : t("{0} opciones", { 0: items.length })}${voting ? ` · ${t("{0} en votación", { 0: voting })}` : ""}`
           : "";
       continue;
     }
@@ -345,7 +345,7 @@ export default async function PursuitPage({
 
   const props = [
     pursuit.classroomEnabled && pursuit.classroomCourseName ? ["Classroom", pursuit.classroomCourseName] : null,
-    grouped ? ["Agrupado por", groupLabel] : null,
+    grouped ? [t("Agrupado por"), t(groupLabel)] : null,
   ].filter((x): x is string[] => !!x);
 
   return (
