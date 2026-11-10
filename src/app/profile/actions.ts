@@ -3,8 +3,9 @@
 import { getT } from "@/lib/i18n/server";
 
 import { revalidatePath } from "next/cache";
-import { auth } from "@/auth";
+import { auth, signOut } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { wipeUser } from "@/lib/wipe";
 import { HANDLE, cleanHandle, parseAvatar } from "@/lib/avatar";
 import { freeHandle } from "@/lib/username";
 
@@ -76,4 +77,13 @@ export async function removeFriend(friendshipId: string) {
   const id = await me();
   await prisma.friendship.deleteMany({ where: { id: friendshipId, OR: [{ fromId: id }, { toId: id }] } });
   revalidatePath("/profile");
+}
+
+// "Eliminar cuenta": only after typing ELIMINAR; deletes everything and signs out.
+export async function deleteAccount(confirm: string): Promise<{ error: string | null }> {
+  const id = await me();
+  if (confirm.trim().toUpperCase() !== "ELIMINAR") return { error: "Escribe ELIMINAR para confirmar" };
+  await wipeUser(id);
+  await signOut({ redirectTo: "/" });
+  return { error: null };
 }

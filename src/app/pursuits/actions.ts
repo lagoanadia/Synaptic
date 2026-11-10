@@ -8,6 +8,7 @@ import { cleanHomeBlocks } from "@/lib/blocks";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { wipePursuit } from "@/lib/wipe";
 import { upsertSection } from "@/lib/sections";
 
 export async function createPursuit(formData: FormData) {
@@ -88,21 +89,7 @@ export async function deletePursuit(pursuitId: string) {
     throw new Error(t("Solo la propietaria puede eliminar esta asignatura"));
   }
 
-  // Children first: the foreign keys to Pursuit don't cascade.
-  await prisma.$transaction([
-    prisma.flashcard.deleteMany({ where: { pursuitId } }),
-    prisma.note.deleteMany({ where: { pursuitId } }),
-    prisma.brainDump.deleteMany({ where: { pursuitId } }),
-    // Has a plain (no-cascade) FK to Pursuit too — left out of this list,
-    // any pursuit with a U1/U2-style content section failed to delete.
-    prisma.pursuitContentSection.deleteMany({ where: { pursuitId } }),
-    prisma.tag.deleteMany({ where: { pursuitId } }),
-    prisma.attachment.deleteMany({ where: { pursuitId } }),
-    prisma.pursuitMember.deleteMany({ where: { pursuitId } }),
-    // ProjectCard cascades from Project, so deleting Project is enough.
-    prisma.project.deleteMany({ where: { pursuitId } }),
-    prisma.pursuit.delete({ where: { id: pursuitId } }),
-  ]);
+  await prisma.$transaction(wipePursuit(pursuitId));
 
   revalidatePath("/pursuits", "layout");
   // Called from the folder's own page: back to its notebook.
