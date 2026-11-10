@@ -1003,4 +1003,7 @@ export const en: Record<string, string> = {
   "Escribe tus apuntes en una asignatura y te haremos un quiz con ellos.": "Write your notes in a subject and we'll turn them into a quiz.",
   "Ir a mis libretas": "Go to my notebooks",
   "Editar menú": "Edit menu",
+  "N": "B",
+  "K": "I",
+  "S": "U",
 };

@@ -1003,4 +1003,7 @@ export const de: Record<string, string> = {
   "Escribe tus apuntes en una asignatura y te haremos un quiz con ellos.": "Schreib deine Notizen in ein Fach und wir machen daraus ein Quiz.",
   "Ir a mis libretas": "Zu meinen Notizbüchern",
   "Editar menú": "Menü bearbeiten",
+  "N": "F",
+  "K": "K",
+  "S": "U",
 };

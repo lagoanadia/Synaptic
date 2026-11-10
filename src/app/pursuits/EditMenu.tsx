@@ -81,7 +81,7 @@ export function EditMenu({ target, onClose }: { target: EditTarget; onClose: () 
         <div className="flex max-h-[60vh] flex-col gap-2.5 overflow-y-auto">
           {groups.map((g) => (
             <div key={g.name ?? "all"}>
-              {g.name && <div className="mb-1 text-[10px] font-semibold tracking-wide text-ink-faint uppercase">{g.name}</div>}
+              {g.name && <div className="mb-1 text-[10px] font-semibold tracking-wide text-ink-faint uppercase">{t(g.name)}</div>}
               <div className={`grid gap-1.5 ${target.kind === "notebook" ? "grid-cols-9" : "grid-cols-6"}`}>
                 {g.covers.map((c) => (
                   <button
