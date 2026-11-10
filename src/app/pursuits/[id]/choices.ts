@@ -31,15 +31,38 @@ async function pageTitle(raw: string): Promise<string | null> {
   }
 }
 
-// "+ Pega un enlace": a link (its page title becomes the name) or just a name.
+// A name from the link itself when the site won't tell us its title
+// (Booking and others block bots): "hotel/es/valencia-sky-haven.es.html" →
+// "Valencia Sky Haven".
+function titleFromUrl(url: URL): string {
+  const slug = url.pathname
+    .split("/")
+    .filter(Boolean)
+    .map((p) => decodeURIComponent(p).replace(/\.[a-z-]{2,5}(\.html?)?$|\.html?$/i, ""))
+    .filter((p) => /[a-z]/i.test(p) && !/^(es|en|de|fr|it|pt|hotel|rooms?|p|s|item|dp|product)$/i.test(p) && !/^[\w-]{20,}$/.test(p.replace(/-/g, "")) )
+    .pop();
+  const host = url.hostname.replace(/^www\./, "");
+  if (!slug) return host;
+  const words = slug.replace(/[-_+]+/g, " ").replace(/\s+/g, " ").trim();
+  return words ? words.charAt(0).toUpperCase() + words.slice(1) : host;
+}
+
+// "+ Pega un enlace": a link (with or without https://; its page title
+// becomes the name) or just a name.
 export async function addChoice(pursuitId: string, blockId: string, input: string) {
   await requirePursuitAccess(pursuitId);
-  const text = input.trim().slice(0, 500);
+  const text = input.trim().slice(0, 1000);
   if (!text) return;
-  const isUrl = /^https?:\/\/\S+$/i.test(text);
-  const title = isUrl ? ((await pageTitle(text)) ?? new URL(text).hostname.replace(/^www\./, "")) : text.slice(0, 120);
+  const asUrl = /^https?:\/\/\S+$/i.test(text) ? text : /^(www\.)?[a-z0-9-]+(\.[a-z0-9-]+)+(\/\S*)?$/i.test(text) ? `https://${text}` : null;
+  let url: URL | null = null;
+  try {
+    url = asUrl ? new URL(asUrl) : null;
+  } catch {
+    url = null;
+  }
+  const title = url ? ((await pageTitle(url.href)) ?? titleFromUrl(url)) : text.slice(0, 120);
   const last = await prisma.choice.findFirst({ where: { pursuitId, blockId }, orderBy: { order: "desc" }, select: { order: true } });
-  await prisma.choice.create({ data: { pursuitId, blockId, title, url: isUrl ? text : null, order: (last?.order ?? -1) + 1 } });
+  await prisma.choice.create({ data: { pursuitId, blockId, title: title.slice(0, 120), url: url?.href ?? null, order: (last?.order ?? -1) + 1 } });
   done(pursuitId);
 }
 

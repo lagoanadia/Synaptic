@@ -314,7 +314,7 @@ export function OptionsBlock({ pursuitId, blockId, items, people, me, columns = 
           aria-label="Pega un enlace o escribe una opción"
           onPaste={(e) => {
             const text = e.clipboardData.getData("text").trim();
-            if (!/^https?:\/\//.test(text)) return;
+            if (!/^(https?:\/\/|www\.)\S+$|^[a-z0-9-]+(\.[a-z0-9-]+)+\/\S*$/i.test(text)) return;
             e.preventDefault();
             setAdding(true);
             start(async () => {

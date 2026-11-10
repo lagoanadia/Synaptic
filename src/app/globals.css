@@ -253,3 +253,34 @@ body:has(#landing, #login) .app-pad {
   .lnd-big { width: calc(var(--k) * 230); height: calc(var(--k) * 300); }
   .lnd-big .lnd-hand { inset: 0; display: grid; place-items: center; font-size: calc(var(--k) * 56); color: #1c4f9c; line-height: 1; }
 }
+
+/* "Descargar PDF" on a page (PageView): print only the page itself, as it
+   looks on screen: no sidebar, toolbar, footer or editor hints. */
+@media print {
+  html.print-page body * {
+    visibility: hidden;
+  }
+  html.print-page [data-print-root],
+  html.print-page [data-print-root] * {
+    visibility: visible;
+  }
+  html.print-page [data-print-root] {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+  }
+  html.print-page [data-no-print] {
+    display: none !important;
+  }
+  html.print-page [data-print-root] input::placeholder,
+  html.print-page [data-print-root] .is-empty::before {
+    color: transparent !important;
+  }
+  html.print-page {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+  @page {
+    margin: 18mm 16mm;
+  }
+}

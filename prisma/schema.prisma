@@ -213,6 +213,7 @@ model Pursuit {
   expenses        Expense[]
   dateOptions     DateOption[]
   savings         Saving[]
+  whiteboards     Whiteboard[]
   conceptMaps     ConceptMap[]
   challenges      Challenge[]
   calendarEvents  CalendarEvent[]
@@ -769,4 +770,14 @@ model Saving {
   createdAt DateTime @default(now())
 
   @@index([pursuitId, blockId])
+}
+
+// A whiteboard drawn inside a page (stored in the page as an image that
+// points to /api/boards/<id>). data: lib/whiteboard.ts shapes.
+model Whiteboard {
+  id        String   @id @default(cuid())
+  pursuitId String
+  pursuit   Pursuit  @relation(fields: [pursuitId], references: [id], onDelete: Cascade)
+  data      Json     @default("[]")
+  updatedAt DateTime @updatedAt
 }

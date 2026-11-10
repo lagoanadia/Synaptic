@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { CheckIcon, SlidesIcon } from "@/app/icons";
 import { RichEditor } from "../../editor/RichEditor";
+import { createBoard } from "./boards";
 import { splitTitle, withTitle } from "@/lib/text";
 import { textToDoc } from "@/lib/richText";
 import type { Editor } from "@tiptap/core";
@@ -158,7 +159,7 @@ export function PageView({ pursuit, crumbs, dump, note, slides, terms }: Props) 
   const content = drafts[view];
 
   const page = (
-    <article className="flex min-w-0 flex-col gap-4">
+    <article data-print-root className="flex min-w-0 flex-col gap-4">
       <input
         value={titles[view]}
         onChange={(e) => {
@@ -187,6 +188,7 @@ export function PageView({ pursuit, crumbs, dump, note, slides, terms }: Props) 
           return r;
         }}
         terms={terms}
+        onBoard={() => createBoard(pursuit.id)}
         placeholder="Escribe, o pulsa / para añadir un bloque"
       />
     </article>
@@ -272,14 +274,25 @@ export function PageView({ pursuit, crumbs, dump, note, slides, terms }: Props) 
                   Crear tarjetas
                 </button>
               )}
-              <a
-                href={`/pursuits/${pursuit.id}/print?${dump ? `dump=${dump.id}` : `note=${note!.id}`}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block rounded-md px-2.5 py-1.5 hover:bg-chip"
+              <button
+                type="button"
+                onClick={() => {
+                  // Prints this very page (title + editor, as you see it); the
+                  // file is named after the title. html.print-page hides the rest.
+                  setMenu(false);
+                  const before = document.title;
+                  document.title = titles[view].trim() || "Página";
+                  document.documentElement.classList.add("print-page");
+                  setTimeout(() => {
+                    window.print();
+                    document.documentElement.classList.remove("print-page");
+                    document.title = before;
+                  }, 50);
+                }}
+                className="block w-full rounded-md px-2.5 py-1.5 text-left hover:bg-chip"
               >
                 Descargar PDF
-              </a>
+              </button>
               <button
                 type="button"
                 onClick={() => {
