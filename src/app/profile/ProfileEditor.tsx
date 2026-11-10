@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { AvatarFace } from "../AvatarFace";
 import { BG_COLORS, BROWS, CLOTH_COLORS, EYES, EXTRAS, GLASSES, HAIRS, HAIR_COLORS, MOUTHS, OUTFITS, SKINS, randomAvatar, type Avatar } from "@/lib/avatar";
 import { saveAvatar, setUsername } from "./actions";
+import { UsernameField, type HandleStatus } from "./UsernameField";
 
 type Tab = "Cara" | "Pelo" | "Ropa" | "Extras" | "Fondo";
 const TABS: Tab[] = ["Cara", "Pelo", "Ropa", "Extras", "Fondo"];
@@ -21,17 +22,18 @@ const DiceIcon = () => (
   </svg>
 );
 
-export function ProfileEditor({ name, username, initial, saved: wasSaved }: { name: string; username: string | null; initial: Avatar; saved: boolean }) {
+export function ProfileEditor({ name, username, suggested, initial, saved: wasSaved }: { name: string; username: string | null; suggested: string; initial: Avatar; saved: boolean }) {
   const t = useT();
   const [avatar, setAvatar] = useState(initial);
   const [tab, setTab] = useState<Tab>("Cara");
   const [dirty, setDirty] = useState(!wasSaved);
-  const [handle, setHandle] = useState(username ?? "");
+  const [handle, setHandle] = useState(username ?? suggested);
+  const [handleStatus, setHandleStatus] = useState<HandleStatus>("idle");
   const [savedHandle, setSavedHandle] = useState(username ?? "");
   const [handleError, setHandleError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const router = useRouter();
-  const handleDirty = handle.trim().replace(/^@/, "").toLowerCase() !== savedHandle;
+  const handleDirty = handle.trim().replace(/^@/, "").toLowerCase() !== savedHandle && handleStatus === "ok";
   // One button saves both: the @usuario (if changed) and the avatar.
   const save = () =>
     start(async () => {
@@ -100,16 +102,23 @@ export function ProfileEditor({ name, username, initial, saved: wasSaved }: { na
       <div className="flex flex-col items-center gap-2 md:w-[280px] md:shrink-0">
         <AvatarFace avatar={avatar} size={240} uid="big" />
         <b className="mt-2 text-xl">{name}</b>
-        <Handle
-          value={handle}
-          saved={savedHandle}
-          error={handleError}
-          onChange={(v) => {
-            setHandle(v);
-            setHandleError(null);
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (handleDirty) save();
           }}
-          onSubmit={save}
-        />
+        >
+          <UsernameField
+            value={handle}
+            saved={savedHandle || null}
+            error={handleError}
+            onStatus={setHandleStatus}
+            onChange={(v) => {
+              setHandle(v);
+              setHandleError(null);
+            }}
+          />
+        </form>
         <div className="mt-3 flex gap-2.5">
           <button type="button" onClick={() => set(randomAvatar())} title={t("Otro al azar")} aria-label={t("Otro al azar")} className="grid h-10 w-11 place-items-center rounded-lg bg-chip text-ink-muted hover:text-ink">
             <DiceIcon />
@@ -167,29 +176,5 @@ export function ProfileEditor({ name, username, initial, saved: wasSaved }: { na
         )}
       </div>
     </div>
-  );
-}
-
-// @handle: type it, then Enter or the Guardar button.
-function Handle({ value, saved, error, onChange, onSubmit }: { value: string; saved: string; error: string | null; onChange: (v: string) => void; onSubmit: () => void }) {
-  const t = useT();
-  return (
-    <form
-      className="flex flex-col items-center gap-1"
-      onSubmit={(e) => {
-        e.preventDefault();
-        onSubmit();
-      }}
-    >
-      <span className="flex items-center rounded-md border border-border-subtle bg-white px-2 text-sm focus-within:border-ink-faint">
-        <span className="text-ink-faint">@</span>
-        <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={t("tu_usuario")} aria-label={t("Tu @usuario")} className="w-36 py-1 outline-none" />
-      </span>
-      {error ? (
-        <span className="text-xs text-red-600">{t(error)}</span>
-      ) : (
-        <span className="text-xs text-ink-faint">{saved ? t("Así te encuentran tus amigos") : t("Elige uno para que tus amigos te encuentren")}</span>
-      )}
-    </form>
   );
 }

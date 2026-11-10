@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { Onboarding } from "../onboarding/Onboarding";
+import { baseHandle, freeHandle } from "@/lib/username";
 import { WeekStrip } from "@/app/calendar/WeekStrip";
 import { calendarItems } from "@/lib/calendarData";
 import { dayKey, weekOf } from "@/lib/calendar";
@@ -36,7 +37,8 @@ export default async function HomePage() {
 
   // First visit: quick questions instead of an empty screen.
   if (viewer.onboardedAt === null && pursuitBuckets.length === 0) {
-    return <Onboarding name={session.user.name ?? null} />;
+    const me = await prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { username: true, name: true, email: true } });
+    return <Onboarding name={session.user.name ?? null} username={me.username} suggested={me.username ?? (await freeHandle(baseHandle(me.name, me.email), userId))} />;
   }
 
   const shelf: ShelfItem[] = sections.map((s) => ({ id: s.id, name: s.name, cover: notebookCover(s.id, s.cover), href: `/pursuits/s/${s.id}`, movable: true }));

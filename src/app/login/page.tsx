@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { ProviderButtons } from "../landing/AuthMenu";
 
-export const metadata = { title: "Entrar", alternates: { canonical: "/login" } };
+export const metadata = { title: "Crea tu cuenta o entra", alternates: { canonical: "/login" } };
 
 // Straight to signing in: the landing's blue sheet and the two buttons.
 export default async function Login() {
@@ -21,16 +21,13 @@ export default async function Login() {
         backgroundSize: "40px 40px, 40px 40px, 100% 100%",
       }}
     >
-      <div className="flex w-full max-w-[320px] flex-col gap-5 rounded-2xl bg-white p-6 shadow-[0_24px_48px_-12px_rgba(13,13,13,0.3)]">
+      <div className="flex w-full max-w-[360px] flex-col gap-5 rounded-2xl bg-white p-6 shadow-[0_24px_48px_-12px_rgba(13,13,13,0.3)]">
         <Link href="/web" className="flex items-center gap-2 text-[15px] font-semibold text-ink">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/logo-mark.png" alt="" width={24} height={24} className="rounded-md" />
           {t("Synaptic Notes")}
         </Link>
-        <h1 className="text-xl font-semibold text-ink">{t("Entrar")}</h1>
-        <div className="-mx-2 flex flex-col">
-          <ProviderButtons />
-        </div>
+        <ProviderButtons />
       </div>
     </main>
   );

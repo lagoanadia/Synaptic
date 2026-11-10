@@ -9,6 +9,8 @@ import { Folder, MiniNotebook, Notebook } from "@/app/Covers";
 import { NOTEBOOK_COVERS, folderCover, type NotebookCover } from "@/lib/covers";
 import { ROLES, looksLikeProgramming, notebooksFor, type Role } from "@/lib/onboardingPlan";
 import { classroomCourses, finishOnboarding, skipOnboarding } from "./actions";
+import { setUsername } from "@/app/profile/actions";
+import { UsernameField, type HandleStatus } from "@/app/profile/UsernameField";
 
 const ICON: Record<Role, string> = {
   fp: "M3 9l9-5 9 5-9 5zM7 11v5c3 2 7 2 10 0v-5",
@@ -30,7 +32,7 @@ const splitList = (s: string) => s.split(/[,\n]/).map((x) => x.trim()).filter(Bo
 // Four quick steps on the very first visit: what you do, your subjects
 // (Classroom first), this week's topic, your covers. Every step can be
 // skipped; the answers become your notebooks, folders and a first page.
-export function Onboarding({ name }: { name: string | null }) {
+export function Onboarding({ name, username, suggested }: { name: string | null; username: string | null; suggested: string }) {
   const t = useT();
   const router = useRouter();
   const params = useSearchParams();
@@ -39,6 +41,9 @@ export function Onboarding({ name }: { name: string | null }) {
   const [classroom, setClassroom] = useState<{ connected: boolean; courses: { id: string; name: string }[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [building, setBuilding] = useState(false);
+  const [handle, setHandle] = useState(suggested);
+  const [handleStatus, setHandleStatus] = useState<HandleStatus>("idle");
+  const [handleError, setHandleError] = useState<string | null>(null);
   const [, start] = useTransition();
 
   // Back from connecting Classroom: pick up where you were (browser storage).
@@ -77,6 +82,15 @@ export function Onboarding({ name }: { name: string | null }) {
     setBuilding(true);
     setError(null);
     start(async () => {
+      // Your @usuario first: if it's gone since, back to step 1 to pick another.
+      if (handle && handle !== username) {
+        const u = await setUsername(handle);
+        if (u.error) {
+          setBuilding(false);
+          setHandleError(u.error);
+          return setStep(0);
+        }
+      }
       const [r] = await Promise.all([
         finishOnboarding({
           roles: s.roles,
@@ -101,7 +115,7 @@ export function Onboarding({ name }: { name: string | null }) {
   const card = "rounded-xl border bg-white transition-colors";
   const next = (label = "Siguiente", onClick = () => setStep(step + 1)) => (
     <button type="button" onClick={onClick} className="rounded-xl bg-ink px-8 py-3.5 text-sm font-semibold text-white">
-      {label} →
+      {t(label)} →
     </button>
   );
 
@@ -146,6 +160,20 @@ export function Onboarding({ name }: { name: string | null }) {
         ) : step === 0 ? (
           <>
             <h1 className="text-center text-[2rem] leading-tight font-bold tracking-tight sm:text-[2.4rem]">{name ? t("Hola, {0}. ¿Qué haces?", { 0: name.split(" ")[0] }) : t("¿Qué haces?")}</h1>
+            <div className="-mt-3 flex flex-col items-center gap-1.5">
+              <span className="text-sm text-ink-muted">{t("Tu @usuario")}</span>
+              <UsernameField
+                big
+                value={handle}
+                saved={username}
+                error={handleError}
+                onStatus={setHandleStatus}
+                onChange={(v) => {
+                  setHandle(v);
+                  setHandleError(null);
+                }}
+              />
+            </div>
             <div className="grid w-full max-w-[580px] grid-cols-2 gap-3 sm:grid-cols-3">
               {ROLES.map((r) => {
                 const on = s.roles.includes(r.key);
@@ -182,7 +210,13 @@ export function Onboarding({ name }: { name: string | null }) {
                 </span>
               ))}
             </div>
-            {next()}
+            {handleStatus === "taken" || handleStatus === "invalid" || handleStatus === "checking" ? (
+              <button type="button" disabled className="rounded-xl bg-ink px-8 py-3.5 text-sm font-semibold text-white opacity-40">
+                {t("Siguiente")} →
+              </button>
+            ) : (
+              next()
+            )}
           </>
         ) : step === 1 ? (
           <>

@@ -51,7 +51,7 @@ export function Landing({ signedIn = false }: { signedIn?: boolean }) {
           <span className="flex-1" />
           <LangPicker className="!bg-white/85" />
           <Enter signedIn={signedIn} align="right" className="rounded-full bg-white px-[18px] py-2 text-[13px] font-semibold text-[#1c6fd1]">
-            {signedIn ? "Mi espacio" : "Entrar"}
+            {signedIn ? "Mi espacio" : "Crear cuenta / Entrar"}
           </Enter>
         </nav>
 
