@@ -1,5 +1,8 @@
 // Spanish source text → translation. Missing keys fall back to Spanish.
 export const de: Record<string, string> = {
+  "Solicitudes pendientes": "Offene Anfragen",
+  "Nada pendiente.": "Nichts offen.",
+  "Enviadas": "Gesendet",
   "Avatar": "Avatar",
   "La app y lo que escribe la IA": "Die App und was die KI schreibt",
   "Programo": "Ich programmiere",

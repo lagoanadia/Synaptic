@@ -21,12 +21,14 @@ export function Friends({ friends, hasHandle }: { friends: Friend[]; hasHandle: 
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const received = friends.filter((f) => f.state === "received");
-  const others = [...friends.filter((f) => f.state === "friend"), ...friends.filter((f) => f.state === "sent")];
+  const others = friends.filter((f) => f.state === "friend");
+  const sent = friends.filter((f) => f.state === "sent");
 
   const run = (fn: () => Promise<unknown>) => start(async () => void (await fn()));
 
   return (
-    <section className="flex flex-col gap-5">
+    <section className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_280px]">
+      <div className="flex flex-col gap-5">
 
       <form
         className="flex max-w-xl flex-col gap-1"
@@ -55,22 +57,6 @@ export function Friends({ friends, hasHandle }: { friends: Friend[]; hasHandle: 
         )}
       </form>
 
-      {received.length > 0 && (
-        <div className="flex max-w-xl flex-col gap-2">
-          <span className="text-xs font-semibold tracking-wide text-ink-faint uppercase">{t("Quieren ser tus amigos")}</span>
-          {received.map((f) => (
-            <Row key={f.id} friend={f}>
-              <button type="button" disabled={pending} onClick={() => run(() => acceptFriend(f.id))} className="rounded-md bg-ink px-3 py-1 text-xs font-medium text-white">
-                {t("Aceptar")}
-              </button>
-              <button type="button" disabled={pending} onClick={() => run(() => removeFriend(f.id))} className="rounded-md px-3 py-1 text-xs text-ink-muted hover:bg-chip">
-                {t("Rechazar")}
-              </button>
-            </Row>
-          ))}
-        </div>
-      )}
-
       {/* Friends as cards: their avatar big, name and @username. */}
       {others.length === 0 ? (
         <p className="text-sm text-ink-faint">{t("Aún no tienes amigos aquí. Añádelos por su @usuario.")}</p>
@@ -85,7 +71,6 @@ export function Friends({ friends, hasHandle }: { friends: Friend[]; hasHandle: 
               )}
               <span className="w-full truncate font-semibold">{f.name}</span>
               {f.username && <span className="-mt-1.5 w-full truncate text-sm text-ink-faint">@{f.username}</span>}
-              {f.state === "sent" && <span className="text-xs text-ink-faint">{t("Pendiente")}</span>}
               <button
                 type="button"
                 disabled={pending}
@@ -100,6 +85,30 @@ export function Friends({ friends, hasHandle }: { friends: Friend[]; hasHandle: 
           ))}
         </div>
       )}
+      </div>
+      {/* Pending requests, on the side. */}
+      <aside className="flex flex-col gap-3 self-start rounded-xl border border-border-subtle bg-callout p-4">
+        <span className="text-xs font-semibold tracking-wide text-ink-faint uppercase">{t("Solicitudes pendientes")}</span>
+        {received.length === 0 && sent.length === 0 && <span className="text-sm text-ink-faint">{t("Nada pendiente.")}</span>}
+        {received.map((f) => (
+          <Row key={f.id} friend={f}>
+            <button type="button" disabled={pending} onClick={() => run(() => acceptFriend(f.id))} className="rounded-md bg-ink px-2.5 py-1 text-xs font-medium text-white">
+              {t("Aceptar")}
+            </button>
+            <button type="button" disabled={pending} onClick={() => run(() => removeFriend(f.id))} aria-label={t("Rechazar")} title={t("Rechazar")} className="rounded-md px-1.5 py-1 text-xs text-ink-faint hover:bg-white">
+              ×
+            </button>
+          </Row>
+        ))}
+        {sent.length > 0 && <span className="mt-1 text-xs text-ink-faint">{t("Enviadas")}</span>}
+        {sent.map((f) => (
+          <Row key={f.id} friend={f}>
+            <button type="button" disabled={pending} onClick={() => run(() => removeFriend(f.id))} className="rounded-md px-2 py-1 text-xs text-ink-faint hover:bg-white">
+              {t("Cancelar")}
+            </button>
+          </Row>
+        ))}
+      </aside>
     </section>
   );
 }
