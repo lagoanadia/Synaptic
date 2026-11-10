@@ -7,6 +7,17 @@ import { BLOCK_ICONS, FOLDER_BLOCK_TYPES, newBlock, optionColumns, type FolderBl
 import { BlockIconSvg, ColumnsMenu } from "./TripBlocks";
 import { saveFolderBlocks, setGroupLabel } from "./actions";
 
+const icon = (d: string) => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    {d.split("|").map((x) => <path key={x} d={x} />)}
+  </svg>
+);
+// Gastos ⇄, Fechas (calendar), Meta de ahorro (target).
+const SHARED_ICONS: Record<string, React.ReactNode> = {
+  expenses: icon("M8 3 4 7l4 4|M4 7h16|M16 21l4-4-4-4|M20 17H4"),
+  dates: icon("M5 5h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z|M16 3v4M8 3v4M3 11h18|M9 15l2 2 4-4"),
+  savings: icon("M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Z|M12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10Z|M12 11a1 1 0 1 0 0 2 1 1 0 0 0 0-2Z"),
+};
 const LABEL = Object.fromEntries(FOLDER_BLOCK_TYPES.map((t) => [t.type, t.label]));
 const SUGGESTED = ["Tema", "Unidad", "Bloque", "Parcial", "Semana"];
 
@@ -63,7 +74,7 @@ export function FolderBlocks({
       {blocks.map((b, i) => {
         const view = b.view ?? (grouped ? "board" : "list");
         // A project's tasks sit in their own card, so they stand apart from the rest.
-        const card = b.type === "project" || b.type === "options" || b.type === "budget";
+        const card = ["project", "options", "budget", "expenses", "dates", "savings"].includes(b.type);
         const outline = editing ? "outline-[1.5px] outline-offset-4 outline-[#d3d1cb] outline-dashed" : "";
         return (
           <section
@@ -86,7 +97,7 @@ export function FolderBlocks({
                   }}
                   className="grid size-8 place-items-center rounded-lg bg-white text-ink shadow-[0_0_0_1px_rgba(55,53,47,.09)]"
                 >
-                  {b.type === "options" ? <BlockIconSvg icon={b.icon ?? "list"} /> : b.type === "budget" ? <BlockIconSvg icon="budget" /> : <CheckIcon size={15} />}
+                  {b.type === "options" ? <BlockIconSvg icon={b.icon ?? "list"} /> : b.type === "budget" ? <BlockIconSvg icon="budget" /> : b.type in SHARED_ICONS ? SHARED_ICONS[b.type] : <CheckIcon size={15} />}
                 </button>
               )}
               {b.type === "options" && editing ? (
