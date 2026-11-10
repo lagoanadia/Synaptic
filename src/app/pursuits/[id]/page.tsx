@@ -30,6 +30,7 @@ import { Folder } from "@/app/Covers";
 import { FolderBlocks } from "./FolderBlocks";
 import { FolderSettings } from "./FolderSettings";
 import { oneProject } from "@/lib/projectData";
+import { parseAvatar } from "@/lib/avatar";
 import { dayOf } from "@/lib/projects";
 import { ProjectInfo } from "@/app/projects/ProjectInfo";
 import { TaskBoard } from "@/app/projects/TaskBoard";
@@ -79,10 +80,10 @@ export default async function PursuitPage({
         include: {
           pursuitTags: true,
           section: true,
-          owner: { select: { id: true, name: true, email: true, image: true } },
+          owner: { select: { id: true, name: true, email: true, image: true, avatar: true } },
           members: {
             orderBy: { invitedAt: "asc" },
-            include: { user: { select: { id: true, name: true, email: true, image: true } } },
+            include: { user: { select: { id: true, name: true, email: true, image: true, avatar: true } } },
           },
           brainDumps: {
             orderBy: { createdAt: "desc" },
@@ -196,7 +197,7 @@ export default async function PursuitPage({
   const FACE_COLORS = ["#2f7fdc", "#ee6a35", "#1fae7c", "#e2a21b", "#8b7bf5", "#e5605a"];
   const people: Person[] = [pursuit.owner, ...pursuit.members.map((m) => m.user)].map((u, i) => {
     const name = u.name ?? u.email;
-    return { id: u.id, name, initial: name.trim().charAt(0).toUpperCase(), color: FACE_COLORS[i % FACE_COLORS.length] };
+    return { id: u.id, name, initial: name.trim().charAt(0).toUpperCase(), color: FACE_COLORS[i % FACE_COLORS.length], avatar: u.avatar ? parseAvatar(u.avatar) : null };
   });
   // Options and budget blocks (a trip, a move…): their rows.
   const hasChoices = blocks.some((b) => b.type === "options" || b.type === "budget");

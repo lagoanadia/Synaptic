@@ -6,9 +6,16 @@ import type { FolderItem, RecentPage } from "@/lib/blockData";
 export function FolderRow({ items, empty, after }: { items: FolderItem[]; empty?: React.ReactNode; after?: React.ReactNode }) {
   if (items.length === 0 && !after) return <p className="py-6 text-sm text-ink-faint">{empty ?? "Aún no hay carpetas."}</p>;
   return (
-    <div className="grid grid-cols-3 items-end gap-x-4 gap-y-5 pt-2 sm:flex sm:flex-wrap sm:gap-x-6">
+    <div className="grid grid-cols-3 items-start gap-x-4 gap-y-5 pt-2 sm:flex sm:flex-wrap sm:gap-x-6">
       <FolderTiles items={items} />
-      {after}
+      {after && (
+        // The same room above as a folder (sheets + tab), so "+" lines up with the covers.
+        <div className="flex flex-col sm:w-28">
+          <div className="pt-[12%]" />
+          <div className="pt-[min(max(1.5px,5.5%),15px)]" />
+          {after}
+        </div>
+      )}
     </div>
   );
 }

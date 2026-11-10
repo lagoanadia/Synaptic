@@ -8,7 +8,7 @@ import { FOLDER_TEMPLATES, type FolderTemplate } from "@/lib/blocks";
 // study notebooks you also pick a template (En blanco / Proyecto / Viaje).
 // `fill`: take the full width of its slot instead of a small tile at the bottom.
 export function NewFolder({ sectionName, label, fill = false, template: initial }: { sectionName: string; label: string; fill?: boolean; template?: FolderTemplate }) {
-  const size = fill ? "w-full" : "w-full self-end sm:w-44";
+  const size = fill ? "w-full" : "w-full sm:w-44";
   const [open, setOpen] = useState(false);
   const [template, setTemplate] = useState<FolderTemplate | undefined>(initial);
   const [pending, start] = useTransition();
@@ -47,7 +47,7 @@ export function NewFolder({ sectionName, label, fill = false, template: initial 
       </span>
     </form>
   ) : (
-    <button type="button" onClick={() => setOpen(true)} title={label} aria-label={label} className={`grid aspect-[3/2] ${fill ? "w-full" : "w-full self-end sm:w-28"} place-items-center rounded-md border-[1.5px] border-dashed border-[#d3d1cb] text-xl text-ink-faint hover:border-ink-faint hover:text-ink`}>
+    <button type="button" onClick={() => setOpen(true)} title={label} aria-label={label} className={`grid aspect-[3/2] ${fill ? "w-full" : "w-full sm:w-28"} place-items-center rounded-md border-[1.5px] border-dashed border-[#d3d1cb] text-xl text-ink-faint hover:border-ink-faint hover:text-ink`}>
       +
     </button>
   );
