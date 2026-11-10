@@ -1,5 +1,11 @@
 // Spanish source text → translation. Missing keys fall back to Spanish.
 export const de: Record<string, string> = {
+  "Elige un amigo o escribe un email o @usuario": "Wähl einen Freund oder gib eine E-Mail oder einen @Benutzernamen ein",
+  "No hay ninguna cuenta con ese email o @usuario — tiene que entrar en Synaptic una vez primero": "Kein Konto mit dieser E-Mail oder diesem @Benutzernamen — die Person muss sich zuerst einmal bei Synaptic anmelden",
+  "Tus amigos": "Deine Freunde",
+  "+ invitar por email o @usuario": "+ per E-Mail oder @Benutzername einladen",
+  "Permiso": "Berechtigung",
+  "Añade amigos en tu perfil para compartir con un toque": "Füg in deinem Profil Freunde hinzu, um mit einem Tipp zu teilen",
   "Todo lo que apuntas, organizas o generas en Synaptic es tuyo. No reclamamos su propiedad — solo lo guardamos y lo procesamos (incluido enviarlo a los modelos de IA de Groq) para que funcione la app. No subas nada que no tengas derecho a guardar o compartir, y no uses la app para guardar o generar nada ilegal, abusivo o que infrinja derechos.": "Alles, was du in Synaptic notierst, ordnest oder erzeugst, gehört dir. Wir beanspruchen kein Eigentum — wir speichern und verarbeiten es nur (einschließlich der Übermittlung an die KI-Modelle von Groq), damit die App funktioniert. Lade nichts hoch, was du nicht speichern oder teilen darfst, und nutze die App nicht, um Illegales, Missbräuchliches oder Rechtsverletzendes zu speichern oder zu erzeugen.",
   " Hazte Pro para tenerlas ilimitadas.": " Hol dir Pro für unbegrenzte Karten.",
   " — ya en {0}": " — schon in {0}",

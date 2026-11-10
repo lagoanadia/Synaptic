@@ -220,12 +220,13 @@ export function OptionsBlock({ pursuitId, blockId, items, people, me, columns = 
   const [, start] = useTransition();
   const [adding, setAdding] = useState(false);
   const byId = new Map(people.map((p) => [p.id, p]));
-  const grid = { gridTemplateColumns: ["minmax(0,1fr)", ...columns.map((c) => WIDTH[c]), "20px"].join(" ") };
+  // A table from sm up; on phones each option is a small card (name, then its cells).
+  const grid = { "--cols": ["minmax(0,1fr)", ...columns.map((c) => WIDTH[c]), "20px"].join(" ") } as React.CSSProperties;
   const save = (id: string, data: Parameters<typeof updateChoice>[1]) => start(() => updateChoice(id, data));
   return (
     <div className="flex flex-col text-sm">
       {items.length > 0 && (
-        <div className="grid items-center gap-3 pb-2 text-xs text-ink-faint" style={grid}>
+        <div className="hidden items-center gap-3 pb-2 text-xs text-ink-faint sm:grid sm:[grid-template-columns:var(--cols)]" style={grid}>
           <span>{t("Opción")}</span>
           {columns.map((c) =>
             c === "votes" ? (
@@ -243,8 +244,8 @@ export function OptionsBlock({ pursuitId, blockId, items, people, me, columns = 
         const s = STATUS[c.status];
         const mine = c.voters.includes(me);
         return (
-          <div key={c.id} id={`choice-${c.id}`} className="group grid scroll-mt-24 items-center gap-3 border-b border-[#f1f0ee] py-3" style={grid}>
-            <span className="flex min-w-0 flex-col">
+          <div key={c.id} id={`choice-${c.id}`} className="group flex scroll-mt-24 flex-wrap items-center gap-x-4 gap-y-2 border-b border-[#f1f0ee] py-3 sm:grid sm:gap-3 sm:[grid-template-columns:var(--cols)]" style={grid}>
+            <span className="flex min-w-0 basis-[calc(100%-2rem)] flex-col max-sm:-order-2 sm:basis-auto">
               <span className="truncate font-medium">{c.title}</span>
               {c.url && (
                 <a href={c.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-ink-faint hover:text-ink">
@@ -293,7 +294,7 @@ export function OptionsBlock({ pursuitId, blockId, items, people, me, columns = 
               onClick={() => window.confirm(t("¿Quitar \"{0}\"?", { 0: c.title })) && start(() => deleteChoice(c.id))}
               title={t("Quitar")}
               aria-label={t("Quitar opción")}
-              className="text-ink-faint/40 hover:text-red-600"
+              className="text-ink-faint/40 hover:text-red-600 max-sm:-order-1 max-sm:ml-auto"
             >
               ×
             </button>

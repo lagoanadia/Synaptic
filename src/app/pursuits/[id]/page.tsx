@@ -196,6 +196,18 @@ export default async function PursuitPage({
   const grouped = pursuit.contentSections.length > 0;
   const blocks = folderBlocks(pursuit.blocks, study, pursuit.projects.length > 0);
   const isOwner = pursuit.owner.id === session.user.id;
+  // Your friends who aren't in this folder yet, to share with in one tap.
+  const inFolder = new Set([pursuit.owner.id, ...pursuit.members.map((m) => m.user.id)]);
+  const friendLinks = isOwner
+    ? await prisma.friendship.findMany({
+        where: { status: "ACCEPTED", OR: [{ fromId: session.user.id }, { toId: session.user.id }] },
+        select: { fromId: true, from: { select: { id: true, name: true, email: true, username: true, avatar: true } }, to: { select: { id: true, name: true, email: true, username: true, avatar: true } } },
+      })
+    : [];
+  const friends = friendLinks
+    .map((l) => (l.fromId === session.user.id ? l.to : l.from))
+    .filter((u) => !inFolder.has(u.id))
+    .map((u) => ({ id: u.id, name: u.name ?? u.username ?? u.email.split("@")[0], username: u.username, avatar: u.avatar ? parseAvatar(u.avatar) : null }));
   const here = `/pursuits/${pursuit.id}`;
 
   // A project folder shows its state and dates under the title.
@@ -370,7 +382,7 @@ export default async function PursuitPage({
 
       <header className="flex flex-wrap items-center gap-4">
         <Folder cover={cover} width={64} />
-        <PursuitTitle pursuitId={pursuit.id} title={pursuit.title} className="min-w-0 flex-1 text-[2.1rem] leading-tight font-bold tracking-tight" />
+        <PursuitTitle pursuitId={pursuit.id} title={pursuit.title} className="min-w-[10rem] flex-1 text-[1.75rem] leading-tight font-bold tracking-tight sm:text-[2.1rem]" />
         <span className="flex items-center gap-2">
           {study && (
             <Link href={`/review?mode=flash&pursuit=${pursuit.id}`} className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-white">
@@ -447,7 +459,7 @@ export default async function PursuitPage({
                     )}
                   </div>
                 ))}
-                {isOwner && <MemberForm pursuitId={pursuit.id} />}
+                {isOwner && <MemberForm pursuitId={pursuit.id} friends={friends} />}
               </div>
               <div className="flex flex-col gap-2 rounded-lg border border-border-subtle bg-white p-4">
                 <span className="text-xs font-semibold tracking-wide text-ink-faint uppercase">{t("Etiquetas")}</span>
