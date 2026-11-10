@@ -1,16 +1,17 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { createPursuit } from "../../actions";
+import { createPursuit, deleteFolderTemplate } from "../../actions";
 import { FOLDER_TEMPLATES, type FolderTemplate } from "@/lib/blocks";
 
 // "+" at the end of a notebook's folders: type a name, Enter. Outside
 // study notebooks you also pick a template (En blanco / Proyecto / Planificador).
 // `fill`: take the full width of its slot instead of a small tile at the bottom.
-export function NewFolder({ sectionName, label, fill = false, template: initial }: { sectionName: string; label: string; fill?: boolean; template?: FolderTemplate }) {
+// mine: the templates you saved; picked as "u:<id>".
+export function NewFolder({ sectionName, label, fill = false, template: initial, mine = [] }: { sectionName: string; label: string; fill?: boolean; template?: FolderTemplate; mine?: { id: string; name: string }[] }) {
   const size = fill ? "w-full" : "w-full sm:w-44";
   const [open, setOpen] = useState(false);
-  const [template, setTemplate] = useState<FolderTemplate | undefined>(initial);
+  const [template, setTemplate] = useState<string | undefined>(initial);
   const [pending, start] = useTransition();
   return open ? (
     <form
@@ -34,6 +35,27 @@ export function NewFolder({ sectionName, label, fill = false, template: initial 
             >
               {t.label}
             </button>
+          ))}
+          {mine.map((t) => (
+            <span key={t.id} className={`flex items-center rounded-full text-[11px] ${template === `u:${t.id}` ? "bg-ink text-white" : "bg-chip text-ink-muted"}`}>
+              <button type="button" role="radio" aria-checked={template === `u:${t.id}`} onMouseDown={(e) => e.preventDefault()} onClick={() => setTemplate(`u:${t.id}`)} className="py-0.5 pl-2 hover:text-ink">
+                {t.name}
+              </button>
+              <button
+                type="button"
+                title="Borrar plantilla"
+                aria-label={`Borrar la plantilla ${t.name}`}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => {
+                  if (!window.confirm(`¿Borrar la plantilla "${t.name}"? Las carpetas hechas con ella no cambian.`)) return;
+                  if (template === `u:${t.id}`) setTemplate(initial);
+                  start(() => deleteFolderTemplate(t.id));
+                }}
+                className="px-1.5 py-0.5 opacity-50 hover:opacity-100"
+              >
+                ×
+              </button>
+            </span>
           ))}
         </span>
       )}

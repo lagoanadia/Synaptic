@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Folder } from "@/app/Covers";
 import { FOLDER_GROUPS, type FolderCover } from "@/lib/covers";
 import { setFolderCover, setGroupLabel } from "./actions";
-import { deletePursuit } from "../actions";
+import { deletePursuit, saveFolderTemplate } from "../actions";
 
 // Shown in "Editar": the folder's look (cover pattern), what its groups
 // are called, and the rest of its settings (passed in as children).
@@ -70,6 +70,7 @@ export function FolderSettings({
         </form>
       )}
       {children}
+      <SaveAsTemplate pursuitId={pursuitId} title={title} />
       {canDelete && (
         <button
           type="button"
@@ -86,5 +87,51 @@ export function FolderSettings({
         </button>
       )}
     </section>
+  );
+}
+
+// "Guardar como plantilla": this folder's blocks, to start new folders from.
+function SaveAsTemplate({ pursuitId, title }: { pursuitId: string; title: string }) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState(title);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+  if (!open)
+    return (
+      <button type="button" onClick={() => { setOpen(true); setMsg(null); }} className="flex items-center gap-1.5 self-start rounded-md border border-border-subtle bg-white px-3 py-1.5 text-sm text-ink-muted hover:border-ink-faint hover:text-ink">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <rect x="3" y="3" width="7" height="7" rx="1.5" />
+          <rect x="14" y="3" width="7" height="7" rx="1.5" />
+          <rect x="3" y="14" width="7" height="7" rx="1.5" />
+          <path d="M17.5 14v7M14 17.5h7" />
+        </svg>
+        {msg ?? "Guardar como plantilla"}
+      </button>
+    );
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        start(async () => {
+          const r = await saveFolderTemplate(pursuitId, name);
+          if (r.error) setMsg(r.error);
+          else {
+            setOpen(false);
+            setMsg(`✓ Guardada: «${name.trim()}»`);
+          }
+        });
+      }}
+      className="flex flex-wrap items-center gap-2"
+    >
+      <input autoFocus value={name} onChange={(e) => setName(e.target.value)} maxLength={30} aria-label="Nombre de la plantilla" className="w-48 rounded-md border border-border-subtle bg-white px-2 py-1" />
+      <button type="submit" disabled={pending} className="rounded-md bg-ink px-3 py-1 text-xs font-medium text-white disabled:opacity-60">
+        Guardar
+      </button>
+      <button type="button" onClick={() => setOpen(false)} className="text-xs text-ink-faint hover:text-ink">
+        Cancelar
+      </button>
+      {msg && <span className="text-xs text-red-600">{msg}</span>}
+      <span className="w-full text-xs text-ink-faint">Guarda los bloques y sus columnas, no el contenido.</span>
+    </form>
   );
 }

@@ -17,7 +17,21 @@ export const HOME_BLOCK_TYPES: { type: HomeBlockType; label: string }[] = [
 export type FolderBlockType = "project" | "pages" | "map" | "review" | "ask" | "challenges" | "deadlines" | "tasks" | "options" | "budget";
 // title/icon: what an "options" block is about (Alojamiento, bed…);
 // people: how many a "budget" block splits between (null = the members).
-export type FolderBlock = { id: string; type: FolderBlockType; view?: "list" | "board"; title?: string; icon?: BlockIcon; people?: number | null };
+export type FolderBlock = { id: string; type: FolderBlockType; view?: "list" | "board"; title?: string; icon?: BlockIcon; people?: number | null; columns?: OptionColumn[] };
+// The columns an "options" block can show, in this order.
+export const OPTION_COLUMNS = [
+  { id: "status", label: "Estado" },
+  { id: "price", label: "Precio" },
+  { id: "votes", label: "Votos" },
+  { id: "rating", label: "Valoración" },
+  { id: "date", label: "Fecha" },
+  { id: "note", label: "Nota" },
+] as const;
+export type OptionColumn = (typeof OPTION_COLUMNS)[number]["id"];
+export const DEFAULT_OPTION_COLUMNS: OptionColumn[] = ["status", "price", "votes"];
+// Stored columns (or none) → the ones to show, in the standard order.
+export const optionColumns = (cols: unknown): OptionColumn[] =>
+  Array.isArray(cols) ? OPTION_COLUMNS.map((c) => c.id).filter((id) => cols.includes(id)) : DEFAULT_OPTION_COLUMNS;
 export const BLOCK_ICONS = ["bed", "plane", "food", "pin", "ticket", "car", "star", "list"] as const;
 export type BlockIcon = (typeof BLOCK_ICONS)[number];
 
@@ -41,6 +55,14 @@ export const FOLDER_TEMPLATES: { id: FolderTemplate; label: string }[] = [
   { id: "project", label: "Proyecto" },
   { id: "plan", label: "Planificador" },
 ];
+// A saved template's blocks → fresh blocks for a new folder (new ids, so
+// no two folders share block ids).
+export function blocksFromTemplate(raw: unknown): FolderBlock[] {
+  if (!Array.isArray(raw)) return templateBlocks("blank");
+  const out = raw.map((b) => cleanFolderBlock({ ...(b as Partial<FolderBlock>), id: newId() })).filter((b): b is FolderBlock => b !== null).slice(0, 20);
+  return out.length ? out : templateBlocks("blank");
+}
+
 export function templateBlocks(t: FolderTemplate): FolderBlock[] {
   // "Plan": decide between options together and split the cost — a trip,
   // a move, a group present, an event, a big purchase, a weekend…
@@ -62,6 +84,7 @@ export function cleanFolderBlock(b: Partial<FolderBlock>): FolderBlock | null {
   if (b.type === "options") {
     out.title = typeof b.title === "string" && b.title.trim() ? b.title.trim().slice(0, 40) : "Opciones";
     out.icon = BLOCK_ICONS.includes(b.icon as BlockIcon) ? b.icon : "list";
+    out.columns = optionColumns(b.columns);
   }
   if (b.type === "budget") out.people = typeof b.people === "number" && b.people >= 1 && b.people <= 99 ? Math.round(b.people) : null;
   return out;

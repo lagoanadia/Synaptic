@@ -31,6 +31,7 @@ import { FolderBlocks } from "./FolderBlocks";
 import { FolderSettings } from "./FolderSettings";
 import { oneProject } from "@/lib/projectData";
 import { parseAvatar } from "@/lib/avatar";
+import { optionColumns } from "@/lib/blocks";
 import { dayOf } from "@/lib/projects";
 import { ProjectInfo } from "@/app/projects/ProjectInfo";
 import { TaskBoard } from "@/app/projects/TaskBoard";
@@ -222,7 +223,8 @@ export default async function PursuitPage({
           blockId={b.id}
           me={session.user.id}
           people={people}
-          items={items.map((c) => ({ id: c.id, title: c.title, url: c.url, status: c.status as "IDEA" | "VOTING" | "CHOSEN", price: c.price, voters: c.votes.map((v) => v.userId) }))}
+          columns={optionColumns(b.columns)}
+          items={items.map((c) => ({ id: c.id, title: c.title, url: c.url, status: c.status as "IDEA" | "VOTING" | "CHOSEN", price: c.price, rating: c.rating, date: c.date, note: c.note, voters: c.votes.map((v) => v.userId) }))}
         />
       );
       const chosen = items.filter((c) => c.status === "CHOSEN");

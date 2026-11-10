@@ -62,6 +62,7 @@ model User {
   sentNotifications   SentDeadlineNotification[]
   challenges          Challenge[]
   choiceVotes         ChoiceVote[]
+  templates           UserTemplate[]
 }
 
 enum Plan {
@@ -664,6 +665,11 @@ model Choice {
   // IDEA | VOTING | CHOSEN
   status    String   @default("IDEA")
   price     Int?
+  // Optional columns (the block chooses which show): 1-5 stars, a day
+  // "YYYY-MM-DD", a short note.
+  rating    Int?
+  date      String?
+  note      String?
   order     Int      @default(0)
   createdAt DateTime @default(now())
   votes     ChoiceVote[]
@@ -694,4 +700,17 @@ model BudgetLine {
   order     Int     @default(0)
 
   @@index([pursuitId, blockId])
+}
+
+// A folder template you saved ("Mudanza", "Regalo"…): the blocks of a
+// folder and their settings, not their content.
+model UserTemplate {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  blocks    Json
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }

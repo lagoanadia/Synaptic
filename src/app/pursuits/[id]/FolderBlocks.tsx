@@ -3,8 +3,8 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowDown, CheckIcon, KanbanIcon, MenuIcon, XIcon } from "@/app/icons";
-import { BLOCK_ICONS, FOLDER_BLOCK_TYPES, newBlock, type FolderBlock } from "@/lib/blocks";
-import { BlockIconSvg } from "./TripBlocks";
+import { BLOCK_ICONS, FOLDER_BLOCK_TYPES, newBlock, optionColumns, type FolderBlock } from "@/lib/blocks";
+import { BlockIconSvg, ColumnsMenu } from "./TripBlocks";
 import { saveFolderBlocks, setGroupLabel } from "./actions";
 
 const LABEL = Object.fromEntries(FOLDER_BLOCK_TYPES.map((t) => [t.type, t.label]));
@@ -101,6 +101,9 @@ export function FolderBlocks({
               )}
               {card && <span className={`flex-1 text-sm text-ink-faint ${b.type === "project" ? "" : "text-right"}`}>{summaries[b.id]}</span>}
               {card && !editing && extras[b.id]}
+              {b.type === "options" && !editing && (
+                <ColumnsMenu value={optionColumns(b.columns)} onChange={(columns) => save(blocks.map((x) => (x.id === b.id ? { ...x, columns } : x)))} />
+              )}
               {b.type === "project" && !editing && (
                 <span className="flex rounded-md bg-white p-0.5 shadow-[0_0_0_1px_rgba(55,53,47,.09)]" role="group" aria-label="Vista">
                   {(
