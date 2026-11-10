@@ -44,9 +44,10 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
   });
   return (
     <div className="mx-auto flex w-full max-w-[1100px] flex-1 flex-col gap-8 px-6 py-8 sm:px-12 lg:py-12">
-      <header className="flex flex-wrap items-center justify-between gap-4">
+      <header className="flex flex-col gap-5">
         <h1 className="text-[2.1rem] leading-tight font-bold tracking-tight">{t("Tu perfil")}</h1>
-        <nav className="flex rounded-[10px] bg-chip p-[3px] text-sm" aria-label={t("Perfil")}>
+        {/* Tabs under the title, like any settings page. */}
+        <nav className="flex gap-6 border-b border-border-subtle text-sm" aria-label={t("Perfil")}>
           {(
             [
               ["avatar", t("Avatar")],
@@ -54,7 +55,7 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
               ["settings", t("Ajustes")],
             ] as const
           ).map(([k, label]) => (
-            <Link key={k} href={k === "avatar" ? "/profile" : `/profile?tab=${k}`} aria-current={tab === k ? "page" : undefined} className={`rounded-lg px-4 py-1.5 ${tab === k ? "bg-white font-medium text-ink shadow-sm" : "text-ink-muted hover:text-ink"}`}>
+            <Link key={k} href={k === "avatar" ? "/profile" : `/profile?tab=${k}`} aria-current={tab === k ? "page" : undefined} className={`-mb-px flex items-center border-b-2 pb-2.5 ${tab === k ? "border-ink font-medium text-ink" : "border-transparent text-ink-muted hover:text-ink"}`}>
               {label}
               {k === "friends" && friends.some((f) => f.state === "received") && <span className="ml-1.5 inline-block size-2 rounded-full bg-[#e16259]" />}
             </Link>
@@ -68,7 +69,7 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
           codes={user.codes}
           calendar={!!user.calendarConnection}
           classroom={!!user.classroomConnection}
-          signIns={[...new Set(user.accounts.map((a) => (a.provider === "github" ? "GitHub" : a.provider === "google" ? "Google" : a.provider)))]}
+          providers={[...new Set(user.accounts.map((a) => a.provider))]}
           plan={BILLING ? user.plan : null}
         />
       )}
