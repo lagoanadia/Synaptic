@@ -87,3 +87,17 @@ export async function deleteAccount(confirm: string): Promise<{ error: string | 
   await signOut({ redirectTo: "/" });
   return { error: null };
 }
+
+// Settings: "Programo" shows Retos in the menu.
+export async function setCodes(codes: boolean) {
+  const id = await me();
+  await prisma.user.update({ where: { id }, data: { codes } });
+  revalidatePath("/", "layout");
+}
+
+// Settings: unlink Google Classroom from the whole account.
+export async function disconnectClassroomAccount() {
+  const id = await me();
+  await prisma.googleClassroomConnection.deleteMany({ where: { userId: id } });
+  revalidatePath("/profile");
+}

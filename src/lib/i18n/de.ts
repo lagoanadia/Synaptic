@@ -1,5 +1,17 @@
 // Spanish source text → translation. Missing keys fall back to Spanish.
 export const de: Record<string, string> = {
+  "Solicitudes pendientes": "Offene Anfragen",
+  "Nada pendiente.": "Nichts offen.",
+  "Enviadas": "Gesendet",
+  "Avatar": "Avatar",
+  "La app y lo que escribe la IA": "Die App und was die KI schreibt",
+  "Programo": "Ich programmiere",
+  "Muestra Retos de código en el menú": "Zeigt Code-Herausforderungen im Menü",
+  "Conectado": "Verbunden",
+  "Trae tus eventos y envía exámenes y entregas": "Holt deine Termine und sendet Prüfungen und Abgaben",
+  "Se conecta desde una asignatura, en Editar": "Verbinde es in einem Fach unter Bearbeiten",
+  "Inicias sesión con": "Du meldest dich an mit",
+  "Plan": "Plan",
   "Eliminar cuenta": "Konto löschen",
   "Se borran tu cuenta, tus libretas, carpetas, páginas y tarjetas. No se puede deshacer.": "Dein Konto, deine Notizbücher, Ordner, Seiten und Karten werden gelöscht. Das lässt sich nicht rückgängig machen.",
   "Escribe ELIMINAR para confirmar": "Tippe ELIMINAR zur Bestätigung",

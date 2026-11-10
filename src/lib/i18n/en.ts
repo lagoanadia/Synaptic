@@ -1,5 +1,17 @@
 // Spanish source text → translation. Missing keys fall back to Spanish.
 export const en: Record<string, string> = {
+  "Solicitudes pendientes": "Pending requests",
+  "Nada pendiente.": "Nothing pending.",
+  "Enviadas": "Sent",
+  "Avatar": "Avatar",
+  "La app y lo que escribe la IA": "The app and what the AI writes",
+  "Programo": "I code",
+  "Muestra Retos de código en el menú": "Shows coding challenges in the menu",
+  "Conectado": "Connected",
+  "Trae tus eventos y envía exámenes y entregas": "Brings in your events and sends exams and deadlines",
+  "Se conecta desde una asignatura, en Editar": "Connect it from a subject, under Edit",
+  "Inicias sesión con": "You sign in with",
+  "Plan": "Plan",
   "Eliminar cuenta": "Delete account",
   "Se borran tu cuenta, tus libretas, carpetas, páginas y tarjetas. No se puede deshacer.": "Your account, notebooks, folders, pages and cards are deleted. This can't be undone.",
   "Escribe ELIMINAR para confirmar": "Type ELIMINAR to confirm",

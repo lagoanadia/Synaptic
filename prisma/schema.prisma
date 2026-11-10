@@ -39,6 +39,8 @@ model User {
   sampleContent Json?
 
   // Profile: public @handle and the drawn avatar (lib/avatar.ts).
+  // Codes: shows Retos (coding challenges) in the menu.
+  codes Boolean @default(false)
   username String? @unique
   avatar   Json?
 
