@@ -26,8 +26,28 @@ export function ProfileEditor({ name, username, initial, saved: wasSaved }: { na
   const [avatar, setAvatar] = useState(initial);
   const [tab, setTab] = useState<Tab>("Cara");
   const [dirty, setDirty] = useState(!wasSaved);
+  const [handle, setHandle] = useState(username ?? "");
+  const [savedHandle, setSavedHandle] = useState(username ?? "");
+  const [handleError, setHandleError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const router = useRouter();
+  const handleDirty = handle.trim().replace(/^@/, "").toLowerCase() !== savedHandle;
+  // One button saves both: the @usuario (if changed) and the avatar.
+  const save = () =>
+    start(async () => {
+      if (handleDirty && handle.trim()) {
+        const r = await setUsername(handle);
+        setHandleError(r.error);
+        if (r.error) return;
+        setHandle(r.username!);
+        setSavedHandle(r.username!);
+      }
+      if (dirty) {
+        await saveAvatar(avatar);
+        setDirty(false);
+      }
+      router.refresh();
+    });
   const set = (patch: Partial<Avatar>) => {
     setAvatar((a) => ({ ...a, ...patch }));
     setDirty(true);
@@ -80,24 +100,27 @@ export function ProfileEditor({ name, username, initial, saved: wasSaved }: { na
       <div className="flex flex-col items-center gap-2 md:w-[280px] md:shrink-0">
         <AvatarFace avatar={avatar} size={240} uid="big" />
         <b className="mt-2 text-xl">{name}</b>
-        <Handle initial={username} />
+        <Handle
+          value={handle}
+          saved={savedHandle}
+          error={handleError}
+          onChange={(v) => {
+            setHandle(v);
+            setHandleError(null);
+          }}
+          onSubmit={save}
+        />
         <div className="mt-3 flex gap-2.5">
           <button type="button" onClick={() => set(randomAvatar())} title={t("Otro al azar")} aria-label={t("Otro al azar")} className="grid h-10 w-11 place-items-center rounded-lg bg-chip text-ink-muted hover:text-ink">
             <DiceIcon />
           </button>
           <button
             type="button"
-            disabled={pending || !dirty}
-            onClick={() =>
-              start(async () => {
-                await saveAvatar(avatar);
-                setDirty(false);
-                router.refresh();
-              })
-            }
+            disabled={pending || !(dirty || (handleDirty && handle.trim()))}
+            onClick={save}
             className="rounded-lg bg-ink px-5 py-2 font-medium text-white disabled:opacity-50"
           >
-            {pending ? t("Guardando…") : dirty ? t("Hecho") : t("Guardado")}
+            {pending ? t("Guardando…") : dirty || (handleDirty && handle.trim()) ? t("Guardar") : t("Guardado")}
           </button>
         </div>
       </div>
@@ -147,39 +170,26 @@ export function ProfileEditor({ name, username, initial, saved: wasSaved }: { na
   );
 }
 
-// @handle: click to edit, Enter to save.
-function Handle({ initial }: { initial: string | null }) {
+// @handle: type it, then Enter or the Guardar button.
+function Handle({ value, saved, error, onChange, onSubmit }: { value: string; saved: string; error: string | null; onChange: (v: string) => void; onSubmit: () => void }) {
   const t = useT();
-  const [value, setValue] = useState(initial ?? "");
-  const [editing, setEditing] = useState(!initial);
-  const [error, setError] = useState<string | null>(null);
-  const [pending, start] = useTransition();
-  if (!editing)
-    return (
-      <button type="button" onClick={() => setEditing(true)} className="rounded-md bg-chip px-2 py-0.5 text-sm text-ink-muted hover:text-ink" title={t("Cambiar tu @usuario")}>
-        @{value}
-      </button>
-    );
   return (
     <form
       className="flex flex-col items-center gap-1"
       onSubmit={(e) => {
         e.preventDefault();
-        start(async () => {
-          const r = await setUsername(value);
-          setError(r.error);
-          if (r.username) {
-            setValue(r.username);
-            setEditing(false);
-          }
-        });
+        onSubmit();
       }}
     >
       <span className="flex items-center rounded-md border border-border-subtle bg-white px-2 text-sm focus-within:border-ink-faint">
         <span className="text-ink-faint">@</span>
-        <input autoFocus={!!initial} value={value} onChange={(e) => setValue(e.target.value)} disabled={pending} placeholder={t("tu_usuario")} aria-label={t("Tu @usuario")} className="w-36 py-1 outline-none" />
+        <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={t("tu_usuario")} aria-label={t("Tu @usuario")} className="w-36 py-1 outline-none" />
       </span>
-      {error ? <span className="text-xs text-red-600">{error}</span> : <span className="text-xs text-ink-faint">{t("Así te encuentran tus amigos")}</span>}
+      {error ? (
+        <span className="text-xs text-red-600">{t(error)}</span>
+      ) : (
+        <span className="text-xs text-ink-faint">{saved ? t("Así te encuentran tus amigos") : t("Elige uno para que tus amigos te encuentren")}</span>
+      )}
     </form>
   );
 }

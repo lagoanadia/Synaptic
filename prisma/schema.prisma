@@ -66,6 +66,8 @@ model User {
   expenses            Expense[]
   dateVotes           DateVote[]
   savings             Saving[]
+  friendsSent         Friendship[] @relation("FriendFrom")
+  friendsReceived     Friendship[] @relation("FriendTo")
 }
 
 enum Plan {
@@ -780,4 +782,24 @@ model Whiteboard {
   pursuit   Pursuit  @relation(fields: [pursuitId], references: [id], onDelete: Cascade)
   data      Json     @default("[]")
   updatedAt DateTime @updatedAt
+}
+
+// A friend request from one user to another; ACCEPTED makes them friends
+// both ways.
+model Friendship {
+  id        String       @id @default(cuid())
+  fromId    String
+  from      User         @relation("FriendFrom", fields: [fromId], references: [id], onDelete: Cascade)
+  toId      String
+  to        User         @relation("FriendTo", fields: [toId], references: [id], onDelete: Cascade)
+  status    FriendStatus @default(PENDING)
+  createdAt DateTime     @default(now())
+
+  @@unique([fromId, toId])
+  @@index([toId])
+}
+
+enum FriendStatus {
+  PENDING
+  ACCEPTED
 }

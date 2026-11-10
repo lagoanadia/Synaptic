@@ -6,6 +6,7 @@ import { parseAvatar, randomAvatar } from "@/lib/avatar";
 import Link from "next/link";
 import { BILLING } from "@/lib/billingFlag";
 import { ProfileEditor } from "./ProfileEditor";
+import { Friends, type Friend } from "./Friends";
 
 export const metadata = { title: "Tu perfil" };
 
@@ -17,6 +18,23 @@ export default async function ProfilePage() {
   if (!user) redirect("/");
   // No avatar yet: start from a random one, so nobody looks the same.
   const avatar = user.avatar ? parseAvatar(user.avatar) : randomAvatar();
+  const person = { select: { id: true, name: true, email: true, username: true, avatar: true } } as const;
+  const links = await prisma.friendship.findMany({
+    where: { OR: [{ fromId: session.user.id }, { toId: session.user.id }] },
+    include: { from: person, to: person },
+    orderBy: { createdAt: "desc" },
+  });
+  const friends: Friend[] = links.map((l) => {
+    const mine = l.fromId === session.user!.id;
+    const other = mine ? l.to : l.from;
+    return {
+      id: l.id,
+      state: l.status === "ACCEPTED" ? "friend" : mine ? "sent" : "received",
+      name: other.name ?? other.username ?? other.email.split("@")[0],
+      username: other.username,
+      avatar: other.avatar ? parseAvatar(other.avatar) : null,
+    };
+  });
   return (
     <div className="mx-auto flex w-full max-w-[1100px] flex-1 flex-col gap-8 px-6 py-8 sm:px-12 lg:py-12">
       <header className="flex items-center justify-between gap-4">
@@ -28,6 +46,7 @@ export default async function ProfilePage() {
         )}
       </header>
       <ProfileEditor name={user.name ?? user.email} username={user.username} initial={avatar} saved={!!user.avatar} />
+      <Friends friends={friends} hasHandle={!!user.username} />
     </div>
   );
 }
