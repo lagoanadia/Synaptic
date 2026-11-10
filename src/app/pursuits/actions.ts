@@ -1,5 +1,7 @@
 "use server";
 
+import { getT } from "@/lib/i18n/server";
+
 import { revalidatePath } from "next/cache";
 import { blocksFromTemplate, templateBlocks } from "@/lib/blocks";
 import { cleanHomeBlocks } from "@/lib/blocks";
@@ -9,9 +11,10 @@ import { prisma } from "@/lib/prisma";
 import { upsertSection } from "@/lib/sections";
 
 export async function createPursuit(formData: FormData) {
+  const t = await getT();
   const session = await auth();
   if (!session?.user?.id) {
-    throw new Error("No has iniciado sesión");
+    throw new Error(t("No has iniciado sesión"));
   }
 
   const title = formData.get("title");
@@ -20,7 +23,7 @@ export async function createPursuit(formData: FormData) {
   const template = formData.get("template");
 
   if (typeof title !== "string" || title.trim() === "") {
-    throw new Error("Falta el título");
+    throw new Error(t("Falta el título"));
   }
 
   // Sections are free-typed and stored per user, same as PursuitTag — no
@@ -52,9 +55,10 @@ export async function createPursuit(formData: FormData) {
 }
 
 export async function deleteSection(sectionId: string) {
+  const t = await getT();
   const session = await auth();
   if (!session?.user?.id) {
-    throw new Error("No has iniciado sesión");
+    throw new Error(t("No has iniciado sesión"));
   }
 
   // Only this user's section; its subjects become unsectioned (ON DELETE SET NULL).
@@ -68,19 +72,20 @@ export async function deleteSection(sectionId: string) {
 }
 
 export async function deletePursuit(pursuitId: string) {
+  const t = await getT();
   const session = await auth();
   if (!session?.user?.id) {
-    throw new Error("No has iniciado sesión");
+    throw new Error(t("No has iniciado sesión"));
   }
 
   const pursuit = await prisma.pursuit.findUnique({
     where: { id: pursuitId },
   });
   if (!pursuit) {
-    throw new Error("Asignatura no encontrada");
+    throw new Error(t("Asignatura no encontrada"));
   }
   if (pursuit.ownerId !== session.user.id) {
-    throw new Error("Solo la propietaria puede eliminar esta asignatura");
+    throw new Error(t("Solo la propietaria puede eliminar esta asignatura"));
   }
 
   // Children first: the foreign keys to Pursuit don't cascade.
@@ -107,8 +112,9 @@ export async function deletePursuit(pursuitId: string) {
 // The new order of the user's sections, from dragging tiles on the home
 // screen. Ids that aren't this user's are ignored.
 export async function reorderSections(orderedIds: string[]) {
+  const t = await getT();
   const session = await auth();
-  if (!session?.user?.id) throw new Error("No has iniciado sesión");
+  if (!session?.user?.id) throw new Error(t("No has iniciado sesión"));
   const mine = await prisma.section.findMany({ where: { userId: session.user.id }, select: { id: true } });
   const owned = new Set(mine.map((s) => s.id));
   const ids = orderedIds.filter((id) => owned.has(id));
@@ -125,8 +131,9 @@ export type PushSubscriptionInput = {
 // re-subscribing (e.g. after clearing site data) doesn't create a
 // duplicate row for the same browser.
 export async function subscribeToPush(subscription: PushSubscriptionInput) {
+  const t = await getT();
   const session = await auth();
-  if (!session?.user?.id) throw new Error("No has iniciado sesión");
+  if (!session?.user?.id) throw new Error(t("No has iniciado sesión"));
 
   await prisma.pushSubscription.upsert({
     where: { endpoint: subscription.endpoint },
@@ -145,8 +152,9 @@ export async function subscribeToPush(subscription: PushSubscriptionInput) {
 }
 
 export async function unsubscribeFromPush(endpoint: string) {
+  const t = await getT();
   const session = await auth();
-  if (!session?.user?.id) throw new Error("No has iniciado sesión");
+  if (!session?.user?.id) throw new Error(t("No has iniciado sesión"));
   // deleteMany, not delete, scoped to userId so this can't be used to
   // drop another user's subscription by passing their endpoint.
   await prisma.pushSubscription.deleteMany({ where: { endpoint, userId: session.user.id } });
@@ -157,13 +165,14 @@ export async function unsubscribeFromPush(endpoint: string) {
 // template: "study" (subjects with flashcards, maps, review) or "projects"
 // (projects with tasks and a calendar). Changeable later in ⚙.
 export async function createSection(name: string, template: "study" | "projects" | "general" = "study"): Promise<{ error: string | null; id?: string }> {
+  const t = await getT();
   const session = await auth();
   if (!session?.user?.id) {
-    return { error: "No has iniciado sesión" };
+    return { error: t("No has iniciado sesión") };
   }
   const trimmed = name.trim();
-  if (trimmed === "") return { error: "Ponle un nombre" };
-  if (trimmed.length > 40) return { error: "Máximo 40 caracteres" };
+  if (trimmed === "") return { error: t("Ponle un nombre") };
+  if (trimmed.length > 40) return { error: t("Máximo 40 caracteres") };
 
   const section = await upsertSection(session.user.id, trimmed, template === "study", template);
   revalidatePath("/pursuits", "layout");
@@ -185,13 +194,14 @@ export async function saveHomeBlocks(blocks: { id: string; type: string; section
 
 // Notebook settings: study tools on/off and its cover.
 export async function setNotebook(sectionId: string, data: { study?: boolean; kind?: "study" | "projects" | "general"; cover?: string; name?: string }): Promise<{ error: string | null }> {
+  const t = await getT();
   const session = await auth();
-  if (!session?.user?.id) return { error: "No has iniciado sesión" };
+  if (!session?.user?.id) return { error: t("No has iniciado sesión") };
   const section = await prisma.section.findFirst({ where: { id: sectionId, userId: session.user.id } });
-  if (!section) return { error: "Libreta no encontrada" };
+  if (!section) return { error: t("Libreta no encontrada") };
   const { NOTEBOOK_COVERS } = await import("@/lib/covers");
   const name = data.name?.trim().slice(0, 40);
-  if (data.name !== undefined && !name) return { error: "Ponle un nombre" };
+  if (data.name !== undefined && !name) return { error: t("Ponle un nombre") };
   try {
     await prisma.section.update({
       where: { id: sectionId },
@@ -203,7 +213,7 @@ export async function setNotebook(sectionId: string, data: { study?: boolean; ki
       },
     });
   } catch {
-    return { error: "Ya tienes una libreta con ese nombre" };
+    return { error: t("Ya tienes una libreta con ese nombre") };
   }
   revalidatePath("/pursuits", "layout");
   return { error: null };
@@ -212,20 +222,21 @@ export async function setNotebook(sectionId: string, data: { study?: boolean; ki
 // "Guardar como plantilla": this folder's blocks (not their content) under a
 // name, to start new folders from. Same name again replaces it.
 export async function saveFolderTemplate(pursuitId: string, name: string): Promise<{ error: string | null }> {
+  const t = await getT();
   const session = await auth();
-  if (!session?.user?.id) return { error: "No has iniciado sesión" };
+  if (!session?.user?.id) return { error: t("No has iniciado sesión") };
   const clean = name.trim().slice(0, 30);
-  if (!clean) return { error: "Ponle un nombre" };
+  if (!clean) return { error: t("Ponle un nombre") };
   const pursuit = await prisma.pursuit.findFirst({
     where: { id: pursuitId, OR: [{ ownerId: session.user.id }, { members: { some: { userId: session.user.id } } }] },
     select: { blocks: true },
   });
-  if (!pursuit) return { error: "Carpeta no encontrada" };
+  if (!pursuit) return { error: t("Carpeta no encontrada") };
   const blocks = blocksFromTemplate(pursuit.blocks);
   const existing = await prisma.userTemplate.findFirst({ where: { userId: session.user.id, name: clean }, select: { id: true } });
   if (existing) await prisma.userTemplate.update({ where: { id: existing.id }, data: { blocks } });
   else {
-    if ((await prisma.userTemplate.count({ where: { userId: session.user.id } })) >= 20) return { error: "Máximo 20 plantillas" };
+    if ((await prisma.userTemplate.count({ where: { userId: session.user.id } })) >= 20) return { error: t("Máximo 20 plantillas") };
     await prisma.userTemplate.create({ data: { userId: session.user.id, name: clean, blocks } });
   }
   revalidatePath("/pursuits", "layout");

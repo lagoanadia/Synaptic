@@ -99,10 +99,10 @@ export function Sidebar({ user, plan, notebooks, collapsed: startCollapsed = fal
             <PanelIcon />
           </button>
           {[
-            { href: "/pursuits", label: "Inicio", icon: <HomeIcon size={16} className="block" />, on: active("/pursuits", true) },
+            { href: "/pursuits", label: t("Inicio"), icon: <HomeIcon size={16} className="block" />, on: active("/pursuits", true) },
             { href: "/calendar", label: "Calendario", icon: <CalendarIcon size={16} className="block" />, on: active("/calendar") },
-            { href: "/review", label: "Repasar", icon: <CardsIcon size={16} className="block" />, on: active("/review") },
-            { href: "/challenges", label: "Retos", icon: <CodeIcon size={16} className="block" />, on: active("/challenges") },
+            { href: "/review", label: t("Repasar"), icon: <CardsIcon size={16} className="block" />, on: active("/review") },
+            { href: "/challenges", label: t("Retos"), icon: <CodeIcon size={16} className="block" />, on: active("/challenges") },
           ].map((item) => (
             <Link key={item.href} href={item.href} title={t(item.label)} aria-label={t(item.label)} className={`grid size-8 place-items-center rounded-md ${item.on ? "bg-[#ebebea] text-ink" : "text-ink-muted hover:bg-[#ebebea]/70 hover:text-ink"}`}>
               {item.icon}
@@ -172,15 +172,20 @@ export function Sidebar({ user, plan, notebooks, collapsed: startCollapsed = fal
       {/* Phones: tab bar + a sheet with your notebooks. */}
       <nav className="fixed inset-x-0 bottom-0 z-30 flex items-stretch justify-around border-t border-border-subtle bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden" aria-label={t("Navegación")}>
         {[
-          { href: "/pursuits", label: "Inicio", icon: HomeIcon, on: active("/pursuits", true) },
-          { href: "/review", label: "Repasar", icon: CardsIcon, on: active("/review") },
-          { href: "/challenges", label: "Retos", icon: CodeIcon, on: active("/challenges") },
+          { href: "/pursuits", label: t("Inicio"), icon: HomeIcon, on: active("/pursuits", true) },
+          { href: "/review", label: t("Repasar"), icon: CardsIcon, on: active("/review") },
         ].map((item) => (
           <Link key={item.href} href={item.href} className={`flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] ${item.on ? "text-ink" : "text-ink-faint"}`}>
             <item.icon size={20} className="block" />
             {t(item.label)}
           </Link>
         ))}
+        <Link href="/profile" className={`flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] ${active("/profile") ? "text-ink" : "text-ink-faint"}`}>
+          <span className="grid size-5 place-items-center">
+            <Avatar user={user} size={20} />
+          </span>
+          {t("Perfil")}
+        </Link>
         <button type="button" onClick={() => setSearching(true)} className="flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] text-ink-faint">
           <SearchIcon size={20} />
           {t("Buscar")}
@@ -208,9 +213,9 @@ export function Sidebar({ user, plan, notebooks, collapsed: startCollapsed = fal
             {notebookList}
             <LangPicker className="self-start" />
             <div className="flex items-center gap-3 border-t border-border-subtle pt-3 text-sm">
-              <Account href="/profile" className="flex flex-1 items-center gap-2 text-ink-muted">
-                <Avatar user={user} /> {user.name ?? user.email}
-              </Account>
+              <Link href="/challenges" onClick={() => setSheet(false)} className={`flex flex-1 items-center gap-2 ${active("/challenges") ? "text-ink" : "text-ink-muted"}`}>
+                <CodeIcon size={18} className="block" /> {t("Retos")}
+              </Link>
               <form action={signOutAction}>
                 <button type="submit" title={t("Cerrar sesión")} aria-label={t("Cerrar sesión")} className="grid size-8 place-items-center rounded-md text-ink-muted">
                   <LogoutIcon />

@@ -1,6 +1,6 @@
 "use client";
 
-import { useT } from "@/app/LangProvider";
+import { useLocale, useT } from "@/app/LangProvider";
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -19,7 +19,7 @@ const KIND_FILTERS: { kind: CalKind; label: string }[] = [
   { kind: "task", label: "☐ Tareas" },
 ];
 
-const shortDay = (key: string) => fromKey(key).toLocaleDateString("es-ES", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
+const shortDay = (key: string, locale: string) => fromKey(key).toLocaleDateString(locale, { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
 
 export function CalendarView({
   title,
@@ -46,6 +46,7 @@ export function CalendarView({
   justConnected: string | null;
   folders: Folder[];
 }) {
+  const locale = useLocale();
   const t = useT();
   const [hiddenFolders, setHiddenFolders] = useState<Set<string>>(new Set());
   const [hiddenKinds, setHiddenKinds] = useState<Set<CalKind>>(new Set());
@@ -187,7 +188,7 @@ export function CalendarView({
       {/* Phones: the chosen day's events under the grid. */}
       <section className="flex flex-col gap-2 sm:hidden">
         <span className="flex items-center justify-between text-sm">
-          <span className="text-ink-faint">{shortDay(selected)}</span>
+          <span className="text-ink-faint">{shortDay(selected, locale)}</span>
           <button type="button" onClick={(e) => setPop({ kind: "add", day: selected, ...anchor(e) })} aria-label={t("Añadir")} className="grid size-7 place-items-center rounded-full bg-chip text-ink-muted">
             +
           </button>
@@ -211,6 +212,7 @@ export function CalendarView({
 }
 
 function AddForm({ day, folders, onDone }: { day: string; folders: Folder[]; onDone: () => void }) {
+  const locale = useLocale();
   const t = useT();
   const router = useRouter();
   const [form, setForm] = useState<NewEvent>({ title: "", kind: "exam", day, time: "", pursuitId: folders[0]?.id ?? null, unitId: null });
@@ -218,8 +220,8 @@ function AddForm({ day, folders, onDone }: { day: string; folders: Folder[]; onD
   const [pending, start] = useTransition();
   const units = folders.find((f) => f.id === form.pursuitId)?.units ?? [];
   const kinds: { kind: NewEvent["kind"]; label: string }[] = [
-    { kind: "exam", label: "◆ Examen" },
-    { kind: "task", label: "☐ Tarea" },
+    { kind: "exam", label: t("◆ Examen") },
+    { kind: "task", label: t("☐ Tarea") },
     { kind: "event", label: "● Otro" },
   ];
   const field = "w-full rounded-md border border-border-subtle bg-white px-2 py-1.5 text-sm";
@@ -236,7 +238,7 @@ function AddForm({ day, folders, onDone }: { day: string; folders: Folder[]; onD
         });
       }}
     >
-      <span className="text-xs text-ink-faint">{shortDay(day)}</span>
+      <span className="text-xs text-ink-faint">{shortDay(day, locale)}</span>
       <input autoFocus value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder={t("Examen UD1, entregar memoria…")} aria-label={t("Qué")} className={field} />
       <span className="flex rounded-md bg-chip p-0.5 text-xs">
         {kinds.map((k) => (
@@ -275,6 +277,7 @@ function AddForm({ day, folders, onDone }: { day: string; folders: Folder[]; onD
 }
 
 function Detail({ item, onDone }: { item: CalItem; onDone: () => void }) {
+  const locale = useLocale();
   const t = useT();
   const router = useRouter();
   const [, start] = useTransition();
@@ -289,7 +292,7 @@ function Detail({ item, onDone }: { item: CalItem; onDone: () => void }) {
   return (
     <div className="flex flex-col gap-2.5">
       <span className="text-xs text-ink-faint">
-        {shortDay(item.day)}
+        {shortDay(item.day, locale)}
         {item.time && ` · ${item.time}`}
       </span>
       <b className="text-[15px] leading-snug">
@@ -335,7 +338,7 @@ function Detail({ item, onDone }: { item: CalItem; onDone: () => void }) {
         {item.editable && (
           <button
             type="button"
-            onClick={() => window.confirm(`¿Quitar "${item.title}"?`) && act(() => removeEvent(item.id))}
+            onClick={() => window.confirm(t("¿Quitar \"{0}\"?", { 0: item.title })) && act(() => removeEvent(item.id))}
             title={t("Quitar")}
             aria-label={t("Quitar")}
             className="ml-auto rounded-md p-2 text-ink-faint hover:bg-chip hover:text-red-600"

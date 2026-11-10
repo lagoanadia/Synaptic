@@ -1,3 +1,6 @@
+"use client";
+
+import { useT } from "@/app/LangProvider";
 import { Highlight, themes, type Language } from "prism-react-renderer";
 import { CopyButton } from "./CopyButton";
 
@@ -16,6 +19,7 @@ const LANGUAGES: Record<string, { prism: Language; label: string }> = {
 // Long lines wrap instead of scrolling sideways. <details open> gives
 // collapse/expand without JS.
 export function CodeBlock({ code, language }: { code: string; language: string }) {
+  const t = useT();
   const lang = LANGUAGES[language.toLowerCase()];
   const lines = code.split("\n");
   const gutterWidth = `${String(lines.length).length + 1}ch`;
@@ -27,7 +31,7 @@ export function CodeBlock({ code, language }: { code: string; language: string }
     >
       <summary className="flex cursor-pointer list-none items-center justify-between gap-2 border-b border-white/10 bg-white/5 px-4 py-1.5 text-xs text-white/60 [&::-webkit-details-marker]:hidden">
         <span>
-          {lang ? lang.label : "Código"} · {lines.length} line{lines.length === 1 ? "" : "s"}
+          {lang ? lang.label : t("Código")} · {lines.length === 1 ? t("1 línea") : t("{0} líneas", { 0: lines.length })}
         </span>
         <CopyButton text={code} />
       </summary>

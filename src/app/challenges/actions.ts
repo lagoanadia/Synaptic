@@ -1,5 +1,7 @@
 "use server";
 
+import { getT } from "@/lib/i18n/server";
+
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
@@ -14,8 +16,9 @@ import { accessiblePursuits } from "@/lib/reviewData";
 // saves only the tests it passes.
 
 async function signedIn() {
+  const t = await getT();
   const session = await auth();
-  if (!session?.user?.id) throw new Error("No has iniciado sesión");
+  if (!session?.user?.id) throw new Error(t("No has iniciado sesión"));
   return { userId: session.user.id, email: session.user.email };
 }
 
@@ -32,6 +35,7 @@ export async function draftChallenge(input: {
   pursuitId: string | null;
   topic: string;
 }): Promise<{ error: string | null; drafts?: DraftForBrowser[] }> {
+  const t = await getT();
   const { userId, email } = await signedIn();
   const budget = await aiBudget(userId, email);
   const limited = await budget.check();
@@ -73,6 +77,7 @@ ${picked.map((n, i) => `--- NOTE ${i + 1} (${n.pursuit.title}) ---\n${n.content.
   const practised = [...new Set(existing.filter((c) => c.passed && c.skill).map((c) => c.skill!))].slice(0, 20);
 
   const ask = async (context: string): Promise<DraftForBrowser[]> => {
+  const t = await getT();
     const data = obj(
       await askJson(
         `Create FIVE different small coding challenges in ${LANGUAGE_INFO[language].label} for someone getting back into coding after a break. Difficulty: ${difficulty} (easy = 5-15 lines, medium = loops/conditions/data structures, hard = a small algorithm).
@@ -88,19 +93,19 @@ ${picked.map((n, i) => `--- NOTE ${i + 1} (${n.pursuit.title}) ---\n${n.content.
   - returning memorized sentences, names or facts; lookup tables of strings
   - anything whose solution is mostly copied text or a big switch/if-chain of constants
   Instead, turn the idea into DATA + RULES. Example: a note on an app's lifecycle phases → "Given a list of lifecycle events, return the final state, or 'invalid' if a transition isn't allowed" (a state machine), not "return the description of phase N". A note on colour theory → "Given a list of RGB colours, return those that are greys", not "return the name of a colour".
-  EVERYTHING the learner reads is in Spanish (title, prompt, comments); identifiers in code may stay in English.
+  EVERYTHING the learner reads is in the user's language (title, prompt, comments); identifiers in code may stay in English.
   Expected outputs are short values: numbers, booleans, short strings (< 40 characters), arrays or objects — never sentences.
 
   ${SHAPE[language]}
 
   Respond with ONLY JSON: {"skills": ["…", "…"], "challenges": [
     {
-      "skill": "the skill from the map it trains, in Spanish, short",
+      "skill": "the skill from the map it trains, in the user's language, short",
       "from_class": false,
-      "title": "short title, in Spanish",
-      "prompt": "the task, in Spanish, as markdown: one or two plain sentences on what to do; then a line **Recibe:** followed by one '- \`param\`: what it is' line per parameter; then **Devuelve:** and what it returns; then one example as a fenced code block (\`\`\`), e.g. \`\`\`\\nnombreFuncion(...) → resultado\\n\`\`\`. Never glue the example into the prose.",
+      "title": "short title, in the user's language",
+      "prompt": "the task, in the user's language, as markdown: one or two plain sentences on what to do; then a line **Recibe:** followed by one '- \`param\`: what it is' line per parameter; then **Devuelve:** and what it returns; then one example as a fenced code block (\`\`\`), e.g. \`\`\`\\nnombreFuncion(...) → resultado\\n\`\`\`. Never glue the example into the prose.",
       "entry": "functionName",
-      "starter_code": "the function signature with a placeholder body and a short comment IN SPANISH (e.g. // Escribe tu código aquí)",
+      "starter_code": "the function signature with a placeholder body and a short comment IN THE USER'S LANGUAGE (e.g. // Escribe tu código aquí)",
       "tests": [{"args": [...], "expected": ...}],
       "solution": "a correct reference solution",
       "based_on": "title of the note it practices, or null"
@@ -118,7 +123,7 @@ ${picked.map((n, i) => `--- NOTE ${i + 1} (${n.pursuit.title}) ---\n${n.content.
       seen.add(titleKey(draft.title));
       const o = obj(raw);
       const basedOn = str(o.based_on, 120);
-      const prompt = basedOn ? `De tu nota “${basedOn}”\n\n${draft.prompt}` : draft.prompt;
+      const prompt = basedOn ? t("De tu nota “{0}”\n\n{1}", { 0: basedOn, 1: draft.prompt }) : draft.prompt;
       candidates.push({ ...draft, prompt, skill: str(o.skill, 80) || null, fromClass: o.from_class === true, language, difficulty, pursuitId });
     }
     // fromClass only matters for picking; the rest goes to the browser. Up
@@ -129,7 +134,7 @@ ${picked.map((n, i) => `--- NOTE ${i + 1} (${n.pursuit.title}) ---\n${n.content.
   // Nothing good came out of the notes: small general exercises instead,
   // a step up from what's already solved.
   if (drafts.length === 0 && picked.length) drafts = await ask(LADDER);
-  if (drafts.length === 0) return { error: "No eran retos de programación de verdad — inténtalo de nuevo" };
+  if (drafts.length === 0) return { error: t("No eran retos de programación de verdad — inténtalo de nuevo") };
   await budget.charge();
   return { error: null, drafts };
 }
@@ -152,10 +157,11 @@ export async function saveChallenge(
   draft: DraftForBrowser,
   passingTests: ChallengeTest[],
 ): Promise<{ error: string | null; id?: string }> {
+  const t = await getT();
   const { userId } = await signedIn();
   // Re-validated: it came back from the browser.
   const clean = parseChallenge({ ...draft, starter_code: draft.starterCode, tests: passingTests });
-  if (!clean) return { error: "La IA ha hecho un reto roto — inténtalo de nuevo" };
+  if (!clean) return { error: t("La IA ha hecho un reto roto — inténtalo de nuevo") };
   const pursuit = draft.pursuitId
     ? await prisma.pursuit.findFirst({
         where: { AND: [accessiblePursuits(userId), { id: draft.pursuitId }] },
@@ -197,10 +203,11 @@ export async function saveRun(id: string, code: string, passed: boolean) {
 
 // Feedback like a kind senior dev in code review — no full rewrite.
 export async function reviewSolution(id: string, code: string): Promise<{ error: string | null; review?: string }> {
+  const t = await getT();
   const { userId, email } = await signedIn();
   const challenge = await prisma.challenge.findFirst({ where: { id, userId } });
-  if (!challenge) return { error: "Reto no encontrado" };
-  if (code.trim().length < 10) return { error: "Escribe algo de código primero" };
+  if (!challenge) return { error: t("Reto no encontrado") };
+  if (code.trim().length < 10) return { error: t("Escribe algo de código primero") };
   const budget = await aiBudget(userId, email);
   const limited = await budget.check();
   if (limited) return { error: limited };
@@ -226,7 +233,7 @@ Respond with ONLY JSON: {"good": ["..."], "fix": ["..."], "next": ["..."]}`,
   );
   const points = (v: unknown) => arr(v).map((x) => str(x, 300)).filter(Boolean).slice(0, 3);
   const review = formatReview({ good: points(data.good), fix: points(data.fix), next: points(data.next) });
-  if (!review) return { error: "No se ha podido contactar con la IA ahora mismo" };
+  if (!review) return { error: t("No se ha podido contactar con la IA ahora mismo") };
   await budget.charge();
   await prisma.challenge.update({ where: { id }, data: { review, code: code.slice(0, 20000) } });
   return { error: null, review };
@@ -241,9 +248,10 @@ export async function deleteChallenge(id: string) {
 // Progressive hints: level 1 is a direction, level 2 a concrete pointer at
 // their code, level 3 the key step in words. Never the solution in code.
 export async function getHint(id: string, code: string, level: number): Promise<{ error: string | null; hint?: string }> {
+  const t = await getT();
   const { userId, email } = await signedIn();
   const challenge = await prisma.challenge.findFirst({ where: { id, userId } });
-  if (!challenge) return { error: "Reto no encontrado" };
+  if (!challenge) return { error: t("Reto no encontrado") };
   const budget = await aiBudget(userId, email);
   const limited = await budget.check();
   if (limited) return { error: limited };
@@ -261,7 +269,7 @@ Respond with ONLY JSON: {"hint": "..."}`,
     ),
   );
   const hint = str(data.hint, 800);
-  if (!hint) return { error: "No se ha podido contactar con la IA ahora mismo" };
+  if (!hint) return { error: t("No se ha podido contactar con la IA ahora mismo") };
   await budget.charge();
   return { error: null, hint };
 }
@@ -271,9 +279,10 @@ Respond with ONLY JSON: {"hint": "..."}`,
 export type ExplainStep = { say: string; code: string };
 
 export async function explainSolution(id: string): Promise<{ error: string | null; steps?: ExplainStep[]; code?: string }> {
+  const t = await getT();
   const { userId, email } = await signedIn();
   const challenge = await prisma.challenge.findFirst({ where: { id, userId } });
-  if (!challenge) return { error: "Reto no encontrado" };
+  if (!challenge) return { error: t("Reto no encontrado") };
   const budget = await aiBudget(userId, email);
   const limited = await budget.check();
   if (limited) return { error: limited };
@@ -284,7 +293,7 @@ Task: ${challenge.prompt}
 Starter code:
 ${challenge.starterCode}
 
-In Spanish, plain simple words:
+In the user's language, plain simple words:
 - "steps": 3-5 steps that build the solution piece by piece. Each step: "say" = ONE short, friendly sentence (max ~14 words) saying what we do and why; "code" = ONLY the 1-4 lines this step adds (no comments).
 - "code": the whole solution put together: simple and readable (no clever one-liners), NO comments, short lines (under 45 characters; break long ones).
 Use ONLY first-year basics: variables, if/else, for loops, arrays, plain objects, simple functions. Never \`??\`, \`?.\`, reduce, map/filter chains, destructuring, spread, ternaries, regex or utility types — unless the starter code already uses them.
@@ -298,7 +307,7 @@ Respond with ONLY JSON: {"steps": [{"say": "...", "code": "..."}], "code": "..."
     .filter((x) => x.say)
     .slice(0, 6);
   const code = str(data.code, 6000);
-  if (!steps.length || !code) return { error: "No se ha podido contactar con la IA ahora mismo" };
+  if (!steps.length || !code) return { error: t("No se ha podido contactar con la IA ahora mismo") };
   await budget.charge();
   return { error: null, steps, code };
 }
@@ -311,11 +320,12 @@ export async function askAboutSolution(
   history: { q: string; a: string }[],
   question: string,
 ): Promise<{ error: string | null; answer?: string }> {
+  const t = await getT();
   const { userId, email } = await signedIn();
   const challenge = await prisma.challenge.findFirst({ where: { id, userId }, select: { prompt: true, language: true } });
-  if (!challenge) return { error: "Reto no encontrado" };
+  if (!challenge) return { error: t("Reto no encontrado") };
   const q = question.trim().slice(0, 500);
-  if (!q) return { error: "Escribe tu pregunta" };
+  if (!q) return { error: t("Escribe tu pregunta") };
   const budget = await aiBudget(userId, email);
   const limited = await budget.check();
   if (limited) return { error: limited };
@@ -329,13 +339,13 @@ ${history.slice(-4).map((h) => `They asked: ${h.q}\nYou answered: ${h.a}`).join(
 
 Their question: ${q}
 
-Answer in Spanish, like a patient friend: 1-4 short sentences, plain words, a tiny example in \`backticks\` if it helps. If they ask what something is, say what it does and why it's used here.
+Answer in the user's language, like a patient friend: 1-4 short sentences, plain words, a tiny example in \`backticks\` if it helps. If they ask what something is, say what it does and why it's used here.
 Respond with ONLY JSON: {"answer": "..."}`,
       { maxTokens: 800 },
     ),
   );
   const answer = str(data.answer, 1200);
-  if (!answer) return { error: "No se ha podido contactar con la IA ahora mismo" };
+  if (!answer) return { error: t("No se ha podido contactar con la IA ahora mismo") };
   await budget.charge();
   return { error: null, answer };
 }

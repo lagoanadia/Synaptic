@@ -1,4 +1,5 @@
-import { getT } from "@/lib/i18n/server";
+import { LOCALE } from "@/lib/i18n";
+import { getLang, getT } from "@/lib/i18n/server";
 import { ArrowLeft } from "@/app/icons";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -16,6 +17,7 @@ export default async function PrintPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ note?: string; dump?: string }>;
 }) {
+  const locale = LOCALE[await getLang()];
   const t = await getT();
   const { id } = await params;
   const { note: noteId, dump: dumpId } = await searchParams;
@@ -44,7 +46,7 @@ export default async function PrintPage({
         <h1 className="text-2xl font-bold">{note.pursuit.title}</h1>
         <div className="print-block flex flex-col gap-2">
           <span className="text-xs text-ink-faint">
-            {note.createdAt.toLocaleDateString("es-ES", { timeZone: "UTC" })}
+            {note.createdAt.toLocaleDateString(locale, { timeZone: "UTC" })}
             {note.tags.length > 0 && ` — ${note.tags.map((t) => t.name).join(", ")}`}
           </span>
           <RichContent content={note.content} />
@@ -65,7 +67,7 @@ export default async function PrintPage({
         <h1 className="text-2xl font-bold">{dump.pursuit.title}</h1>
         <div className="print-block flex flex-col gap-2">
           <span className="text-xs text-ink-faint">
-            {dump.createdAt.toLocaleDateString("es-ES", { timeZone: "UTC" })}
+            {dump.createdAt.toLocaleDateString(locale, { timeZone: "UTC" })}
           </span>
           <RichContent content={dump.content ?? ""} />
         </div>
@@ -103,7 +105,7 @@ export default async function PrintPage({
               className="print-block flex flex-col gap-2 border-b border-border-subtle pb-4"
             >
               <span className="text-xs text-ink-faint">
-                {note.createdAt.toLocaleDateString("es-ES", { timeZone: "UTC" })}
+                {note.createdAt.toLocaleDateString(locale, { timeZone: "UTC" })}
                 {note.tags.length > 0 &&
                   ` — ${note.tags.map((t) => t.name).join(", ")}`}
               </span>
@@ -124,7 +126,7 @@ export default async function PrintPage({
               className="print-block flex flex-col gap-2 border-b border-border-subtle pb-4"
             >
               <span className="text-xs text-ink-faint">
-                {dump.createdAt.toLocaleDateString("es-ES", { timeZone: "UTC" })}
+                {dump.createdAt.toLocaleDateString(locale, { timeZone: "UTC" })}
               </span>
               <RichContent content={dump.content ?? ""} />
             </div>
@@ -137,13 +139,14 @@ export default async function PrintPage({
 
 // Shared chrome for all three cases above: the back link + print button
 // (hidden when actually printing) and the print stylesheet.
-function PrintShell({
+async function PrintShell({
   pursuitId,
   children,
 }: {
   pursuitId: string;
   children: ReactNode;
 }) {
+  const t = await getT();
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-6 py-9">
       <div className="no-print flex items-center justify-between">
@@ -151,7 +154,7 @@ function PrintShell({
           href={`/pursuits/${pursuitId}`}
           className="text-sm text-ink-muted hover:underline"
         >
-          <ArrowLeft /> Volver a la asignatura
+          <ArrowLeft /> {" "}{t("Volver a la asignatura")}
         </Link>
         <PrintButton />
       </div>

@@ -9,7 +9,10 @@ import { ProfileEditor } from "./ProfileEditor";
 import { baseHandle, freeHandle } from "@/lib/username";
 import { Friends, type Friend } from "./Friends";
 
-export const metadata = { title: "Tu perfil" };
+export async function generateMetadata() {
+  const t = await getT();
+  return { title: t("Tu perfil")  };
+}
 
 export default async function ProfilePage() {
   const t = await getT();

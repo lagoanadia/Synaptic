@@ -122,7 +122,7 @@ export function FolderBlocks({
                   {(
                     [
                       ["board", "Tablero", KanbanIcon],
-                      ["list", "Lista", MenuIcon],
+                      ["list", t("Lista"), MenuIcon],
                     ] as const
                   ).map(([v, label, Icon]) => {
                     const on = (b.view ?? "board") === v;
@@ -182,7 +182,7 @@ export function FolderBlocks({
                       <span className="flex flex-wrap gap-1.5">
                         {SUGGESTED.map((s) => (
                           <button key={s} type="button" onClick={() => setLabel(s)} className={`rounded-full px-2.5 py-0.5 text-xs ${label === s ? "bg-ink text-white" : "bg-chip"}`}>
-                            {s}
+                            {t(s)}
                           </button>
                         ))}
                       </span>

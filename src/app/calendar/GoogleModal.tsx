@@ -34,7 +34,7 @@ export function GoogleModal({ status, justConnected, onClose }: { status: "off" 
   const [calendars, setCalendars] = useState<GoogleCalendar[]>([]);
   const [s, setS] = useState<GoogleSettings>({ pull: true, push: true, reviewBlocks: false, calendarIds: [] });
   const [pending, start] = useTransition();
-  const [note, setNote] = useState<string | null>(justConnected === "failed" ? "No se ha podido conectar. Inténtalo otra vez." : justConnected === "denied" ? "Has cancelado el permiso." : null);
+  const [note, setNote] = useState<string | null>(justConnected === "failed" ? t("No se ha podido conectar. Inténtalo otra vez.") : justConnected === "denied" ? t("Has cancelado el permiso.") : null);
 
   useEffect(() => {
     googleState()
@@ -47,9 +47,9 @@ export function GoogleModal({ status, justConnected, onClose }: { status: "off" 
   }, []);
 
   const rows: { key: "pull" | "push" | "reviewBlocks"; icon: string; label: string; hint?: string }[] = [
-    { key: "pull", icon: "↓", label: "Traer tus eventos" },
-    { key: "push", icon: "↑", label: "Enviar entregas, exámenes y tareas" },
-    { key: "reviewBlocks", icon: "◷", label: "Bloques de repaso", hint: "20 min la tarde antes de un examen" },
+    { key: "pull", icon: "↓", label: t("Traer tus eventos") },
+    { key: "push", icon: "↑", label: t("Enviar entregas, exámenes y tareas") },
+    { key: "reviewBlocks", icon: "◷", label: t("Bloques de repaso"), hint: t("20 min la tarde antes de un examen") },
   ];
   const connectHref = `/api/google-calendar/connect?pull=${s.pull ? 1 : 0}&push=${s.push ? 1 : 0}&blocks=${s.reviewBlocks ? 1 : 0}`;
 
@@ -110,7 +110,7 @@ export function GoogleModal({ status, justConnected, onClose }: { status: "off" 
               type="button"
               disabled={pending}
               title={t("Enviar ahora")}
-              onClick={() => start(async () => { const r = await syncGoogleNow(); setNote(r.ok ? null : "No se ha podido enviar."); router.refresh(); })}
+              onClick={() => start(async () => { const r = await syncGoogleNow(); setNote(r.ok ? null : t("No se ha podido enviar.")); router.refresh(); })}
               className="rounded-xl border border-border-subtle px-4 py-3 text-sm text-ink-muted hover:bg-chip"
             >
               ↻
@@ -118,7 +118,7 @@ export function GoogleModal({ status, justConnected, onClose }: { status: "off" 
             <button
               type="button"
               disabled={pending}
-              onClick={() => window.confirm("¿Desconectar Google Calendar?") && start(async () => { await disconnectGoogle(); onClose(); router.refresh(); })}
+              onClick={() => window.confirm(t("¿Desconectar Google Calendar?")) && start(async () => { await disconnectGoogle(); onClose(); router.refresh(); })}
               className="rounded-xl px-3 py-3 text-xs text-ink-faint hover:text-red-600"
             >
               {t("Desconectar")}

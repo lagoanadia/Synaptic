@@ -1,5 +1,7 @@
 "use server";
 
+import { getT } from "@/lib/i18n/server";
+
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { HEADLINE_OPTIONS, buildPrefixTsQuery, markWords } from "@/lib/search";
@@ -22,6 +24,7 @@ const plain = (t: string) =>
 // one notebook. Pages use the full-text index (prefix match while you
 // type); the rest are short fields, matched with ILIKE.
 export async function searchEverything(query: string, sectionId: string | null): Promise<Found[]> {
+  const t = await getT();
   const session = await auth();
   const userId = session?.user?.id;
   const q = query.trim().slice(0, 100);
@@ -116,7 +119,7 @@ export async function searchEverything(query: string, sectionId: string | null):
       id: c.id,
       title: c.title,
       snippet: markWords(c.summary, q),
-      where: `Mapa de ${where(c.map.pursuitId, c.map.unit?.name ?? c.map.title)}`,
+      where: t("Mapa de {0}", { 0: where(c.map.pursuitId, c.map.unit?.name ?? c.map.title) }),
       href: `/pursuits/${c.map.pursuitId}/learn/${c.mapId}?c=${c.id}`,
     });
   }

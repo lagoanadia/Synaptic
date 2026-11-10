@@ -55,7 +55,7 @@ export function TemplatePick({ value, onChange, compact = false }: { value: Temp
           </button>
         ))}
       </div>
-      {!compact && hint && <span className="text-xs text-ink-faint">{hint}</span>}
+      {!compact && hint && <span className="text-xs text-ink-faint">{t(hint)}</span>}
     </div>
   );
 }

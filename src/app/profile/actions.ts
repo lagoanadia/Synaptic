@@ -1,5 +1,7 @@
 "use server";
 
+import { getT } from "@/lib/i18n/server";
+
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
@@ -7,8 +9,9 @@ import { HANDLE, cleanHandle, parseAvatar } from "@/lib/avatar";
 import { freeHandle } from "@/lib/username";
 
 async function me() {
+  const t = await getT();
   const session = await auth();
-  if (!session?.user?.id) throw new Error("No has iniciado sesión");
+  if (!session?.user?.id) throw new Error(t("No has iniciado sesión"));
   return session.user.id;
 }
 
@@ -30,11 +33,12 @@ export async function checkUsername(raw: string): Promise<{ status: "ok" | "take
 
 // "@Nadia_L" → "nadia_l"; taken or badly formed → a message to show.
 export async function setUsername(raw: string): Promise<{ error: string | null; username?: string }> {
+  const t = await getT();
   const id = await me();
   const username = cleanHandle(raw);
-  if (!HANDLE.test(username)) return { error: "De 3 a 20: letras, números, punto o _" };
+  if (!HANDLE.test(username)) return { error: t("De 3 a 20: letras, números, punto o _") };
   const taken = await prisma.user.findFirst({ where: { username, NOT: { id } }, select: { id: true } });
-  if (taken) return { error: "Ese ya está cogido" };
+  if (taken) return { error: t("Ese ya está cogido") };
   await prisma.user.update({ where: { id }, data: { username } });
   revalidatePath("/profile");
   return { error: null, username };
@@ -43,12 +47,13 @@ export async function setUsername(raw: string): Promise<{ error: string | null; 
 // Friends: send a request by @handle. If they already asked you, that
 // accepts it instead.
 export async function addFriend(raw: string): Promise<{ error: string | null }> {
+  const t = await getT();
   const id = await me();
   const username = cleanHandle(raw);
   if (!username) return { error: null };
   const other = await prisma.user.findUnique({ where: { username }, select: { id: true } });
-  if (!other) return { error: "No hay nadie con ese @usuario" };
-  if (other.id === id) return { error: "Ese eres tú" };
+  if (!other) return { error: t("No hay nadie con ese @usuario") };
+  if (other.id === id) return { error: t("Ese eres tú") };
   const theirs = await prisma.friendship.findUnique({ where: { fromId_toId: { fromId: other.id, toId: id } } });
   if (theirs) {
     if (theirs.status === "PENDING") await prisma.friendship.update({ where: { id: theirs.id }, data: { status: "ACCEPTED" } });

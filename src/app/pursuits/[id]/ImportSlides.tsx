@@ -24,7 +24,7 @@ export function ImportSlides({ pursuitId, sectionId }: { pursuitId: string; sect
         text = slidesToText(slides, file.name.replace(/\.pptx$/i, ""));
       } catch {
         setStatus(null);
-        return setError("No he podido leer ese archivo — tiene que ser un .pptx (en Google Slides: Archivo → Descargar → .pptx)");
+        return setError(t("No he podido leer ese archivo — tiene que ser un .pptx (en Google Slides: Archivo → Descargar → .pptx)"));
       }
       setStatus("Resumiendo…");
       const r = await importSlides(pursuitId, sectionId, text);

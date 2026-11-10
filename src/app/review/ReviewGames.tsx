@@ -97,6 +97,7 @@ function QuestionCard({ item, timer, onTimeout, children }: { item: LearnItem; t
 type TileState = "idle" | "right" | "wrong" | "out";
 
 function Tile({ i, label, keycap, state, onClick }: { i: number; label: string; keycap: string; state: TileState; onClick: () => void }) {
+  const t = useT();
   const c = VIB[i % 4];
   return (
     <button
@@ -326,7 +327,7 @@ function Summary({
         <span className="flex items-center gap-2 rounded-xl bg-white/8 px-4 py-2.5 text-xl font-bold" title={t("Mejor racha")} aria-label={t("Mejor racha: {0}", { 0: best })}>
           <span className="text-[#f5b82e]">✦</span> {best}
         </span>
-        <span className="flex items-center gap-2 rounded-xl bg-white/8 px-4 py-2.5 text-xl font-bold" title={t("Segundos por pregunta")} aria-label={`${avgSeconds} segundos por pregunta`}>
+        <span className="flex items-center gap-2 rounded-xl bg-white/8 px-4 py-2.5 text-xl font-bold" title={t("Segundos por pregunta")} aria-label={t("{0} segundos por pregunta", { 0: avgSeconds })}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-white/60" aria-hidden>
             <circle cx="12" cy="13" r="8" />
             <path d="M12 9v4l2.5 2.5M9.5 2.5h5" />

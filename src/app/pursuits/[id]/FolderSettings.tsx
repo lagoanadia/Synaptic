@@ -77,7 +77,7 @@ export function FolderSettings({
         <button
           type="button"
           onClick={() => {
-            if (window.confirm(`¿Eliminar la carpeta "${title}"? Se borra todo lo de dentro (notas, tarjetas, tareas, mapas) y no se puede deshacer.`))
+            if (window.confirm(t("¿Eliminar la carpeta \"{0}\"? Se borra todo lo de dentro (notas, tarjetas, tareas, mapas) y no se puede deshacer.", { 0: title })))
               start(() => deletePursuit(pursuitId));
           }}
           className="flex items-center gap-1.5 self-start border-t border-border-subtle pt-3 text-xs text-ink-faint hover:text-red-600"

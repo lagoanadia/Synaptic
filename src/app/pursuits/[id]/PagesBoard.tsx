@@ -198,7 +198,7 @@ export function PagesBoard({
                         }
                       : null
                   }
-                  onDelete={col.id ? () => window.confirm(`¿Eliminar "${col.name}"? Sus páginas pasan a ${none}.`) && startTransition(() => deleteContentSection(pursuitId, col.id!)) : null}
+                  onDelete={col.id ? () => window.confirm(t("¿Eliminar \"{0}\"? Sus páginas pasan a {1}.", { 0: col.name, 1: none })) && startTransition(() => deleteContentSection(pursuitId, col.id!)) : null}
                 />
               </header>
 

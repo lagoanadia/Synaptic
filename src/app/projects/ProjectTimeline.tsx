@@ -1,6 +1,6 @@
 "use client";
 
-import { useT } from "@/app/LangProvider";
+import { useLocale, useT } from "@/app/LangProvider";
 import Link from "next/link";
 import { useState } from "react";
 import type { ProjectItem } from "@/lib/projects";
@@ -9,13 +9,14 @@ const MONTHS = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", 
 const WEEKDAYS = ["D", "L", "M", "X", "J", "V", "S"];
 const DAY = 86400000;
 const ms = (day: string) => Date.parse(`${day}T00:00:00Z`);
-const short = (t: number) => new Date(t).toLocaleDateString("es-ES", { day: "numeric", month: "short", timeZone: "UTC" });
+const short = (t: number, locale: string) => new Date(t).toLocaleDateString(locale, { day: "numeric", month: "short", timeZone: "UTC" });
 const LABEL_W = 150;
 
 // A month of the notebook's projects as a Gantt chart: one row per project,
 // a bar in its colour from start to due date, today marked. Projects without
 // dates, or with dates in another month, still get a row saying so.
 export function ProjectTimeline({ projects, today }: { projects: ProjectItem[]; today: string }) {
+  const locale = useLocale();
   const t = useT();
   const [ty, tm] = today.split("-").map(Number);
   const [month, setMonth] = useState({ y: ty, m: tm - 1 });
@@ -105,7 +106,7 @@ export function ProjectTimeline({ projects, today }: { projects: ProjectItem[]; 
                   ) : inMonth ? (
                     <Link
                       href={`/pursuits/${p.id}`}
-                      title={`${short(from)} – ${short(to!)}`}
+                      title={`${short(from, locale)} – ${short(to!, locale)}`}
                       className="absolute top-1.5 flex h-8 items-center gap-1.5 overflow-hidden rounded-md px-2.5 text-[12.5px] font-medium whitespace-nowrap hover:brightness-95"
                       style={{
                         left: `${pct(from)}%`,
@@ -124,11 +125,11 @@ export function ProjectTimeline({ projects, today }: { projects: ProjectItem[]; 
                     </Link>
                   ) : to! < first ? (
                     <button type="button" onClick={() => goTo(to!)} className="absolute top-2 left-2 flex h-7 items-center rounded-md bg-chip px-2.5 text-xs text-ink-muted hover:bg-hover">
-                      {t("← Terminó el")}{" "}{short(to!)}
+                      {t("← Terminó el")}{" "}{short(to!, locale)}
                     </button>
                   ) : (
                     <button type="button" onClick={() => goTo(from)} className="absolute top-2 right-2 flex h-7 items-center rounded-md bg-chip px-2.5 text-xs text-ink-muted hover:bg-hover">
-                      {p.startDate ? t("Empieza") : t("Vence")}{" "}{t("el")}{" "}{short(from)} →
+                      {p.startDate ? t("Empieza") : t("Vence")}{" "}{t("el")}{" "}{short(from, locale)} →
                     </button>
                   )}
                 </div>

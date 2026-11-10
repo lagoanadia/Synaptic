@@ -1,5 +1,7 @@
 "use server";
 
+import { getT } from "@/lib/i18n/server";
+
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
@@ -9,8 +11,9 @@ import { getValidAccessToken, listCourses } from "@/lib/googleClassroom";
 export async function finishOnboarding(
   answers: OnboardingAnswers,
 ): Promise<{ error: string | null; landingId?: string | null }> {
+  const t = await getT();
   const session = await auth();
-  if (!session?.user?.id) return { error: "No has iniciado sesión" };
+  if (!session?.user?.id) return { error: t("No has iniciado sesión") };
 
   // Runs once: a double click or a second tab mustn't build it twice.
   const user = await prisma.user.findUniqueOrThrow({
@@ -25,7 +28,7 @@ export async function finishOnboarding(
     return { error: null, landingId };
   } catch (err) {
     console.error("finishOnboarding failed", err);
-    return { error: "Algo ha fallado al prepararlo todo — inténtalo de nuevo" };
+    return { error: t("Algo ha fallado al prepararlo todo — inténtalo de nuevo") };
   }
 }
 

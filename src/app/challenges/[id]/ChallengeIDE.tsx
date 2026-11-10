@@ -164,7 +164,7 @@ export function ChallengeIDE({ challenge }: { challenge: Challenge }) {
     startExplain(async () => {
       setNote(null);
       const r = await explainSolution(challenge.id);
-      if (r.error || !r.steps || !r.code) return setNote(r.error ?? "Inténtalo de nuevo");
+      if (r.error || !r.steps || !r.code) return setNote(r.error ?? t("Inténtalo de nuevo"));
       setExplained({ steps: r.steps, code: r.code });
       toggleTask(true);
     });
@@ -199,11 +199,11 @@ export function ChallengeIDE({ challenge }: { challenge: Challenge }) {
           {isHinting ? "…" : "💡"}
         </button>
         <button type="button" onClick={dontKnow} disabled={isExplaining || !!explained} title={t("Explícame cómo se hace")} className="rounded-md px-2.5 py-1.5 text-sm text-ink-muted hover:bg-chip hover:text-ink disabled:opacity-40">
-          {isExplaining ? t("Explicando…") : "No lo sé"}
+          {isExplaining ? t("Explicando…") : t("No lo sé")}
         </button>
         <button
           type="button"
-          onClick={() => window.confirm("¿Volver al código inicial?") && setCode(challenge.starterCode)}
+          onClick={() => window.confirm(t("¿Volver al código inicial?")) && setCode(challenge.starterCode)}
           title={t("Volver al código inicial")}
           aria-label={t("Reiniciar")}
           className={`${icon} text-lg`}
@@ -213,7 +213,7 @@ export function ChallengeIDE({ challenge }: { challenge: Challenge }) {
         <button
           type="button"
           onClick={() =>
-            window.confirm(`¿Eliminar "${challenge.title}"?`) &&
+            window.confirm(t("¿Eliminar \"{0}\"?", { 0: challenge.title })) &&
             startDelete(async () => {
               await deleteChallenge(challenge.id);
               router.push("/challenges");
@@ -248,7 +248,7 @@ export function ChallengeIDE({ challenge }: { challenge: Challenge }) {
             <div className="flex flex-col gap-2.5">
               <h2 className="text-[11px] font-semibold tracking-wider text-ink-faint uppercase">{t("Enunciado")}</h2>
               {(task.note || challenge.pursuitTitle) && (
-                <span className="text-xs text-ink-faint">{[challenge.pursuitTitle, task.note && `De tu nota “${task.note}”`].filter(Boolean).join(" · ")}</span>
+                <span className="text-xs text-ink-faint">{[challenge.pursuitTitle, task.note && t("De tu nota “{0}”", { 0: task.note })].filter(Boolean).join(" · ")}</span>
               )}
               <PromptText prompt={task.text} />
             </div>
@@ -317,7 +317,7 @@ export function ChallengeIDE({ challenge }: { challenge: Challenge }) {
                 );
               })}
               <span className="ml-1.5 text-white/50">
-                {running ? t("Ejecutando…") : output ? (output.error ? t("No se ha podido ejecutar") : `${passedCount} de ${output.results.length}`) : trial ? t("Prueba con el ejemplo") : t("Ejecutar para probar · Listo para comprobar")}
+                {running ? t("Ejecutando…") : output ? (output.error ? t("No se ha podido ejecutar") : t("{0} de {1}", { 0: passedCount, 1: output.results.length })) : trial ? t("Prueba con el ejemplo") : t("Ejecutar para probar · Listo para comprobar")}
               </span>
               {allGreen && (
                 <button
@@ -427,7 +427,7 @@ function Case({ inputs, expected, result, react }: { inputs: [string, unknown][]
   return (
     <div className="grid grid-cols-[76px_1fr] gap-x-3 gap-y-1.5">
       <span className="text-white/40">{t("Entrada")}</span>
-      <span className="font-mono text-[12.5px] break-words">{inputs.map(([k, v]) => `${k} = ${brief(v)}`).join(" · ") || (react ? "sin props" : "—")}</span>
+      <span className="font-mono text-[12.5px] break-words">{inputs.map(([k, v]) => `${k} = ${brief(v)}`).join(" · ") || (react ? t("sin props") : "—")}</span>
       <span className="text-white/40">{t("Esperado")}</span>
       <span className="font-mono text-[12.5px]">{show(expected)}</span>
       {result && (
@@ -464,7 +464,7 @@ function Explained({ steps, code, challenge }: { steps: ExplainStep[]; code: str
     const r = await askAboutSolution(challenge.id, explanation, chat, q);
     setAsking(null);
     if (r.answer) setChat((c) => [...c, { q, a: r.answer! }]);
-    else setFailed(r.error ?? "Inténtalo de nuevo");
+    else setFailed(r.error ?? t("Inténtalo de nuevo"));
   }
   const inline = (t: string) => t.split(/`([^`]+)`/).map((part, j) => (j % 2 ? <code key={j} className="rounded bg-chip px-1 font-mono text-[12px]">{part}</code> : part));
   async function similar() {
@@ -479,7 +479,7 @@ function Explained({ steps, code, challenge }: { steps: ExplainStep[]; code: str
     const [id] = r.drafts ? await checkAndSave(challenge.language, r.drafts, 1) : [];
     setMaking(false);
     if (id) router.push(`/challenges/${id}`);
-    else setFailed(r.error ?? "No ha salido bien — inténtalo de nuevo");
+    else setFailed(r.error ?? t("No ha salido bien — inténtalo de nuevo"));
   }
   const block = (src: string) => (
     <pre className="rounded-md border border-border-subtle bg-white px-2.5 py-2 font-mono text-[11.5px] leading-[1.55] whitespace-pre-wrap text-ink [overflow-wrap:anywhere]">{src}</pre>
@@ -567,7 +567,7 @@ function Review({ text, challenge }: { text: string; challenge: Challenge }) {
     const [id] = r.drafts ? await checkAndSave(challenge.language, r.drafts, 1) : [];
     setMaking(null);
     if (id) router.push(`/challenges/${id}`);
-    else setFailed(r.error ?? "No ha salido bien — inténtalo de nuevo");
+    else setFailed(r.error ?? t("No ha salido bien — inténtalo de nuevo"));
   }
   const sections = parseReview(text);
   if (!sections.good.length && !sections.fix.length && !sections.next.length) return <p className="rounded-lg bg-sidebar p-3 text-sm whitespace-pre-line">{text}</p>;
@@ -579,7 +579,7 @@ function Review({ text, challenge }: { text: string; challenge: Challenge }) {
         return (
           <div key={k} className="rounded-lg bg-sidebar p-3">
             <span className={`flex items-center gap-1.5 text-[11px] font-semibold tracking-wider uppercase ${cls}`}>
-              <Icon size={12} /> {label}
+              <Icon size={12} /> {t(label)}
             </span>
             <ul className="mt-1.5 flex flex-col gap-1 text-sm leading-relaxed">
               {sections[k].map((line, i) => (

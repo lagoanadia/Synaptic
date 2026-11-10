@@ -4,7 +4,10 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { ProviderButtons } from "../landing/AuthMenu";
 
-export const metadata = { title: "Crea tu cuenta o entra", alternates: { canonical: "/login" } };
+export async function generateMetadata() {
+  const t = await getT();
+  return { title: t("Crea tu cuenta o entra"), alternates: { canonical: "/login" }  };
+}
 
 // Straight to signing in: the landing's blue sheet and the two buttons.
 export default async function Login() {

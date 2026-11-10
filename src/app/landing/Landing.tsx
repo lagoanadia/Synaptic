@@ -85,7 +85,7 @@ export async function Landing({ signedIn = false }: { signedIn?: boolean }) {
             {(
               [
                 ["notebook", 470, 640, -14, null],
-                ["paper", 90, 640, -16, <>{t("tema 3")}<br />¿¿JOIN??</>],
+                ["paper", 90, 640, -16, <>{t("tema 3")}<br />{t("¿¿JOIN??")}</>],
                 ["sticky", 270, 680, 14, t("examen jueves!!")],
                 ["paper", 360, 620, 24, <>{t("apuntes")}<br />{t("clase 12")}</>],
                 ["pink", 180, 750, -10, t("repasar UD2")],
@@ -209,7 +209,7 @@ export async function Landing({ signedIn = false }: { signedIn?: boolean }) {
           </div>
         </div>
         <div className="lnd-reveal mt-12 flex flex-wrap gap-3.5 text-[15px]">
-          {["Libretas y carpetas", "Google Classroom", "Google Calendar", "Retos de código"].map((tag) => (
+          {[t("Libretas y carpetas"), "Google Classroom", "Google Calendar", t("Retos de código")].map((tag) => (
             <span key={tag} className="rounded-full border-[1.5px] border-white/85 px-[18px] py-2">{t(tag)}</span>
           ))}
         </div>

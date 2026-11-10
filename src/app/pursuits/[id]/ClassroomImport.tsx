@@ -120,7 +120,7 @@ export function ClassroomImport({
             const courseId = e.target.value;
             const courseName = courses.find((c) => c.id === courseId)?.name ?? "";
             const other = linkedElsewhere[courseId];
-            if (other && !window.confirm(`${courseName} ya está vinculado a ${other}. ¿Vincularlo aquí también?`)) return;
+            if (other && !window.confirm(t("{0} ya está vinculado a {1}. ¿Vincularlo aquí también?", { 0: courseName, 1: other }))) return;
             pickCourse(courseId, courseName);
           }}
           className="rounded-md border border-border-subtle bg-white px-3 py-2 text-sm"
@@ -129,7 +129,7 @@ export function ClassroomImport({
           {courses.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}
-              {linkedElsewhere[c.id] ? ` — ya en ${linkedElsewhere[c.id]}` : ""}
+              {linkedElsewhere[c.id] ? t(" — ya en {0}", { 0: linkedElsewhere[c.id] }) : ""}
             </option>
           ))}
         </select>

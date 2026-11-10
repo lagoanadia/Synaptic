@@ -1,4 +1,5 @@
-import { getT } from "@/lib/i18n/server";
+import { LOCALE } from "@/lib/i18n";
+import { getLang, getT } from "@/lib/i18n/server";
 import { ArrowLeft } from "@/app/icons";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -25,6 +26,7 @@ export default async function BillingPage({
 }: {
   searchParams: Promise<{ success?: string; canceled?: string; error?: string }>;
 }) {
+  const locale = LOCALE[await getLang()];
   const t = await getT();
   if (!BILLING) notFound();
   const session = await auth();
@@ -57,7 +59,7 @@ export default async function BillingPage({
       )}
       {error && (
         <p className="rounded-xl bg-crimson-soft px-4 py-3 text-sm text-ink">
-          {ERROR_COPY[error] ?? t("Algo ha fallado. Inténtalo en unos minutos.")}
+          {(ERROR_COPY[error] && t(ERROR_COPY[error])) ?? t("Algo ha fallado. Inténtalo en unos minutos.")}
         </p>
       )}
 
@@ -68,7 +70,7 @@ export default async function BillingPage({
         </span>
         {user.plan !== "FREE" && user.stripeCurrentPeriodEnd && (
           <span className="text-xs text-ink-faint">
-            {t("Se renueva el")}{" "}{user.stripeCurrentPeriodEnd.toLocaleDateString("es-ES", { timeZone: "UTC" })}
+            {t("Se renueva el")}{" "}{user.stripeCurrentPeriodEnd.toLocaleDateString(locale, { timeZone: "UTC" })}
           </span>
         )}
         {user.stripeCustomerId && (

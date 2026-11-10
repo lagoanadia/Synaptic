@@ -1,5 +1,7 @@
 "use server";
 
+import { getT } from "@/lib/i18n/server";
+
 import { revalidatePath } from "next/cache";
 import { cleanFolderBlock, type FolderBlock } from "@/lib/blocks";
 import { after } from "next/server";
@@ -16,7 +18,7 @@ import { buildOrTsQuery } from "@/lib/search";
 import { parseOrganizeResponse } from "@/lib/organize";
 import { parseJsonLoosely } from "@/lib/json";
 import { MAX_VISION_IMAGES } from "@/lib/visionLimits";
-import { SPANISH, TEXT_MODEL, VISION_MODEL, createJsonCompletion } from "@/lib/ai";
+import { languageRule, TEXT_MODEL, VISION_MODEL, createJsonCompletion } from "@/lib/ai";
 import { parseFlashcardsResponse } from "@/lib/flashcards";
 import { computeNextReview, dueDateAfter } from "@/lib/sm2";
 import { aiBudget, requirePursuitAccess } from "@/lib/access";
@@ -49,16 +51,17 @@ export async function addMember(
   _prevState: FormState,
   formData: FormData,
 ): Promise<FormState> {
+  const t = await getT();
   const { session, pursuit } = await requireAccess(pursuitId);
 
   // Only the owner can invite collaborators — not just any existing member.
   if (pursuit.ownerId !== session.user.id) {
-    return { error: "Solo la propietaria puede invitar" };
+    return { error: t("Solo la propietaria puede invitar") };
   }
 
   const email = formData.get("email");
   if (typeof email !== "string" || email.trim() === "") {
-    return { error: "Falta el email" };
+    return { error: t("Falta el email") };
   }
 
   const role = formData.get("role");
@@ -74,7 +77,7 @@ export async function addMember(
     };
   }
   if (invitedUser.id === session.user.id) {
-    return { error: "Es tu propia cuenta — ya eres la propietaria" };
+    return { error: t("Es tu propia cuenta — ya eres la propietaria") };
   }
 
   const existingMember = await prisma.pursuitMember.findUnique({
@@ -88,7 +91,7 @@ export async function addMember(
       if (memberCount >= 1) {
         return {
           error:
-            `Solo puedes compartir esta asignatura con 1 persona${BILLING ? ". Hazte Pro para compartir sin límite." : "."}`,
+            t("Solo puedes compartir esta asignatura con 1 persona{0}", { 0: BILLING ? t(". Hazte Pro para compartir sin límite.") : "." }),
         };
       }
     }
@@ -105,9 +108,10 @@ export async function addMember(
 }
 
 export async function leavePursuit(pursuitId: string) {
+  const t = await getT();
   const { session, pursuit } = await requireAccess(pursuitId);
   if (pursuit.ownerId === session.user.id) {
-    throw new Error("No puedes salir de tu propia asignatura — elimínala");
+    throw new Error(t("No puedes salir de tu propia asignatura — elimínala"));
   }
 
   await prisma.pursuitMember.deleteMany({
@@ -118,9 +122,10 @@ export async function leavePursuit(pursuitId: string) {
 }
 
 export async function removeMember(pursuitId: string, memberId: string) {
+  const t = await getT();
   const { session, pursuit } = await requireAccess(pursuitId);
   if (pursuit.ownerId !== session.user.id) {
-    throw new Error("Solo la propietaria puede quitar personas");
+    throw new Error(t("Solo la propietaria puede quitar personas"));
   }
 
   await prisma.pursuitMember.deleteMany({
@@ -135,12 +140,13 @@ export async function updateMemberRole(
   memberId: string,
   role: string,
 ) {
+  const t = await getT();
   const { session, pursuit } = await requireAccess(pursuitId);
   if (pursuit.ownerId !== session.user.id) {
-    throw new Error("Solo la propietaria puede cambiar el rol");
+    throw new Error(t("Solo la propietaria puede cambiar el rol"));
   }
   if (role !== "EDITOR" && role !== "VIEWER") {
-    throw new Error("Rol no válido");
+    throw new Error(t("Rol no válido"));
   }
 
   await prisma.pursuitMember.updateMany({
@@ -177,13 +183,14 @@ export async function addBrainDump(
   _prevState: FormState,
   formData: FormData,
 ): Promise<FormState> {
+  const t = await getT();
   const { session } = await requireAccess(pursuitId);
 
   const content = formData.get("content");
   const text = typeof content === "string" ? content.trim() : "";
 
   if (!text) {
-    return { error: "Escribe algo primero" };
+    return { error: t("Escribe algo primero") };
   }
 
   // Images were already uploaded (via uploadImage, as each one was picked)
@@ -229,19 +236,20 @@ export async function updateBrainDump(
   _prevState: FormState,
   formData: FormData,
 ): Promise<FormState> {
+  const t = await getT();
   const { session } = await requireAccess(pursuitId);
 
   const dump = await prisma.brainDump.findFirst({
     where: { id: dumpId, pursuitId },
   });
   if (!dump) {
-    return { error: "Página no encontrada" };
+    return { error: t("Página no encontrada") };
   }
 
   const content = formData.get("content");
   const text = typeof content === "string" ? content.trim() : "";
   if (!text) {
-    return { error: "Escribe algo primero" };
+    return { error: t("Escribe algo primero") };
   }
 
   const images = Array.from(text.matchAll(/!\[image\]\(([^)]+)\)/g)).map(
@@ -272,7 +280,7 @@ export async function updateBrainDump(
   if (result.count === 0) {
     return {
       error:
-        "Alguien ha cambiado esta página desde que la abriste: recarga para ver su versión antes de guardar encima.",
+        t("Alguien ha cambiado esta página desde que la abriste: recarga para ver su versión antes de guardar encima."),
     };
   }
 
@@ -298,6 +306,7 @@ export async function organizeDumps(
   pursuitId: string,
   dumpIds?: string[],
 ): Promise<{ error: string | null }> {
+  const t = await getT();
   const { session } = await requireAccess(pursuitId);
   const budget = await aiBudget(session.user.id, session.user.email);
   const limited = await budget.check();
@@ -313,7 +322,7 @@ export async function organizeDumps(
   });
 
   if (dumps.length === 0) {
-    return { error: "No hay notas nuevas que organizar" };
+    return { error: t("No hay notas nuevas que organizar") };
   }
 
   const existingTags = await prisma.tag.findMany({
@@ -385,7 +394,7 @@ stray characters instead of formatting):
   words instead, and never write its bare url as plain text.
 Plain paragraphs need no marker. Keep it to one blank line between blocks.
 
-Write the note in Spanish. Keep code, technical terms and quotes as they
+Write the note in the user's language. Keep code, technical terms and quotes as they
 are. Exception: if the material is for learning a foreign language
 (e.g. English class), keep its examples and vocabulary in that language.
 
@@ -437,7 +446,7 @@ JSON object, no other text: {"content": "...", "tags": ["...", "..."]}`;
         });
       } catch {
         return {
-          error: "No se ha podido contactar con la IA. Inténtalo en unos minutos.",
+          error: t("No se ha podido contactar con la IA. Inténtalo en unos minutos."),
         };
       }
     } else {
@@ -445,14 +454,14 @@ JSON object, no other text: {"content": "...", "tags": ["...", "..."]}`;
       // used up the user's daily quota (incrementOrganizeUsage runs
       // further down, only once we know a call actually succeeded).
       return {
-        error: "No se ha podido contactar con la IA. Inténtalo en unos minutos.",
+        error: t("No se ha podido contactar con la IA. Inténtalo en unos minutos."),
       };
     }
   }
 
   const text = completion.choices[0]?.message?.content;
   if (!text) {
-    return { error: "La IA no ha devuelto una respuesta válida" };
+    return { error: t("La IA no ha devuelto una respuesta válida") };
   }
 
   await budget.charge();
@@ -517,12 +526,13 @@ export async function updateNote(
   content: string,
   expectedUpdatedAt: string,
 ): Promise<{ error: string | null; conflict?: boolean; updatedAt?: string }> {
+  const t = await getT();
   const { session } = await requireAccess(pursuitId);
   const userId = session.user.id;
 
   const text = content.trim();
   if (!text) {
-    return { error: "La nota no puede estar vacía" };
+    return { error: t("La nota no puede estar vacía") };
   }
 
   const now = new Date();
@@ -533,10 +543,10 @@ export async function updateNote(
 
   if (result.count === 0) {
     const current = await prisma.note.findFirst({ where: { id: noteId, pursuitId } });
-    if (!current) return { error: "Esta nota ya no existe." };
+    if (!current) return { error: t("Esta nota ya no existe.") };
     return {
       error:
-        "Alguien ha cambiado esta nota desde que la abriste: recarga para ver su versión antes de guardar encima.",
+        t("Alguien ha cambiado esta nota desde que la abriste: recarga para ver su versión antes de guardar encima."),
       conflict: true,
     };
   }
@@ -591,8 +601,9 @@ export async function setClassroomEnabled(pursuitId: string, enabled: boolean) {
 }
 
 export async function disconnectClassroom(pursuitId: string) {
+  const t = await getT();
   const session = await auth();
-  if (!session?.user?.id) throw new Error("No has iniciado sesión");
+  if (!session?.user?.id) throw new Error(t("No has iniciado sesión"));
   await prisma.googleClassroomConnection.deleteMany({ where: { userId: session.user.id } });
   revalidatePath(`/pursuits/${pursuitId}`);
 }
@@ -600,32 +611,34 @@ export async function disconnectClassroom(pursuitId: string) {
 export async function listClassroomCourses(): Promise<
   { error: string | null; courses?: ClassroomCourse[] }
 > {
+  const t = await getT();
   const session = await auth();
-  if (!session?.user?.id) return { error: "No has iniciado sesión" };
+  if (!session?.user?.id) return { error: t("No has iniciado sesión") };
 
   const accessToken = await getValidAccessToken(session.user.id);
-  if (!accessToken) return { error: "No estás conectada a Google Classroom" };
+  if (!accessToken) return { error: t("No estás conectada a Google Classroom") };
 
   try {
     return { error: null, courses: await listCourses(accessToken) };
   } catch {
-    return { error: "No se ha podido conectar con Google Classroom. Prueba a reconectar." };
+    return { error: t("No se ha podido conectar con Google Classroom. Prueba a reconectar.") };
   }
 }
 
 export async function listClassroomFiles(
   courseId: string,
 ): Promise<{ error: string | null; files?: ClassroomFile[] }> {
+  const t = await getT();
   const session = await auth();
-  if (!session?.user?.id) return { error: "No has iniciado sesión" };
+  if (!session?.user?.id) return { error: t("No has iniciado sesión") };
 
   const accessToken = await getValidAccessToken(session.user.id);
-  if (!accessToken) return { error: "No estás conectada a Google Classroom" };
+  if (!accessToken) return { error: t("No estás conectada a Google Classroom") };
 
   try {
     return { error: null, files: await listCourseFiles(accessToken, courseId) };
   } catch {
-    return { error: "No se han podido cargar los archivos de ese curso." };
+    return { error: t("No se han podido cargar los archivos de ese curso.") };
   }
 }
 
@@ -648,19 +661,20 @@ export async function setClassroomCourse(
 export async function listPursuitDeadlines(
   pursuitId: string,
 ): Promise<{ error: string | null; deadlines?: ClassroomDeadline[] }> {
+  const t = await getT();
   try {
     const { session, pursuit } = await requireAccess(pursuitId);
     if (!pursuit.classroomCourseId) return { error: null, deadlines: [] };
 
     const accessToken = await getValidAccessToken(session.user.id);
-    if (!accessToken) return { error: "No estás conectada a Google Classroom" };
+    if (!accessToken) return { error: t("No estás conectada a Google Classroom") };
 
     return {
       error: null,
       deadlines: await listCourseDeadlines(accessToken, pursuit.classroomCourseId),
     };
   } catch {
-    return { error: "No se han podido cargar las entregas de ese curso." };
+    return { error: t("No se han podido cargar las entregas de ese curso.") };
   }
 }
 
@@ -678,11 +692,12 @@ export async function addPursuitTag(
   _prevState: FormState,
   formData: FormData,
 ): Promise<FormState> {
+  const t = await getT();
   const { session } = await requireAccess(pursuitId);
 
   const name = formData.get("name");
   if (typeof name !== "string" || name.trim() === "") {
-    return { error: "Falta el nombre de la etiqueta" };
+    return { error: t("Falta el nombre de la etiqueta") };
   }
 
   const tag = await prisma.pursuitTag.upsert({
@@ -715,11 +730,12 @@ export async function removePursuitTag(pursuitId: string, tagId: string) {
 }
 
 export async function renamePursuit(pursuitId: string, title: string) {
+  const t = await getT();
   await requireAccess(pursuitId);
 
   const trimmed = title.trim();
   if (!trimmed) {
-    throw new Error("El título no puede estar vacío");
+    throw new Error(t("El título no puede estar vacío"));
   }
 
   await prisma.pursuit.update({
@@ -752,16 +768,17 @@ export async function askPursuit(
   pursuitId: string,
   question: string,
 ): Promise<{ error: string | null; answer?: string }> {
+  const t = await getT();
   const { session } = await requireAccess(pursuitId);
   const q = question.trim();
-  if (!q) return { error: "Escribe una pregunta primero" };
+  if (!q) return { error: t("Escribe una pregunta primero") };
 
   const budget = await aiBudget(session.user.id, session.user.email);
   const limited = await budget.check();
   if (limited) return { error: limited };
 
   const tsQuery = buildOrTsQuery(q);
-  if (!tsQuery) return { error: "Escribe una pregunta primero" };
+  if (!tsQuery) return { error: t("Escribe una pregunta primero") };
 
   const [dumpMatches, noteMatches] = await Promise.all([
     prisma.$queryRaw<{ content: string | null; rank: number }[]>`
@@ -799,17 +816,17 @@ export async function askPursuit(
   try {
     completion = await groq.chat.completions.create({
       model: TEXT_MODEL,
-      messages: [{ role: "system", content: SPANISH }, { role: "user", content: prompt }],
+      messages: [{ role: "system", content: await languageRule() }, { role: "user", content: prompt }],
     });
   } catch {
     return {
-      error: "No se ha podido contactar con la IA. Inténtalo en unos minutos.",
+      error: t("No se ha podido contactar con la IA. Inténtalo en unos minutos."),
     };
   }
 
   const answer = completion.choices[0]?.message?.content;
   if (!answer) {
-    return { error: "La IA no ha devuelto una respuesta válida" };
+    return { error: t("La IA no ha devuelto una respuesta válida") };
   }
 
   await budget.charge();
@@ -824,6 +841,7 @@ export async function transcribeAudio(
   pursuitId: string,
   audioUrl: string,
 ): Promise<{ error: string | null; text?: string }> {
+  const t = await getT();
   const { session } = await requireAccess(pursuitId);
   const budget = await aiBudget(session.user.id, session.user.email);
   const limited = await budget.check();
@@ -837,12 +855,12 @@ export async function transcribeAudio(
     });
   } catch {
     return {
-      error: "No se ha podido contactar con la IA. Inténtalo en unos minutos.",
+      error: t("No se ha podido contactar con la IA. Inténtalo en unos minutos."),
     };
   }
 
   if (!transcription.text.trim()) {
-    return { error: "No he oído nada en esa grabación" };
+    return { error: t("No he oído nada en esa grabación") };
   }
 
   await budget.charge();
@@ -856,6 +874,7 @@ export async function generateFlashcards(
   pursuitId: string,
   noteId: string,
 ): Promise<{ error: string | null; count?: number }> {
+  const t = await getT();
   const { session } = await requireAccess(pursuitId);
   const budget = await aiBudget(session.user.id, session.user.email);
   const limited = await budget.check();
@@ -866,14 +885,14 @@ export async function generateFlashcards(
     const generatedThisMonth = await getFlashcardsThisMonth(session.user.id);
     if (generatedThisMonth >= FREE_MONTHLY_FLASHCARD_LIMIT) {
       return {
-        error: `Has llegado al límite del plan gratis: ${FREE_MONTHLY_FLASHCARD_LIMIT} tarjetas este mes.${BILLING ? " Hazte Pro para tenerlas ilimitadas." : ""}`,
+        error: t("Has llegado al límite del plan gratis: {0} tarjetas este mes.{1}", { 0: FREE_MONTHLY_FLASHCARD_LIMIT, 1: BILLING ? t(" Hazte Pro para tenerlas ilimitadas.") : "" }),
       };
     }
   }
 
   const note = await prisma.note.findFirst({ where: { id: noteId, pursuitId } });
   if (!note) {
-    return { error: "Nota no encontrada" };
+    return { error: t("Nota no encontrada") };
   }
 
   const prompt = `${note.content}\n\n---\n\nGenerate 5-10 flashcards (question + answer pairs) that test recall of the key facts and concepts in the note above. Each question should be short and specific — no "explain everything about X" questions. Each answer should be short too — a fact, a definition, a term — not a paragraph. Write them in the same language as the note. A question must make sense on its own, months later, without the note in front of you — name the topic in it. For each card also write 3 plausible WRONG answers for multiple choice: same type, about as long as the answer (±20%) and with the same level of detail, so the right one never stands out as the longest; never partially correct. Respond with ONLY a JSON object, no other text: {"cards": [{"question": "...", "answer": "...", "wrong": ["...", "...", "..."], "hint": "one short nudge that doesn't give the answer away"}, ...]}`;
@@ -887,18 +906,18 @@ export async function generateFlashcards(
     });
   } catch {
     return {
-      error: "No se ha podido contactar con la IA. Inténtalo en unos minutos.",
+      error: t("No se ha podido contactar con la IA. Inténtalo en unos minutos."),
     };
   }
 
   const text = completion.choices[0]?.message?.content;
   if (!text) {
-    return { error: "La IA no ha devuelto una respuesta válida" };
+    return { error: t("La IA no ha devuelto una respuesta válida") };
   }
 
   const cards = parseFlashcardsResponse(text);
   if (cards.length === 0) {
-    return { error: "No he podido crear tarjetas de esta nota" };
+    return { error: t("No he podido crear tarjetas de esta nota") };
   }
 
   await prisma.flashcard.createMany({
@@ -924,14 +943,15 @@ export async function cardFromSelection(
   passage: string,
   noteId: string | null,
 ): Promise<{ error: string | null; question?: string }> {
+  const t = await getT();
   const { session } = await requireAccess(pursuitId);
   const text = passage.trim().slice(0, 2000);
-  if (!text) return { error: "Selecciona un trozo de texto" };
+  if (!text) return { error: t("Selecciona un trozo de texto") };
   const budget = await aiBudget(session.user.id, session.user.email);
   const limited = await budget.check();
   if (limited) return { error: limited };
   if (!budget.unlimited && (await getFlashcardsThisMonth(session.user.id)) >= FREE_MONTHLY_FLASHCARD_LIMIT) {
-    return { error: `Has llegado al límite del plan gratis: ${FREE_MONTHLY_FLASHCARD_LIMIT} tarjetas este mes.` };
+    return { error: t("Has llegado al límite del plan gratis: {0} tarjetas este mes.", { 0: FREE_MONTHLY_FLASHCARD_LIMIT }) };
   }
 
   const prompt = `${text}\n\n---\n\nWrite exactly ONE flashcard that tests the key idea of the passage above. Short, specific question that makes sense on its own months later (name the topic); short answer (a fact, a term, a definition). Same language as the passage. Also 3 plausible WRONG answers of the same type, about as long as the answer (±20%) and as detailed, so the right one never stands out as the longest. Respond with ONLY a JSON object: {"cards": [{"question": "...", "answer": "...", "wrong": ["...", "...", "..."], "hint": "a short nudge that doesn't give the answer away"}]}`;
@@ -943,10 +963,10 @@ export async function cardFromSelection(
       response_format: { type: "json_object" },
     });
   } catch {
-    return { error: "No se ha podido contactar con la IA. Inténtalo en unos minutos." };
+    return { error: t("No se ha podido contactar con la IA. Inténtalo en unos minutos.") };
   }
   const card = parseFlashcardsResponse(completion.choices[0]?.message?.content ?? "")[0];
-  if (!card) return { error: "No he podido crear la tarjeta" };
+  if (!card) return { error: t("No he podido crear la tarjeta") };
 
   const ownNote = noteId ? await prisma.note.findFirst({ where: { id: noteId, pursuitId }, select: { id: true } }) : null;
   await prisma.flashcard.create({
@@ -965,13 +985,14 @@ export async function reviewFlashcard(
   flashcardId: string,
   quality: number,
 ) {
+  const t = await getT();
   await requireAccess(pursuitId);
 
   const card = await prisma.flashcard.findFirst({
     where: { id: flashcardId, pursuitId },
   });
   if (!card) {
-    throw new Error("Tarjeta no encontrada");
+    throw new Error(t("Tarjeta no encontrada"));
   }
 
   const next = computeNextReview(
@@ -1002,9 +1023,10 @@ export async function deleteFlashcard(pursuitId: string, flashcardId: string) {
 // ── Projects (a per-Pursuit Kanban board for a single deliverable) ─────────
 
 export async function createProject(pursuitId: string, title: string, dueDate: string | null) {
+  const t = await getT();
   await requireAccess(pursuitId);
   if (title.trim() === "") {
-    throw new Error("Falta el título");
+    throw new Error(t("Falta el título"));
   }
   const project = await prisma.project.create({
     data: {
@@ -1119,12 +1141,13 @@ export async function readAssignmentPages(
   firstPage: number,
   totalPages: number,
 ): Promise<{ error: string | null; cards: ProposedCard[] }> {
+  const t = await getT();
   const { session } = await requireAccess(pursuitId);
   const budget = await aiBudget(session.user.id, session.user.email);
   const limited = await budget.check();
   if (limited) return { error: limited, cards: [] };
 
-  if (imageUrls.length === 0) return { error: "No hay páginas que leer", cards: [] };
+  if (imageUrls.length === 0) return { error: t("No hay páginas que leer"), cards: [] };
   if (imageUrls.length > MAX_VISION_IMAGES) {
     return { error: `At most ${MAX_VISION_IMAGES} pages per call`, cards: [] };
   }
@@ -1162,7 +1185,7 @@ Respond with ONLY a JSON object, no other text: {"cards": [{"title": "...", "des
       max_completion_tokens: 8000,
     });
     const text = completion.choices[0]?.message?.content;
-    if (!text) return { error: "La IA ha respondido vacío", cards: [] };
+    if (!text) return { error: t("La IA ha respondido vacío"), cards: [] };
 
     const parsed = parseJsonLoosely(text);
     const rawCards =
@@ -1178,7 +1201,7 @@ Respond with ONLY a JSON object, no other text: {"cards": [{"title": "...", "des
     // Returned, not thrown — the client keeps reading the remaining
     // chunks so one bad page doesn't throw away every other page's cards.
     console.error(`readAssignmentPages: pages ${firstPage}-${lastPage} failed`, err);
-    return { error: "No se ha podido contactar con la IA. Inténtalo en unos minutos.", cards: [] };
+    return { error: t("No se ha podido contactar con la IA. Inténtalo en unos minutos."), cards: [] };
   }
 }
 
@@ -1187,6 +1210,7 @@ export async function saveProposedCards(
   projectId: string,
   proposed: ProposedCard[],
 ): Promise<{ error: string | null; count?: number }> {
+  const t = await getT();
   const { session } = await requireAccess(pursuitId);
   const budget = await aiBudget(session.user.id, session.user.email);
 
@@ -1197,7 +1221,7 @@ export async function saveProposedCards(
     where: { id: projectId, pursuitId },
     select: { id: true },
   });
-  if (!project) return { error: "Proyecto no encontrado" };
+  if (!project) return { error: t("Proyecto no encontrado") };
 
   // The cards come back from the browser, so they're re-validated here
   // rather than trusted as-is.
@@ -1213,7 +1237,7 @@ export async function saveProposedCards(
   await budget.charge();
 
   if (cards.length === 0) {
-    return { error: "No he encontrado tareas ahí — prueba con una página más clara o añade tarjetas a mano" };
+    return { error: t("No he encontrado tareas ahí — prueba con una página más clara o añade tarjetas a mano") };
   }
 
   const top = await prisma.projectCard.findFirst({
@@ -1244,9 +1268,10 @@ export async function importSlides(
   sectionId: string | null,
   text: string,
 ): Promise<{ error: string | null }> {
+  const t = await getT();
   const { session } = await requireAccess(pursuitId);
   const content = text.trim().slice(0, 60000);
-  if (content.length < 20) return { error: "No he encontrado texto en esas diapositivas" };
+  if (content.length < 20) return { error: t("No he encontrado texto en esas diapositivas") };
   const section = sectionId
     ? await prisma.pursuitContentSection.findFirst({ where: { id: sectionId, pursuitId }, select: { id: true } })
     : null;
@@ -1263,7 +1288,7 @@ export async function importSlides(
   const organized = await organizeDumps(pursuitId, [dump.id]);
   revalidatePath(`/pursuits/${pursuitId}`);
   // The page exists either way; an Organize failure just means no summary yet.
-  return { error: organized.error ? `Diapositivas importadas, pero el resumen ha fallado: ${organized.error}` : null };
+  return { error: organized.error ? t("Diapositivas importadas, pero el resumen ha fallado: {0}", { 0: organized.error }) : null };
 }
 
 // A deck uploaded from the slide panel is also kept in this subject's
@@ -1314,14 +1339,15 @@ export async function setUnitClassroom(pursuitId: string, sectionId: string, uni
 }
 
 export async function renameUnit(pursuitId: string, sectionId: string, name: string): Promise<{ error: string | null }> {
+  const t = await getT();
   await requireAccess(pursuitId);
   const clean = name.trim().slice(0, 60);
-  if (!clean) return { error: "Ponle un nombre" };
+  if (!clean) return { error: t("Ponle un nombre") };
   const taken = await prisma.pursuitContentSection.findFirst({
     where: { pursuitId, name: clean, id: { not: sectionId } },
     select: { id: true },
   });
-  if (taken) return { error: `Ya hay una unidad llamada "${clean}"` };
+  if (taken) return { error: t("Ya hay una unidad llamada \"{0}\"", { 0: clean }) };
   await prisma.pursuitContentSection.updateMany({ where: { id: sectionId, pursuitId }, data: { name: clean } });
   revalidatePath(`/pursuits/${pursuitId}`);
   return { error: null };
@@ -1343,9 +1369,10 @@ export async function saveFolderBlocks(pursuitId: string, blocks: Partial<Folder
 // What this folder's groups are called ("Unidad", "Tema"…). Grouping for
 // the first time also creates the first group.
 export async function setGroupLabel(pursuitId: string, label: string): Promise<{ error: string | null }> {
+  const t = await getT();
   await requireAccess(pursuitId);
   const clean = label.trim().slice(0, 24);
-  if (!clean) return { error: "Ponle un nombre" };
+  if (!clean) return { error: t("Ponle un nombre") };
   await prisma.pursuit.update({ where: { id: pursuitId }, data: { groupLabel: clean } });
   const groups = await prisma.pursuitContentSection.count({ where: { pursuitId } });
   if (groups === 0) await prisma.pursuitContentSection.create({ data: { pursuitId, name: `${clean} 1`, order: 0 } });
@@ -1381,17 +1408,18 @@ export async function addToMap(
 // Right-click → rename on the board: the title is the first "# " line of
 // both versions of the page.
 export async function renamePage(pursuitId: string, page: { dumpId: string | null; noteId: string | null }, title: string): Promise<{ error: string | null }> {
+  const t = await getT();
   await requireAccess(pursuitId);
-  const t = title.replace(/\s+/g, " ").trim().slice(0, 140);
-  if (!t) return { error: "Escribe un título" };
+  const clean = title.replace(/\s+/g, " ").trim().slice(0, 140);
+  if (!clean) return { error: t("Escribe un título") };
   const [dump, note] = await Promise.all([
     page.dumpId ? prisma.brainDump.findFirst({ where: { id: page.dumpId, pursuitId }, select: { id: true, content: true } }) : null,
     page.noteId ? prisma.note.findFirst({ where: { id: page.noteId, pursuitId }, select: { id: true, content: true } }) : null,
   ]);
-  if (!dump && !note) return { error: "Página no encontrada" };
+  if (!dump && !note) return { error: t("Página no encontrada") };
   await Promise.all([
-    dump && prisma.brainDump.update({ where: { id: dump.id }, data: { content: withTitle(t, splitTitle(dump.content).body) } }),
-    note && prisma.note.update({ where: { id: note.id }, data: { content: withTitle(t, splitTitle(note.content).body) } }),
+    dump && prisma.brainDump.update({ where: { id: dump.id }, data: { content: withTitle(clean, splitTitle(dump.content).body) } }),
+    note && prisma.note.update({ where: { id: note.id }, data: { content: withTitle(clean, splitTitle(note.content).body) } }),
   ]);
   revalidatePath(`/pursuits/${pursuitId}`);
   return { error: null };
@@ -1401,9 +1429,10 @@ export async function renamePage(pursuitId: string, page: { dumpId: string | nul
 // it teaches, no header, footer, logo, school, course or slide number.
 // The image is a JPEG data URL cropped in the browser.
 export async function transcribeSlide(pursuitId: string, image: string): Promise<{ error: string | null; text?: string }> {
+  const t = await getT();
   const { userId, session } = await requireAccess(pursuitId);
   const email = session.user?.email;
-  if (!/^data:image\/(jpeg|png|webp);base64,/.test(image) || image.length > 6_000_000) return { error: "Imagen no válida" };
+  if (!/^data:image\/(jpeg|png|webp);base64,/.test(image) || image.length > 6_000_000) return { error: t("Imagen no válida") };
   const budget = await aiBudget(userId, email);
   const limited = await budget.check();
   if (limited) return { error: limited };
@@ -1439,9 +1468,9 @@ Respond with ONLY JSON: {"text": "..."}`,
     const parsed = parseJsonLoosely(raw) as { text?: unknown } | null;
     content = typeof parsed?.text === "string" ? parsed.text.trim() : "";
   } catch {
-    return { error: "No se ha podido contactar con la IA ahora mismo" };
+    return { error: t("No se ha podido contactar con la IA ahora mismo") };
   }
-  if (!content) return { error: "No he encontrado contenido en esa parte" };
+  if (!content) return { error: t("No he encontrado contenido en esa parte") };
   await budget.charge();
   return { error: null, text: content.slice(0, 20000) };
 }

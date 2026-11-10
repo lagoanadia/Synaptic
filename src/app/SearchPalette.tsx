@@ -135,7 +135,7 @@ export function SearchPalette({ open, onClose, notebooks }: { open: boolean; onC
 
         {notebooks.length > 1 && (
           <div className="flex gap-1.5 overflow-x-auto px-3 py-2.5">
-            {[{ id: null, name: "Todo", cover: null }, ...notebooks].map((n) => (
+            {[{ id: null, name: t("Todo"), cover: null }, ...notebooks].map((n) => (
               <button
                 key={n.id ?? "all"}
                 type="button"

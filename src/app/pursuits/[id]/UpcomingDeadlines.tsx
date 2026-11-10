@@ -1,6 +1,6 @@
 "use client";
 
-import { useT } from "@/app/LangProvider";
+import { useLocale, useT } from "@/app/LangProvider";
 import { CheckIcon } from "@/app/icons";
 import { useEffect, useState } from "react";
 import { listPursuitDeadlines } from "./actions";
@@ -17,6 +17,7 @@ export function UpcomingDeadlines({
   pursuitId: string;
   hasCourse: boolean;
 }) {
+  const locale = useLocale();
   const t = useT();
   const [deadlines, setDeadlines] = useState<ClassroomDeadline[] | null>(null);
   // Captured alongside the fetch, not read via Date.now() during render —
@@ -92,7 +93,7 @@ export function UpcomingDeadlines({
                 className={`shrink-0 text-xs ${overdue ? "text-red-500" : "text-ink-faint"}`}
               >
                 {overdue ? t("Atrasada · ") : t("Entrega ")}
-                {d.dueAt.toLocaleDateString("es-ES", {
+                {d.dueAt.toLocaleDateString(locale, {
                   weekday: "short",
                   month: "short",
                   day: "numeric",

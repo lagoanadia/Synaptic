@@ -98,7 +98,7 @@ export function NotebookHeader({
             <button
               type="button"
               onClick={() => {
-                if (window.confirm(`¿Eliminar la libreta "${initialName}"? Sus carpetas pasan a Sin clasificar; no se borra nada de dentro.`))
+                if (window.confirm(t("¿Eliminar la libreta \"{0}\"? Sus carpetas pasan a Sin clasificar; no se borra nada de dentro.", { 0: initialName })))
                   start(() => deleteSection(id));
               }}
               className="self-start text-xs text-ink-faint hover:text-red-600"

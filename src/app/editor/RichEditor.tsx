@@ -1,6 +1,7 @@
 "use client";
 
 import { useT } from "@/app/LangProvider";
+import type { T } from "@/lib/i18n";
 import { ArrowDown, CardsIcon, CheckIcon, ImageIcon, LinkIcon, MapIcon, QuoteIcon, SparkIcon, TrashIcon, XIcon } from "@/app/icons";
 import { BlockMoves, blockAt, deleteBlock, dropBlock, endDrag, moveBlock, startDrag } from "./blocks";
 import Link from "next/link";
@@ -94,7 +95,7 @@ export function RichEditor({
   initialText,
   onChange,
   onUploadImage,
-  placeholder = "Escribe, o usa # para un título, - para una lista, ! para un aviso…",
+  placeholder: placeholderProp,
   editorRef,
   toolbarExtras,
   autofocus = false,
@@ -127,6 +128,7 @@ export function RichEditor({
   onBoard?: () => Promise<string>;
 }) {
   const t = useT();
+  const placeholder = placeholderProp ?? t("Escribe, o usa # para un título, - para una lista, ! para un aviso…");
   const [hint, setHint] = useState<{ i: number; top: number; left: number } | null>(null);
   // The ⋮⋮ handle next to the block under the mouse (drag it, or click for ↑ ↓ 🗑).
   const [handle, setHandle] = useState<{ pos: number; dom: HTMLElement; top: number; left: number } | null>(null);
@@ -183,7 +185,7 @@ export function RichEditor({
     ],
     content: textToDoc(initialText),
     editorProps: {
-      attributes: { class: "rich-editor", "aria-label": "Contenido de la página" },
+      attributes: { class: "rich-editor", "aria-label": t("Contenido de la página") },
       handleKeyDown: (_view, event) => keyRef.current(event),
       handlePaste: (_view, event) => {
         const files = [...(event.clipboardData?.files ?? [])].filter((f) => f.type.startsWith("image/"));
@@ -253,7 +255,7 @@ export function RichEditor({
     setBlockMenu(true);
   }
 
-  const items = slash ? slashItems(!!onUploadImage, !!onBoard).filter((it) => fold(it.label).split(" ").some((w) => w.startsWith(fold(slash.query)))) : [];
+  const items = slash ? slashItems(t, !!onUploadImage, !!onBoard).filter((it) => fold(it.label).split(" ").some((w) => w.startsWith(fold(slash.query)))) : [];
   const pick = (it: SlashItem) => {
     if (!slash || !editor) return;
     const to = editor.state.selection.from;
@@ -501,7 +503,7 @@ function Toolbar({
   }
   function setLink() {
     if (s.link) return c().unsetLink().run();
-    const url = window.prompt("URL del enlace");
+    const url = window.prompt(t("URL del enlace"));
     if (url) c().extendMarkRange("link").setLink({ href: url }).run();
   }
 
@@ -598,18 +600,18 @@ type SlashItem = { label: string; icon: React.ReactNode; run: (c: Chain) => void
 
 const fold = (t: string) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
-function slashItems(images: boolean, boards = false): SlashItem[] {
+function slashItems(t: T, images: boolean, boards = false): SlashItem[] {
   return [
-    { label: "Título", icon: "H1", run: (c) => c.setHeading({ level: 1 }).run() },
-    { label: "Subtítulo", icon: "H2", run: (c) => c.setHeading({ level: 2 }).run() },
-    { label: "Apartado", icon: "H3", run: (c) => c.setHeading({ level: 3 }).run() },
-    { label: "Lista", icon: "•", run: (c) => c.toggleBulletList().run() },
-    { label: "Lista numerada", icon: "1.", run: (c) => c.toggleOrderedList().run() },
-    { label: "Aviso", icon: <QuoteIcon />, run: (c) => c.toggleBlockquote().run() },
-    { label: "Código", icon: "</>", run: (c) => c.toggleCodeBlock().run() },
-    { label: "Tabla", icon: "▦", run: (c) => c.insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run() },
-    ...(images ? [{ label: "Imagen", icon: <ImageIcon />, run: (c: Chain) => c.run(), image: true }] : []),
-    ...(boards ? [{ label: "Pizarra", icon: "✎", run: (c: Chain) => c.run(), board: true }] : []),
+    { label: t("Título"), icon: "H1", run: (c) => c.setHeading({ level: 1 }).run() },
+    { label: t("Subtítulo"), icon: "H2", run: (c) => c.setHeading({ level: 2 }).run() },
+    { label: t("Apartado"), icon: "H3", run: (c) => c.setHeading({ level: 3 }).run() },
+    { label: t("Lista"), icon: "•", run: (c) => c.toggleBulletList().run() },
+    { label: t("Lista numerada"), icon: "1.", run: (c) => c.toggleOrderedList().run() },
+    { label: t("Aviso"), icon: <QuoteIcon />, run: (c) => c.toggleBlockquote().run() },
+    { label: t("Código"), icon: "</>", run: (c) => c.toggleCodeBlock().run() },
+    { label: t("Tabla"), icon: "▦", run: (c) => c.insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run() },
+    ...(images ? [{ label: t("Imagen"), icon: <ImageIcon />, run: (c: Chain) => c.run(), image: true }] : []),
+    ...(boards ? [{ label: t("Pizarra"), icon: "✎", run: (c: Chain) => c.run(), board: true }] : []),
   ];
 }
 
@@ -648,7 +650,7 @@ function SelectionBar({
           on={s.link}
           onClick={() => {
             if (s.link) return c().unsetLink().run();
-            const url = window.prompt("URL del enlace");
+            const url = window.prompt(t("URL del enlace"));
             if (url) c().extendMarkRange("link").setLink({ href: url }).run();
           }}
           title={t("Enlace")}
@@ -662,12 +664,12 @@ function SelectionBar({
           </button>
         )}
         {onCard && (
-          <button type="button" disabled={busy} onMouseDown={(e) => e.preventDefault()} onClick={() => go(() => onCard(sel.text), "Tarjeta creada")} title={t("Crear tarjeta")} aria-label={t("Crear tarjeta")} className="rounded-md px-2 py-1 text-ink-muted hover:bg-chip hover:text-ink disabled:opacity-50">
+          <button type="button" disabled={busy} onMouseDown={(e) => e.preventDefault()} onClick={() => go(() => onCard(sel.text), t("Tarjeta creada"))} title={t("Crear tarjeta")} aria-label={t("Crear tarjeta")} className="rounded-md px-2 py-1 text-ink-muted hover:bg-chip hover:text-ink disabled:opacity-50">
             <CardsIcon size={15} />
           </button>
         )}
         {onMap && (
-          <button type="button" disabled={busy} onMouseDown={(e) => e.preventDefault()} onClick={() => go(() => onMap(sel.text), "En el mapa")} title={t("Añadir al mapa")} aria-label={t("Añadir al mapa")} className="rounded-md px-2 py-1 text-ink-muted hover:bg-chip hover:text-ink disabled:opacity-50">
+          <button type="button" disabled={busy} onMouseDown={(e) => e.preventDefault()} onClick={() => go(() => onMap(sel.text), t("En el mapa"))} title={t("Añadir al mapa")} aria-label={t("Añadir al mapa")} className="rounded-md px-2 py-1 text-ink-muted hover:bg-chip hover:text-ink disabled:opacity-50">
             <MapIcon size={15} />
           </button>
         )}

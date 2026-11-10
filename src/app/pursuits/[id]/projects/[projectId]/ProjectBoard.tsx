@@ -261,12 +261,12 @@ export function ProjectBoard({
     setIsUploading(true);
     // Which step we're on, so an error says WHERE it broke instead of a
     // generic "no se ha podido leer el archivo".
-    let stage = "preparar el archivo";
+    let stage = t("preparar el archivo");
     try {
       const isPdf = file.type === "application/pdf";
       let pageFiles: File[];
       if (isPdf) {
-        setUploadStatus("Convirtiendo páginas del PDF…");
+        setUploadStatus(t("Convirtiendo páginas del PDF…"));
         const pages = await pdfToImagePages(file);
         pageFiles = pages.map(
           (page, i) =>
@@ -276,13 +276,13 @@ export function ProjectBoard({
         pageFiles = [file];
       }
       if (pageFiles.length === 0) {
-        setUploadError("Ese PDF no tiene páginas");
+        setUploadError(t("Ese PDF no tiene páginas"));
         return;
       }
 
-      stage = "subir las páginas";
+      stage = t("subir las páginas");
       let uploaded = 0;
-      setUploadStatus(`Subiendo 0 de ${pageFiles.length}…`);
+      setUploadStatus(t("Subiendo 0 de {0}…", { 0: pageFiles.length }));
       const urls = await mapWithLimit(pageFiles, 4, async (pageFile) => {
         const blob = await upload(`projects/${projectId}/${pageFile.name}`, pageFile, {
           access: "public",
@@ -290,13 +290,13 @@ export function ProjectBoard({
           clientPayload: JSON.stringify({ pursuitId, kind: "image" }),
         });
         uploaded++;
-        setUploadStatus(`Subiendo ${uploaded} de ${pageFiles.length}…`);
+        setUploadStatus(t("Subiendo {0} de {1}…", { 0: uploaded, 1: pageFiles.length }));
         return blob.url;
       });
 
       // One short server call per chunk of pages, one after another —
       // see readAssignmentPages for why this isn't one big call.
-      stage = "leer la tarea";
+      stage = t("leer la tarea");
       const allCards: { title: string; description?: string }[] = [];
       let anySucceeded = false;
       let lastError: string | null = null;
@@ -306,8 +306,8 @@ export function ProjectBoard({
         const last = start + chunk.length;
         setUploadStatus(
           urls.length > 1
-            ? `Leyendo páginas ${first}–${last} de ${urls.length}…`
-            : "Leyendo la tarea…",
+            ? t("Leyendo páginas {0}–{1} de {2}…", { 0: first, 1: last, 2: urls.length })
+            : t("Leyendo la tarea…"),
         );
         const result = await readAssignmentPages(pursuitId, chunk, first, urls.length);
         if (result.error) {
@@ -321,17 +321,17 @@ export function ProjectBoard({
       }
 
       if (!anySucceeded) {
-        setUploadError(lastError ?? "No se ha podido contactar con la IA. Inténtalo en unos minutos.");
+        setUploadError(lastError ?? t("No se ha podido contactar con la IA. Inténtalo en unos minutos."));
         return;
       }
 
-      stage = "guardar las tarjetas";
-      setUploadStatus("Guardando tarjetas…");
+      stage = t("guardar las tarjetas");
+      setUploadStatus(t("Guardando tarjetas…"));
       const saved = await saveProposedCards(pursuitId, projectId, allCards);
       if (saved.error) setUploadError(saved.error);
     } catch (err) {
-      console.error(`Ha fallado la subida de la tarea al ${stage}`, err);
-      setUploadError(`Algo ha fallado al ${stage} — inténtalo de nuevo`);
+      console.error(t("Ha fallado la subida de la tarea al {0}", { 0: stage }), err);
+      setUploadError(t("Algo ha fallado al {0} — inténtalo de nuevo", { 0: stage }));
     } finally {
       setIsUploading(false);
       setUploadStatus(null);
@@ -402,7 +402,7 @@ export function ProjectBoard({
               className="flex flex-col gap-2 rounded-2xl bg-callout p-3"
             >
               <div className="flex items-center justify-between px-1">
-                <p className="text-xs font-semibold text-ink-muted">{label}</p>
+                <p className="text-xs font-semibold text-ink-muted">{t(label)}</p>
                 <span className="text-xs text-ink-faint">{list.length}</span>
               </div>
               <div className="flex flex-col gap-2">

@@ -88,7 +88,7 @@ export function ChallengeList({ items }: { items: ChallengeItem[] }) {
         <button
           type="button"
           onClick={() => set({ difficulty: nextDifficulty() })}
-          title={f.difficulty ? t("Solo {0}", { 0: difficultyOf(f.difficulty).label }) : t("Cualquier dificultad")}
+          title={f.difficulty ? t("Solo {0}", { 0: t(difficultyOf(f.difficulty).label) }) : t("Cualquier dificultad")}
           aria-label={t("Dificultad")}
           className={chip(!!f.difficulty)}
         >

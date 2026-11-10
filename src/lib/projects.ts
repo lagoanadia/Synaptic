@@ -53,13 +53,24 @@ const WEEKDAYS = ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"];
 const MONTHS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
 
 // A due date as people say it: hoy, mañana, ayer, "jue 21" this week, "21 nov" later.
-export function dueLabel(day: string, today: string): { text: string; late: boolean } {
+// With `t` and a locale it speaks the app's language; without, Spanish.
+export function dueLabel(day: string, today: string, t: (s: string) => string = (s) => s, locale = "es-ES"): { text: string; late: boolean } {
   const [y, m, d] = day.split("-").map(Number);
   const [ty, tm, td] = today.split("-").map(Number);
   const diff = Math.round((Date.UTC(y, m - 1, d) - Date.UTC(ty, tm - 1, td)) / 86400000);
-  const t = new Date(Date.UTC(y, m - 1, d));
+  const date = new Date(Date.UTC(y, m - 1, d));
   const text =
-    diff === 0 ? "hoy" : diff === 1 ? "mañana" : diff === -1 ? "ayer" : diff > 1 && diff < 7 ? `${WEEKDAYS[t.getUTCDay()]} ${d}` : `${d} ${MONTHS[m - 1]}`;
+    diff === 0
+      ? t("hoy")
+      : diff === 1
+        ? t("mañana")
+        : diff === -1
+          ? t("ayer")
+          : locale.startsWith("es")
+            ? diff > 1 && diff < 7
+              ? `${WEEKDAYS[date.getUTCDay()]} ${d}`
+              : `${d} ${MONTHS[m - 1]}`
+            : date.toLocaleDateString(locale, diff > 1 && diff < 7 ? { weekday: "short", day: "numeric", timeZone: "UTC" } : { day: "numeric", month: "short", timeZone: "UTC" });
   return { text, late: diff < 0 };
 }
 

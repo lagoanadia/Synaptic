@@ -1,6 +1,6 @@
 "use client";
 
-import { useT } from "@/app/LangProvider";
+import { useLocale, useT } from "@/app/LangProvider";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { Folder } from "../Covers";
 import { TASK_COLUMNS, dueLabel, type TaskItem, type TaskStatus } from "@/lib/projects";
@@ -108,8 +108,8 @@ export function TaskBoard({ tasks: initial, projects, today, view: fixed }: { ta
           {(
             [
               ["board", "Tablero"],
-              ["list", "Lista"],
-              ...(many ? [["project", "Por proyecto"]] : []),
+              ["list", t("Lista")],
+              ...(many ? [["project", t("Por proyecto")]] : []),
             ] as [View, string][]
           ).map(([v, label]) => (
             <button key={v} type="button" onClick={() => setView(v)} className={`-mb-px pb-2 ${view === v ? "border-b-2 border-ink font-medium text-ink" : "hover:text-ink"}`}>
@@ -200,10 +200,11 @@ function Card({
   faded?: boolean;
   lineAbove?: boolean;
 }) {
+  const locale = useLocale();
   const t = useT();
   const [editing, setEditing] = useState(false);
   const done = task.status === "DONE";
-  const due = task.dueDate ? dueLabel(task.dueDate, today) : null;
+  const due = task.dueDate ? dueLabel(task.dueDate, today, t, locale) : null;
   return (
     <>
       {lineAbove && <span className="mx-1 h-0.5 rounded bg-[#337ea9]" />}

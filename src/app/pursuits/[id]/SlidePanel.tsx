@@ -83,7 +83,7 @@ export function SlidePanel({
   }, [key, deck, width, collapsed]);
 
   function open(d: Deck) {
-    if (!slideSourceFor(d.url)) return setStatus("Usa un enlace de Google Slides / Drive, un .pptx o un .pdf");
+    if (!slideSourceFor(d.url)) return setStatus(t("Usa un enlace de Google Slides / Drive, un .pptx o un .pdf"));
     setDeck(d);
     setPicking(false);
     setCollapsed(false);
@@ -114,7 +114,7 @@ export function SlidePanel({
       await saveSlideDeck(pursuitId, file.name, blob.url, file.size, dumpId);
       open({ name: file.name, url: blob.url });
     } catch {
-      setStatus("No se ha podido subir (.pptx o .pdf)");
+      setStatus(t("No se ha podido subir (.pptx o .pdf)"));
     }
   }
 
