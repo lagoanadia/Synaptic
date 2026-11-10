@@ -59,22 +59,31 @@ export async function addMember(
     return { error: t("Solo la propietaria puede invitar") };
   }
 
-  const email = formData.get("email");
-  if (typeof email !== "string" || email.trim() === "") {
-    return { error: t("Falta el email") };
+  // A friend picked from the list, or a typed email or @usuario.
+  const friendId = formData.get("userId");
+  const raw = formData.get("email");
+  const who = typeof raw === "string" ? raw.trim() : "";
+  if (typeof friendId !== "string" && !who) {
+    return { error: t("Elige un amigo o escribe un email o @usuario") };
   }
 
   const role = formData.get("role");
   const memberRole: MemberRole = role === "VIEWER" ? "VIEWER" : "EDITOR";
 
-  const invitedUser = await prisma.user.findUnique({
-    where: { email: email.trim() },
-  });
+  let invitedUser: { id: string } | null = null;
+  if (typeof friendId === "string" && friendId) {
+    const friendship = await prisma.friendship.findFirst({
+      where: { status: "ACCEPTED", OR: [{ fromId: session.user.id, toId: friendId }, { fromId: friendId, toId: session.user.id }] },
+      select: { id: true },
+    });
+    if (friendship) invitedUser = { id: friendId };
+  } else if (who.includes("@") && !who.startsWith("@")) {
+    invitedUser = await prisma.user.findUnique({ where: { email: who }, select: { id: true } });
+  } else {
+    invitedUser = await prisma.user.findUnique({ where: { username: who.replace(/^@/, "").toLowerCase() }, select: { id: true } });
+  }
   if (!invitedUser) {
-    return {
-      error:
-        "No Synaptic account found with that email — they need to sign in with GitHub at least once first",
-    };
+    return { error: t("No hay ninguna cuenta con ese email o @usuario — tiene que entrar en Synaptic una vez primero") };
   }
   if (invitedUser.id === session.user.id) {
     return { error: t("Es tu propia cuenta — ya eres la propietaria") };
