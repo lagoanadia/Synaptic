@@ -75,6 +75,25 @@ export function PageView({ pursuit, crumbs, dump, note, slides, terms }: Props) 
   const [pending, start] = useTransition();
   const back = `/pursuits/${pursuit.id}`;
 
+  // The note's saved version, kept in step with a newly arrived note.
+  useEffect(() => {
+    if (note) versions.current.organized = note.updatedAt;
+  }, [note?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Organizing with AI creates the note after this page loaded: when it
+  // arrives (or another note replaces it), load it and show it.
+  const [noteId, setNoteId] = useState(note?.id ?? null);
+  if ((note?.id ?? null) !== noteId) {
+    setNoteId(note?.id ?? null);
+    if (note) {
+      const fresh = splitTitle(note.content);
+      setDrafts((d) => ({ ...d, organized: fresh.body }));
+      setTitles((t) => ({ ...t, organized: fresh.title ?? t.original }));
+      setDirty((d) => ({ ...d, organized: false }));
+      setView("organized");
+    }
+  }
+
   function save() {
     if (!dirty[view] || pending) return;
     const v = view;
