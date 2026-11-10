@@ -43,7 +43,7 @@ export async function addChoice(pursuitId: string, blockId: string, input: strin
   done(pursuitId);
 }
 
-export async function updateChoice(id: string, data: { title?: string; price?: number | null; status?: ChoiceStatus }) {
+export async function updateChoice(id: string, data: { title?: string; price?: number | null; status?: ChoiceStatus; rating?: number | null; date?: string | null; note?: string | null }) {
   const choice = await prisma.choice.findUnique({ where: { id }, select: { pursuitId: true } });
   if (!choice) return;
   await requirePursuitAccess(choice.pursuitId);
@@ -53,6 +53,9 @@ export async function updateChoice(id: string, data: { title?: string; price?: n
       ...(typeof data.title === "string" && data.title.trim() ? { title: data.title.trim().slice(0, 120) } : {}),
       ...(data.price === null || (typeof data.price === "number" && data.price >= 0 && data.price < 1e9) ? { price: data.price === null ? null : Math.round(data.price) } : {}),
       ...(data.status && STATUSES.includes(data.status) ? { status: data.status } : {}),
+      ...(data.rating === null || (Number.isInteger(data.rating) && data.rating! >= 1 && data.rating! <= 5) ? { rating: data.rating } : {}),
+      ...(data.date === null || (typeof data.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(data.date)) ? { date: data.date } : {}),
+      ...(data.note === null || typeof data.note === "string" ? { note: data.note?.trim().slice(0, 200) || null } : {}),
     },
   });
   done(choice.pursuitId);
