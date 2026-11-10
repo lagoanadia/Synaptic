@@ -5,7 +5,7 @@ import { createPursuit } from "../../actions";
 import { FOLDER_TEMPLATES, type FolderTemplate } from "@/lib/blocks";
 
 // "+" at the end of a notebook's folders: type a name, Enter. Outside
-// study notebooks you also pick a template (En blanco / Proyecto / Viaje).
+// study notebooks you also pick a template (En blanco / Proyecto / Planificador).
 // `fill`: take the full width of its slot instead of a small tile at the bottom.
 export function NewFolder({ sectionName, label, fill = false, template: initial }: { sectionName: string; label: string; fill?: boolean; template?: FolderTemplate }) {
   const size = fill ? "w-full" : "w-full sm:w-44";

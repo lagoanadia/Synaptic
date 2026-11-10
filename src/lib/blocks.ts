@@ -35,17 +35,18 @@ export const FOLDER_BLOCK_TYPES: { type: FolderBlockType; label: string; hint: s
 ];
 
 // Folder templates, picked when you make a folder.
-export type FolderTemplate = "blank" | "project" | "trip";
+export type FolderTemplate = "blank" | "project" | "plan";
 export const FOLDER_TEMPLATES: { id: FolderTemplate; label: string }[] = [
   { id: "blank", label: "En blanco" },
   { id: "project", label: "Proyecto" },
-  { id: "trip", label: "Viaje" },
+  { id: "plan", label: "Planificador" },
 ];
 export function templateBlocks(t: FolderTemplate): FolderBlock[] {
-  if (t === "trip")
+  // "Plan": decide between options together and split the cost — a trip,
+  // a move, a group present, an event, a big purchase, a weekend…
+  if (t === "plan")
     return [
-      { id: newId(), type: "options", title: "Alojamiento", icon: "bed" },
-      { id: newId(), type: "options", title: "Vuelos", icon: "plane" },
+      { id: newId(), type: "options", title: "Opciones", icon: "list" },
       { id: newId(), type: "budget", people: null },
     ];
   if (t === "project") return [{ id: "project", type: "project" }, { id: "pages", type: "pages" }];

@@ -68,11 +68,10 @@ describe("cleanHomeBlocks projects", () => {
 });
 
 describe("folder templates and options/budget blocks", () => {
-  it("a trip starts with Alojamiento, Vuelos and Presupuesto", () => {
-    const b = templateBlocks("trip");
+  it("a plan starts with Opciones and Presupuesto", () => {
+    const b = templateBlocks("plan");
     expect(b.map((x) => [x.type, x.title ?? null, x.icon ?? null])).toEqual([
-      ["options", "Alojamiento", "bed"],
-      ["options", "Vuelos", "plane"],
+      ["options", "Opciones", "list"],
       ["budget", null, null],
     ]);
   });
