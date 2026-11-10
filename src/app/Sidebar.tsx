@@ -1,11 +1,13 @@
 "use client";
 
+import { useT } from "@/app/LangProvider";
 import { LogoMark } from "@/app/Logo";
 import { BILLING } from "@/lib/billingFlag";
 import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { signOutAction } from "./actions";
+import { LangPicker } from "./LangPicker";
 import { createSection } from "./pursuits/actions";
 import { TemplatePick, type Template } from "./pursuits/TemplatePick";
 import { MiniNotebook } from "./Covers";
@@ -43,6 +45,7 @@ const PLAN_LABEL: Record<string, string> = { FREE: "Gratis", PRO: "Student Pro",
 // Notion-style navigation: a fixed sidebar on wide screens (pages, your
 // notebooks, account), a bottom tab bar on phones.
 export function Sidebar({ user, plan, notebooks, collapsed: startCollapsed = false }: Props) {
+  const t = useT();
   const pathname = usePathname();
   const [sheet, setSheet] = useState(false);
   const [searching, setSearching] = useState(false);
@@ -91,8 +94,8 @@ export function Sidebar({ user, plan, notebooks, collapsed: startCollapsed = fal
   return (
     <>
       {collapsed && (
-        <aside className="fixed inset-y-0 left-0 z-30 hidden w-[52px] flex-col items-center gap-1 border-r border-border-subtle bg-sidebar py-3 lg:flex" aria-label="Navegación">
-          <button type="button" onClick={toggleCollapsed} title="Mostrar la barra lateral" aria-label="Mostrar la barra lateral" className="mb-3 grid size-8 place-items-center rounded-md text-ink-muted hover:bg-[#ebebea] hover:text-ink">
+        <aside className="fixed inset-y-0 left-0 z-30 hidden w-[52px] flex-col items-center gap-1 border-r border-border-subtle bg-sidebar py-3 lg:flex" aria-label={t("Navegación")}>
+          <button type="button" onClick={toggleCollapsed} title={t("Mostrar la barra lateral")} aria-label={t("Mostrar la barra lateral")} className="mb-3 grid size-8 place-items-center rounded-md text-ink-muted hover:bg-[#ebebea] hover:text-ink">
             <PanelIcon />
           </button>
           {[
@@ -100,12 +103,12 @@ export function Sidebar({ user, plan, notebooks, collapsed: startCollapsed = fal
             { href: "/calendar", label: "Calendario", icon: <CalendarIcon size={16} className="block" />, on: active("/calendar") },
             { href: "/review", label: "Repasar", icon: <CardsIcon size={16} className="block" />, on: active("/review") },
             { href: "/challenges", label: "Retos", icon: <CodeIcon size={16} className="block" />, on: active("/challenges") },
-          ].map((t) => (
-            <Link key={t.href} href={t.href} title={t.label} aria-label={t.label} className={`grid size-8 place-items-center rounded-md ${t.on ? "bg-[#ebebea] text-ink" : "text-ink-muted hover:bg-[#ebebea]/70 hover:text-ink"}`}>
-              {t.icon}
+          ].map((item) => (
+            <Link key={item.href} href={item.href} title={t(item.label)} aria-label={t(item.label)} className={`grid size-8 place-items-center rounded-md ${item.on ? "bg-[#ebebea] text-ink" : "text-ink-muted hover:bg-[#ebebea]/70 hover:text-ink"}`}>
+              {item.icon}
             </Link>
           ))}
-          <button type="button" onClick={() => setSearching(true)} title="Buscar (Ctrl K)" aria-label="Buscar" className="grid size-8 place-items-center rounded-md text-ink-muted hover:bg-[#ebebea]/70 hover:text-ink">
+          <button type="button" onClick={() => setSearching(true)} title={t("Buscar (Ctrl K)")} aria-label={t("Buscar")} className="grid size-8 place-items-center rounded-md text-ink-muted hover:bg-[#ebebea]/70 hover:text-ink">
             <SearchIcon size={16} />
           </button>
           <span className="my-2 h-px w-6 bg-border-subtle" />
@@ -114,51 +117,52 @@ export function Sidebar({ user, plan, notebooks, collapsed: startCollapsed = fal
               <MiniNotebook cover={n.cover} size={18} />
             </Link>
           ))}
-          <Account href="/profile" title={user.name ?? user.email ?? "Cuenta"} className="mt-auto grid size-8 place-items-center rounded-md hover:bg-[#ebebea]/70">
+          <Account href="/profile" title={user.name ?? user.email ?? t("Cuenta")} className="mt-auto grid size-8 place-items-center rounded-md hover:bg-[#ebebea]/70">
             <Avatar user={user} />
           </Account>
         </aside>
       )}
-      <aside className={`fixed inset-y-0 left-0 z-30 w-60 flex-col gap-5 border-r border-border-subtle bg-sidebar px-2.5 py-3 ${collapsed ? "hidden" : "hidden lg:flex"}`} aria-label="Navegación">
+      <aside className={`fixed inset-y-0 left-0 z-30 w-60 flex-col gap-5 border-r border-border-subtle bg-sidebar px-2.5 py-3 ${collapsed ? "hidden" : "hidden lg:flex"}`} aria-label={t("Navegación")}>
         <div className="flex items-center justify-between">
           <Link href="/pursuits" className="flex items-center gap-2 px-2 py-1 text-sm font-semibold text-ink">
             <LogoMark size={20} />
-            Synaptic
+            {t("Synaptic")}
           </Link>
-          <button type="button" onClick={toggleCollapsed} title="Ocultar la barra lateral" aria-label="Ocultar la barra lateral" className="grid size-7 place-items-center rounded-md text-ink-faint hover:bg-[#ebebea] hover:text-ink">
+          <button type="button" onClick={toggleCollapsed} title={t("Ocultar la barra lateral")} aria-label={t("Ocultar la barra lateral")} className="grid size-7 place-items-center rounded-md text-ink-faint hover:bg-[#ebebea] hover:text-ink">
             <PanelIcon />
           </button>
         </div>
         <nav className="flex flex-col gap-0.5">
           <Link href="/pursuits" className={row(active("/pursuits", true))}>
-            <HomeIcon size={16} className="block" /> Inicio
+            <HomeIcon size={16} className="block" />{" "}{t("Inicio")}
           </Link>
           <button type="button" onClick={() => setSearching(true)} className={`${row(false)} w-full`}>
-            <SearchIcon size={16} /> <span className="flex-1 text-left">Buscar</span>
-            <kbd className="text-[10px] text-ink-faint">Ctrl K</kbd>
+            <SearchIcon size={16} /> <span className="flex-1 text-left">{t("Buscar")}</span>
+            <kbd className="text-[10px] text-ink-faint">{t("Ctrl K")}</kbd>
           </button>
           <Link href="/calendar" className={row(active("/calendar"))}>
-            <CalendarIcon size={16} className="block" /> Calendario
+            <CalendarIcon size={16} className="block" />{" "}{t("Calendario")}
           </Link>
           <Link href="/review" className={row(active("/review"))}>
-            <CardsIcon size={16} className="block" /> Repasar
+            <CardsIcon size={16} className="block" />{" "}{t("Repasar")}
           </Link>
           <Link href="/challenges" className={row(active("/challenges"))}>
-            <CodeIcon size={16} className="block" /> Retos
+            <CodeIcon size={16} className="block" />{" "}{t("Retos")}
           </Link>
         </nav>
         <div className="flex flex-col gap-1">
-          <span className="px-2 text-xs font-medium text-ink-faint">Libretas</span>
+          <span className="px-2 text-xs font-medium text-ink-faint">{t("Libretas")}</span>
           {notebookList}
         </div>
-        <div className="mt-auto flex items-center gap-1 border-t border-border-subtle pt-3">
+        <LangPicker className="mt-auto self-start" />
+        <div className="flex items-center gap-1 border-t border-border-subtle pt-3">
           <Account href="/profile" className={`${row(active("/profile"))} min-w-0 flex-1`}>
             <Avatar user={user} size={24} />
             <span className="min-w-0 flex-1 truncate">{user.name ?? user.email}</span>
             {BILLING && <span className="text-[11px] text-accent">{PLAN_LABEL[plan] ?? plan}</span>}
           </Account>
           <form action={signOutAction}>
-            <button type="submit" title="Cerrar sesión" aria-label="Cerrar sesión" className="grid size-8 place-items-center rounded-md text-ink-faint hover:bg-[#ebebea] hover:text-ink">
+            <button type="submit" title={t("Cerrar sesión")} aria-label={t("Cerrar sesión")} className="grid size-8 place-items-center rounded-md text-ink-faint hover:bg-[#ebebea] hover:text-ink">
               <LogoutIcon />
             </button>
           </form>
@@ -166,20 +170,20 @@ export function Sidebar({ user, plan, notebooks, collapsed: startCollapsed = fal
       </aside>
 
       {/* Phones: tab bar + a sheet with your notebooks. */}
-      <nav className="fixed inset-x-0 bottom-0 z-30 flex items-stretch justify-around border-t border-border-subtle bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden" aria-label="Navegación">
+      <nav className="fixed inset-x-0 bottom-0 z-30 flex items-stretch justify-around border-t border-border-subtle bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden" aria-label={t("Navegación")}>
         {[
           { href: "/pursuits", label: "Inicio", icon: HomeIcon, on: active("/pursuits", true) },
           { href: "/review", label: "Repasar", icon: CardsIcon, on: active("/review") },
           { href: "/challenges", label: "Retos", icon: CodeIcon, on: active("/challenges") },
-        ].map((t) => (
-          <Link key={t.href} href={t.href} className={`flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] ${t.on ? "text-ink" : "text-ink-faint"}`}>
-            <t.icon size={20} className="block" />
-            {t.label}
+        ].map((item) => (
+          <Link key={item.href} href={item.href} className={`flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] ${item.on ? "text-ink" : "text-ink-faint"}`}>
+            <item.icon size={20} className="block" />
+            {t(item.label)}
           </Link>
         ))}
         <button type="button" onClick={() => setSearching(true)} className="flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] text-ink-faint">
           <SearchIcon size={20} />
-          Buscar
+          {t("Buscar")}
         </button>
         <button type="button" onClick={() => setSheet(true)} className={`flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] ${active("/pursuits/s") ? "text-ink" : "text-ink-faint"}`}>
           <span className="flex h-5 items-end gap-0.5" aria-hidden>
@@ -187,27 +191,28 @@ export function Sidebar({ user, plan, notebooks, collapsed: startCollapsed = fal
               <MiniNotebook key={n.id} cover={n.cover} size={16} />
             ))}
           </span>
-          Libretas
+          {t("Libretas")}
         </button>
       </nav>
       <SearchPalette open={searching} onClose={() => setSearching(false)} notebooks={notebooks} />
       {sheet && (
-        <div className="fixed inset-0 z-40 lg:hidden" role="dialog" aria-label="Libretas">
-          <button type="button" aria-label="Cerrar" className="absolute inset-0 bg-ink/20" onClick={() => setSheet(false)} />
+        <div className="fixed inset-0 z-40 lg:hidden" role="dialog" aria-label={t("Libretas")}>
+          <button type="button" aria-label={t("Cerrar")} className="absolute inset-0 bg-ink/20" onClick={() => setSheet(false)} />
           <div className="absolute inset-x-0 bottom-0 flex flex-col gap-3 rounded-t-2xl bg-white p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] shadow-2xl">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-semibold">Libretas</span>
-              <button type="button" onClick={() => setSheet(false)} aria-label="Cerrar" className="rounded p-1 text-ink-muted">
+              <span className="text-sm font-semibold">{t("Libretas")}</span>
+              <button type="button" onClick={() => setSheet(false)} aria-label={t("Cerrar")} className="rounded p-1 text-ink-muted">
                 <XIcon size={18} className="block" />
               </button>
             </div>
             {notebookList}
+            <LangPicker className="self-start" />
             <div className="flex items-center gap-3 border-t border-border-subtle pt-3 text-sm">
               <Account href="/profile" className="flex flex-1 items-center gap-2 text-ink-muted">
                 <Avatar user={user} /> {user.name ?? user.email}
               </Account>
               <form action={signOutAction}>
-                <button type="submit" title="Cerrar sesión" aria-label="Cerrar sesión" className="grid size-8 place-items-center rounded-md text-ink-muted">
+                <button type="submit" title={t("Cerrar sesión")} aria-label={t("Cerrar sesión")} className="grid size-8 place-items-center rounded-md text-ink-muted">
                   <LogoutIcon />
                 </button>
               </form>
@@ -233,6 +238,7 @@ function Avatar({ user, size = 18 }: { user: Props["user"]; size?: number }) {
 
 // "+ Nueva libreta": click, type the name, Enter.
 function NewNotebook({ className }: { className: string }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [template, setTemplate] = useState<Template>("study");
@@ -242,7 +248,7 @@ function NewNotebook({ className }: { className: string }) {
   if (!open)
     return (
       <button type="button" onClick={() => setOpen(true)} className={`${className} text-ink-faint`}>
-        <span className="grid w-3 place-items-center text-base leading-none">+</span> Nueva libreta
+        <span className="grid w-3 place-items-center text-base leading-none">+</span>{" "}{t("Nueva libreta")}
       </button>
     );
   return (
@@ -267,8 +273,8 @@ function NewNotebook({ className }: { className: string }) {
         disabled={pending}
         onChange={(e) => setName(e.target.value)}
         onKeyDown={(e) => e.key === "Escape" && setOpen(false)}
-        placeholder="Nombre"
-        aria-label="Nombre de la libreta"
+        placeholder={t("Nombre")}
+        aria-label={t("Nombre de la libreta")}
         className="w-full rounded-md border border-border-subtle bg-white px-2 py-1 text-sm"
       />
       <div className="mt-1.5">
@@ -276,10 +282,10 @@ function NewNotebook({ className }: { className: string }) {
       </div>
       <div className="mt-1.5 flex gap-1.5">
         <button type="submit" disabled={pending || !name.trim()} className="flex-1 rounded-md bg-ink px-2 py-1 text-xs font-medium text-white disabled:opacity-40">
-          Crear
+          {t("Crear")}
         </button>
         <button type="button" onClick={() => setOpen(false)} className="rounded-md px-2 py-1 text-xs text-ink-faint hover:bg-chip">
-          Cancelar
+          {t("Cancelar")}
         </button>
       </div>
       {error && <span className="px-1 text-xs text-red-500">{error}</span>}

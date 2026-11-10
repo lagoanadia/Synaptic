@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/app/LangProvider";
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -72,6 +73,7 @@ export function NotebookShelf({ items: initial, width = 92 }: { items: ShelfItem
 }
 
 function NewNotebookTile({ width }: { width: number }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [template, setTemplate] = useState<Template>("study");
@@ -99,14 +101,14 @@ function NewNotebookTile({ width }: { width: number }) {
             disabled={pending}
             onChange={(e) => setName(e.target.value)}
             onKeyDown={(e) => e.key === "Escape" && setOpen(false)}
-            placeholder="Nombre"
-            aria-label="Nombre de la libreta"
+            placeholder={t("Nombre")}
+            aria-label={t("Nombre de la libreta")}
             className="w-full rounded border border-border-subtle bg-white px-1.5 py-1 text-xs"
           />
           <TemplatePick value={template} onChange={setTemplate} compact />
           <div className="flex gap-1.5">
             <button type="submit" disabled={pending || !name.trim()} className="flex-1 rounded bg-ink px-2 py-1 text-xs font-medium text-white disabled:opacity-40">
-              Crear
+              {t("Crear")}
             </button>
             <button type="button" onClick={() => setOpen(false)} className="rounded px-2 py-1 text-xs text-ink-faint hover:bg-chip">
               ✕
@@ -117,8 +119,8 @@ function NewNotebookTile({ width }: { width: number }) {
         <button
           type="button"
           onClick={() => setOpen(true)}
-          title="Nueva libreta"
-          aria-label="Nueva libreta"
+          title={t("Nueva libreta")}
+          aria-label={t("Nueva libreta")}
           className="grid place-items-center rounded-md border-[1.5px] border-dashed border-[#d3d1cb] text-2xl text-ink-faint transition-colors hover:border-ink-faint hover:text-ink"
           style={{ width, height: Math.round(width * 1.3) }}
         >

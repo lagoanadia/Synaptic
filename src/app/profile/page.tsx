@@ -1,3 +1,4 @@
+import { getT } from "@/lib/i18n/server";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
@@ -9,6 +10,7 @@ import { ProfileEditor } from "./ProfileEditor";
 export const metadata = { title: "Tu perfil" };
 
 export default async function ProfilePage() {
+  const t = await getT();
   const session = await auth();
   if (!session?.user?.id) redirect("/");
   const user = await prisma.user.findUnique({ where: { id: session.user.id }, select: { name: true, email: true, username: true, avatar: true } });
@@ -18,10 +20,10 @@ export default async function ProfilePage() {
   return (
     <div className="mx-auto flex w-full max-w-[1100px] flex-1 flex-col gap-8 px-6 py-8 sm:px-12 lg:py-12">
       <header className="flex items-center justify-between gap-4">
-        <h1 className="text-[2.1rem] leading-tight font-bold tracking-tight">Tu perfil</h1>
+        <h1 className="text-[2.1rem] leading-tight font-bold tracking-tight">{t("Tu perfil")}</h1>
         {BILLING && (
           <Link href="/billing" className="rounded-md px-3 py-1.5 text-sm text-ink-faint hover:bg-chip hover:text-ink">
-            Plan y facturación
+            {t("Plan y facturación")}
           </Link>
         )}
       </header>

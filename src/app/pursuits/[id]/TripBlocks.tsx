@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/app/LangProvider";
 import { AvatarFace } from "@/app/AvatarFace";
 import type { Avatar } from "@/lib/avatar";
 import { useState, useTransition } from "react";
@@ -130,6 +131,7 @@ const STATUS: Record<ChoiceStatus, { label: string; cls: string; next: ChoiceSta
 
 // "Precio": shows "540 €", click to type a new one.
 function PriceCell({ cents, onSave }: { cents: number | null; onSave: (cents: number | null) => void }) {
+  const t = useT();
   const [editing, setEditing] = useState(false);
   if (editing)
     return (
@@ -137,7 +139,7 @@ function PriceCell({ cents, onSave }: { cents: number | null; onSave: (cents: nu
         autoFocus
         defaultValue={cents === null ? "" : String(cents / 100)}
         inputMode="decimal"
-        aria-label="Precio en euros"
+        aria-label={t("Precio en euros")}
         onBlur={(e) => {
           setEditing(false);
           const v = e.target.value.replace(",", ".").replace(/[^\d.]/g, "");
@@ -149,7 +151,7 @@ function PriceCell({ cents, onSave }: { cents: number | null; onSave: (cents: nu
     );
   return (
     <button type="button" onClick={() => setEditing(true)} className={`text-left text-sm tabular-nums ${cents === null ? "text-ink-faint" : ""}`}>
-      {cents === null ? "+ precio" : euros(cents)}
+      {cents === null ? t("+ precio") : euros(cents)}
     </button>
   );
 }
@@ -172,14 +174,15 @@ function parseDay(text: string): string | null | undefined {
 }
 
 function DateCell({ value, onSave }: { value: string | null; onSave: (v: string | null) => void }) {
+  const t = useT();
   const [editing, setEditing] = useState(false);
   if (editing)
     return (
       <input
         autoFocus
         defaultValue={value ? value.split("-").reverse().join("/") : ""}
-        placeholder="dd/mm"
-        aria-label="Fecha"
+        placeholder={t("dd/mm")}
+        aria-label={t("Fecha")}
         onBlur={(e) => {
           const v = parseDay(e.target.value);
           setEditing(false);
@@ -191,14 +194,15 @@ function DateCell({ value, onSave }: { value: string | null; onSave: (v: string 
     );
   return (
     <button type="button" onClick={() => setEditing(true)} className={`text-left ${value ? "" : "text-ink-faint"}`}>
-      {value ? shortDay(value) : "+ fecha"}
+      {value ? shortDay(value) : t("+ fecha")}
     </button>
   );
 }
 
 function Stars({ value, onSave }: { value: number | null; onSave: (v: number | null) => void }) {
+  const t = useT();
   return (
-    <span className="flex" role="radiogroup" aria-label="Valoración">
+    <span className="flex" role="radiogroup" aria-label={t("Valoración")}>
       {[1, 2, 3, 4, 5].map((n) => (
         <button key={n} type="button" role="radio" aria-checked={value === n} aria-label={`${n} de 5`} onClick={() => onSave(value === n ? null : n)} className={`px-px text-[15px] leading-none ${value && n <= value ? "text-ink" : "text-ink-faint/30 hover:text-ink-faint"}`}>
           ★
@@ -211,6 +215,7 @@ function Stars({ value, onSave }: { value: number | null; onSave: (v: number | n
 // An options block: each option with its link and the columns the block
 // shows (state, price, votes, rating, date, note); paste a link to add one.
 export function OptionsBlock({ pursuitId, blockId, items, people, me, columns = DEFAULT_OPTION_COLUMNS }: { pursuitId: string; blockId: string; items: ChoiceItem[]; people: Person[]; me: string; columns?: OptionColumn[] }) {
+  const t = useT();
   const [, start] = useTransition();
   const [adding, setAdding] = useState(false);
   const byId = new Map(people.map((p) => [p.id, p]));
@@ -220,14 +225,14 @@ export function OptionsBlock({ pursuitId, blockId, items, people, me, columns = 
     <div className="flex flex-col text-sm">
       {items.length > 0 && (
         <div className="grid items-center gap-3 pb-2 text-xs text-ink-faint" style={grid}>
-          <span>Opción</span>
+          <span>{t("Opción")}</span>
           {columns.map((c) =>
             c === "votes" ? (
-              <span key={c} aria-label="Votos">
+              <span key={c} aria-label={t("Votos")}>
                 <ThumbIcon />
               </span>
             ) : (
-              <span key={c}>{LABEL[c]}</span>
+              <span key={c}>{t(LABEL[c])}</span>
             ),
           )}
           <span />
@@ -249,8 +254,8 @@ export function OptionsBlock({ pursuitId, blockId, items, people, me, columns = 
             {columns.map((col) => {
               if (col === "status")
                 return (
-                  <button key={col} type="button" onClick={() => save(c.id, { status: s.next })} title="Cambiar estado" className={`w-fit rounded px-1.5 py-0.5 text-xs ${s.cls}`}>
-                    {s.label}
+                  <button key={col} type="button" onClick={() => save(c.id, { status: s.next })} title={t("Cambiar estado")} className={`w-fit rounded px-1.5 py-0.5 text-xs ${s.cls}`}>
+                    {t(s.label)}
                   </button>
                 );
               if (col === "price") return <PriceCell key={col} cents={c.price} onSave={(price) => save(c.id, { price })} />;
@@ -261,8 +266,8 @@ export function OptionsBlock({ pursuitId, blockId, items, people, me, columns = 
                   <input
                     key={col}
                     defaultValue={c.note ?? ""}
-                    placeholder="+ nota"
-                    aria-label="Nota"
+                    placeholder={t("+ nota")}
+                    aria-label={t("Nota")}
                     onBlur={(e) => e.target.value !== (c.note ?? "") && save(c.id, { note: e.target.value })}
                     className="min-w-0 bg-transparent outline-none placeholder:text-ink-faint"
                   />
@@ -272,7 +277,7 @@ export function OptionsBlock({ pursuitId, blockId, items, people, me, columns = 
                   <button
                     type="button"
                     onClick={() => start(() => toggleVote(c.id))}
-                    title={mine ? "Quitar mi voto" : "Votar"}
+                    title={mine ? t("Quitar mi voto") : t("Votar")}
                     aria-pressed={mine}
                     className={`rounded p-1 ${mine ? "text-ink" : "text-ink-faint/60 hover:text-ink"}`}
                   >
@@ -285,8 +290,8 @@ export function OptionsBlock({ pursuitId, blockId, items, people, me, columns = 
             <button
               type="button"
               onClick={() => window.confirm(`¿Quitar "${c.title}"?`) && start(() => deleteChoice(c.id))}
-              title="Quitar"
-              aria-label="Quitar opción"
+              title={t("Quitar")}
+              aria-label={t("Quitar opción")}
               className="text-ink-faint/40 hover:text-red-600"
             >
               ×
@@ -310,8 +315,8 @@ export function OptionsBlock({ pursuitId, blockId, items, people, me, columns = 
       >
         <input
           name="q"
-          placeholder={adding ? "Añadiendo…" : "+ Pega un enlace"}
-          aria-label="Pega un enlace o escribe una opción"
+          placeholder={adding ? t("Añadiendo…") : t("+ Pega un enlace")}
+          aria-label={t("Pega un enlace o escribe una opción")}
           onPaste={(e) => {
             const text = e.clipboardData.getData("text").trim();
             if (!/^(https?:\/\/|www\.)\S+$|^[a-z0-9-]+(\.[a-z0-9-]+)+\/\S*$/i.test(text)) return;
@@ -344,6 +349,7 @@ export function BudgetBlock({
   lines: BudgetLineItem[];
   people: number;
 }) {
+  const t = useT();
   const [, start] = useTransition();
   const lineTotal = (l: BudgetLineItem) => l.unit * l.days * (l.perPerson ? people : 1);
   const total = chosen.reduce((t, c) => t + (c.cents ?? 0), 0) + lines.reduce((t, l) => t + lineTotal(l), 0);
@@ -353,25 +359,25 @@ export function BudgetBlock({
     <div className="flex max-w-[640px] flex-col text-sm">
       {chosen.map((c) => (
         <div key={c.label} className={row}>
-          <span>{c.label}</span>
-          <span className={`truncate ${c.what ? "text-ink-muted" : "text-ink-faint"}`}>{c.what || "Sin elegir"}</span>
+          <span>{t(c.label)}</span>
+          <span className={`truncate ${c.what ? "text-ink-muted" : "text-ink-faint"}`}>{c.what || t("Sin elegir")}</span>
           <span className="tabular-nums">{c.cents === null ? "—" : euros(c.cents)}</span>
         </div>
       ))}
       {lines.map((l) => (
         <div key={l.id} className={`group ${row}`}>
-          <input defaultValue={l.label} aria-label="Concepto" onBlur={(e) => e.target.value !== l.label && start(() => updateBudgetLine(l.id, { label: e.target.value }))} className="min-w-0 bg-transparent outline-none" />
+          <input defaultValue={l.label} aria-label={t("Concepto")} onBlur={(e) => e.target.value !== l.label && start(() => updateBudgetLine(l.id, { label: e.target.value }))} className="min-w-0 bg-transparent outline-none" />
           <span className="flex flex-wrap items-center gap-1 text-ink-muted">
-            <input defaultValue={l.unit ? String(l.unit / 100) : ""} placeholder="0" inputMode="decimal" aria-label="Precio" onBlur={(e) => start(() => updateBudgetLine(l.id, { unit: num(e.target.value) * 100 }))} className="w-12 rounded bg-chip px-1 text-right" />€ ×
-            <input defaultValue={String(l.days)} inputMode="numeric" aria-label="Días" onBlur={(e) => start(() => updateBudgetLine(l.id, { days: Math.max(1, num(e.target.value)) }))} className="w-8 rounded bg-chip px-1 text-right" />
-            días
-            <button type="button" onClick={() => start(() => updateBudgetLine(l.id, { perPerson: !l.perPerson }))} title="Por persona" className={`rounded px-1 ${l.perPerson ? "text-ink" : "text-ink-faint line-through"}`}>
+            <input defaultValue={l.unit ? String(l.unit / 100) : ""} placeholder="0" inputMode="decimal" aria-label={t("Precio")} onBlur={(e) => start(() => updateBudgetLine(l.id, { unit: num(e.target.value) * 100 }))} className="w-12 rounded bg-chip px-1 text-right" />€ ×
+            <input defaultValue={String(l.days)} inputMode="numeric" aria-label={t("Días")} onBlur={(e) => start(() => updateBudgetLine(l.id, { days: Math.max(1, num(e.target.value)) }))} className="w-8 rounded bg-chip px-1 text-right" />
+            {t("días")}
+            <button type="button" onClick={() => start(() => updateBudgetLine(l.id, { perPerson: !l.perPerson }))} title={t("Por persona")} className={`rounded px-1 ${l.perPerson ? "text-ink" : "text-ink-faint line-through"}`}>
               × {people}
             </button>
           </span>
           <span className="flex items-center gap-2 tabular-nums">
             {euros(lineTotal(l))}
-            <button type="button" onClick={() => start(() => deleteBudgetLine(l.id))} aria-label="Quitar línea" className="text-ink-faint/40 hover:text-red-600">
+            <button type="button" onClick={() => start(() => deleteBudgetLine(l.id))} aria-label={t("Quitar línea")} className="text-ink-faint/40 hover:text-red-600">
               ×
             </button>
           </span>
@@ -387,12 +393,12 @@ export function BudgetBlock({
         }}
         className="border-b border-[#f1f0ee] py-2.5"
       >
-        <input name="l" placeholder="+ Gasto (comida, transporte…)" aria-label="Nuevo gasto" className="w-full outline-none placeholder:text-ink-faint" />
+        <input name="l" placeholder={t("+ Gasto (comida, transporte…)")} aria-label={t("Nuevo gasto")} className="w-full outline-none placeholder:text-ink-faint" />
       </form>
       <div className="flex items-baseline justify-between pt-4">
-        <span className="text-ink-muted">Total {euros(total)}</span>
+        <span className="text-ink-muted">{t("Total")}{" "}{euros(total)}</span>
         <span>
-          <b className="font-semibold">{euros(Math.round(total / Math.max(1, people)))}</b> por persona
+          <b className="font-semibold">{euros(Math.round(total / Math.max(1, people)))}</b>{" "}{t("por persona")}
         </span>
       </div>
     </div>
@@ -401,11 +407,12 @@ export function BudgetBlock({
 
 // "4 personas", with − and + to change how many split the budget.
 export function PeopleCount({ pursuitId, blockId, people }: { pursuitId: string; blockId: string; people: number }) {
+  const t = useT();
   const [, start] = useTransition();
   const set = (n: number) => start(() => setBudgetPeople(pursuitId, blockId, n));
   return (
     <span className="flex items-center gap-1.5 text-sm text-ink-faint">
-      <button type="button" onClick={() => people > 1 && set(people - 1)} aria-label="Una persona menos" className="rounded px-1 hover:bg-white hover:text-ink">
+      <button type="button" onClick={() => people > 1 && set(people - 1)} aria-label={t("Una persona menos")} className="rounded px-1 hover:bg-white hover:text-ink">
         −
       </button>
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" aria-hidden>
@@ -413,7 +420,7 @@ export function PeopleCount({ pursuitId, blockId, people }: { pursuitId: string;
         <path d="M3.5 19a5.5 5.5 0 0 1 11 0M16 5.2a3.2 3.2 0 0 1 0 6M17.5 14.2A5.5 5.5 0 0 1 20.5 19" />
       </svg>
       {people} {people === 1 ? "persona" : "personas"}
-      <button type="button" onClick={() => set(people + 1)} aria-label="Una persona más" className="rounded px-1 hover:bg-white hover:text-ink">
+      <button type="button" onClick={() => set(people + 1)} aria-label={t("Una persona más")} className="rounded px-1 hover:bg-white hover:text-ink">
         +
       </button>
     </span>
@@ -422,15 +429,16 @@ export function PeopleCount({ pursuitId, blockId, people }: { pursuitId: string;
 
 // "2 votaciones te esperan": options put to the vote you haven't voted on.
 export function VotesBanner({ pending }: { pending: string[] }) {
+  const t = useT();
   if (pending.length === 0) return null;
   return (
     <div className="flex items-center gap-3 rounded-lg bg-callout px-4 py-3 text-sm">
       <ThumbIcon />
       <span className="flex-1">
         <b className="font-semibold">
-          {pending.length} {pending.length === 1 ? "votación" : "votaciones"}
+          {pending.length === 1 ? t("1 votación") : t("{0} votaciones", { 0: pending.length })}
         </b>{" "}
-        te {pending.length === 1 ? "espera" : "esperan"}
+        {pending.length === 1 ? t("te espera") : t("te esperan")}
       </span>
       <button
         type="button"
@@ -442,7 +450,7 @@ export function VotesBanner({ pending }: { pending: string[] }) {
         }}
         className="rounded-md bg-ink px-3 py-1.5 font-medium text-white"
       >
-        Votar
+        {t("Votar")}
       </button>
     </div>
   );
@@ -450,10 +458,11 @@ export function VotesBanner({ pending }: { pending: string[] }) {
 
 // "Columnas": which columns an options block shows.
 export function ColumnsMenu({ value, onChange }: { value: OptionColumn[]; onChange: (cols: OptionColumn[]) => void }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   return (
     <span className="relative">
-      <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} title="Columnas" aria-label="Columnas" className="grid size-7 place-items-center rounded-md bg-white text-ink-faint shadow-[0_0_0_1px_rgba(55,53,47,.09)] hover:text-ink">
+      <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} title={t("Columnas")} aria-label={t("Columnas")} className="grid size-7 place-items-center rounded-md bg-white text-ink-faint shadow-[0_0_0_1px_rgba(55,53,47,.09)] hover:text-ink">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden>
           <path d="M4 6h16M4 12h16M4 18h16M9 4v16M15 4v16" />
         </svg>
@@ -471,7 +480,7 @@ export function ColumnsMenu({ value, onChange }: { value: OptionColumn[]; onChan
                 onClick={() => onChange(on ? value.filter((x) => x !== c.id) : [...value, c.id])}
                 className="flex w-full items-center justify-between rounded-md px-2 py-1.5 hover:bg-chip"
               >
-                {c.label}
+                {t(c.label)}
                 <span className={`grid size-4 place-items-center rounded border-[1.5px] text-[10px] text-white ${on ? "border-ink bg-ink" : "border-[#c7c5c0]"}`}>{on && "✓"}</span>
               </button>
             );

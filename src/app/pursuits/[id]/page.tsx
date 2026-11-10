@@ -1,3 +1,4 @@
+import { getT } from "@/lib/i18n/server";
 import { ArrowDown } from "@/app/icons";
 import Link from "next/link";
 import { Fragment } from "react";
@@ -59,6 +60,7 @@ export default async function PursuitPage({
     classroomError?: string;
   }>;
 }) {
+  const t = await getT();
   const { id } = await params;
   const { tab, classroomConnected, classroomError, edit } = await searchParams;
   // Old tab links: flashcards now live in the review session.
@@ -348,7 +350,7 @@ export default async function PursuitPage({
 
   return (
     <div className="mx-auto flex w-full max-w-[1200px] flex-1 flex-col gap-5 px-6 py-8 sm:px-12 lg:py-10">
-      <nav className="flex items-center justify-between gap-4 text-sm text-ink-faint" aria-label="Ruta">
+      <nav className="flex items-center justify-between gap-4 text-sm text-ink-faint" aria-label={t("Ruta")}>
         <span className="flex items-center gap-1.5">
           <Link href={backHref} className="hover:text-ink hover:underline">
             {backLabel}
@@ -357,7 +359,7 @@ export default async function PursuitPage({
           <span className="text-ink-muted">{pursuit.title}</span>
         </span>
         <span className="flex items-center gap-1">
-          <a href={`/api/pursuits/${pursuit.id}/export`} title="Exportar" aria-label="Exportar" className="rounded p-1.5 hover:bg-chip hover:text-ink">
+          <a href={`/api/pursuits/${pursuit.id}/export`} title={t("Exportar")} aria-label={t("Exportar")} className="rounded p-1.5 hover:bg-chip hover:text-ink">
             <ArrowDown size={16} className="block" />
           </a>
           {!isOwner && <LeaveButton pursuitId={pursuit.id} />}
@@ -370,7 +372,7 @@ export default async function PursuitPage({
         <span className="flex items-center gap-2">
           {study && (
             <Link href={`/review?mode=flash&pursuit=${pursuit.id}`} className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-white">
-              ▶ Repasar
+              {t("▶ Repasar")}
             </Link>
           )}
           {hasChoices && (
@@ -380,12 +382,12 @@ export default async function PursuitPage({
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                   <path d="M12 15V3M7.5 7.5 12 3l4.5 4.5M5 13v6.5h14V13" />
                 </svg>
-                Compartir
+                {t("Compartir")}
               </Link>
             </>
           )}
           <Link href={editing ? here : `${here}?edit=1`} className={`rounded-md px-3 py-1.5 text-sm ${editing ? "bg-ink font-medium text-white" : "text-ink-faint hover:bg-chip hover:text-ink"}`}>
-            {editing ? "Listo" : "Editar"}
+            {editing ? t("Listo") : t("Editar")}
           </Link>
         </span>
       </header>
@@ -407,7 +409,7 @@ export default async function PursuitPage({
 
       {(classroomConnected || classroomError) && (
         <p className={`rounded-md px-4 py-3 text-sm ${classroomError ? "bg-crimson-soft" : "bg-forest-soft"}`}>
-          {classroomError ? (CLASSROOM_ERROR_COPY[classroomError] ?? "Algo ha fallado. Inténtalo de nuevo.") : "Conectado a Google Classroom."}
+          {classroomError ? (CLASSROOM_ERROR_COPY[classroomError] ?? t("Algo ha fallado. Inténtalo de nuevo.")) : t("Conectado a Google Classroom.")}
         </p>
       )}
 
@@ -416,17 +418,17 @@ export default async function PursuitPage({
           <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]">
             {/* Quick note: a sticky note, so it doesn't get lost among the settings. */}
             <div className="flex flex-col gap-2 self-start rounded-lg bg-[#fdf3c4] p-4 shadow-[0_1px_2px_rgba(0,0,0,.06),0_6px_14px_-8px_rgba(120,90,10,.35)]">
-              <span className="text-xs font-semibold tracking-wide text-[#8a6d1f] uppercase">Nota rápida</span>
+              <span className="text-xs font-semibold tracking-wide text-[#8a6d1f] uppercase">{t("Nota rápida")}</span>
               <StatusNote pursuitId={pursuit.id} initialNote={pursuit.statusNote} />
             </div>
             <div className="flex flex-col gap-4">
               <div id="compartir" className="flex flex-col gap-2 rounded-lg border border-border-subtle bg-white p-4">
-                <span className="text-xs font-semibold tracking-wide text-ink-faint uppercase">Compartido con</span>
+                <span className="text-xs font-semibold tracking-wide text-ink-faint uppercase">{t("Compartido con")}</span>
                 <div className="flex items-center gap-2.5 text-sm">
                   <Faces people={people.slice(0, 1)} size={28} />
                   <span className="text-ink">{pursuit.owner.name ?? pursuit.owner.email}</span>
                   <span className="flex-1" />
-                  <span className="text-xs text-ink-faint">Propietaria</span>
+                  <span className="text-xs text-ink-faint">{t("Propietaria")}</span>
                 </div>
                 {pursuit.members.map((m, i) => (
                   <div key={m.id} className="flex items-center gap-2.5 text-sm">
@@ -438,7 +440,7 @@ export default async function PursuitPage({
                     ) : (
                       <>
                         <span className="flex-1 text-ink">{m.user.name ?? m.user.email}</span>
-                        <span className="text-xs text-ink-faint">{m.role === "VIEWER" ? "Lee" : "Edita"}</span>
+                        <span className="text-xs text-ink-faint">{m.role === "VIEWER" ? t("Lee") : t("Edita")}</span>
                       </>
                     )}
                   </div>
@@ -446,7 +448,7 @@ export default async function PursuitPage({
                 {isOwner && <MemberForm pursuitId={pursuit.id} />}
               </div>
               <div className="flex flex-col gap-2 rounded-lg border border-border-subtle bg-white p-4">
-                <span className="text-xs font-semibold tracking-wide text-ink-faint uppercase">Etiquetas</span>
+                <span className="text-xs font-semibold tracking-wide text-ink-faint uppercase">{t("Etiquetas")}</span>
                 <div className="flex flex-wrap items-center gap-2">
                   {pursuit.pursuitTags.map((t) => (
                     <span key={t.id} className="flex items-center gap-1 rounded-full bg-chip px-3 py-1 text-sm text-ink">
@@ -472,14 +474,14 @@ export default async function PursuitPage({
               />
               <form action={setClassroomEnabled.bind(null, pursuit.id, false)}>
                 <button type="submit" className="self-start text-xs text-ink-faint hover:text-red-500">
-                  Desactivar Google Classroom en esta asignatura
+                  {t("Desactivar Google Classroom en esta asignatura")}
                 </button>
               </form>
             </div>
           ) : (
             <form action={setClassroomEnabled.bind(null, pursuit.id, true)}>
               <button type="submit" className="rounded-md border border-border-subtle px-3 py-1.5 text-sm text-ink-muted hover:border-ink hover:text-ink">
-                + Vincular Google Classroom
+                {t("+ Vincular Google Classroom")}
               </button>
             </form>
           )}

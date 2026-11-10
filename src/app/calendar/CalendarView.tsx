@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/app/LangProvider";
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -45,6 +46,7 @@ export function CalendarView({
   justConnected: string | null;
   folders: Folder[];
 }) {
+  const t = useT();
   const [hiddenFolders, setHiddenFolders] = useState<Set<string>>(new Set());
   const [hiddenKinds, setHiddenKinds] = useState<Set<CalKind>>(new Set());
   const [pop, setPop] = useState<Pop | null>(null);
@@ -76,13 +78,13 @@ export function CalendarView({
       <header className="flex flex-wrap items-center gap-3">
         <h1 className="text-[2rem] leading-tight font-bold tracking-tight sm:text-[2.4rem]">{title}</h1>
         <span className="flex items-center text-sm text-ink-muted">
-          <Link href={nav.prev} aria-label="Anterior" className="rounded px-1.5 py-1 hover:bg-chip">
+          <Link href={nav.prev} aria-label={t("Anterior")} className="rounded px-1.5 py-1 hover:bg-chip">
             ‹
           </Link>
           <Link href={nav.today} className="rounded px-1.5 py-1 hover:bg-chip">
-            Hoy
+            {t("Hoy")}
           </Link>
-          <Link href={nav.next} aria-label="Siguiente" className="rounded px-1.5 py-1 hover:bg-chip">
+          <Link href={nav.next} aria-label={t("Siguiente")} className="rounded px-1.5 py-1 hover:bg-chip">
             ›
           </Link>
         </span>
@@ -90,13 +92,13 @@ export function CalendarView({
           <span className="flex rounded-lg bg-chip p-0.5 text-sm">
             {(["week", "month"] as const).map((v) => (
               <Link key={v} href={v === view ? "#" : switchTo} aria-current={v === view ? "page" : undefined} className={`rounded-md px-3 py-1 ${v === view ? "bg-white shadow-sm" : "text-ink-muted"}`}>
-                {v === "week" ? "Semana" : "Mes"}
+                {v === "week" ? t("Semana") : t("Mes")}
               </Link>
             ))}
           </span>
           <button type="button" onClick={() => setModal(true)} className="flex items-center gap-1.5 rounded-lg border border-border-subtle px-2.5 py-1.5 text-sm text-ink-muted hover:bg-chip">
             <GoogleLogo size={16} />
-            <span className="hidden sm:inline">{google === "on" ? "Sincronizado" : google === "error" ? "Reconectar" : "Google Calendar"}</span>
+            <span className="hidden sm:inline">{google === "on" ? t("Sincronizado") : google === "error" ? t("Reconectar") : t("Google Calendar")}</span>
           </button>
         </span>
       </header>
@@ -117,7 +119,7 @@ export function CalendarView({
         {present.length + calendars.length > 0 && <span className="mx-1 w-px shrink-0 bg-border-subtle" />}
         {KIND_FILTERS.map((k) => (
           <button key={k.kind} type="button" onClick={() => toggle(hiddenKinds, k.kind, setHiddenKinds)} className={chip(!hiddenKinds.has(k.kind))}>
-            {k.label}
+            {t(k.label)}
           </button>
         ))}
       </div>
@@ -126,7 +128,7 @@ export function CalendarView({
         <div className="grid grid-cols-7 border-b border-border-subtle text-xs text-ink-faint">
           {WEEKDAYS.map((d) => (
             <span key={d} className="px-2 py-1.5">
-              {d}
+              {t(d)}
             </span>
           ))}
         </div>
@@ -152,7 +154,7 @@ export function CalendarView({
                       {fromKey(d).getUTCDate()}
                     </span>
                     {isToday && (
-                      <Link href="/review" onClick={(e) => e.stopPropagation()} title="Repaso de hoy" className="hidden size-5 place-items-center rounded bg-accent-soft text-[11px] text-accent sm:grid">
+                      <Link href="/review" onClick={(e) => e.stopPropagation()} title={t("Repaso de hoy")} className="hidden size-5 place-items-center rounded bg-accent-soft text-[11px] text-accent sm:grid">
                         ▤
                       </Link>
                     )}
@@ -186,7 +188,7 @@ export function CalendarView({
       <section className="flex flex-col gap-2 sm:hidden">
         <span className="flex items-center justify-between text-sm">
           <span className="text-ink-faint">{shortDay(selected)}</span>
-          <button type="button" onClick={(e) => setPop({ kind: "add", day: selected, ...anchor(e) })} aria-label="Añadir" className="grid size-7 place-items-center rounded-full bg-chip text-ink-muted">
+          <button type="button" onClick={(e) => setPop({ kind: "add", day: selected, ...anchor(e) })} aria-label={t("Añadir")} className="grid size-7 place-items-center rounded-full bg-chip text-ink-muted">
             +
           </button>
         </span>
@@ -197,7 +199,7 @@ export function CalendarView({
 
       {pop && (
         <>
-          <button type="button" aria-label="Cerrar" className="fixed inset-0 z-40 cursor-default" onClick={() => setPop(null)} />
+          <button type="button" aria-label={t("Cerrar")} className="fixed inset-0 z-40 cursor-default" onClick={() => setPop(null)} />
           <div className="fixed z-50 w-[300px] rounded-xl bg-white p-4 text-sm shadow-[0_0_0_1px_rgba(15,15,15,.05),0_14px_36px_rgba(15,15,15,.18)]" style={{ left: pop.x, top: pop.y }}>
             {pop.kind === "add" ? <AddForm day={pop.day} folders={folders} onDone={() => setPop(null)} /> : <Detail item={pop.item} onDone={() => setPop(null)} />}
           </div>
@@ -209,6 +211,7 @@ export function CalendarView({
 }
 
 function AddForm({ day, folders, onDone }: { day: string; folders: Folder[]; onDone: () => void }) {
+  const t = useT();
   const router = useRouter();
   const [form, setForm] = useState<NewEvent>({ title: "", kind: "exam", day, time: "", pursuitId: folders[0]?.id ?? null, unitId: null });
   const [error, setError] = useState<string | null>(null);
@@ -234,28 +237,28 @@ function AddForm({ day, folders, onDone }: { day: string; folders: Folder[]; onD
       }}
     >
       <span className="text-xs text-ink-faint">{shortDay(day)}</span>
-      <input autoFocus value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Examen UD1, entregar memoria…" aria-label="Qué" className={field} />
+      <input autoFocus value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder={t("Examen UD1, entregar memoria…")} aria-label={t("Qué")} className={field} />
       <span className="flex rounded-md bg-chip p-0.5 text-xs">
         {kinds.map((k) => (
           <button key={k.kind} type="button" onClick={() => setForm({ ...form, kind: k.kind })} className={`flex-1 rounded px-2 py-1 ${form.kind === k.kind ? "bg-white shadow-sm" : "text-ink-muted"}`}>
-            {k.label}
+            {t(k.label)}
           </button>
         ))}
       </span>
       <span className="flex gap-2">
-        <select value={form.pursuitId ?? ""} onChange={(e) => setForm({ ...form, pursuitId: e.target.value || null, unitId: null })} aria-label="Carpeta" className={field}>
-          <option value="">Sin carpeta</option>
+        <select value={form.pursuitId ?? ""} onChange={(e) => setForm({ ...form, pursuitId: e.target.value || null, unitId: null })} aria-label={t("Carpeta")} className={field}>
+          <option value="">{t("Sin carpeta")}</option>
           {folders.map((f) => (
             <option key={f.id} value={f.id}>
               {f.title}
             </option>
           ))}
         </select>
-        <input type="time" value={form.time ?? ""} onChange={(e) => setForm({ ...form, time: e.target.value })} aria-label="Hora (opcional)" className={`${field} w-24 shrink-0`} />
+        <input type="time" value={form.time ?? ""} onChange={(e) => setForm({ ...form, time: e.target.value })} aria-label={t("Hora (opcional)")} className={`${field} w-24 shrink-0`} />
       </span>
       {form.kind === "exam" && units.length > 0 && (
-        <select value={form.unitId ?? ""} onChange={(e) => setForm({ ...form, unitId: e.target.value || null })} aria-label="Qué entra" className={field}>
-          <option value="">Qué entra…</option>
+        <select value={form.unitId ?? ""} onChange={(e) => setForm({ ...form, unitId: e.target.value || null })} aria-label={t("Qué entra")} className={field}>
+          <option value="">{t("Qué entra…")}</option>
           {units.map((u) => (
             <option key={u.id} value={u.id}>
               {u.name}
@@ -265,13 +268,14 @@ function AddForm({ day, folders, onDone }: { day: string; folders: Folder[]; onD
       )}
       {error && <span className="text-xs text-red-500">{error}</span>}
       <button type="submit" disabled={pending || !form.title.trim()} className="self-end rounded-md bg-ink px-3 py-1.5 text-sm text-white disabled:opacity-40">
-        Añadir
+        {t("Añadir")}
       </button>
     </form>
   );
 }
 
 function Detail({ item, onDone }: { item: CalItem; onDone: () => void }) {
+  const t = useT();
   const router = useRouter();
   const [, start] = useTransition();
   const known = item.dots?.filter((d) => d === "known").length ?? 0;
@@ -293,38 +297,38 @@ function Detail({ item, onDone }: { item: CalItem; onDone: () => void }) {
         {item.title}
         {item.folder && <span className="font-normal text-ink-muted"> · {item.folder}</span>}
       </b>
-      {item.kind === "due" && <span className="text-xs text-ink-faint">Entrega</span>}
+      {item.kind === "due" && <span className="text-xs text-ink-faint">{t("Entrega")}</span>}
       {item.dots && item.dots.length > 0 && (
         <>
           <span className="flex items-center justify-between text-ink-muted">
-            Lo que entra{item.unit && ` · ${item.unit}`}
-            <span className="flex gap-1" aria-label={`${known} de ${item.dots.length} sabidos`}>
+            {t("Lo que entra")}{item.unit && ` · ${item.unit}`}
+            <span className="flex gap-1" aria-label={t("{0} de {1} sabidos", { 0: known, 1: item.dots.length })}>
               {item.dots.slice(0, 12).map((d, i) => (
                 <i key={i} className="size-2 rounded-full border-[1.5px]" style={{ borderColor: item.color, background: d === "known" ? item.color : "transparent", opacity: d === "fading" ? 0.4 : 1 }} />
               ))}
             </span>
           </span>
-          <span className="text-xs text-ink-faint">Repásalo estos días desde aquí.</span>
+          <span className="text-xs text-ink-faint">{t("Repásalo estos días desde aquí.")}</span>
         </>
       )}
       <span className="flex items-center gap-2 pt-1">
         {item.kind === "exam" && item.folderId && (
           <Link
             href={`/review?pursuit=${item.folderId}${item.unitId ? `&unit=${item.unitId}` : ""}`}
-            title="Repasar lo que entra"
-            aria-label="Repasar lo que entra"
+            title={t("Repasar lo que entra")}
+            aria-label={t("Repasar lo que entra")}
             className="grid size-10 place-items-center rounded-full bg-accent text-white"
           >
             ▤
           </Link>
         )}
         {item.kind === "task" && (
-          <button type="button" onClick={() => act(() => toggleEventDone(item.id))} title={item.done ? "Pendiente" : "Hecha"} aria-label="Hecha" className="grid size-10 place-items-center rounded-full bg-accent text-white">
+          <button type="button" onClick={() => act(() => toggleEventDone(item.id))} title={item.done ? t("Pendiente") : t("Hecha")} aria-label={t("Hecha")} className="grid size-10 place-items-center rounded-full bg-accent text-white">
             <CheckIcon size={18} className="block" />
           </button>
         )}
         {item.href && (
-          <Link href={item.href} title="Abrir" aria-label="Abrir" className="grid size-10 place-items-center rounded-full border border-border-subtle text-ink-muted hover:bg-chip">
+          <Link href={item.href} title={t("Abrir")} aria-label={t("Abrir")} className="grid size-10 place-items-center rounded-full border border-border-subtle text-ink-muted hover:bg-chip">
             <ArrowUpRight size={16} />
           </Link>
         )}
@@ -332,8 +336,8 @@ function Detail({ item, onDone }: { item: CalItem; onDone: () => void }) {
           <button
             type="button"
             onClick={() => window.confirm(`¿Quitar "${item.title}"?`) && act(() => removeEvent(item.id))}
-            title="Quitar"
-            aria-label="Quitar"
+            title={t("Quitar")}
+            aria-label={t("Quitar")}
             className="ml-auto rounded-md p-2 text-ink-faint hover:bg-chip hover:text-red-600"
           >
             <TrashIcon size={15} />

@@ -1,3 +1,4 @@
+import { getT } from "@/lib/i18n/server";
 import { ArrowLeft } from "@/app/icons";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -13,6 +14,7 @@ export default async function ProjectPage({
 }: {
   params: Promise<{ id: string; projectId: string }>;
 }) {
+  const t = await getT();
   const { id: pursuitId, projectId } = await params;
 
   const session = await auth();
@@ -41,7 +43,7 @@ export default async function ProjectPage({
         href={`/pursuits/${pursuitId}?tab=projects`}
         className="text-sm text-ink-muted hover:underline"
       >
-        <ArrowLeft /> Proyectos
+        <ArrowLeft />{" "}{t("Proyectos")}
       </Link>
       <ProjectBoard
         pursuitId={pursuitId}

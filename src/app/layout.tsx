@@ -11,6 +11,9 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { cookies } from "next/headers";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
+import { getLang } from "@/lib/i18n/server";
+import { makeT } from "@/lib/i18n";
+import { LangProvider } from "./LangProvider";
 
 const appFont = Inter({
   variable: "--font-app",
@@ -57,10 +60,13 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
     : [null, []];
   // Sidebar collapsed to icons? Remembered in a cookie so it renders that way.
   const collapsed = (await cookies()).get("sidebar")?.value === "collapsed";
+  const lang = await getLang();
+  const t = makeT(lang);
 
   return (
-    <html lang="es" data-sidebar={collapsed ? "collapsed" : undefined} className={`${appFont.variable} h-full antialiased`}>
+    <html lang={lang} data-sidebar={collapsed ? "collapsed" : undefined} className={`${appFont.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
+        <LangProvider lang={lang}>
         <RegisterServiceWorker />
         <CoverDefs />
         {session?.user && user && (
@@ -73,28 +79,29 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         )}
         <div className={`flex flex-1 flex-col ${session?.user ? "app-pad pb-16 lg:pb-0" : ""}`}>{children}</div>
         <footer className={`px-6 py-4 text-center text-xs text-ink-faint ${session?.user ? "app-pad hidden lg:block" : ""}`}>
-          Hecho por{" "}
+          {t("Hecho por")}{" "}
           <a
             href="https://github.com/lagoanadia"
             target="_blank"
             rel="noopener noreferrer"
             className="hover:underline"
           >
-            Nadia
+            {t("Nadia")}
           </a>{" "}
           · © {new Date().getFullYear()}{" "}
           <Link href="/web" className="hover:underline">
-            Synaptic
+            {t("Synaptic")}
           </Link>{" "}
           ·{" "}
           <Link href="/privacy" className="hover:underline">
-            Privacidad
+            {t("Privacidad")}
           </Link>{" "}
           ·{" "}
           <Link href="/terms" className="hover:underline">
-            Términos
+            {t("Términos")}
           </Link>
         </footer>
+        </LangProvider>
       </body>
     </html>
   );

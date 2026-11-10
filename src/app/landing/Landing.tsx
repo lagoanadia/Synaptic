@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AuthMenu } from "./AuthMenu";
+import { LangPicker } from "../LangPicker";
 import { Motion } from "./Motion";
 import { Stage, Thing } from "./Scene";
 import { lndHand, lndSerif } from "./fonts";
@@ -48,6 +49,7 @@ export function Landing({ signedIn = false }: { signedIn?: boolean }) {
           <a href="#herramientas" className="hidden opacity-90 hover:opacity-100 md:inline">Herramientas</a>
           <a href="#sobre" className="hidden opacity-90 hover:opacity-100 md:inline">Sobre Synaptic</a>
           <span className="flex-1" />
+          <LangPicker className="!bg-white/85" />
           <Enter signedIn={signedIn} align="right" className="rounded-full bg-white px-[18px] py-2 text-[13px] font-semibold text-[#1c6fd1]">
             {signedIn ? "Mi espacio" : "Entrar"}
           </Enter>

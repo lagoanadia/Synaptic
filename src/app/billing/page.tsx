@@ -1,3 +1,4 @@
+import { getT } from "@/lib/i18n/server";
 import { ArrowLeft } from "@/app/icons";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -24,6 +25,7 @@ export default async function BillingPage({
 }: {
   searchParams: Promise<{ success?: string; canceled?: string; error?: string }>;
 }) {
+  const t = await getT();
   if (!BILLING) notFound();
   const session = await auth();
   if (!session?.user?.id) {
@@ -37,37 +39,36 @@ export default async function BillingPage({
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-6 py-12">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Facturación</h1>
+        <h1 className="text-2xl font-semibold">{t("Facturación")}</h1>
         <Link href="/pursuits" className="text-sm text-ink-muted hover:underline">
-          <ArrowLeft /> Volver
+          <ArrowLeft />{" "}{t("Volver")}
         </Link>
       </div>
 
       {success && (
         <p className="rounded-xl bg-forest-soft px-4 py-3 text-sm text-ink">
-          Pago recibido — puede tardar unos segundos en aparecer abajo si tu plan
-          sigue diciendo Gratis.
+          {t("Pago recibido — puede tardar unos segundos en aparecer abajo si tu plan sigue diciendo Gratis.")}
         </p>
       )}
       {canceled && (
         <p className="rounded-xl bg-chip px-4 py-3 text-sm text-ink-muted">
-          Pago cancelado — no se te ha cobrado.
+          {t("Pago cancelado — no se te ha cobrado.")}
         </p>
       )}
       {error && (
         <p className="rounded-xl bg-crimson-soft px-4 py-3 text-sm text-ink">
-          {ERROR_COPY[error] ?? "Algo ha fallado. Inténtalo en unos minutos."}
+          {ERROR_COPY[error] ?? t("Algo ha fallado. Inténtalo en unos minutos.")}
         </p>
       )}
 
       <div className="flex flex-col gap-2 rounded-2xl border border-border-subtle bg-white p-6">
-        <span className="text-xs font-medium text-ink-muted">Plan actual</span>
+        <span className="text-xs font-medium text-ink-muted">{t("Plan actual")}</span>
         <span className="text-xl font-semibold">
-          {current.label} <span className="text-ink-muted">· {current.price}</span>
+          {t(current.label)} <span className="text-ink-muted">· {current.price}</span>
         </span>
         {user.plan !== "FREE" && user.stripeCurrentPeriodEnd && (
           <span className="text-xs text-ink-faint">
-            Se renueva el {user.stripeCurrentPeriodEnd.toLocaleDateString("es-ES", { timeZone: "UTC" })}
+            {t("Se renueva el")}{" "}{user.stripeCurrentPeriodEnd.toLocaleDateString("es-ES", { timeZone: "UTC" })}
           </span>
         )}
         {user.stripeCustomerId && (
@@ -76,7 +77,7 @@ export default async function BillingPage({
               type="submit"
               className="rounded-full border border-border-subtle px-4 py-2 text-sm font-medium hover:bg-chip"
             >
-              Gestionar facturación
+              {t("Gestionar facturación")}
             </button>
           </form>
         )}
@@ -85,9 +86,9 @@ export default async function BillingPage({
       {user.plan !== "PRO" && (
         <div className="flex items-center justify-between rounded-2xl border border-border-subtle bg-white p-6">
           <div>
-            <p className="font-semibold">Student Pro — 6 $/mes</p>
+            <p className="font-semibold">{t("Student Pro — 6 $/mes")}</p>
             <p className="text-sm text-ink-muted">
-              Tarjetas ilimitadas, preguntas a la IA ilimitadas y compartir sin límite.
+              {t("Tarjetas ilimitadas, preguntas a la IA ilimitadas y compartir sin límite.")}
             </p>
           </div>
           <form action={createCheckoutSession.bind(null, "PRO")}>
@@ -95,7 +96,7 @@ export default async function BillingPage({
               type="submit"
               className="rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90"
             >
-              Hazte Pro
+              {t("Hazte Pro")}
             </button>
           </form>
         </div>
@@ -104,28 +105,28 @@ export default async function BillingPage({
       {user.plan !== "TEAM" && (
         <div className="flex items-center justify-between rounded-2xl border border-border-subtle bg-white p-6">
           <div>
-            <p className="font-semibold">Team — 10 $/mes</p>
-            <p className="text-sm text-ink-muted">Todo lo de Pro, para grupos de estudio.</p>
+            <p className="font-semibold">{t("Team — 10 $/mes")}</p>
+            <p className="text-sm text-ink-muted">{t("Todo lo de Pro, para grupos de estudio.")}</p>
           </div>
           <form action={createCheckoutSession.bind(null, "TEAM")}>
             <button
               type="submit"
               className="rounded-full border border-ink px-5 py-2.5 text-sm font-semibold hover:bg-chip"
             >
-              Elegir Team
+              {t("Elegir Team")}
             </button>
           </form>
         </div>
       )}
 
       <p className="text-center text-xs text-ink-faint">
-        Al suscribirte aceptas los{" "}
+        {t("Al suscribirte aceptas los")}{" "}
         <Link href="/terms" className="hover:underline">
-          Términos del servicio
+          {t("Términos del servicio")}
         </Link>{" "}
-        y la{" "}
+        {t("y la")}{" "}
         <Link href="/privacy" className="hover:underline">
-          Política de privacidad
+          {t("Política de privacidad")}
         </Link>
         .
       </p>

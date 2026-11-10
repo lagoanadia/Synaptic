@@ -1,3 +1,4 @@
+import { getT } from "@/lib/i18n/server";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
@@ -7,6 +8,7 @@ export const metadata = { title: "Entrar", alternates: { canonical: "/login" } }
 
 // Straight to signing in: the landing's blue sheet and the two buttons.
 export default async function Login() {
+  const t = await getT();
   if ((await auth())?.user?.id) redirect("/pursuits");
   return (
     <main
@@ -23,9 +25,9 @@ export default async function Login() {
         <Link href="/web" className="flex items-center gap-2 text-[15px] font-semibold text-ink">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/logo-mark.png" alt="" width={24} height={24} className="rounded-md" />
-          Synaptic Notes
+          {t("Synaptic Notes")}
         </Link>
-        <h1 className="text-xl font-semibold text-ink">Entrar</h1>
+        <h1 className="text-xl font-semibold text-ink">{t("Entrar")}</h1>
         <div className="-mx-2 flex flex-col">
           <ProviderButtons />
         </div>

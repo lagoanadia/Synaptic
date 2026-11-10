@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/app/LangProvider";
 import { LogoMark } from "@/app/Logo";
 import { useEffect, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -30,6 +31,7 @@ const splitList = (s: string) => s.split(/[,\n]/).map((x) => x.trim()).filter(Bo
 // (Classroom first), this week's topic, your covers. Every step can be
 // skipped; the answers become your notebooks, folders and a first page.
 export function Onboarding({ name }: { name: string | null }) {
+  const t = useT();
   const router = useRouter();
   const params = useSearchParams();
   const [step, setStep] = useState(0);
@@ -111,7 +113,7 @@ export function Onboarding({ name }: { name: string | null }) {
       <header className="flex items-center justify-between px-5 py-5 sm:px-10">
         <span className="flex items-center gap-2 text-sm font-semibold">
           <LogoMark size={20} />
-          <span className="hidden sm:inline">Synaptic</span>
+          <span className="hidden sm:inline">{t("Synaptic")}</span>
         </span>
         <span className="flex gap-1.5" aria-hidden>
           {[0, 1, 2, 3].map((i) => (
@@ -119,7 +121,7 @@ export function Onboarding({ name }: { name: string | null }) {
           ))}
         </span>
         <button type="button" onClick={() => start(async () => { await skipOnboarding(); router.refresh(); })} className="text-sm text-ink-faint hover:text-ink">
-          Saltar
+          {t("Saltar")}
         </button>
       </header>
 
@@ -139,11 +141,11 @@ export function Onboarding({ name }: { name: string | null }) {
               ))}
             </div>
             <span className="size-6 animate-spin rounded-full border-2 border-ink/15 border-t-ink/60" />
-            <span className="text-sm text-ink-faint">Preparando tu espacio…</span>
+            <span className="text-sm text-ink-faint">{t("Preparando tu espacio…")}</span>
           </div>
         ) : step === 0 ? (
           <>
-            <h1 className="text-center text-[2rem] leading-tight font-bold tracking-tight sm:text-[2.4rem]">{name ? `Hola, ${name.split(" ")[0]}. ¿Qué haces?` : "¿Qué haces?"}</h1>
+            <h1 className="text-center text-[2rem] leading-tight font-bold tracking-tight sm:text-[2.4rem]">{name ? t("Hola, {0}. ¿Qué haces?", { 0: name.split(" ")[0] }) : t("¿Qué haces?")}</h1>
             <div className="grid w-full max-w-[580px] grid-cols-2 gap-3 sm:grid-cols-3">
               {ROLES.map((r) => {
                 const on = s.roles.includes(r.key);
@@ -158,7 +160,7 @@ export function Onboarding({ name }: { name: string | null }) {
                     <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" aria-hidden>
                       <path d={ICON[r.key]} />
                     </svg>
-                    {r.label}
+                    {t(r.label)}
                     {on && (
                       <span className="absolute top-2.5 right-2.5 grid size-5 place-items-center rounded-full bg-ink text-white">
                         <CheckIcon size={12} className="block" />
@@ -169,13 +171,13 @@ export function Onboarding({ name }: { name: string | null }) {
               })}
             </div>
             <div className="flex items-center gap-5">
-              <span className="hidden text-sm text-ink-faint sm:inline">Tu espacio</span>
+              <span className="hidden text-sm text-ink-faint sm:inline">{t("Tu espacio")}</span>
               {notebooks.map((n, i) => (
                 <span key={n.name} className="flex flex-col items-center gap-1.5 text-sm font-medium">
                   <Notebook cover={coverOf(n.name, i)} name={n.name} width={70} />
                   <span>
                     {n.name}
-                    {n.study && <span className="ml-1 text-xs text-accent" title="Herramientas de estudio">▤</span>}
+                    {n.study && <span className="ml-1 text-xs text-accent" title={t("Herramientas de estudio")}>▤</span>}
                   </span>
                 </span>
               ))}
@@ -184,7 +186,7 @@ export function Onboarding({ name }: { name: string | null }) {
           </>
         ) : step === 1 ? (
           <>
-            <h1 className="text-[2rem] leading-tight font-bold tracking-tight sm:text-[2.4rem]">{home.study ? "Tus asignaturas" : `¿Qué hay en ${home.name}?`}</h1>
+            <h1 className="text-[2rem] leading-tight font-bold tracking-tight sm:text-[2.4rem]">{home.study ? t("Tus asignaturas") : t("¿Qué hay en {0}?", { 0: home.name })}</h1>
             <div className="flex w-full max-w-[520px] flex-col gap-3">
               {home.study && (
                 <div className={`${card} flex items-center gap-4 px-5 py-4 ${classroom?.connected ? "border-[#1e8e3e] ring-1 ring-[#1e8e3e]" : "border-[#ebe7dd]"}`}>
@@ -194,8 +196,8 @@ export function Onboarding({ name }: { name: string | null }) {
                     <path d="M7.5 17c.8-2 2.6-3 4.5-3s3.7 1 4.5 3" fill="#fff" />
                   </svg>
                   <span className="flex flex-1 flex-col">
-                    <b className="text-[15px]">Google Classroom</b>
-                    <span className="text-xs text-ink-faint">Cursos, unidades y entregas</span>
+                    <b className="text-[15px]">{t("Google Classroom")}</b>
+                    <span className="text-xs text-ink-faint">{t("Cursos, unidades y entregas")}</span>
                   </span>
                   {classroom?.connected ? (
                     <span className="grid size-7 place-items-center rounded-full bg-[#1e8e3e] text-white">
@@ -203,7 +205,7 @@ export function Onboarding({ name }: { name: string | null }) {
                     </span>
                   ) : (
                     <a href="/api/classroom/connect?pursuitId=onboarding" onClick={rememberForClassroom} className="rounded-lg bg-ink px-3 py-1.5 text-sm text-white">
-                      Conectar
+                      {t("Conectar")}
                     </a>
                   )}
                 </div>
@@ -222,19 +224,19 @@ export function Onboarding({ name }: { name: string | null }) {
                         />
                         <Folder cover={folderCover(c.name)} width={36} />
                         <b className="min-w-0 flex-1 truncate text-sm">{c.name}</b>
-                        {looksLikeProgramming(c.name) && <span className="rounded bg-chip px-1.5 py-0.5 font-mono text-[11px] text-ink-muted">&lt;/&gt; Retos</span>}
+                        {looksLikeProgramming(c.name) && <span className="rounded bg-chip px-1.5 py-0.5 font-mono text-[11px] text-ink-muted">{t("</> Retos")}</span>}
                       </label>
                     );
                   })}
                 </div>
               )}
               <label className="flex items-center gap-3">
-                {home.study && <span className="shrink-0 text-sm text-ink-faint">o escríbelas</span>}
+                {home.study && <span className="shrink-0 text-sm text-ink-faint">{t("o escríbelas")}</span>}
                 <input
                   value={s.typed}
                   onChange={(e) => setS({ ...s, typed: e.target.value })}
-                  placeholder={home.study ? "Bases de datos, Sistemas…" : "Portfolio, una web…"}
-                  aria-label="Separadas por comas"
+                  placeholder={home.study ? t("Bases de datos, Sistemas…") : t("Portfolio, una web…")}
+                  aria-label={t("Separadas por comas")}
                   className="min-w-0 flex-1 rounded-xl border border-[#ebe7dd] bg-white px-4 py-2.5 text-sm"
                 />
               </label>
@@ -243,19 +245,19 @@ export function Onboarding({ name }: { name: string | null }) {
           </>
         ) : step === 2 ? (
           <>
-            <h1 className="text-center text-[2rem] leading-tight font-bold tracking-tight sm:text-[2.4rem]">¿Qué estás aprendiendo esta semana?</h1>
+            <h1 className="text-center text-[2rem] leading-tight font-bold tracking-tight sm:text-[2.4rem]">{t("¿Qué estás aprendiendo esta semana?")}</h1>
             <div className="flex w-full max-w-[620px] items-center gap-2 rounded-xl border border-[#ebe7dd] bg-white py-2 pr-2 pl-5 shadow-[0_6px_20px_rgba(55,53,47,.06)]">
               <input
                 autoFocus
                 value={s.topic}
                 onChange={(e) => setS({ ...s, topic: e.target.value })}
                 onKeyDown={(e) => e.key === "Enter" && setStep(3)}
-                placeholder="Joins en SQL"
-                aria-label="Tema"
+                placeholder={t("Joins en SQL")}
+                aria-label={t("Tema")}
                 className="min-w-0 flex-1 bg-transparent py-1.5 text-lg outline-none"
               />
               {subjects.length > 0 && (
-                <select value={s.subject || subjects[0]} onChange={(e) => setS({ ...s, subject: e.target.value })} aria-label="Asignatura" className="max-w-[45%] rounded-md bg-chip px-2 py-1.5 text-sm">
+                <select value={s.subject || subjects[0]} onChange={(e) => setS({ ...s, subject: e.target.value })} aria-label={t("Asignatura")} className="max-w-[45%] rounded-md bg-chip px-2 py-1.5 text-sm">
                   {subjects.map((t) => (
                     <option key={t}>{t}</option>
                   ))}
@@ -263,14 +265,14 @@ export function Onboarding({ name }: { name: string | null }) {
               )}
             </div>
             {/* What it will make: a page, then cards from it. */}
-            <div className={`flex gap-3 transition-opacity ${s.topic.trim() ? "opacity-100" : "opacity-30"}`} aria-label="Se creará una página y tarjetas">
-              <span className="grid size-14 place-items-center rounded-xl border border-[#ebe7dd] bg-white text-ink-muted" title="Una página">
+            <div className={`flex gap-3 transition-opacity ${s.topic.trim() ? "opacity-100" : "opacity-30"}`} aria-label={t("Se creará una página y tarjetas")}>
+              <span className="grid size-14 place-items-center rounded-xl border border-[#ebe7dd] bg-white text-ink-muted" title={t("Una página")}>
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" aria-hidden>
                   <path d="M6 3h8l4 4v14H6z" />
                   <path d="M14 3v4h4M9 12h6M9 16h6" />
                 </svg>
               </span>
-              <span className="grid size-14 place-items-center rounded-xl border border-[#ebe7dd] bg-white text-ink-muted" title="Tarjetas">
+              <span className="grid size-14 place-items-center rounded-xl border border-[#ebe7dd] bg-white text-ink-muted" title={t("Tarjetas")}>
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" aria-hidden>
                   <rect x="4" y="7" width="13" height="13" rx="2" />
                   <path d="M8 4h10a2 2 0 0 1 2 2v10" />
@@ -281,7 +283,7 @@ export function Onboarding({ name }: { name: string | null }) {
           </>
         ) : (
           <>
-            <h1 className="text-[2rem] leading-tight font-bold tracking-tight sm:text-[2.4rem]">Elige tus tapas</h1>
+            <h1 className="text-[2rem] leading-tight font-bold tracking-tight sm:text-[2.4rem]">{t("Elige tus tapas")}</h1>
             <div className="flex flex-wrap justify-center gap-10">
               {notebooks.map((n, i) => (
                 <div key={n.name} className="flex flex-col items-center gap-4">
@@ -300,8 +302,8 @@ export function Onboarding({ name }: { name: string | null }) {
                     ))}
                     <button
                       type="button"
-                      title="Al azar"
-                      aria-label="Al azar"
+                      title={t("Al azar")}
+                      aria-label={t("Al azar")}
                       onClick={() => setS({ ...s, covers: { ...s.covers, [n.name]: NOTEBOOK_COVERS[Math.floor(Math.random() * NOTEBOOK_COVERS.length)] } })}
                       className="px-1 text-ink-faint hover:text-ink"
                     >

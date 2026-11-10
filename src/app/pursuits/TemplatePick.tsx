@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/app/LangProvider";
 export type Template = "study" | "projects" | "general";
 
 const StudyIcon = () => (
@@ -33,23 +34,24 @@ export const TEMPLATES: { id: Template; icon: () => React.ReactElement; label: s
 // The notebook templates: icon over name, three in a row; the chosen
 // one's hint goes underneath on one line (not in compact spots).
 export function TemplatePick({ value, onChange, compact = false }: { value: Template; onChange: (t: Template) => void; compact?: boolean }) {
+  const t = useT();
   const hint = TEMPLATES.find((t) => t.id === value)?.hint;
   return (
     <div className="flex flex-col gap-1.5">
-      <div className={`grid grid-cols-3 gap-1.5 ${compact ? "text-[11px]" : "text-sm"}`} role="radiogroup" aria-label="Plantilla">
-        {TEMPLATES.map((t) => (
+      <div className={`grid grid-cols-3 gap-1.5 ${compact ? "text-[11px]" : "text-sm"}`} role="radiogroup" aria-label={t("Plantilla")}>
+        {TEMPLATES.map((item) => (
           <button
-            key={t.id}
+            key={item.id}
             type="button"
             role="radio"
-            aria-checked={value === t.id}
-            title={t.hint}
+            aria-checked={value === item.id}
+            title={t(item.hint)}
             onMouseDown={(e) => e.preventDefault()}
-            onClick={() => onChange(t.id)}
-            className={`flex min-w-0 flex-col items-center gap-1 rounded-md px-1 ${compact ? "py-1.5" : "py-2.5"} font-medium ${value === t.id ? "bg-ink text-white" : "bg-chip text-ink-muted hover:text-ink"}`}
+            onClick={() => onChange(item.id)}
+            className={`flex min-w-0 flex-col items-center gap-1 rounded-md px-1 ${compact ? "py-1.5" : "py-2.5"} font-medium ${value === item.id ? "bg-ink text-white" : "bg-chip text-ink-muted hover:text-ink"}`}
           >
-            <t.icon />
-            <span className="max-w-full truncate">{t.label}</span>
+            <item.icon />
+            <span className="max-w-full truncate">{t(item.label)}</span>
           </button>
         ))}
       </div>

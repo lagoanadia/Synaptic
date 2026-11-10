@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/app/LangProvider";
 import { MicIcon, StopIcon } from "@/app/icons";
 import { useActionState, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -32,6 +33,7 @@ export function NewDumpForm({
   // New pages: the unit to create it in.
   sectionId?: string | null;
 }) {
+  const t = useT();
   const router = useRouter();
   const isEditing = dumpId !== undefined;
   const [state, formAction, isPending] = useActionState(
@@ -165,7 +167,7 @@ export function NewDumpForm({
         type="button"
         onClick={() => pptxInput.current?.click()}
         disabled={!!busy}
-        title="Añadir las diapositivas de un PowerPoint como texto"
+        title={t("Añadir las diapositivas de un PowerPoint como texto")}
         className="rounded-md px-2 py-1 text-sm text-ink-muted hover:bg-chip hover:text-ink disabled:opacity-50"
       >
         PPT
@@ -174,7 +176,7 @@ export function NewDumpForm({
         type="button"
         onClick={() => pdfInput.current?.click()}
         disabled={!!busy}
-        title="Añadir las páginas de un PDF como imágenes"
+        title={t("Añadir las páginas de un PDF como imágenes")}
         className="rounded-md px-2 py-1 text-sm text-ink-muted hover:bg-chip hover:text-ink disabled:opacity-50"
       >
         PDF
@@ -183,10 +185,10 @@ export function NewDumpForm({
         type="button"
         onClick={recordingSince ? stopRecording : startRecording}
         disabled={!!busy && !recordingSince}
-        title={recordingSince ? "Parar y transcribir" : "Grabar una nota de voz"}
+        title={recordingSince ? t("Parar y transcribir") : t("Grabar una nota de voz")}
         className={`rounded-md px-2 py-1 text-sm ${recordingSince ? "bg-crimson text-white" : "text-ink-muted hover:bg-chip hover:text-ink"}`}
       >
-        {recordingSince ? <><StopIcon size={14} /> Parar</> : <MicIcon />}
+        {recordingSince ? <><StopIcon size={14} />{" "}{t("Parar")}</> : <MicIcon />}
       </button>
     </>
   );
@@ -222,10 +224,10 @@ export function NewDumpForm({
 
       {draftToOffer && (
         <div className="flex items-center justify-between rounded-xl border border-accent bg-accent-soft px-3 py-2 text-xs">
-          <span>Tienes un borrador sin guardar de antes.</span>
+          <span>{t("Tienes un borrador sin guardar de antes.")}</span>
           <div className="flex gap-3">
             <button type="button" onClick={() => restoreDraft(draftToOffer)} className="font-semibold text-accent">
-              Recuperar
+              {t("Recuperar")}
             </button>
             <button
               type="button"
@@ -237,7 +239,7 @@ export function NewDumpForm({
               }}
               className="text-ink-faint hover:text-ink"
             >
-              Descartar
+              {t("Descartar")}
             </button>
           </div>
         </div>
@@ -253,13 +255,13 @@ export function NewDumpForm({
       />
 
       <div className="flex items-center justify-between gap-3">
-        <span className="text-xs text-ink-muted">{busy ?? (recordingSince ? "Grabando…" : "")}</span>
+        <span className="text-xs text-ink-muted">{busy ?? (recordingSince ? t("Grabando…") : "")}</span>
         <button
           type="submit"
           disabled={isPending || !!busy || !!recordingSince}
           className="rounded-full bg-ink px-6 py-2.5 text-sm font-semibold text-white transition-transform hover:-translate-y-0.5 disabled:opacity-50"
         >
-          {isPending ? "Guardando…" : isEditing ? "Guardar cambios" : "Guardar"}
+          {isPending ? t("Guardando…") : isEditing ? t("Guardar cambios") : t("Guardar")}
         </button>
       </div>
       {(state.error || error) && <p className="text-xs text-red-500">{state.error ?? error}</p>}

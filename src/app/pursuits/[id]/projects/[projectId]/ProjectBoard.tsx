@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/app/LangProvider";
 import { useRef, useState, useTransition } from "react";
 import { upload } from "@vercel/blob/client";
 import { pdfToImagePages } from "@/lib/pdfToImages";
@@ -68,6 +69,7 @@ function Card({
   onDragOverCard: (e: React.DragEvent) => void;
   onDropOnCard: (e: React.DragEvent) => void;
 }) {
+  const t = useT();
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(card.title);
   const [description, setDescription] = useState(card.description ?? "");
@@ -115,7 +117,7 @@ function Card({
             disabled={isPending}
             onChange={(e) => setDescription(e.target.value)}
             onBlur={save}
-            placeholder="Descripción (opcional)"
+            placeholder={t("Descripción (opcional)")}
             rows={2}
             className="w-full resize-none rounded-md border border-border-subtle px-2 py-1 text-xs text-ink-muted outline-none disabled:opacity-50"
           />
@@ -143,6 +145,7 @@ function Card({
 }
 
 function AddCardForm({ onAdd }: { onAdd: (title: string) => void }) {
+  const t = useT();
   const [adding, setAdding] = useState(false);
   const ref = useRef<HTMLInputElement>(null);
 
@@ -153,7 +156,7 @@ function AddCardForm({ onAdd }: { onAdd: (title: string) => void }) {
         onClick={() => setAdding(true)}
         className="self-start text-xs text-ink-faint hover:text-ink"
       >
-        + Añadir tarjeta
+        {t("+ Añadir tarjeta")}
       </button>
     );
   }
@@ -171,7 +174,7 @@ function AddCardForm({ onAdd }: { onAdd: (title: string) => void }) {
         ref={ref}
         autoFocus
         type="text"
-        placeholder="Título de la tarjeta"
+        placeholder={t("Título de la tarjeta")}
         onBlur={() => setAdding(false)}
         className="w-full rounded-md border border-border-subtle bg-white px-2.5 py-1.5 text-sm outline-none"
       />
@@ -188,6 +191,7 @@ export function ProjectBoard({
   project: { id: string; title: string; dueDate: string | null };
   cards: CardForDisplay[];
 }) {
+  const t = useT();
   const projectId = project.id;
   const [isPending, startTransition] = useTransition();
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -347,7 +351,7 @@ export function ProjectBoard({
               />
             </div>
             <span className="text-xs text-ink-faint">
-              {done}/{total} done · {pct}%
+              {done}/{total}{" "}{t("done ·")}{" "}{pct}%
             </span>
           </div>
         </div>
@@ -361,7 +365,7 @@ export function ProjectBoard({
                 updateProjectDueDate(pursuitId, projectId, e.target.value || null),
               );
             }}
-            title="Fecha de entrega"
+            title={t("Fecha de entrega")}
             className="rounded-xl border border-border-subtle bg-white px-3 py-2 text-sm"
           />
           <input
@@ -381,7 +385,7 @@ export function ProjectBoard({
             onClick={() => fileInputRef.current?.click()}
             className="rounded-full border border-accent px-3.5 py-2 text-xs font-semibold text-accent transition-colors hover:bg-accent-soft disabled:opacity-50"
           >
-            {isUploading ? (uploadStatus ?? "Subiendo…") : <>Desde una tarea</>}
+            {isUploading ? (uploadStatus ?? t("Subiendo…")) : <>{t("Desde una tarea")}</>}
           </button>
         </div>
       </div>

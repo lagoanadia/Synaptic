@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/app/LangProvider";
 import { useState, useTransition } from "react";
 import { Faces, type Person } from "./TripBlocks";
 import { addDateOption, addExpense, addSaving, deleteDateOption, deleteExpense, deleteSaving, setSavingsGoal, toggleDate } from "./sharedBlocks";
@@ -8,16 +9,20 @@ import type { Debt } from "@/lib/shared";
 const euros = (cents: number) => `${(cents / 100).toLocaleString("es-ES", { maximumFractionDigits: 2 })} €`;
 const toCents = (v: string) => Math.round((Number(v.replace(",", ".").replace(/[^\d.]/g, "")) || 0) * 100);
 const dayLabel = (d: string) => new Date(`${d}T00:00:00Z`).toLocaleDateString("es-ES", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
-const X = ({ onClick, label }: { onClick: () => void; label: string }) => (
-  <button type="button" onClick={onClick} aria-label={label} title="Quitar" className="text-ink-faint/40 hover:text-red-600">
+const X = ({ onClick, label }: { onClick: () => void; label: string }) => {
+  const t = useT();
+  return ((
+  <button type="button" onClick={onClick} aria-label={label} title={t("Quitar")} className="text-ink-faint/40 hover:text-red-600">
     ×
   </button>
-);
+));
+};
 
 export type ExpenseItem = { id: string; label: string; amount: number; paidById: string };
 
 // Gastos: who paid what, and the fewest payments that even it out.
 export function ExpensesBlock({ pursuitId, blockId, items, people, me, debts }: { pursuitId: string; blockId: string; items: ExpenseItem[]; people: Person[]; me: string; debts: Debt[] }) {
+  const t = useT();
   const [, start] = useTransition();
   const [payer, setPayer] = useState(me);
   const byId = new Map(people.map((p) => [p.id, p]));
@@ -29,10 +34,10 @@ export function ExpensesBlock({ pursuitId, blockId, items, people, me, debts }: 
           <div key={e.id} className="grid grid-cols-[22px_minmax(0,1fr)_auto_20px] items-center gap-3 border-b border-[#f1f0ee] py-2.5">
             {face(e.paidById)}
             <span className="truncate">
-              {e.label} <span className="text-ink-faint">· pagó {byId.get(e.paidById)?.name ?? "alguien"}</span>
+              {t(e.label)} <span className="text-ink-faint">{t("· pagó")}{" "}{byId.get(e.paidById)?.name ?? "alguien"}</span>
             </span>
             <span className="tabular-nums">{euros(e.amount)}</span>
-            <X label="Quitar gasto" onClick={() => start(() => deleteExpense(e.id))} />
+            <X label={t("Quitar gasto")} onClick={() => start(() => deleteExpense(e.id))} />
           </div>
         ))}
         <form
@@ -47,26 +52,26 @@ export function ExpensesBlock({ pursuitId, blockId, items, people, me, debts }: 
           }}
           className="flex flex-wrap items-center gap-2 pt-3"
         >
-          <input name="l" placeholder="+ Gasto (cena, gasolina…)" aria-label="Gasto" className="min-w-40 flex-1 outline-none placeholder:text-ink-faint" />
-          <input name="a" inputMode="decimal" placeholder="0 €" aria-label="Importe" className="w-20 rounded bg-chip px-2 py-1 text-right" />
+          <input name="l" placeholder={t("+ Gasto (cena, gasolina…)")} aria-label={t("Gasto")} className="min-w-40 flex-1 outline-none placeholder:text-ink-faint" />
+          <input name="a" inputMode="decimal" placeholder="0 €" aria-label={t("Importe")} className="w-20 rounded bg-chip px-2 py-1 text-right" />
           {people.length > 1 && (
-            <select value={payer} onChange={(e) => setPayer(e.target.value)} aria-label="Quién pagó" className="rounded bg-chip px-2 py-1 text-ink-muted">
+            <select value={payer} onChange={(e) => setPayer(e.target.value)} aria-label={t("Quién pagó")} className="rounded bg-chip px-2 py-1 text-ink-muted">
               {people.map((p) => (
                 <option key={p.id} value={p.id}>
-                  pagó {p.id === me ? "yo" : p.name}
+                  {t("pagó")}{" "}{p.id === me ? "yo" : p.name}
                 </option>
               ))}
             </select>
           )}
           <button type="submit" className="rounded-md bg-ink px-3 py-1 text-xs font-medium text-white">
-            Añadir
+            {t("Añadir")}
           </button>
         </form>
       </div>
       {items.length > 0 && (
         <div className="flex flex-col gap-2 rounded-lg bg-callout p-3">
           {debts.length === 0 ? (
-            <span className="text-ink-muted">Estáis en paz.</span>
+            <span className="text-ink-muted">{t("Estáis en paz.")}</span>
           ) : (
             debts.map((d) => (
               <span key={`${d.from}${d.to}`} className="flex items-center gap-2">
@@ -74,7 +79,7 @@ export function ExpensesBlock({ pursuitId, blockId, items, people, me, debts }: 
                 <span className="text-ink-faint">→</span>
                 {face(d.to)}
                 <span>
-                  {byId.get(d.from)?.id === me ? "Tú" : byId.get(d.from)?.name} {byId.get(d.from)?.id === me ? "debes" : "debe"} <b className="font-semibold">{euros(d.cents)}</b> a {byId.get(d.to)?.id === me ? "ti" : byId.get(d.to)?.name}
+                  {byId.get(d.from)?.id === me ? t("Tú") : byId.get(d.from)?.name} {byId.get(d.from)?.id === me ? "debes" : "debe"} <b className="font-semibold">{euros(d.cents)}</b> a {byId.get(d.to)?.id === me ? "ti" : byId.get(d.to)?.name}
                 </span>
               </span>
             ))
@@ -89,6 +94,7 @@ export type DateItem = { id: string; day: string; voters: string[] };
 
 // Fechas: days as columns, people as rows; tick the ones you can make.
 export function DatesBlock({ pursuitId, blockId, items, people, me, best }: { pursuitId: string; blockId: string; items: DateItem[]; people: Person[]; me: string; best: string | null }) {
+  const t = useT();
   const [, start] = useTransition();
   const [adding, setAdding] = useState(false);
   return (
@@ -102,9 +108,9 @@ export function DatesBlock({ pursuitId, blockId, items, people, me, best }: { pu
                 {items.map((d) => (
                   <th key={d.id} className={`px-2 pb-1 text-xs font-medium whitespace-nowrap ${d.day === best ? "text-ink" : "text-ink-faint"}`}>
                     <span className="flex items-center justify-center gap-1">
-                      {d.day === best && <span aria-label="Mejor día">★</span>}
+                      {d.day === best && <span aria-label={t("Mejor día")}>★</span>}
                       {dayLabel(d.day)}
-                      <button type="button" onClick={() => start(() => deleteDateOption(d.id))} aria-label="Quitar día" className="text-ink-faint/40 hover:text-red-600">
+                      <button type="button" onClick={() => start(() => deleteDateOption(d.id))} aria-label={t("Quitar día")} className="text-ink-faint/40 hover:text-red-600">
                         ×
                       </button>
                     </span>
@@ -118,7 +124,7 @@ export function DatesBlock({ pursuitId, blockId, items, people, me, best }: { pu
                   <td className="pr-4">
                     <span className="flex items-center gap-2 whitespace-nowrap">
                       <Faces people={[p]} size={22} />
-                      {p.id === me ? "Tú" : p.name}
+                      {p.id === me ? t("Tú") : p.name}
                     </span>
                   </td>
                   {items.map((d) => {
@@ -160,14 +166,14 @@ export function DatesBlock({ pursuitId, blockId, items, people, me, best }: { pu
           }}
           className="flex items-center gap-2"
         >
-          <input autoFocus name="d" placeholder="dd/mm" aria-label="Día" onBlur={(e) => !e.target.value && setAdding(false)} className="w-24 rounded bg-chip px-2 py-1" />
+          <input autoFocus name="d" placeholder={t("dd/mm")} aria-label={t("Día")} onBlur={(e) => !e.target.value && setAdding(false)} className="w-24 rounded bg-chip px-2 py-1" />
           <button type="submit" className="rounded-md bg-ink px-3 py-1 text-xs font-medium text-white">
-            Añadir
+            {t("Añadir")}
           </button>
         </form>
       ) : (
         <button type="button" onClick={() => setAdding(true)} className="self-start text-ink-faint hover:text-ink">
-          + Proponer un día
+          {t("+ Proponer un día")}
         </button>
       )}
     </div>
@@ -178,6 +184,7 @@ export type SavingItem = { id: string; amount: number; userId: string; createdAt
 
 // Meta de ahorro: the goal, a progress bar and each contribution.
 export function SavingsBlock({ pursuitId, blockId, goal, items, people }: { pursuitId: string; blockId: string; goal: number | null; items: SavingItem[]; people: Person[] }) {
+  const t = useT();
   const [, start] = useTransition();
   const byId = new Map(people.map((p) => [p.id, p]));
   const saved = items.reduce((t, s) => t + s.amount, 0);
@@ -188,13 +195,13 @@ export function SavingsBlock({ pursuitId, blockId, goal, items, people }: { purs
         <div className="flex items-baseline justify-between gap-3">
           <span className="text-2xl font-semibold tabular-nums">{euros(saved)}</span>
           <span className="flex items-center gap-1 text-ink-faint">
-            de
+            {t("de")}
             <input
               key={goal ?? 0}
               defaultValue={goal ? String(goal / 100) : ""}
-              placeholder="meta"
+              placeholder={t("meta")}
               inputMode="decimal"
-              aria-label="Meta"
+              aria-label={t("Meta")}
               onBlur={(e) => {
                 const v = toCents(e.target.value);
                 if ((v || null) !== goal) start(() => setSavingsGoal(pursuitId, blockId, v || null));
@@ -207,7 +214,7 @@ export function SavingsBlock({ pursuitId, blockId, goal, items, people }: { purs
         <div className="h-3 overflow-hidden rounded-full bg-[#ededeb]" role="progressbar" aria-valuenow={Math.round(pct)} aria-valuemin={0} aria-valuemax={100}>
           <div className="h-full rounded-full bg-[#448361] transition-[width]" style={{ width: `${pct}%` }} />
         </div>
-        {goal ? <span className="text-xs text-ink-faint">{saved >= goal ? "¡Meta conseguida!" : `Faltan ${euros(goal - saved)} · ${Math.round(pct)} %`}</span> : <span className="text-xs text-ink-faint">Pon una meta para ver cuánto falta.</span>}
+        {goal ? <span className="text-xs text-ink-faint">{saved >= goal ? t("¡Meta conseguida!") : t("Faltan {0} · {1} %", { 0: euros(goal - saved), 1: Math.round(pct) })}</span> : <span className="text-xs text-ink-faint">{t("Pon una meta para ver cuánto falta.")}</span>}
       </div>
       <div className="flex flex-col">
         {items.map((s) => (
@@ -215,7 +222,7 @@ export function SavingsBlock({ pursuitId, blockId, goal, items, people }: { purs
             <Faces people={byId.get(s.userId) ? [byId.get(s.userId)!] : []} size={22} />
             <span className="text-ink-faint">{new Date(s.createdAt).toLocaleDateString("es-ES", { day: "numeric", month: "short" })}</span>
             <span className="tabular-nums">+{euros(s.amount)}</span>
-            <X label="Quitar aportación" onClick={() => start(() => deleteSaving(s.id))} />
+            <X label={t("Quitar aportación")} onClick={() => start(() => deleteSaving(s.id))} />
           </div>
         ))}
         <form
@@ -229,7 +236,7 @@ export function SavingsBlock({ pursuitId, blockId, goal, items, people }: { purs
           }}
           className="flex items-center gap-2 pt-3"
         >
-          <input name="a" inputMode="decimal" placeholder="+ Añadir lo ahorrado (€)" aria-label="Cantidad ahorrada" className="flex-1 outline-none placeholder:text-ink-faint" />
+          <input name="a" inputMode="decimal" placeholder={t("+ Añadir lo ahorrado (€)")} aria-label={t("Cantidad ahorrada")} className="flex-1 outline-none placeholder:text-ink-faint" />
         </form>
       </div>
     </div>

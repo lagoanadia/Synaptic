@@ -1,10 +1,12 @@
 "use client";
 
+import { useT } from "@/app/LangProvider";
 import { useRouter } from "next/navigation";
 import { DeleteButton } from "../DeleteButton";
 import { leavePursuit } from "./actions";
 
 export function LeaveButton({ pursuitId }: { pursuitId: string }) {
+  const t = useT();
   const router = useRouter();
 
   return (
@@ -14,7 +16,7 @@ export function LeaveButton({ pursuitId }: { pursuitId: string }) {
       onSuccess={() => router.push("/pursuits")}
       className="text-xs text-ink-faint hover:text-red-500"
     >
-      Salir
+      {t("Salir")}
     </DeleteButton>
   );
 }

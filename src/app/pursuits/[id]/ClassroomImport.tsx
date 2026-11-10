@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/app/LangProvider";
 import { useEffect, useState, useTransition } from "react";
 import {
   disconnectClassroom,
@@ -14,12 +15,13 @@ import type { ClassroomCourse, ClassroomFile } from "@/lib/googleClassroom";
 // api/classroom/connect), separate from however the user signed into
 // Synaptic itself.
 function ConnectButton({ pursuitId }: { pursuitId: string }) {
+  const t = useT();
   return (
     <a
       href={`/api/classroom/connect?pursuitId=${pursuitId}`}
       className="self-start rounded-full border border-border-subtle bg-white px-4 py-2 text-sm text-ink-muted transition-colors hover:border-ink hover:text-ink"
     >
-      Conectar Google Classroom
+      {t("Conectar Google Classroom")}
     </a>
   );
 }
@@ -36,6 +38,7 @@ export function ClassroomImport({
   // Course id → the other subject of yours already linked to it.
   linkedElsewhere?: Record<string, string>;
 }) {
+  const t = useT();
   const [courses, setCourses] = useState<ClassroomCourse[] | null>(null);
   // Pre-selects the course this Pursuit was already linked to (if any),
   // so reopening the Files tab doesn't make you pick the same course
@@ -96,10 +99,10 @@ export function ClassroomImport({
   return (
     <div className="flex flex-col gap-3 rounded-xl border border-border-subtle bg-white p-4">
       <div className="flex items-center justify-between">
-        <span className="text-sm font-semibold">Google Classroom</span>
+        <span className="text-sm font-semibold">{t("Google Classroom")}</span>
         <form action={disconnectClassroom.bind(null, pursuitId)}>
           <button type="submit" className="text-xs text-ink-faint hover:text-red-500">
-            Desconectar
+            {t("Desconectar")}
           </button>
         </form>
       </div>
@@ -107,9 +110,9 @@ export function ClassroomImport({
       {error && <p className="text-xs text-red-500">{error}</p>}
 
       {courses === null ? (
-        <p className="text-xs text-ink-muted">Cargando tus cursos…</p>
+        <p className="text-xs text-ink-muted">{t("Cargando tus cursos…")}</p>
       ) : courses.length === 0 ? (
-        <p className="text-xs text-ink-muted">No hay cursos activos en Classroom.</p>
+        <p className="text-xs text-ink-muted">{t("No hay cursos activos en Classroom.")}</p>
       ) : (
         <select
           value={selectedCourse}
@@ -122,7 +125,7 @@ export function ClassroomImport({
           }}
           className="rounded-md border border-border-subtle bg-white px-3 py-2 text-sm"
         >
-          <option value="">Elige un curso…</option>
+          <option value="">{t("Elige un curso…")}</option>
           {courses.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}
@@ -135,7 +138,7 @@ export function ClassroomImport({
       {files !== null && (
         <div className="flex flex-col">
           {files.length === 0 ? (
-            <p className="text-xs text-ink-muted">No hay archivos en este curso.</p>
+            <p className="text-xs text-ink-muted">{t("No hay archivos en este curso.")}</p>
           ) : (
             files.map((f) => (
               <div
@@ -149,7 +152,7 @@ export function ClassroomImport({
                   disabled={isPending || imported.has(f.url)}
                   className="shrink-0 rounded-full border border-ink px-3 py-1 text-xs font-medium hover:bg-chip disabled:opacity-50"
                 >
-                  {imported.has(f.url) ? "Añadido" : "+ Añadir"}
+                  {imported.has(f.url) ? t("Añadido") : t("+ Añadir")}
                 </button>
               </div>
             ))

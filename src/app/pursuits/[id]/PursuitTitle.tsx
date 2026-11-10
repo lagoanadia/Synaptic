@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/app/LangProvider";
 import { useState, useTransition } from "react";
 import { renamePursuit } from "./actions";
 
@@ -13,6 +14,7 @@ export function PursuitTitle({
   title: string;
   className?: string;
 }) {
+  const t = useT();
   const [isEditing, setIsEditing] = useState(false);
   const [value, setValue] = useState(title);
   const [isPending, startTransition] = useTransition();
@@ -74,7 +76,7 @@ export function PursuitTitle({
         disabled={isPending}
         className="text-xs font-semibold text-accent disabled:opacity-50"
       >
-        Guardar
+        {t("Guardar")}
       </button>
       <button
         type="button"
@@ -82,7 +84,7 @@ export function PursuitTitle({
         disabled={isPending}
         className="text-xs text-ink-faint hover:text-ink"
       >
-        Cancelar
+        {t("Cancelar")}
       </button>
     </div>
   );

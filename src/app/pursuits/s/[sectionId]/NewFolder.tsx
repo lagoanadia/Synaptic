@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/app/LangProvider";
 import { useState, useTransition } from "react";
 import { createPursuit, deleteFolderTemplate } from "../../actions";
 import { FOLDER_TEMPLATES, type FolderTemplate } from "@/lib/blocks";
@@ -9,6 +10,7 @@ import { FOLDER_TEMPLATES, type FolderTemplate } from "@/lib/blocks";
 // `fill`: take the full width of its slot instead of a small tile at the bottom.
 // mine: the templates you saved; picked as "u:<id>".
 export function NewFolder({ sectionName, label, fill = false, template: initial, mine = [] }: { sectionName: string; label: string; fill?: boolean; template?: FolderTemplate; mine?: { id: string; name: string }[] }) {
+  const t = useT();
   const size = fill ? "w-full" : "w-full sm:w-44";
   const [open, setOpen] = useState(false);
   const [template, setTemplate] = useState<string | undefined>(initial);
@@ -22,34 +24,34 @@ export function NewFolder({ sectionName, label, fill = false, template: initial,
       {template && <input type="hidden" name="template" value={template} />}
       <input autoFocus name="title" required disabled={pending} placeholder={label} aria-label={label} className="w-full rounded border border-border-subtle bg-white px-1.5 py-1 text-xs" />
       {initial && (
-        <span className="flex flex-wrap gap-1" role="radiogroup" aria-label="Plantilla">
-          {FOLDER_TEMPLATES.map((t) => (
+        <span className="flex flex-wrap gap-1" role="radiogroup" aria-label={t("Plantilla")}>
+          {FOLDER_TEMPLATES.map((item) => (
             <button
-              key={t.id}
+              key={item.id}
               type="button"
               role="radio"
-              aria-checked={template === t.id}
+              aria-checked={template === item.id}
               onMouseDown={(e) => e.preventDefault()}
-              onClick={() => setTemplate(t.id)}
-              className={`rounded-full px-2 py-0.5 text-[11px] ${template === t.id ? "bg-ink text-white" : "bg-chip text-ink-muted hover:text-ink"}`}
+              onClick={() => setTemplate(item.id)}
+              className={`rounded-full px-2 py-0.5 text-[11px] ${template === item.id ? "bg-ink text-white" : "bg-chip text-ink-muted hover:text-ink"}`}
             >
-              {t.label}
+              {t(item.label)}
             </button>
           ))}
-          {mine.map((t) => (
-            <span key={t.id} className={`flex items-center rounded-full text-[11px] ${template === `u:${t.id}` ? "bg-ink text-white" : "bg-chip text-ink-muted"}`}>
-              <button type="button" role="radio" aria-checked={template === `u:${t.id}`} onMouseDown={(e) => e.preventDefault()} onClick={() => setTemplate(`u:${t.id}`)} className="py-0.5 pl-2 hover:text-ink">
-                {t.name}
+          {mine.map((item) => (
+            <span key={item.id} className={`flex items-center rounded-full text-[11px] ${template === `u:${item.id}` ? "bg-ink text-white" : "bg-chip text-ink-muted"}`}>
+              <button type="button" role="radio" aria-checked={template === `u:${item.id}`} onMouseDown={(e) => e.preventDefault()} onClick={() => setTemplate(`u:${item.id}`)} className="py-0.5 pl-2 hover:text-ink">
+                {item.name}
               </button>
               <button
                 type="button"
-                title="Borrar plantilla"
-                aria-label={`Borrar la plantilla ${t.name}`}
+                title={t("Borrar plantilla")}
+                aria-label={t("Borrar la plantilla {0}", { 0: item.name })}
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => {
-                  if (!window.confirm(`¿Borrar la plantilla "${t.name}"? Las carpetas hechas con ella no cambian.`)) return;
-                  if (template === `u:${t.id}`) setTemplate(initial);
-                  start(() => deleteFolderTemplate(t.id));
+                  if (!window.confirm(`¿Borrar la plantilla "${item.name}"? Las carpetas hechas con ella no cambian.`)) return;
+                  if (template === `u:${item.id}`) setTemplate(initial);
+                  start(() => deleteFolderTemplate(item.id));
                 }}
                 className="px-1.5 py-0.5 opacity-50 hover:opacity-100"
               >
@@ -61,10 +63,10 @@ export function NewFolder({ sectionName, label, fill = false, template: initial,
       )}
       <span className="flex gap-1.5">
         <button type="submit" disabled={pending} className="rounded bg-ink px-2 py-0.5 text-[11px] font-medium text-white disabled:opacity-60">
-          Crear
+          {t("Crear")}
         </button>
         <button type="button" onClick={() => setOpen(false)} className="rounded px-2 py-0.5 text-[11px] text-ink-faint hover:text-ink">
-          Cancelar
+          {t("Cancelar")}
         </button>
       </span>
     </form>

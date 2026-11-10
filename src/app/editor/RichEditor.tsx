@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/app/LangProvider";
 import { ArrowDown, CardsIcon, CheckIcon, ImageIcon, LinkIcon, MapIcon, QuoteIcon, SparkIcon, TrashIcon, XIcon } from "@/app/icons";
 import { BlockMoves, blockAt, deleteBlock, dropBlock, endDrag, moveBlock, startDrag } from "./blocks";
 import Link from "next/link";
@@ -125,6 +126,7 @@ export function RichEditor({
   // "/ Pizarra": makes a board and returns its image URL.
   onBoard?: () => Promise<string>;
 }) {
+  const t = useT();
   const [hint, setHint] = useState<{ i: number; top: number; left: number } | null>(null);
   // The ⋮⋮ handle next to the block under the mouse (drag it, or click for ↑ ↓ 🗑).
   const [handle, setHandle] = useState<{ pos: number; dom: HTMLElement; top: number; left: number } | null>(null);
@@ -352,23 +354,23 @@ export function RichEditor({
                 setHandle(null);
               }}
               onClick={() => setBlockMenu((m) => !m)}
-              title="Arrastra para mover · clic: ↑ ↓"
-              aria-label="Mover bloque"
+              title={t("Arrastra para mover · clic: ↑ ↓")}
+              aria-label={t("Mover bloque")}
               className="grid h-6 w-5 cursor-grab place-items-center rounded text-ink-faint/70 hover:bg-chip hover:text-ink active:cursor-grabbing"
             >
               <GripIcon />
             </button>
             {blockMenu && (
               <div className="absolute top-7 left-0 flex gap-0.5 rounded-lg bg-white p-1 shadow-[0_0_0_1px_rgba(15,15,15,.05),0_10px_26px_rgba(15,15,15,.16)]" onMouseLeave={() => setBlockMenu(false)}>
-                <Btn onClick={() => moveFromMenu(-1)} title="Subir (Ctrl+Shift+↑)"><ArrowDown size={14} className="rotate-180" /></Btn>
-                <Btn onClick={() => moveFromMenu(1)} title="Bajar (Ctrl+Shift+↓)"><ArrowDown size={14} /></Btn>
+                <Btn onClick={() => moveFromMenu(-1)} title={t("Subir (Ctrl+Shift+↑)")}><ArrowDown size={14} className="rotate-180" /></Btn>
+                <Btn onClick={() => moveFromMenu(1)} title={t("Bajar (Ctrl+Shift+↓)")}><ArrowDown size={14} /></Btn>
                 <Btn
                   onClick={() => {
                     deleteBlock(editor, handle.pos);
                     setHandle(null);
                     setBlockMenu(false);
                   }}
-                  title="Eliminar bloque"
+                  title={t("Eliminar bloque")}
                 >
                   <TrashIcon size={14} />
                 </Btn>
@@ -378,12 +380,12 @@ export function RichEditor({
         )}
         {tbl && (
           <div className="absolute z-10 flex items-center gap-0.5 rounded-lg bg-white p-0.5 text-xs text-ink-muted shadow-[0_0_0_1px_rgba(15,15,15,.06),0_4px_12px_rgba(15,15,15,.08)]" style={{ top: tbl.top, left: tbl.left }} onMouseDown={(e) => e.preventDefault()}>
-            <Btn on={tbl.header} onClick={() => editor.chain().focus().toggleHeaderRow().run()} title="Primera fila como cabecera">Cabecera</Btn>
-            <Btn onClick={() => editor.chain().focus().addRowAfter().run()} title="Añadir fila">+fila</Btn>
-            <Btn onClick={() => editor.chain().focus().addColumnAfter().run()} title="Añadir columna">+col</Btn>
-            <Btn onClick={() => editor.chain().focus().deleteRow().run()} title="Eliminar fila">−fila</Btn>
-            <Btn onClick={() => editor.chain().focus().deleteColumn().run()} title="Eliminar columna">−col</Btn>
-            <Btn onClick={() => editor.chain().focus().deleteTable().run()} title="Eliminar tabla"><TrashIcon size={13} /></Btn>
+            <Btn on={tbl.header} onClick={() => editor.chain().focus().toggleHeaderRow().run()} title={t("Primera fila como cabecera")}>{t("Cabecera")}</Btn>
+            <Btn onClick={() => editor.chain().focus().addRowAfter().run()} title={t("Añadir fila")}>{t("+fila")}</Btn>
+            <Btn onClick={() => editor.chain().focus().addColumnAfter().run()} title={t("Añadir columna")}>{t("+col")}</Btn>
+            <Btn onClick={() => editor.chain().focus().deleteRow().run()} title={t("Eliminar fila")}>{t("−fila")}</Btn>
+            <Btn onClick={() => editor.chain().focus().deleteColumn().run()} title={t("Eliminar columna")}>{t("−col")}</Btn>
+            <Btn onClick={() => editor.chain().focus().deleteTable().run()} title={t("Eliminar tabla")}><TrashIcon size={13} /></Btn>
           </div>
         )}
         {slash && items.length > 0 && (
@@ -391,7 +393,7 @@ export function RichEditor({
             className="absolute z-20 flex w-60 flex-col rounded-lg bg-white p-1 text-sm shadow-[0_0_0_1px_rgba(15,15,15,.05),0_10px_26px_rgba(15,15,15,.16)]"
             style={{ top: slash.top, left: slash.left }}
             role="listbox"
-            aria-label="Bloques"
+            aria-label={t("Bloques")}
           >
             {items.map((it, i) => (
               <button
@@ -404,7 +406,7 @@ export function RichEditor({
                 className={`flex items-center gap-2.5 rounded-md px-2 py-1.5 text-left ${i === slash.index ? "bg-chip" : "hover:bg-chip"}`}
               >
                 <span className="grid size-7 place-items-center rounded-md border border-border-subtle text-xs text-ink-muted">{it.icon}</span>
-                {it.label}
+                {t(it.label)}
               </button>
             ))}
           </div>
@@ -424,7 +426,7 @@ export function RichEditor({
             </Link>
           </div>
         )}
-        {uploading && <span className="absolute top-0 right-0 text-xs text-ink-faint">Subiendo…</span>}
+        {uploading && <span className="absolute top-0 right-0 text-xs text-ink-faint">{t("Subiendo…")}</span>}
       </div>
     );
   }
@@ -465,6 +467,7 @@ function Toolbar({
   uploading: boolean;
   extras?: React.ReactNode;
 }) {
+  const t = useT();
   // Re-render the toolbar when the selection's formatting changes.
   const s = useEditorState({
     editor,
@@ -504,45 +507,45 @@ function Toolbar({
 
   return (
     <div className="sticky top-0 z-10 flex flex-wrap items-center gap-0.5 rounded-t-2xl border-b border-border-subtle bg-white/95 px-2 py-1.5 backdrop-blur">
-      <Btn on={s.h1} onClick={() => c().toggleHeading({ level: 1 }).run()} title="Título 1 (# )">H1</Btn>
-      <Btn on={s.h2} onClick={() => c().toggleHeading({ level: 2 }).run()} title="Título 2 (## )">H2</Btn>
-      <Btn on={s.h3} onClick={() => c().toggleHeading({ level: 3 }).run()} title="Título 3 (### )">H3</Btn>
+      <Btn on={s.h1} onClick={() => c().toggleHeading({ level: 1 }).run()} title={t("Título 1 (# )")}>H1</Btn>
+      <Btn on={s.h2} onClick={() => c().toggleHeading({ level: 2 }).run()} title={t("Título 2 (## )")}>H2</Btn>
+      <Btn on={s.h3} onClick={() => c().toggleHeading({ level: 3 }).run()} title={t("Título 3 (### )")}>H3</Btn>
       <Sep />
-      <Btn on={s.bold} onClick={() => c().toggleBold().run()} title="Negrita (Ctrl+B)"><b>N</b></Btn>
-      <Btn on={s.italic} onClick={() => c().toggleItalic().run()} title="Cursiva (Ctrl+I)"><i>K</i></Btn>
-      <Btn on={s.underline} onClick={() => c().toggleUnderline().run()} title="Subrayado (Ctrl+U)"><u>S</u></Btn>
-      <Btn on={s.link} onClick={setLink} title="Enlace"><LinkIcon /></Btn>
+      <Btn on={s.bold} onClick={() => c().toggleBold().run()} title={t("Negrita (Ctrl+B)")}><b>N</b></Btn>
+      <Btn on={s.italic} onClick={() => c().toggleItalic().run()} title={t("Cursiva (Ctrl+I)")}><i>K</i></Btn>
+      <Btn on={s.underline} onClick={() => c().toggleUnderline().run()} title={t("Subrayado (Ctrl+U)")}><u>S</u></Btn>
+      <Btn on={s.link} onClick={setLink} title={t("Enlace")}><LinkIcon /></Btn>
       <Sep />
-      <Btn on={s.bullet} onClick={() => c().toggleBulletList().run()} title="Lista (- )">•</Btn>
-      <Btn on={s.numbered} onClick={toggleNumbered} title="Lista numerada (1. )">1.</Btn>
-      <Btn on={s.lettered} onClick={toggleLettered} title="Lista con letras">a.</Btn>
-      <Btn on={s.callout} onClick={() => c().toggleBlockquote().run()} title="Aviso (! )"><QuoteIcon /></Btn>
-      <Btn on={s.code} onClick={() => c().toggleCodeBlock().run()} title="Bloque de código (```)">{"</>"}</Btn>
+      <Btn on={s.bullet} onClick={() => c().toggleBulletList().run()} title={t("Lista (- )")}>•</Btn>
+      <Btn on={s.numbered} onClick={toggleNumbered} title={t("Lista numerada (1. )")}>1.</Btn>
+      <Btn on={s.lettered} onClick={toggleLettered} title={t("Lista con letras")}>a.</Btn>
+      <Btn on={s.callout} onClick={() => c().toggleBlockquote().run()} title={t("Aviso (! )")}><QuoteIcon /></Btn>
+      <Btn on={s.code} onClick={() => c().toggleCodeBlock().run()} title={t("Bloque de código (```)")}>{"</>"}</Btn>
       {s.code && (
         <select
           value={s.codeLang}
           onChange={(e) => c().updateAttributes("codeBlock", { language: e.target.value || null }).run()}
-          aria-label="Lenguaje del código"
+          aria-label={t("Lenguaje del código")}
           className="rounded-md border border-border-subtle px-1.5 py-1 text-xs"
         >
           {CODE_LANGUAGES.map((l) => (
-            <option key={l.value} value={l.value}>{l.label}</option>
+            <option key={l.value} value={l.value}>{t(l.label)}</option>
           ))}
         </select>
       )}
-      <Btn on={s.table} onClick={() => c().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()} title="Insertar tabla">▦</Btn>
+      <Btn on={s.table} onClick={() => c().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()} title={t("Insertar tabla")}>▦</Btn>
       {s.table && (
         <span className="flex items-center gap-0.5 rounded-md bg-chip px-1 text-xs">
-          <Btn onClick={() => c().toggleHeaderRow().run()} title="Primera fila como cabecera">Cabecera</Btn>
-          <Btn onClick={() => c().addRowAfter().run()} title="Añadir fila">+fila</Btn>
-          <Btn onClick={() => c().addColumnAfter().run()} title="Añadir columna">+col</Btn>
-          <Btn onClick={() => c().deleteRow().run()} title="Eliminar fila">−fila</Btn>
-          <Btn onClick={() => c().deleteColumn().run()} title="Eliminar columna">−col</Btn>
-          <Btn onClick={() => c().deleteTable().run()} title="Eliminar tabla"><XIcon /></Btn>
+          <Btn onClick={() => c().toggleHeaderRow().run()} title={t("Primera fila como cabecera")}>{t("Cabecera")}</Btn>
+          <Btn onClick={() => c().addRowAfter().run()} title={t("Añadir fila")}>{t("+fila")}</Btn>
+          <Btn onClick={() => c().addColumnAfter().run()} title={t("Añadir columna")}>{t("+col")}</Btn>
+          <Btn onClick={() => c().deleteRow().run()} title={t("Eliminar fila")}>{t("−fila")}</Btn>
+          <Btn onClick={() => c().deleteColumn().run()} title={t("Eliminar columna")}>{t("−col")}</Btn>
+          <Btn onClick={() => c().deleteTable().run()} title={t("Eliminar tabla")}><XIcon /></Btn>
         </span>
       )}
       {onImage && (
-        <Btn onClick={onImage} title="Insertar imagen (o pégala / arrástrala)">{uploading ? "…" : <ImageIcon />}</Btn>
+        <Btn onClick={onImage} title={t("Insertar imagen (o pégala / arrástrala)")}>{uploading ? "…" : <ImageIcon />}</Btn>
       )}
       {extras && (
         <>
@@ -624,6 +627,7 @@ function SelectionBar({
   onCard?: (text: string) => Promise<{ error: string | null }>;
   onMap?: (text: string) => Promise<{ error: string | null; href?: string }>;
 }) {
+  const t = useT();
   const [busy, setBusy] = useState(false);
   const [out, setOut] = useState<{ text: string; tone: "answer" | "ok" | "error"; href?: string } | null>(null);
   const s = useEditorState({ editor, selector: ({ editor: e }) => ({ bold: e.isActive("bold"), italic: e.isActive("italic"), link: e.isActive("link") }) });
@@ -638,8 +642,8 @@ function SelectionBar({
   return (
     <div className="absolute z-20 flex max-w-[min(420px,100%)] -translate-y-full flex-col gap-1 pb-2" style={{ top: sel.top, left: sel.left }}>
       <div className="flex items-center gap-0.5 self-start rounded-lg bg-white p-1 text-sm shadow-[0_0_0_1px_rgba(15,15,15,.05),0_10px_26px_rgba(15,15,15,.16)]">
-        <Btn on={s.bold} onClick={() => c().toggleBold().run()} title="Negrita"><b>N</b></Btn>
-        <Btn on={s.italic} onClick={() => c().toggleItalic().run()} title="Cursiva"><i>K</i></Btn>
+        <Btn on={s.bold} onClick={() => c().toggleBold().run()} title={t("Negrita")}><b>N</b></Btn>
+        <Btn on={s.italic} onClick={() => c().toggleItalic().run()} title={t("Cursiva")}><i>K</i></Btn>
         <Btn
           on={s.link}
           onClick={() => {
@@ -647,23 +651,23 @@ function SelectionBar({
             const url = window.prompt("URL del enlace");
             if (url) c().extendMarkRange("link").setLink({ href: url }).run();
           }}
-          title="Enlace"
+          title={t("Enlace")}
         >
           <LinkIcon />
         </Btn>
         {(onAsk || onCard || onMap) && <Sep />}
         {onAsk && (
           <button type="button" disabled={busy} onMouseDown={(e) => e.preventDefault()} onClick={() => go(() => onAsk(sel.text), "")} className="flex items-center gap-1.5 rounded-md px-2 py-1 text-accent hover:bg-chip disabled:opacity-50">
-            <SparkIcon size={14} /> Preguntar a la IA
+            <SparkIcon size={14} />{" "}{t("Preguntar a la IA")}
           </button>
         )}
         {onCard && (
-          <button type="button" disabled={busy} onMouseDown={(e) => e.preventDefault()} onClick={() => go(() => onCard(sel.text), "Tarjeta creada")} title="Crear tarjeta" aria-label="Crear tarjeta" className="rounded-md px-2 py-1 text-ink-muted hover:bg-chip hover:text-ink disabled:opacity-50">
+          <button type="button" disabled={busy} onMouseDown={(e) => e.preventDefault()} onClick={() => go(() => onCard(sel.text), "Tarjeta creada")} title={t("Crear tarjeta")} aria-label={t("Crear tarjeta")} className="rounded-md px-2 py-1 text-ink-muted hover:bg-chip hover:text-ink disabled:opacity-50">
             <CardsIcon size={15} />
           </button>
         )}
         {onMap && (
-          <button type="button" disabled={busy} onMouseDown={(e) => e.preventDefault()} onClick={() => go(() => onMap(sel.text), "En el mapa")} title="Añadir al mapa" aria-label="Añadir al mapa" className="rounded-md px-2 py-1 text-ink-muted hover:bg-chip hover:text-ink disabled:opacity-50">
+          <button type="button" disabled={busy} onMouseDown={(e) => e.preventDefault()} onClick={() => go(() => onMap(sel.text), "En el mapa")} title={t("Añadir al mapa")} aria-label={t("Añadir al mapa")} className="rounded-md px-2 py-1 text-ink-muted hover:bg-chip hover:text-ink disabled:opacity-50">
             <MapIcon size={15} />
           </button>
         )}

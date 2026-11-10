@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/app/LangProvider";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Folder } from "@/app/Covers";
@@ -24,12 +25,13 @@ export function FolderSettings({
   canDelete: boolean;
   children: React.ReactNode;
 }) {
+  const t = useT();
   const [label, setLabel] = useState(groupLabel ?? "");
   const [, start] = useTransition();
   const router = useRouter();
 
   return (
-    <section className="flex flex-col gap-4 rounded-lg border border-border-subtle bg-[#fbfbfa] p-4 text-sm" aria-label="Ajustes de la carpeta">
+    <section className="flex flex-col gap-4 rounded-lg border border-border-subtle bg-[#fbfbfa] p-4 text-sm" aria-label={t("Ajustes de la carpeta")}>
       {/* Covers: one column per colour family, so they use the width. */}
       <div className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3 lg:grid-cols-5">
         {FOLDER_GROUPS.map((g) => (
@@ -60,11 +62,11 @@ export function FolderSettings({
           }}
           className="flex flex-wrap items-center gap-3"
         >
-          <span className="w-28 text-ink-faint">Agrupado por</span>
-          <input value={label} onChange={(e) => setLabel(e.target.value)} aria-label="Nombre del grupo" className="w-40 rounded-md border border-border-subtle bg-white px-2 py-1" />
+          <span className="w-28 text-ink-faint">{t("Agrupado por")}</span>
+          <input value={label} onChange={(e) => setLabel(e.target.value)} aria-label={t("Nombre del grupo")} className="w-40 rounded-md border border-border-subtle bg-white px-2 py-1" />
           {label.trim() && label !== groupLabel && (
             <button type="submit" className="rounded-md bg-ink px-2.5 py-1 text-xs font-medium text-white">
-              Guardar
+              {t("Guardar")}
             </button>
           )}
         </form>
@@ -83,7 +85,7 @@ export function FolderSettings({
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
             <path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v6M14 11v6" />
           </svg>
-          Eliminar carpeta
+          {t("Eliminar carpeta")}
         </button>
       )}
     </section>
@@ -92,6 +94,7 @@ export function FolderSettings({
 
 // "Guardar como plantilla": this folder's blocks, to start new folders from.
 function SaveAsTemplate({ pursuitId, title }: { pursuitId: string; title: string }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(title);
   const [msg, setMsg] = useState<string | null>(null);
@@ -105,7 +108,7 @@ function SaveAsTemplate({ pursuitId, title }: { pursuitId: string; title: string
           <rect x="3" y="14" width="7" height="7" rx="1.5" />
           <path d="M17.5 14v7M14 17.5h7" />
         </svg>
-        {msg ?? "Guardar como plantilla"}
+        {msg ?? t("Guardar como plantilla")}
       </button>
     );
   return (
@@ -123,15 +126,15 @@ function SaveAsTemplate({ pursuitId, title }: { pursuitId: string; title: string
       }}
       className="flex flex-wrap items-center gap-2"
     >
-      <input autoFocus value={name} onChange={(e) => setName(e.target.value)} maxLength={30} aria-label="Nombre de la plantilla" className="w-48 rounded-md border border-border-subtle bg-white px-2 py-1" />
+      <input autoFocus value={name} onChange={(e) => setName(e.target.value)} maxLength={30} aria-label={t("Nombre de la plantilla")} className="w-48 rounded-md border border-border-subtle bg-white px-2 py-1" />
       <button type="submit" disabled={pending} className="rounded-md bg-ink px-3 py-1 text-xs font-medium text-white disabled:opacity-60">
-        Guardar
+        {t("Guardar")}
       </button>
       <button type="button" onClick={() => setOpen(false)} className="text-xs text-ink-faint hover:text-ink">
-        Cancelar
+        {t("Cancelar")}
       </button>
       {msg && <span className="text-xs text-red-600">{msg}</span>}
-      <span className="w-full text-xs text-ink-faint">Guarda los bloques y sus columnas, no el contenido.</span>
+      <span className="w-full text-xs text-ink-faint">{t("Guarda los bloques y sus columnas, no el contenido.")}</span>
     </form>
   );
 }

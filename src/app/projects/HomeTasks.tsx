@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/app/LangProvider";
 import Link from "next/link";
 import { useRef, useState, useTransition } from "react";
 import { Folder } from "../Covers";
@@ -10,14 +11,16 @@ import { addTask, deleteTask, updateTask } from "./actions";
 
 // Always visible (faint): hover-only buttons never show on touch screens.
 function Trash({ onClick }: { onClick: () => void }) {
+  const t = useT();
   return (
-    <button type="button" onClick={onClick} title="Eliminar tarea" aria-label="Eliminar tarea" className="shrink-0 rounded p-0.5 text-ink-faint/50 hover:bg-chip hover:text-red-600">
+    <button type="button" onClick={onClick} title={t("Eliminar tarea")} aria-label={t("Eliminar tarea")} className="shrink-0 rounded p-0.5 text-ink-faint/50 hover:bg-chip hover:text-red-600">
       <TrashIcon size={13} />
     </button>
   );
 }
 
 function Check({ task, today, onToggle, onDelete, project }: { task: TaskItem; today: string; onToggle: () => void; onDelete?: () => void; project?: { title: string; cover: string } }) {
+  const t = useT();
   const done = task.status === "DONE";
   const due = task.dueDate && !done ? dueLabel(task.dueDate, today) : null;
   return (
@@ -25,7 +28,7 @@ function Check({ task, today, onToggle, onDelete, project }: { task: TaskItem; t
       <button
         type="button"
         onClick={onToggle}
-        aria-label={done ? "Marcar como pendiente" : "Marcar como hecha"}
+        aria-label={done ? t("Marcar como pendiente") : t("Marcar como hecha")}
         className={`grid size-4 shrink-0 place-items-center rounded border-[1.5px] text-[9px] text-white ${done ? "border-[#448361] bg-[#448361]" : "border-[#c7c6c2] hover:border-[#448361]"}`}
       >
         {done && "✓"}
@@ -94,6 +97,8 @@ export function ProjectChecklist({ project, today }: { project: ProjectItem; tod
 // Today's focus: started, due today or late, and done today, from every
 // project, as three small columns.
 export function TodayFocus({ projects, today, focus }: { projects: ProjectItem[]; today: string; focus: TaskItem[] }) {
+  const t = useT();
+  const tr = t; // `t` is a task inside the lists below
   const [tasks, setTasks] = useState(focus);
   const [, start] = useTransition();
   const byId = new Map(projects.map((p) => [p.id, p]));
@@ -105,7 +110,7 @@ export function TodayFocus({ projects, today, focus }: { projects: ProjectItem[]
     setTasks((ts) => ts.filter((x) => x.id !== t.id));
     start(() => deleteTask(t.id));
   };
-  if (projects.length === 0) return <p className="py-6 text-sm text-ink-faint">Crea una libreta sin herramientas de estudio para tus proyectos y sus tareas saldrán aquí.</p>;
+  if (projects.length === 0) return <p className="py-6 text-sm text-ink-faint">{t("Crea una libreta sin herramientas de estudio para tus proyectos y sus tareas saldrán aquí.")}</p>;
   return (
     <div className="grid gap-3 md:grid-cols-3">
       {TASK_COLUMNS.map((c) => {
@@ -114,7 +119,7 @@ export function TodayFocus({ projects, today, focus }: { projects: ProjectItem[]
           <div key={c.status} className="rounded-xl bg-[#f7f7f5] p-2.5">
             <div className="flex items-center gap-2 px-1 pb-1.5 text-[13px] font-semibold">
               <span className="size-2 rounded-full" style={{ background: c.dot }} />
-              {c.label}
+              {t(c.label)}
               <span className="font-normal text-ink-faint">{items.length}</span>
             </div>
             {items.map((t) => {
@@ -125,7 +130,7 @@ export function TodayFocus({ projects, today, focus }: { projects: ProjectItem[]
                   <button
                     type="button"
                     onClick={() => set(t, t.status === "DONE" ? "TODO" : "DONE")}
-                    aria-label="Hecha"
+                    aria-label={tr("Hecha")}
                     className={`mt-0.5 grid size-4 shrink-0 place-items-center rounded-full border-[1.5px] text-[9px] text-white ${t.status === "DONE" ? "border-[#448361] bg-[#448361]" : "border-[#c7c6c2] hover:border-[#448361]"}`}
                   >
                     {t.status === "DONE" && "✓"}
@@ -139,7 +144,7 @@ export function TodayFocus({ projects, today, focus }: { projects: ProjectItem[]
                     </span>
                   </span>
                   {t.status === "TODO" && (
-                    <button type="button" onClick={() => set(t, "IN_PROGRESS")} title="Empezar" className="text-xs text-ink-faint hover:text-ink">
+                    <button type="button" onClick={() => set(t, "IN_PROGRESS")} title={tr("Empezar")} className="text-xs text-ink-faint hover:text-ink">
                       ▶
                     </button>
                   )}
@@ -147,7 +152,7 @@ export function TodayFocus({ projects, today, focus }: { projects: ProjectItem[]
                 </div>
               );
             })}
-            {items.length === 0 && <p className="px-1 py-2 text-xs text-ink-faint">Nada por aquí.</p>}
+            {items.length === 0 && <p className="px-1 py-2 text-xs text-ink-faint">{t("Nada por aquí.")}</p>}
           </div>
         );
       })}
@@ -156,6 +161,7 @@ export function TodayFocus({ projects, today, focus }: { projects: ProjectItem[]
 }
 
 function QuickAdd({ onAdd }: { onAdd: (title: string) => void }) {
+  const t = useT();
   return (
     <form
       onSubmit={(e) => {
@@ -166,7 +172,7 @@ function QuickAdd({ onAdd }: { onAdd: (title: string) => void }) {
       }}
       className="border-t border-[#f4f4f2] pt-1.5"
     >
-      <input name="t" placeholder="+ Añadir" aria-label="Nueva tarea" className="w-full py-0.5 text-sm text-ink outline-none placeholder:text-ink-faint" />
+      <input name="t" placeholder={t("+ Añadir")} aria-label={t("Nueva tarea")} className="w-full py-0.5 text-sm text-ink outline-none placeholder:text-ink-faint" />
     </form>
   );
 }

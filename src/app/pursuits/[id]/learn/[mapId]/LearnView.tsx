@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/app/LangProvider";
 import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -46,6 +47,7 @@ export function LearnView({
   concept: LearnConcept;
   map: MapCluster[];
 }) {
+  const t = useT();
   const router = useRouter();
   const [mode, setMode] = useState<"read" | "check" | "explain">("read");
   const [explanation, setExplanation] = useState<string | null>(null);
@@ -89,16 +91,16 @@ export function LearnView({
 
   return (
     <div className="mx-auto flex w-full max-w-[1200px] flex-1 flex-col gap-4 px-6 py-8 sm:px-12">
-      <nav className="text-sm text-ink-faint" aria-label="Ruta">
+      <nav className="text-sm text-ink-faint" aria-label={t("Ruta")}>
         {crumbs.map((c, i) => (
           <span key={i}>
             {i > 0 && <span className="mx-1.5">/</span>}
             {c.href ? (
               <Link href={c.href} className="hover:text-ink hover:underline">
-                {c.label}
+                {t(c.label)}
               </Link>
             ) : (
-              <span className="text-ink-muted">{c.label}</span>
+              <span className="text-ink-muted">{t(c.label)}</span>
             )}
           </span>
         ))}
@@ -133,15 +135,15 @@ export function LearnView({
               }}
               className="flex flex-col gap-2"
             >
-              <input value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} aria-label="Título" className="rounded-md border border-border-subtle px-2 py-1 text-2xl font-bold" />
-              <input value={draft.summary} onChange={(e) => setDraft({ ...draft, summary: e.target.value })} aria-label="Resumen" className="rounded-md border border-border-subtle px-2 py-1" />
-              <textarea value={draft.explanation} onChange={(e) => setDraft({ ...draft, explanation: e.target.value })} rows={6} aria-label="Explicación" className="rounded-md border border-border-subtle px-2 py-1" />
+              <input value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} aria-label={t("Título")} className="rounded-md border border-border-subtle px-2 py-1 text-2xl font-bold" />
+              <input value={draft.summary} onChange={(e) => setDraft({ ...draft, summary: e.target.value })} aria-label={t("Resumen")} className="rounded-md border border-border-subtle px-2 py-1" />
+              <textarea value={draft.explanation} onChange={(e) => setDraft({ ...draft, explanation: e.target.value })} rows={6} aria-label={t("Explicación")} className="rounded-md border border-border-subtle px-2 py-1" />
               <span className="flex gap-2">
                 <button type="submit" disabled={pending} className="rounded-md bg-ink px-3 py-1.5 text-sm text-white">
-                  Guardar
+                  {t("Guardar")}
                 </button>
                 <button type="button" onClick={() => setEditing(false)} className="rounded-md px-3 py-1.5 text-sm text-ink-muted hover:bg-chip">
-                  Cancelar
+                  {t("Cancelar")}
                 </button>
               </span>
             </form>
@@ -150,7 +152,7 @@ export function LearnView({
               <div className="flex items-start gap-2">
                 <h1 className="flex-1 text-[1.9rem] leading-tight font-bold tracking-tight">{concept.title}</h1>
                 <span className="relative">
-                  <button type="button" onClick={() => setMenu((m) => !m)} aria-label="Más" title="Más" className="rounded-md px-2 py-1 text-ink-faint hover:bg-chip hover:text-ink">
+                  <button type="button" onClick={() => setMenu((m) => !m)} aria-label={t("Más")} title={t("Más")} className="rounded-md px-2 py-1 text-ink-faint hover:bg-chip hover:text-ink">
                     ⋯
                   </button>
                   {menu && (
@@ -168,10 +170,10 @@ export function LearnView({
                         }}
                         className="block w-full rounded-md px-2.5 py-1.5 text-left hover:bg-chip"
                       >
-                        Dividir en subconceptos
+                        {t("Dividir en subconceptos")}
                       </button>
                       <button type="button" onClick={() => { setMenu(false); setEditing(true); }} className="block w-full rounded-md px-2.5 py-1.5 text-left hover:bg-chip">
-                        Editar
+                        {t("Editar")}
                       </button>
                       <button
                         type="button"
@@ -184,7 +186,7 @@ export function LearnView({
                         }}
                         className="block w-full rounded-md px-2.5 py-1.5 text-left text-red-600 hover:bg-chip"
                       >
-                        Eliminar
+                        {t("Eliminar")}
                       </button>
                     </div>
                   )}
@@ -197,7 +199,7 @@ export function LearnView({
 
           {concept.excerpt && (
             <div className="flex flex-col gap-2 rounded-lg bg-sidebar p-3.5">
-              <span className="text-ink-faint" title="De tus apuntes" aria-label="De tus apuntes">
+              <span className="text-ink-faint" title={t("De tus apuntes")} aria-label={t("De tus apuntes")}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" aria-hidden>
                   <path d="M7 3h7l5 5v13H7z" />
                   <path d="M14 3v5h5" />
@@ -245,8 +247,8 @@ export function LearnView({
                 }}
                 className="flex items-center rounded-full border border-[#e3e2de] bg-white py-1 pr-1 pl-4"
               >
-                <input value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="¿Qué no te cuadra?" aria-label="Tu duda" className="min-w-0 flex-1 bg-transparent text-sm outline-none" />
-                <button type="submit" disabled={pending || !question.trim()} aria-label="Preguntar" className="grid size-8 place-items-center rounded-full bg-ink text-white disabled:opacity-40">
+                <input value={question} onChange={(e) => setQuestion(e.target.value)} placeholder={t("¿Qué no te cuadra?")} aria-label={t("Tu duda")} className="min-w-0 flex-1 bg-transparent text-sm outline-none" />
+                <button type="submit" disabled={pending || !question.trim()} aria-label={t("Preguntar")} className="grid size-8 place-items-center rounded-full bg-ink text-white disabled:opacity-40">
                   →
                 </button>
               </form>
@@ -255,11 +257,11 @@ export function LearnView({
 
           {mode !== "check" && !editing && (
             <div className="flex items-center gap-3 pt-1">
-              <button type="button" onClick={() => setMode("check")} title="Lo entiendo" aria-label="Lo entiendo" className={roundMain}>
+              <button type="button" onClick={() => setMode("check")} title={t("Lo entiendo")} aria-label={t("Lo entiendo")} className={roundMain}>
                 <CheckIcon size={22} className="block" />
               </button>
               {mode === "read" && (
-                <button type="button" onClick={explainDifferently} title="Explícamelo de otra forma" aria-label="Explícamelo de otra forma" className={roundAlt}>
+                <button type="button" onClick={explainDifferently} title={t("Explícamelo de otra forma")} aria-label={t("Explícamelo de otra forma")} className={roundAlt}>
                   <BulbIcon />
                 </button>
               )}

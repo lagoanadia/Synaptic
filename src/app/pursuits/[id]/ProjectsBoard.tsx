@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/app/LangProvider";
 import { KanbanIcon } from "@/app/icons";
 import { useRef, useState, useTransition } from "react";
 import Link from "next/link";
@@ -21,6 +22,7 @@ function daysUntil(dueDate: string) {
 }
 
 function DueBadge({ dueDate }: { dueDate: string }) {
+  const t = useT();
   const days = daysUntil(dueDate);
   const label = new Date(dueDate).toLocaleDateString("es-ES", {
     timeZone: "UTC",
@@ -39,19 +41,20 @@ function DueBadge({ dueDate }: { dueDate: string }) {
             : "bg-chip text-ink-muted"
       }`}
     >
-      {overdue ? `Atrasado · ${label}` : `Entrega ${label}`}
+      {overdue ? t("Atrasado · {0}", { 0: label }) : t("Entrega {0}", { 0: label })}
     </span>
   );
 }
 
 function ProjectCardTile({ pursuitId, project }: { pursuitId: string; project: ProjectForDisplay }) {
+  const t = useT();
   const pct =
     project.totalCards === 0 ? 0 : Math.round((project.doneCards / project.totalCards) * 100);
   return (
     <div className="group relative flex flex-col gap-3 rounded-2xl border border-border-subtle bg-white p-4 transition-shadow hover:shadow-[0_8px_16px_rgba(13,13,13,0.08)]">
       <DeleteButton
         action={deleteProject.bind(null, pursuitId, project.id)}
-        confirmMessage={`¿Eliminar "${project.title}"? Se borran también su tablero y tarjetas — no se puede deshacer.`}
+        confirmMessage={t("¿Eliminar \"{0}\"? Se borran también su tablero y tarjetas — no se puede deshacer.", { 0: project.title })}
         className="absolute top-3 right-3 text-ink-faint opacity-40 hover:text-red-500 group-hover:opacity-100"
       >
         ×
@@ -69,7 +72,7 @@ function ProjectCardTile({ pursuitId, project }: { pursuitId: string; project: P
         </div>
         <div className="flex items-center justify-between">
           <span className="text-xs text-ink-faint">
-            {project.doneCards}/{project.totalCards} done
+            {project.doneCards}/{project.totalCards}{" "}{t("done")}
           </span>
           {project.dueDate && <DueBadge dueDate={project.dueDate} />}
         </div>
@@ -87,6 +90,7 @@ export function ProjectsBoard({
   pursuitId: string;
   projects: ProjectForDisplay[];
 }) {
+  const t = useT();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -116,7 +120,7 @@ export function ProjectsBoard({
         <input
           ref={titleRef}
           type="text"
-          placeholder="Título del proyecto"
+          placeholder={t("Título del proyecto")}
           required
           disabled={isPending}
           className="flex-1 rounded-xl border border-border-subtle bg-white px-3.5 py-2.5 text-sm disabled:opacity-50"
@@ -124,22 +128,22 @@ export function ProjectsBoard({
         <input
           ref={dateRef}
           type="date"
-          title="Fecha de entrega (opcional)"
+          title={t("Fecha de entrega (opcional)")}
           disabled={isPending}
           className="rounded-xl border border-border-subtle bg-white px-3 py-2.5 text-sm disabled:opacity-50"
         />
         <span
-          title="La única plantilla por ahora"
+          title={t("La única plantilla por ahora")}
           className="rounded-full bg-accent-soft px-3 py-2 text-xs font-semibold text-accent whitespace-nowrap"
         >
-          <KanbanIcon size={14} /> Kanban
+          <KanbanIcon size={14} />{" "}{t("Kanban")}
         </span>
         <button
           type="submit"
           disabled={isPending}
           className="rounded-full bg-ink px-5 py-2.5 text-sm font-semibold whitespace-nowrap text-white transition-transform hover:-translate-y-0.5 hover:shadow-lg disabled:opacity-50"
         >
-          + Nuevo
+          {t("+ Nuevo")}
         </button>
       </form>
       {error && <p className="text-xs text-red-500">{error}</p>}

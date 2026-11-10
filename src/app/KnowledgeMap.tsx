@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/app/LangProvider";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { focusHeight, layoutMap, type MapCluster, type PlacedNode } from "@/lib/knowledgeMap";
@@ -28,6 +29,7 @@ export function KnowledgeMap({
   // One unit drawn at real size (Aprender): dots fill the box, always labelled.
   focus?: boolean;
 }) {
+  const t = useT();
   const router = useRouter();
   const [hover, setHover] = useState<PlacedNode | null>(null);
   // Narrow screens: two clusters per row so the dots stay big enough.
@@ -53,7 +55,7 @@ export function KnowledgeMap({
 
   return (
     <div ref={box} className="relative rounded-lg border border-[#f1f1ef] bg-[#fbfbfa]">
-      <svg viewBox={`0 0 ${W} ${height}`} className="block h-auto w-full" role="img" aria-label="Mapa de conceptos">
+      <svg viewBox={`0 0 ${W} ${height}`} className="block h-auto w-full" role="img" aria-label={t("Mapa de conceptos")}>
         {placed.map((c) => (
           <g key={c.id}>
             {c.links.map(([a, b]) => (

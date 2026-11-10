@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/app/LangProvider";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { dotState, focusHeight, type MapCluster } from "@/lib/knowledgeMap";
@@ -22,6 +23,7 @@ export function DraggableMap({
   // The +: type a concept and the AI finds it in the notes. Returns an error.
   onAdd?: (text: string) => Promise<string | null>;
 }) {
+  const t = useT();
   const router = useRouter();
   const nodes = cluster.nodes;
   const H = focusHeight(nodes.length);
@@ -184,7 +186,7 @@ export function DraggableMap({
         onPointerUp={up}
         onWheel={wheel}
         role="img"
-        aria-label="Mapa de conceptos"
+        aria-label={t("Mapa de conceptos")}
       >
         <g transform={`translate(${view.x} ${view.y}) scale(${view.k})`}>
           {edges.map((e) => {
@@ -243,19 +245,19 @@ export function DraggableMap({
               onChange={(e) => setAdding({ ...adding, text: e.target.value, error: null })}
               onKeyDown={(e) => e.key === "Escape" && setAdding(null)}
               onBlur={() => !adding.text.trim() && setAdding(null)}
-              placeholder="Concepto…"
-              aria-label="Nuevo concepto"
+              placeholder={t("Concepto…")}
+              aria-label={t("Nuevo concepto")}
               className={`w-56 rounded-md bg-white px-2.5 py-1.5 text-sm shadow-sm outline-none ring-1 ring-border-subtle focus:ring-ink/30 ${adding.busy ? "animate-pulse" : ""}`}
             />
             {adding.error && <span className="max-w-56 text-xs text-red-500">{adding.error}</span>}
           </form>
         ) : (
-          <button type="button" onClick={() => setAdding({ text: "", busy: false, error: null })} title="Añadir concepto" aria-label="Añadir concepto" className="absolute top-2 left-2 grid size-8 place-items-center rounded-md bg-white text-lg text-ink-muted shadow-sm hover:text-ink">
+          <button type="button" onClick={() => setAdding({ text: "", busy: false, error: null })} title={t("Añadir concepto")} aria-label={t("Añadir concepto")} className="absolute top-2 left-2 grid size-8 place-items-center rounded-md bg-white text-lg text-ink-muted shadow-sm hover:text-ink">
             +
           </button>
         ))}
       {(view.k !== 1 || view.x !== 0 || view.y !== 0) && (
-        <button type="button" onClick={() => setView({ x: 0, y: 0, k: 1 })} title="Centrar" aria-label="Centrar" className="absolute right-2 bottom-2 grid size-8 place-items-center rounded-md bg-white text-ink-muted shadow-sm hover:text-ink">
+        <button type="button" onClick={() => setView({ x: 0, y: 0, k: 1 })} title={t("Centrar")} aria-label={t("Centrar")} className="absolute right-2 bottom-2 grid size-8 place-items-center rounded-md bg-white text-ink-muted shadow-sm hover:text-ink">
           ⌖
         </button>
       )}

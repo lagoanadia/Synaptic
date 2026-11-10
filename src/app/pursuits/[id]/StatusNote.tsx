@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/app/LangProvider";
 import { useRef, useState, useTransition } from "react";
 import { updateStatusNote } from "./actions";
 
@@ -19,6 +20,7 @@ export function StatusNote({
   pursuitId: string;
   initialNote: string | null;
 }) {
+  const t = useT();
   const [value, setValue] = useState(initialNote ?? "");
   const [isPending, startTransition] = useTransition();
   const savedRef = useRef(initialNote ?? "");
@@ -37,7 +39,7 @@ export function StatusNote({
         autoResize(e.target);
       }}
       onBlur={save}
-      placeholder="Cómo va, qué queda pendiente…"
+      placeholder={t("Cómo va, qué queda pendiente…")}
       rows={1}
       disabled={isPending}
       className="min-h-24 w-full resize-none overflow-hidden bg-transparent text-[15px] leading-relaxed text-ink outline-none placeholder:text-[#a08a4f] disabled:opacity-50"

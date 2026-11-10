@@ -1,4 +1,5 @@
 "use client";
+import { useT } from "@/app/LangProvider";
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -57,6 +58,7 @@ function Marked({ text }: { text: string }) {
 // Ctrl+K (⌘K) from anywhere: everything you can open, optionally in one
 // notebook. ↑↓ to move, Enter to open, Esc to close.
 export function SearchPalette({ open, onClose, notebooks }: { open: boolean; onClose: () => void; notebooks: { id: string; name: string; cover: NotebookCover }[] }) {
+  const t = useT();
   const router = useRouter();
   const [q, setQ] = useState("");
   const [scope, setScope] = useState<string | null>(null);
@@ -70,7 +72,7 @@ export function SearchPalette({ open, onClose, notebooks }: { open: boolean; onC
   useEffect(() => {
     if (!open) return;
     const n = ++ticket.current;
-    const t = window.setTimeout(async () => {
+    const timer = window.setTimeout(async () => {
       if (q.trim().length < 2) {
         setResults([]);
         setLoading(false);
@@ -83,7 +85,7 @@ export function SearchPalette({ open, onClose, notebooks }: { open: boolean; onC
       setIndex(0);
       setLoading(false);
     }, 160);
-    return () => window.clearTimeout(t);
+    return () => window.clearTimeout(timer);
   }, [q, scope, open]);
 
   const ordered = GROUPS.flatMap((g) => results.filter((r) => r.kind === g.kind));
@@ -101,7 +103,7 @@ export function SearchPalette({ open, onClose, notebooks }: { open: boolean; onC
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-start justify-center bg-ink/10 px-3 pt-[12vh]" onMouseDown={onClose} role="dialog" aria-label="Buscar">
+    <div className="fixed inset-0 z-[60] flex items-start justify-center bg-ink/10 px-3 pt-[12vh]" onMouseDown={onClose} role="dialog" aria-label={t("Buscar")}>
       <div
         className="flex max-h-[72vh] w-full max-w-[640px] flex-col overflow-hidden rounded-xl bg-white shadow-[0_0_0_1px_rgba(15,15,15,.05),0_24px_60px_rgba(15,15,15,.22)]"
         onMouseDown={(e) => e.stopPropagation()}
@@ -124,11 +126,11 @@ export function SearchPalette({ open, onClose, notebooks }: { open: boolean; onC
               } else if (e.key === "Enter") go(ordered[index]);
               else if (e.key === "Escape") onClose();
             }}
-            placeholder="Buscar páginas, conceptos, tarjetas…"
-            aria-label="Buscar"
+            placeholder={t("Buscar páginas, conceptos, tarjetas…")}
+            aria-label={t("Buscar")}
             className="min-w-0 flex-1 bg-transparent text-[15px] outline-none placeholder:text-ink-faint"
           />
-          <kbd className="rounded border border-border-subtle px-1.5 py-0.5 text-[11px] text-ink-faint">Esc</kbd>
+          <kbd className="rounded border border-border-subtle px-1.5 py-0.5 text-[11px] text-ink-faint">{t("Esc")}</kbd>
         </div>
 
         {notebooks.length > 1 && (
@@ -153,7 +155,7 @@ export function SearchPalette({ open, onClose, notebooks }: { open: boolean; onC
             if (!items.length) return null;
             return (
               <div key={g.kind}>
-                <span className="block px-4 pt-2.5 pb-1 text-xs text-ink-faint">{g.label}</span>
+                <span className="block px-4 pt-2.5 pb-1 text-xs text-ink-faint">{t(g.label)}</span>
                 {items.map((r) => {
                   const i = ordered.indexOf(r);
                   return (
@@ -183,16 +185,16 @@ export function SearchPalette({ open, onClose, notebooks }: { open: boolean; onC
               </div>
             );
           })}
-          {q.trim().length >= 2 && !loading && results.length === 0 && <p className="px-4 py-6 text-center text-sm text-ink-faint">Nada con “{q.trim()}”</p>}
+          {q.trim().length >= 2 && !loading && results.length === 0 && <p className="px-4 py-6 text-center text-sm text-ink-faint">{t("Nada con “")}{q.trim()}”</p>}
         </div>
 
         <div className="hidden items-center gap-4 border-t border-border-subtle px-4 py-2 text-xs text-ink-faint sm:flex">
           <span className="flex items-center gap-1.5">
             <kbd className="rounded border border-border-subtle px-1">↑</kbd>
-            <kbd className="rounded border border-border-subtle px-1">↓</kbd> moverte
+            <kbd className="rounded border border-border-subtle px-1">↓</kbd>{" "}{t("moverte")}
           </span>
           <span className="flex items-center gap-1.5">
-            <kbd className="rounded border border-border-subtle px-1">↵</kbd> abrir
+            <kbd className="rounded border border-border-subtle px-1">↵</kbd>{" "}{t("abrir")}
           </span>
         </div>
       </div>

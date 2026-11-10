@@ -1,3 +1,4 @@
+import { getT } from "@/lib/i18n/server";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
@@ -19,6 +20,7 @@ import { ProjectTimeline } from "@/app/projects/ProjectTimeline";
 // A notebook: its folders, then — with study tools — its map and this
 // week's pages; without — open tasks and recent pages.
 export default async function NotebookPage({ params }: { params: Promise<{ sectionId: string }> }) {
+  const t = await getT();
   const { sectionId } = await params;
   const session = await auth();
   if (!session?.user?.id) redirect("/");
@@ -73,7 +75,7 @@ export default async function NotebookPage({ params }: { params: Promise<{ secti
       <div className="flex flex-col gap-6">
         <nav className="text-sm text-ink-faint">
           <Link href="/pursuits" className="hover:text-ink hover:underline">
-            Inicio
+            {t("Inicio")}
           </Link>{" "}
           / <span className="text-ink-muted">{name}</span>
         </nav>
@@ -83,16 +85,16 @@ export default async function NotebookPage({ params }: { params: Promise<{ secti
       {study || !section || general ? (
         <section className="flex flex-col gap-3">
           {sectionHeader(study ? "Asignaturas" : "Carpetas")}
-          <FolderRow items={folders} after={!isVirtual && <NewFolder sectionName={name} label={study ? "Nueva asignatura" : "Nueva carpeta"} template={study ? undefined : "blank"} mine={study ? [] : mine} />} />
+          <FolderRow items={folders} after={!isVirtual && <NewFolder sectionName={name} label={study ? t("Nueva asignatura") : t("Nueva carpeta")} template={study ? undefined : "blank"} mine={study ? [] : mine} />} />
         </section>
       ) : (
         <>
           <section className="flex flex-col gap-3">
-            <h2 className="text-[22px] font-bold">Proyectos</h2>
-            <ProjectGrid projects={projects} today={today} after={<NewFolder sectionName={name} label="Nuevo proyecto" template="project" mine={mine} fill />} />
+            <h2 className="text-[22px] font-bold">{t("Proyectos")}</h2>
+            <ProjectGrid projects={projects} today={today} after={<NewFolder sectionName={name} label={t("Nuevo proyecto")} template="project" mine={mine} fill />} />
           </section>
           <section className="flex flex-col gap-3">
-            <h2 className="text-[22px] font-bold">Tareas</h2>
+            <h2 className="text-[22px] font-bold">{t("Tareas")}</h2>
             <TaskBoard
               tasks={projects.flatMap((p) => p.tasks)}
               projects={projects.filter((p) => !p.finished || p.tasks.some((t) => t.status !== "DONE")).map((p) => ({ id: p.id, title: p.title, cover: p.cover }))}
@@ -100,7 +102,7 @@ export default async function NotebookPage({ params }: { params: Promise<{ secti
             />
           </section>
           <section className="flex flex-col gap-3">
-            <h2 className="text-[22px] font-bold">Calendario</h2>
+            <h2 className="text-[22px] font-bold">{t("Calendario")}</h2>
             <ProjectTimeline projects={projects} today={today} />
           </section>
         </>

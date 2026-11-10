@@ -1,9 +1,11 @@
 import Link from "next/link";
+import { getT } from "@/lib/i18n/server";
 import { WEEKDAYS, fromKey, sortItems, type CalItem } from "@/lib/calendar";
 import { Pill } from "./Pill";
 
 // Home's "Esta semana": seven days, today ringed, the review marker on today.
-export function WeekStrip({ days, today, items }: { days: string[]; today: string; items: CalItem[] }) {
+export async function WeekStrip({ days, today, items }: { days: string[]; today: string; items: CalItem[] }) {
+  const t = await getT();
   return (
     <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
       {days.map((d, i) => {
@@ -17,7 +19,7 @@ export function WeekStrip({ days, today, items }: { days: string[]; today: strin
           >
             <span className="flex items-start justify-between">
               <span className="flex flex-col leading-tight">
-                <span className="text-[11px] text-ink-faint">{WEEKDAYS[i]}</span>
+                <span className="text-[11px] text-ink-faint">{t(WEEKDAYS[i])}</span>
                 <span className={`text-lg font-semibold ${isToday ? "text-[#e5484d]" : ""}`}>{fromKey(d).getUTCDate()}</span>
               </span>
               {isToday && (

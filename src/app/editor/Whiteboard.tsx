@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/app/LangProvider";
 import { useEffect, useRef, useState } from "react";
 import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from "@tiptap/react";
 import Image from "@tiptap/extension-image";
@@ -25,6 +26,7 @@ const TOOLS: { id: Tool; label: string; icon: React.ReactNode }[] = [
 // A whiteboard inside a page: draw with pen, line, rectangle, circle or
 // text in four colours; saves itself a moment after each change.
 function Board({ id }: { id: string }) {
+  const t = useT();
   const [shapes, setShapes] = useState<Shape[] | null>(null);
   const [tool, setTool] = useState<Tool>("pen");
   const [color, setColor] = useState(0);
@@ -55,17 +57,17 @@ function Board({ id }: { id: string }) {
   return (
     <div className="relative my-2 overflow-hidden rounded-xl border border-border-subtle bg-white" contentEditable={false} data-board>
       <div className="absolute top-2 left-2 z-10 flex flex-col items-center gap-1 rounded-xl border border-border-subtle bg-white p-1.5 shadow-sm" data-no-print>
-        {TOOLS.map((t) => (
-          <button key={t.id} type="button" title={t.label} aria-label={t.label} aria-pressed={tool === t.id} onClick={() => setTool(t.id)} className={`grid size-8 place-items-center rounded-lg ${tool === t.id ? "bg-chip text-ink" : "text-ink-muted hover:text-ink"}`}>
-            {t.icon}
+        {TOOLS.map((item) => (
+          <button key={item.id} type="button" title={t(item.label)} aria-label={t(item.label)} aria-pressed={tool === item.id} onClick={() => setTool(item.id)} className={`grid size-8 place-items-center rounded-lg ${tool === item.id ? "bg-chip text-ink" : "text-ink-muted hover:text-ink"}`}>
+            {item.icon}
           </button>
         ))}
         <span className="my-1 h-px w-5 bg-border-subtle" />
         {BOARD_COLORS.map((c, i) => (
-          <button key={c} type="button" aria-label={`Color ${i + 1}`} aria-pressed={color === i} onClick={() => setColor(i)} className={`m-0.5 size-4 rounded-full ${color === i ? "ring-2 ring-ink ring-offset-2" : ""}`} style={{ background: c }} />
+          <button key={c} type="button" aria-label={t("Color {0}", { 0: i + 1 })} aria-pressed={color === i} onClick={() => setColor(i)} className={`m-0.5 size-4 rounded-full ${color === i ? "ring-2 ring-ink ring-offset-2" : ""}`} style={{ background: c }} />
         ))}
         <span className="my-1 h-px w-5 bg-border-subtle" />
-        <button type="button" title="Deshacer" aria-label="Deshacer" disabled={!shapes.length} onClick={() => commit(shapes.slice(0, -1))} className="grid size-8 place-items-center rounded-lg text-ink-muted hover:text-ink disabled:opacity-30">
+        <button type="button" title={t("Deshacer")} aria-label={t("Deshacer")} disabled={!shapes.length} onClick={() => commit(shapes.slice(0, -1))} className="grid size-8 place-items-center rounded-lg text-ink-muted hover:text-ink disabled:opacity-30">
           {S("M9 14 4 9l5-5|M4 9h10a6 6 0 0 1 0 12h-3")}
         </button>
       </div>

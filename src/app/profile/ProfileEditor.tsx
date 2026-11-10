@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/app/LangProvider";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { AvatarFace } from "../AvatarFace";
@@ -21,6 +22,7 @@ const DiceIcon = () => (
 );
 
 export function ProfileEditor({ name, username, initial, saved: wasSaved }: { name: string; username: string | null; initial: Avatar; saved: boolean }) {
+  const t = useT();
   const [avatar, setAvatar] = useState(initial);
   const [tab, setTab] = useState<Tab>("Cara");
   const [dirty, setDirty] = useState(!wasSaved);
@@ -41,8 +43,8 @@ export function ProfileEditor({ name, username, initial, saved: wasSaved }: { na
             type="button"
             onClick={() => set({ [key]: v } as Partial<Avatar>)}
             aria-pressed={on}
-            aria-label={key === "star" ? (v ? "Con estrella" : "Sin estrella") : String(v)}
-            title={key === "star" ? (v ? "Con estrella" : "Sin estrella") : String(v)}
+            aria-label={key === "star" ? (v ? t("Con estrella") : t("Sin estrella")) : String(v)}
+            title={key === "star" ? (v ? t("Con estrella") : t("Sin estrella")) : String(v)}
             className={`rounded-full p-0.5 transition-shadow ${on ? "shadow-[0_0_0_2.5px_#37352f]" : "shadow-[0_0_0_1px_rgba(55,53,47,.12)] hover:shadow-[0_0_0_1.5px_rgba(55,53,47,.35)]"}`}
           >
             <AvatarFace avatar={{ ...avatar, ...(key === "eyes" || key === "brows" ? { glasses: "ninguna" } : {}), [key]: v }} size={size} uid={`${String(key)}${String(v)}`} view={view} plain={key !== "star" && key !== "bg"} />
@@ -59,7 +61,7 @@ export function ProfileEditor({ name, username, initial, saved: wasSaved }: { na
           type="button"
           onClick={() => set({ [key]: i })}
           aria-pressed={avatar[key] === i}
-          aria-label={`Color ${i + 1}`}
+          aria-label={t("Color {0}", { 0: i + 1 })}
           className={`${big ? "size-11" : "size-9"} rounded-full shadow-[inset_0_0_0_1px_rgba(0,0,0,.12)] ${avatar[key] === i ? "outline-[2.5px] outline-offset-[3px] outline-ink outline-solid" : ""}`}
           style={{ background: c }}
         />
@@ -80,7 +82,7 @@ export function ProfileEditor({ name, username, initial, saved: wasSaved }: { na
         <b className="mt-2 text-xl">{name}</b>
         <Handle initial={username} />
         <div className="mt-3 flex gap-2.5">
-          <button type="button" onClick={() => set(randomAvatar())} title="Otro al azar" aria-label="Otro al azar" className="grid h-10 w-11 place-items-center rounded-lg bg-chip text-ink-muted hover:text-ink">
+          <button type="button" onClick={() => set(randomAvatar())} title={t("Otro al azar")} aria-label={t("Otro al azar")} className="grid h-10 w-11 place-items-center rounded-lg bg-chip text-ink-muted hover:text-ink">
             <DiceIcon />
           </button>
           <button
@@ -95,7 +97,7 @@ export function ProfileEditor({ name, username, initial, saved: wasSaved }: { na
             }
             className="rounded-lg bg-ink px-5 py-2 font-medium text-white disabled:opacity-50"
           >
-            {pending ? "Guardando…" : dirty ? "Hecho" : "Guardado"}
+            {pending ? t("Guardando…") : dirty ? t("Hecho") : t("Guardado")}
           </button>
         </div>
       </div>
@@ -147,13 +149,14 @@ export function ProfileEditor({ name, username, initial, saved: wasSaved }: { na
 
 // @handle: click to edit, Enter to save.
 function Handle({ initial }: { initial: string | null }) {
+  const t = useT();
   const [value, setValue] = useState(initial ?? "");
   const [editing, setEditing] = useState(!initial);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   if (!editing)
     return (
-      <button type="button" onClick={() => setEditing(true)} className="rounded-md bg-chip px-2 py-0.5 text-sm text-ink-muted hover:text-ink" title="Cambiar tu @usuario">
+      <button type="button" onClick={() => setEditing(true)} className="rounded-md bg-chip px-2 py-0.5 text-sm text-ink-muted hover:text-ink" title={t("Cambiar tu @usuario")}>
         @{value}
       </button>
     );
@@ -174,9 +177,9 @@ function Handle({ initial }: { initial: string | null }) {
     >
       <span className="flex items-center rounded-md border border-border-subtle bg-white px-2 text-sm focus-within:border-ink-faint">
         <span className="text-ink-faint">@</span>
-        <input autoFocus={!!initial} value={value} onChange={(e) => setValue(e.target.value)} disabled={pending} placeholder="tu_usuario" aria-label="Tu @usuario" className="w-36 py-1 outline-none" />
+        <input autoFocus={!!initial} value={value} onChange={(e) => setValue(e.target.value)} disabled={pending} placeholder={t("tu_usuario")} aria-label={t("Tu @usuario")} className="w-36 py-1 outline-none" />
       </span>
-      {error ? <span className="text-xs text-red-600">{error}</span> : <span className="text-xs text-ink-faint">Así te encuentran tus amigos</span>}
+      {error ? <span className="text-xs text-red-600">{error}</span> : <span className="text-xs text-ink-faint">{t("Así te encuentran tus amigos")}</span>}
     </form>
   );
 }
