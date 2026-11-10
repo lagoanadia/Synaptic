@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { HANDLE, cleanHandle, parseAvatar } from "@/lib/avatar";
+import { freeHandle } from "@/lib/username";
 
 async function me() {
   const session = await auth();
@@ -15,6 +16,16 @@ export async function saveAvatar(raw: unknown) {
   const id = await me();
   await prisma.user.update({ where: { id }, data: { avatar: parseAvatar(raw) } });
   revalidatePath("/", "layout");
+}
+
+// Live check while typing: free, taken (with a free alternative) or badly formed.
+export async function checkUsername(raw: string): Promise<{ status: "ok" | "taken" | "invalid"; suggestion?: string }> {
+  const id = await me();
+  const username = cleanHandle(raw);
+  if (!HANDLE.test(username)) return { status: "invalid" };
+  const taken = await prisma.user.findFirst({ where: { username, NOT: { id } }, select: { id: true } });
+  if (!taken) return { status: "ok" };
+  return { status: "taken", suggestion: await freeHandle(username, id) };
 }
 
 // "@Nadia_L" → "nadia_l"; taken or badly formed → a message to show.

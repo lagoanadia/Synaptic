@@ -1,5 +1,11 @@
 // Spanish source text → translation. Missing keys fall back to Spanish.
 export const de: Record<string, string> = {
+  "Crea tu cuenta o entra": "Konto erstellen oder anmelden",
+  "Gratis y sin contraseñas: elige con qué entrar. Si es tu primera vez, te creamos la cuenta.": "Kostenlos und ohne Passwort: Wähl, womit du dich anmeldest. Beim ersten Mal erstellen wir dein Konto.",
+  "Ese ya está cogido.": "Der ist schon vergeben.",
+  "¿Usar @{0}?": "@{0} verwenden?",
+  "¡Está libre!": "Ist noch frei!",
+  "Empezar": "Los geht's",
   "Amigos": "Freunde",
   "usuario de tu amigo": "Benutzername deines Freundes",
   "Añadir amigo por @usuario": "Freund per @Benutzername hinzufügen",
