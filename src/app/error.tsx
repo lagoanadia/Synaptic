@@ -51,7 +51,7 @@ export default function ErrorPage({ error, reset }: { error: Error & { digest?: 
         });
 
   return (
-    <BrokenThread title={copy.title} text={copy.text}>
+    <BrokenThread title={t(copy.title)} text={t(copy.text)}>
       <button type="button" onClick={retry} disabled={pending} className={errorButton}>
         {kind === "update" ? t("↻ Recargar") : pending ? t("Reintentando…") : t("↻ Reintentar")}
       </button>

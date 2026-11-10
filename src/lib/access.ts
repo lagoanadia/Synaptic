@@ -1,3 +1,4 @@
+import { getT } from "@/lib/i18n/server";
 import "server-only";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
@@ -10,15 +11,16 @@ import {
 
 // The signed-in user, plus the pursuit if they own it or were invited.
 export async function requirePursuitAccess(pursuitId: string) {
+  const t = await getT();
   const session = await auth();
-  if (!session?.user?.id) throw new Error("No has iniciado sesión");
+  if (!session?.user?.id) throw new Error(t("No has iniciado sesión"));
   const pursuit = await prisma.pursuit.findFirst({
     where: {
       id: pursuitId,
       OR: [{ ownerId: session.user.id }, { members: { some: { userId: session.user.id } } }],
     },
   });
-  if (!pursuit) throw new Error("Asignatura no encontrada o sin acceso");
+  if (!pursuit) throw new Error(t("Asignatura no encontrada o sin acceso"));
   return { session, pursuit, userId: session.user.id };
 }
 
@@ -29,10 +31,11 @@ export async function aiBudget(userId: string, email: string | null | undefined)
   return {
     unlimited,
     async check(): Promise<string | null> {
+  const t = await getT();
       if (unlimited) return null;
       const used = await getOrganizeUsageToday(userId);
       return used >= DAILY_ORGANIZE_LIMIT
-        ? `Has llegado al límite de hoy: ${DAILY_ORGANIZE_LIMIT} usos de la IA. Vuelve mañana.`
+        ? t("Has llegado al límite de hoy: {0} usos de la IA. Vuelve mañana.", { 0: DAILY_ORGANIZE_LIMIT })
         : null;
     },
     async charge() {

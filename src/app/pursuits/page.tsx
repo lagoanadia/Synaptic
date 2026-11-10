@@ -43,7 +43,7 @@ export default async function HomePage() {
 
   const shelf: ShelfItem[] = sections.map((s) => ({ id: s.id, name: s.name, cover: notebookCover(s.id, s.cover), href: `/pursuits/s/${s.id}`, movable: true }));
   if (pursuitBuckets.some((p) => p.ownerId === userId && !p.sectionId))
-    shelf.push({ id: UNSORTED, name: "Sin clasificar", cover: "marble", href: `/pursuits/s/${UNSORTED}`, movable: false });
+    shelf.push({ id: UNSORTED, name: t("Sin clasificar"), cover: "marble", href: `/pursuits/s/${UNSORTED}`, movable: false });
   if (pursuitBuckets.some((p) => p.ownerId !== userId))
     shelf.push({ id: SHARED, name: "Compartido", cover: "ocean", href: `/pursuits/s/${SHARED}`, movable: false });
 
@@ -71,7 +71,7 @@ export default async function HomePage() {
       if (!b.sectionId) return [b.id, <p key={b.id} className="text-sm text-ink-faint">{t("Elige una libreta.")}</p>] as const;
       if (b.type === "folders") return [b.id, <FolderRow key={b.id} items={await folderItems(userId, b.sectionId, studyOf.get(b.sectionId) ?? true)} />] as const;
       if (b.type === "map")
-        return [b.id, <KnowledgeMap key={b.id} clusters={await notebookMap(userId, b.sectionId)} empty="Crea un mapa desde una asignatura y aparecerá aquí." />] as const;
+        return [b.id, <KnowledgeMap key={b.id} clusters={await notebookMap(userId, b.sectionId)} empty={t("Crea un mapa desde una asignatura y aparecerá aquí.")} />] as const;
       return [b.id, <RecentList key={b.id} pages={await recentPages(userId, b.sectionId)} />] as const;
     }),
   );

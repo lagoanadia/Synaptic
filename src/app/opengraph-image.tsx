@@ -1,3 +1,4 @@
+import { getT } from "@/lib/i18n/server";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { ImageResponse } from "next/og";
@@ -29,6 +30,7 @@ const NOTES = [
 ];
 
 export default async function Image() {
+  const t = await getT();
   const [serif, hand] = await Promise.all([googleFont("Fraunces:opsz,wght@144,800"), googleFont("Caveat:wght@600")]);
   const logo = `data:image/png;base64,${(await readFile(join(process.cwd(), "src/app/icon.png"))).toString("base64")}`;
   const fonts = [
@@ -88,8 +90,8 @@ export default async function Image() {
             {SITE_NAME}
           </div>
           <div style={{ display: "flex", flexDirection: "column", marginTop: 34, fontSize: 104, lineHeight: 0.95, letterSpacing: -3, fontFamily: serif ? "Serif" : "sans-serif", fontWeight: 800 }}>
-            <span>Tu cabeza,</span>
-            <span>en orden.</span>
+            <span>{t("Tu cabeza,")}</span>
+            <span>{t("en orden.")}</span>
           </div>
           <div style={{ marginTop: 34, fontSize: 28, opacity: 0.85 }}>synapticnotes.app</div>
         </div>

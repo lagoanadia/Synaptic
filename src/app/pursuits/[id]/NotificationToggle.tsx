@@ -42,7 +42,7 @@ export function NotificationToggle() {
     try {
       const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
       if (!publicKey) {
-        window.alert("Las notificaciones aún no están configuradas en esta app.");
+        window.alert(t("Las notificaciones aún no están configuradas en esta app."));
         return;
       }
       const permission = await Notification.requestPermission();

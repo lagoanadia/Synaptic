@@ -2,6 +2,7 @@ import "server-only";
 import { groq } from "@/lib/groq";
 import type { ChatCompletionCreateParamsNonStreaming } from "groq-sdk/resources/chat/completions";
 import { parseJsonLoosely } from "@/lib/json";
+import { getLang } from "@/lib/i18n/server";
 
 // The Groq models the app uses, in one place. If one gets dropped from
 // Groq's free tier (it's happened), this is the only line to change.
@@ -9,17 +10,26 @@ import { parseJsonLoosely } from "@/lib/json";
 export const TEXT_MODEL = "openai/gpt-oss-120b";
 export const VISION_MODEL = "qwen/qwen3.8-27b";
 
-// The app is in Spanish: everything the AI writes for the user is too,
-// unless a prompt explicitly asks for another language (e.g. a concept map
-// the user chose to have explained in English).
-export const SPANISH =
-  "Write every text meant for the user in Spanish from Spain (tú, natural and clear), unless the instructions explicitly ask for another language. Keep code, identifiers, technical terms and quotes in their original form.";
+// Everything the AI writes for the user is in the app's language (the
+// ES/EN/DE picker), unless a prompt explicitly asks for another one (e.g. a
+// concept map the user chose to have explained in English).
+const LANGUAGE_NAME = { es: "Spanish from Spain (tú, natural and clear)", en: "English (natural and clear)", de: "German (du, natural and clear)" } as const;
+export async function userLanguage(): Promise<string> {
+  try {
+    return LANGUAGE_NAME[await getLang()];
+  } catch {
+    return LANGUAGE_NAME.es; // outside a request (scripts, cron)
+  }
+}
+export async function languageRule(): Promise<string> {
+  return `The user's language is ${await userLanguage()}. Write every text meant for the user in it, unless the instructions explicitly ask for another language. Keep code, identifiers, technical terms and quotes in their original form.`;
+}
 
 // Groq's JSON mode occasionally rejects its own output
 // ("json_validate_failed") — a one-off sampling hiccup that a second
 // identical attempt usually doesn't repeat. One retry, then give up.
 export async function createJsonCompletion(params: ChatCompletionCreateParamsNonStreaming) {
-  params = { ...params, messages: [{ role: "system", content: SPANISH }, ...params.messages] };
+  params = { ...params, messages: [{ role: "system", content: await languageRule() }, ...params.messages] };
   try {
     return await groq.chat.completions.create(params);
   } catch {

@@ -10,7 +10,7 @@ const subscribe = () => () => {};
 export function Greeting({ name }: { name: string | null }) {
   const t = useT();
   const hour = useSyncExternalStore(subscribe, () => new Date().getHours(), () => -1);
-  const word = hour < 0 ? "Hola" : hour < 6 ? "Buenas noches" : hour < 13 ? "Buenos días" : hour < 21 ? "Buenas tardes" : "Buenas noches";
+  const word = hour < 0 ? "Hola" : hour < 6 ? "Buenas noches" : hour < 13 ? t("Buenos días") : hour < 21 ? "Buenas tardes" : "Buenas noches";
   const first = name?.split(" ")[0];
   return (
     <h1 className="text-[2.1rem] leading-tight font-bold tracking-tight">

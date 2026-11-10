@@ -49,7 +49,7 @@ export function NewFolder({ sectionName, label, fill = false, template: initial,
                 aria-label={t("Borrar la plantilla {0}", { 0: item.name })}
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => {
-                  if (!window.confirm(`¿Borrar la plantilla "${item.name}"? Las carpetas hechas con ella no cambian.`)) return;
+                  if (!window.confirm(t("¿Borrar la plantilla \"{0}\"? Las carpetas hechas con ella no cambian.", { 0: item.name }))) return;
                   if (template === `u:${item.id}`) setTemplate(initial);
                   start(() => deleteFolderTemplate(item.id));
                 }}

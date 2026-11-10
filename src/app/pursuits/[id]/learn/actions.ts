@@ -1,5 +1,7 @@
 "use server";
 
+import { getT } from "@/lib/i18n/server";
+
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
@@ -13,8 +15,9 @@ type Result<T = object> = ({ error: string } & Partial<T>) | ({ error: null } & 
 
 // A concept, only if the signed-in user can see its pursuit.
 async function conceptWithAccess(conceptId: string) {
+  const t = await getT();
   const session = await auth();
-  if (!session?.user?.id) throw new Error("No has iniciado sesión");
+  if (!session?.user?.id) throw new Error(t("No has iniciado sesión"));
   const concept = await prisma.concept.findFirst({
     where: {
       id: conceptId,
@@ -26,7 +29,7 @@ async function conceptWithAccess(conceptId: string) {
     },
     include: { map: true },
   });
-  if (!concept) throw new Error("Concepto no encontrado");
+  if (!concept) throw new Error(t("Concepto no encontrado"));
   return { session, concept };
 }
 
@@ -63,6 +66,7 @@ export async function reviewConcept(conceptId: string, correct: boolean) {
 }
 
 export async function goDeeper(conceptId: string): Promise<Result<{ count: number }>> {
+  const t = await getT();
   const { session, concept } = await conceptWithAccess(conceptId);
   const existing = await prisma.concept.count({ where: { parentId: conceptId } });
   if (existing > 0) return { error: null, count: existing };
@@ -71,7 +75,7 @@ export async function goDeeper(conceptId: string): Promise<Result<{ count: numbe
   if (limited) return { error: limited };
 
   const children = await deepen(concept, concept.map.sourceText, concept.map.language);
-  if (children.length === 0) return { error: "Ahora mismo no he podido dividirlo más" };
+  if (children.length === 0) return { error: t("Ahora mismo no he podido dividirlo más") };
   await budget.charge();
   for (const [order, c] of children.entries()) {
     const child = await prisma.concept.create({
@@ -94,14 +98,15 @@ export async function goDeeper(conceptId: string): Promise<Result<{ count: numbe
 }
 
 export async function askAboutConcept(conceptId: string, question: string): Promise<Result<{ answer: string }>> {
+  const t = await getT();
   const q = question.trim().slice(0, 500);
-  if (!q) return { error: "Pregunta algo primero" };
+  if (!q) return { error: t("Pregunta algo primero") };
   const { session, concept } = await conceptWithAccess(conceptId);
   const budget = await aiBudget(session.user!.id!, session.user!.email);
   const limited = await budget.check();
   if (limited) return { error: limited };
   const answer = await answerQuestion(concept, q, concept.map.sourceText, concept.map.language);
-  if (!answer) return { error: "No se ha podido contactar con la IA ahora mismo" };
+  if (!answer) return { error: t("No se ha podido contactar con la IA ahora mismo") };
   await budget.charge();
   return { error: null, answer };
 }
@@ -109,6 +114,7 @@ export async function askAboutConcept(conceptId: string, question: string): Prom
 // ─── Quiz: a short mixed exam on a concept ─────────────────────────────
 
 export async function makeConceptQuiz(conceptId: string): Promise<Result<{ questions: QuizQuestion[] }>> {
+  const t = await getT();
   const { session, concept } = await conceptWithAccess(conceptId);
   const budget = await aiBudget(session.user!.id!, session.user!.email);
   const limited = await budget.check();
@@ -119,7 +125,7 @@ export async function makeConceptQuiz(conceptId: string): Promise<Result<{ quest
     select: { title: true, explanation: true },
   });
   const questions = await writeConceptQuiz(concept, inside, concept.map.sourceText, concept.map.language);
-  if (questions.length < 3) return { error: "No he podido escribir el examen — inténtalo de nuevo" };
+  if (questions.length < 3) return { error: t("No he podido escribir el examen — inténtalo de nuevo") };
   await budget.charge();
   return { error: null, questions };
 }
@@ -159,8 +165,9 @@ export async function editConcept(
 }
 
 export async function addConcept(mapId: string, title: string, parentId: string | null) {
+  const t = await getT();
   const session = await auth();
-  if (!session?.user?.id) throw new Error("No has iniciado sesión");
+  if (!session?.user?.id) throw new Error(t("No has iniciado sesión"));
   const map = await prisma.conceptMap.findFirst({
     where: { id: mapId, pursuit: { OR: [{ ownerId: session.user.id }, { members: { some: { userId: session.user.id } } }] } },
   });
@@ -204,10 +211,11 @@ export async function unlinkConcepts(fromId: string, toId: string) {
 
 // The map's +: a concept by name, explained from the unit's notes.
 export async function addConceptByName(mapId: string, text: string): Promise<Result<{ conceptId: string }>> {
+  const t = await getT();
   const session = await auth();
-  if (!session?.user?.id) return { error: "No has iniciado sesión" };
+  if (!session?.user?.id) return { error: t("No has iniciado sesión") };
   const map = await prisma.conceptMap.findUnique({ where: { id: mapId }, select: { pursuitId: true } });
-  if (!map) return { error: "Mapa no encontrado" };
+  if (!map) return { error: t("Mapa no encontrado") };
   const r = await addNamedConcept(session.user.id, map.pursuitId, { mapId }, text);
   if (r.error !== null) return { error: r.error };
   revalidatePath(mapPath(map.pursuitId, mapId));

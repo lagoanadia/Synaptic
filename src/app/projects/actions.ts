@@ -1,5 +1,7 @@
 "use server";
 
+import { getT } from "@/lib/i18n/server";
+
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
@@ -10,8 +12,9 @@ const STATUSES: TaskStatus[] = ["TODO", "IN_PROGRESS", "DONE"];
 const date = (v: string | null | undefined) => (v && /^\d{4}-\d{2}-\d{2}$/.test(v) ? new Date(`${v}T00:00:00Z`) : null);
 
 async function userId() {
+  const t = await getT();
   const session = await auth();
-  if (!session?.user?.id) throw new Error("No has iniciado sesión");
+  if (!session?.user?.id) throw new Error(t("No has iniciado sesión"));
   return session.user.id;
 }
 async function canProject(uid: string, pursuitId: string) {

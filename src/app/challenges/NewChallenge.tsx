@@ -24,16 +24,16 @@ export function NewChallenge({ subjects, defaultSubject }: { subjects: { id: str
   function create() {
     setError(null);
     start(async () => {
-      setStatus("Buscando qué practicar…");
+      setStatus(t("Buscando qué practicar…"));
       const r = await draftChallenge({ language, difficulty, pursuitId: subject || null, topic: "" });
       if (r.error || !r.drafts) {
         setStatus(null);
-        return setError(r.error ?? "Inténtalo de nuevo");
+        return setError(r.error ?? t("Inténtalo de nuevo"));
       }
       setStatus(language === "javascript" ? "Comprobando…" : `Comprobando (cargando ${LANGUAGE_INFO[language].label})…`);
       const saved = (await checkAndSave(language, r.drafts, 3)).length;
       setStatus(null);
-      if (saved === 0) return setError("No han pasado la comprobación — inténtalo de nuevo");
+      if (saved === 0) return setError(t("No han pasado la comprobación — inténtalo de nuevo"));
       router.refresh();
     });
   }
@@ -61,7 +61,7 @@ export function NewChallenge({ subjects, defaultSubject }: { subjects: { id: str
       </div>
       {subjects.length > 0 && (
         <div className="flex flex-wrap gap-1.5 pt-1" role="radiogroup" aria-label={t("De qué carpeta")}>
-          {[...subjects.slice(0, 6), { id: "", title: "Todo" }].map((s) => (
+          {[...subjects.slice(0, 6), { id: "", title: t("Todo") }].map((s) => (
             <button
               key={s.id || "all"}
               type="button"

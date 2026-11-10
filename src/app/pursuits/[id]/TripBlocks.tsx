@@ -1,6 +1,6 @@
 "use client";
 
-import { useT } from "@/app/LangProvider";
+import { useLocale, useT } from "@/app/LangProvider";
 import { AvatarFace } from "@/app/AvatarFace";
 import type { Avatar } from "@/lib/avatar";
 import { useState, useTransition } from "react";
@@ -161,7 +161,7 @@ const WIDTH: Record<OptionColumn, string> = { status: "110px", price: "90px", vo
 const LABEL = Object.fromEntries(OPTION_COLUMNS.map((c) => [c.id, c.label])) as Record<OptionColumn, string>;
 
 // "12 nov" ↔ "2026-11-12"; typed as dd/mm or dd/mm/aaaa.
-const shortDay = (d: string) => new Date(`${d}T00:00:00Z`).toLocaleDateString("es-ES", { day: "numeric", month: "short", timeZone: "UTC" });
+const shortDay = (d: string, locale: string) => new Date(`${d}T00:00:00Z`).toLocaleDateString(locale, { day: "numeric", month: "short", timeZone: "UTC" });
 function parseDay(text: string): string | null | undefined {
   const t = text.trim();
   if (!t) return null;
@@ -174,6 +174,7 @@ function parseDay(text: string): string | null | undefined {
 }
 
 function DateCell({ value, onSave }: { value: string | null; onSave: (v: string | null) => void }) {
+  const locale = useLocale();
   const t = useT();
   const [editing, setEditing] = useState(false);
   if (editing)
@@ -194,7 +195,7 @@ function DateCell({ value, onSave }: { value: string | null; onSave: (v: string 
     );
   return (
     <button type="button" onClick={() => setEditing(true)} className={`text-left ${value ? "" : "text-ink-faint"}`}>
-      {value ? shortDay(value) : t("+ fecha")}
+      {value ? shortDay(value, locale) : t("+ fecha")}
     </button>
   );
 }
@@ -204,7 +205,7 @@ function Stars({ value, onSave }: { value: number | null; onSave: (v: number | n
   return (
     <span className="flex" role="radiogroup" aria-label={t("Valoración")}>
       {[1, 2, 3, 4, 5].map((n) => (
-        <button key={n} type="button" role="radio" aria-checked={value === n} aria-label={`${n} de 5`} onClick={() => onSave(value === n ? null : n)} className={`px-px text-[15px] leading-none ${value && n <= value ? "text-ink" : "text-ink-faint/30 hover:text-ink-faint"}`}>
+        <button key={n} type="button" role="radio" aria-checked={value === n} aria-label={t("{0} de 5", { 0: n })} onClick={() => onSave(value === n ? null : n)} className={`px-px text-[15px] leading-none ${value && n <= value ? "text-ink" : "text-ink-faint/30 hover:text-ink-faint"}`}>
           ★
         </button>
       ))}
@@ -289,7 +290,7 @@ export function OptionsBlock({ pursuitId, blockId, items, people, me, columns = 
             })}
             <button
               type="button"
-              onClick={() => window.confirm(`¿Quitar "${c.title}"?`) && start(() => deleteChoice(c.id))}
+              onClick={() => window.confirm(t("¿Quitar \"{0}\"?", { 0: c.title })) && start(() => deleteChoice(c.id))}
               title={t("Quitar")}
               aria-label={t("Quitar opción")}
               className="text-ink-faint/40 hover:text-red-600"

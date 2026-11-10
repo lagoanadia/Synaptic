@@ -1,6 +1,6 @@
 "use client";
 
-import { useT } from "@/app/LangProvider";
+import { useLocale, useT } from "@/app/LangProvider";
 import { useState, useTransition } from "react";
 import { Faces, type Person } from "./TripBlocks";
 import { addDateOption, addExpense, addSaving, deleteDateOption, deleteExpense, deleteSaving, setSavingsGoal, toggleDate } from "./sharedBlocks";
@@ -8,7 +8,7 @@ import type { Debt } from "@/lib/shared";
 
 const euros = (cents: number) => `${(cents / 100).toLocaleString("es-ES", { maximumFractionDigits: 2 })} €`;
 const toCents = (v: string) => Math.round((Number(v.replace(",", ".").replace(/[^\d.]/g, "")) || 0) * 100);
-const dayLabel = (d: string) => new Date(`${d}T00:00:00Z`).toLocaleDateString("es-ES", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
+const dayLabel = (d: string, locale: string) => new Date(`${d}T00:00:00Z`).toLocaleDateString(locale, { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
 const X = ({ onClick, label }: { onClick: () => void; label: string }) => {
   const t = useT();
   return ((
@@ -94,6 +94,7 @@ export type DateItem = { id: string; day: string; voters: string[] };
 
 // Fechas: days as columns, people as rows; tick the ones you can make.
 export function DatesBlock({ pursuitId, blockId, items, people, me, best }: { pursuitId: string; blockId: string; items: DateItem[]; people: Person[]; me: string; best: string | null }) {
+  const locale = useLocale();
   const t = useT();
   const [, start] = useTransition();
   const [adding, setAdding] = useState(false);
@@ -109,7 +110,7 @@ export function DatesBlock({ pursuitId, blockId, items, people, me, best }: { pu
                   <th key={d.id} className={`px-2 pb-1 text-xs font-medium whitespace-nowrap ${d.day === best ? "text-ink" : "text-ink-faint"}`}>
                     <span className="flex items-center justify-center gap-1">
                       {d.day === best && <span aria-label={t("Mejor día")}>★</span>}
-                      {dayLabel(d.day)}
+                      {dayLabel(d.day, locale)}
                       <button type="button" onClick={() => start(() => deleteDateOption(d.id))} aria-label={t("Quitar día")} className="text-ink-faint/40 hover:text-red-600">
                         ×
                       </button>
@@ -137,7 +138,7 @@ export function DatesBlock({ pursuitId, blockId, items, people, me, best }: { pu
                           disabled={!mine}
                           onClick={() => start(() => toggleDate(d.id))}
                           aria-pressed={yes}
-                          aria-label={`${p.name}: ${dayLabel(d.day)}`}
+                          aria-label={`${p.name}: ${dayLabel(d.day, locale)}`}
                           className={`grid size-8 place-items-center rounded-md ${yes ? "bg-[#e6f2ea] text-[#3f7d57]" : "bg-chip text-transparent"} ${mine ? "hover:ring-1 hover:ring-ink-faint" : "cursor-default"} ${d.day === best && yes ? "ring-1 ring-[#3f7d57]" : ""}`}
                         >
                           ✓
@@ -184,6 +185,7 @@ export type SavingItem = { id: string; amount: number; userId: string; createdAt
 
 // Meta de ahorro: the goal, a progress bar and each contribution.
 export function SavingsBlock({ pursuitId, blockId, goal, items, people }: { pursuitId: string; blockId: string; goal: number | null; items: SavingItem[]; people: Person[] }) {
+  const locale = useLocale();
   const t = useT();
   const [, start] = useTransition();
   const byId = new Map(people.map((p) => [p.id, p]));
@@ -220,7 +222,7 @@ export function SavingsBlock({ pursuitId, blockId, goal, items, people }: { purs
         {items.map((s) => (
           <div key={s.id} className="grid grid-cols-[22px_minmax(0,1fr)_auto_20px] items-center gap-3 border-b border-[#f1f0ee] py-2">
             <Faces people={byId.get(s.userId) ? [byId.get(s.userId)!] : []} size={22} />
-            <span className="text-ink-faint">{new Date(s.createdAt).toLocaleDateString("es-ES", { day: "numeric", month: "short" })}</span>
+            <span className="text-ink-faint">{new Date(s.createdAt).toLocaleDateString(locale, { day: "numeric", month: "short" })}</span>
             <span className="tabular-nums">+{euros(s.amount)}</span>
             <X label={t("Quitar aportación")} onClick={() => start(() => deleteSaving(s.id))} />
           </div>

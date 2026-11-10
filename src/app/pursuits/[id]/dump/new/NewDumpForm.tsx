@@ -53,7 +53,7 @@ export function NewDumpForm({
       const text = slidesToText(readPptx(new Uint8Array(await file.arrayBuffer())));
       editorRef.current?.chain().focus().insertContent(textToDoc(text).content ?? []).run();
     } catch {
-      setError("No he podido leer ese archivo — tiene que ser un .pptx");
+      setError(t("No he podido leer ese archivo — tiene que ser un .pptx"));
     }
   }
 
@@ -100,12 +100,12 @@ export function NewDumpForm({
     try {
       const pages = await pdfToImagePages(file);
       for (let i = 0; i < pages.length; i++) {
-        setBusy(`Subiendo página ${i + 1} de ${pages.length}…`);
+        setBusy(t("Subiendo página {0} de {1}…", { 0: i + 1, 1: pages.length }));
         const url = await uploadToBlob(pursuitId, pages[i], `${file.name}-page-${i + 1}.jpg`, "image");
         editorRef.current?.chain().focus().setImage({ src: url }).run();
       }
     } catch {
-      setError("No he podido procesar ese PDF — inténtalo de nuevo");
+      setError(t("No he podido procesar ese PDF — inténtalo de nuevo"));
     } finally {
       setBusy(null);
     }
@@ -130,7 +130,7 @@ export function NewDumpForm({
       r.start();
       setRecordingSince(Date.now());
     } catch {
-      setError("No hay acceso al micrófono — revisa el permiso de esta web");
+      setError(t("No hay acceso al micrófono — revisa el permiso de esta web"));
     }
   }
 
@@ -155,7 +155,7 @@ export function NewDumpForm({
       if (result.error) setError(result.error);
       else editorRef.current?.chain().focus().insertContent(` ${result.text ?? ""}`).run();
     } catch (err) {
-      setError(`No he podido procesar la grabación — ${err instanceof Error ? err.message : String(err)}`);
+      setError(t("No he podido procesar la grabación — {0}", { 0: err instanceof Error ? err.message : String(err) }));
     } finally {
       setBusy(null);
     }

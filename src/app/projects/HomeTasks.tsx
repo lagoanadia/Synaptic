@@ -1,6 +1,6 @@
 "use client";
 
-import { useT } from "@/app/LangProvider";
+import { useLocale, useT } from "@/app/LangProvider";
 import Link from "next/link";
 import { useRef, useState, useTransition } from "react";
 import { Folder } from "../Covers";
@@ -20,9 +20,10 @@ function Trash({ onClick }: { onClick: () => void }) {
 }
 
 function Check({ task, today, onToggle, onDelete, project }: { task: TaskItem; today: string; onToggle: () => void; onDelete?: () => void; project?: { title: string; cover: string } }) {
+  const locale = useLocale();
   const t = useT();
   const done = task.status === "DONE";
-  const due = task.dueDate && !done ? dueLabel(task.dueDate, today) : null;
+  const due = task.dueDate && !done ? dueLabel(task.dueDate, today, t, locale) : null;
   return (
     <div className="flex items-center gap-2.5 border-t border-[#f4f4f2] py-1.5 text-sm">
       <button
@@ -48,6 +49,8 @@ function Check({ task, today, onToggle, onDelete, project }: { task: TaskItem; t
 
 // One project on the home page: its checklist and progress.
 export function ProjectChecklist({ project, today }: { project: ProjectItem; today: string }) {
+  const t = useT();
+  const locale = useLocale();
   const [tasks, setTasks] = useState(project.tasks);
   const [, start] = useTransition();
   const seq = useRef(0);
@@ -74,7 +77,7 @@ export function ProjectChecklist({ project, today }: { project: ProjectItem; tod
           <span className="h-1.5 flex-1 overflow-hidden rounded bg-[#ededeb]">
             <span className="block h-full rounded" style={{ width: `${(done / total) * 100}%`, background: project.color }} />
           </span>
-          {project.dueDate && dueLabel(project.dueDate, today).text}
+          {project.dueDate && dueLabel(project.dueDate, today, t, locale).text}
         </div>
       )}
       {sorted.map((t) => (
@@ -97,6 +100,7 @@ export function ProjectChecklist({ project, today }: { project: ProjectItem; tod
 // Today's focus: started, due today or late, and done today, from every
 // project, as three small columns.
 export function TodayFocus({ projects, today, focus }: { projects: ProjectItem[]; today: string; focus: TaskItem[] }) {
+  const locale = useLocale();
   const t = useT();
   const tr = t; // `t` is a task inside the lists below
   const [tasks, setTasks] = useState(focus);
@@ -124,7 +128,7 @@ export function TodayFocus({ projects, today, focus }: { projects: ProjectItem[]
             </div>
             {items.map((t) => {
               const p = byId.get(t.pursuitId);
-              const due = t.dueDate && t.status !== "DONE" ? dueLabel(t.dueDate, today) : null;
+              const due = t.dueDate && t.status !== "DONE" ? dueLabel(t.dueDate, today, tr, locale) : null;
               return (
                 <div key={t.id} className="mb-2 flex items-start gap-2.5 rounded-lg bg-white px-3 py-2 text-sm shadow-[0_0_0_1px_rgba(15,15,15,.06)]">
                   <button

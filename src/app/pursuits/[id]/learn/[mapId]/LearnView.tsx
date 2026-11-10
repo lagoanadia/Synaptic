@@ -69,7 +69,7 @@ export function LearnView({
     setMode("explain");
     if (explanation) return;
     start(async () => {
-      const r = await askAboutConcept(concept.id, "Explícamelo de otra forma: más sencillo y con un ejemplo cotidiano, en 3 o 4 frases.");
+      const r = await askAboutConcept(concept.id, t("Explícamelo de otra forma: más sencillo y con un ejemplo cotidiano, en 3 o 4 frases."));
       if (r.error !== null) setError(r.error);
       else setExplanation(r.answer);
     });
@@ -178,7 +178,7 @@ export function LearnView({
                       <button
                         type="button"
                         onClick={() => {
-                          if (!window.confirm(`¿Eliminar "${concept.title}" y todo lo que contiene?`)) return;
+                          if (!window.confirm(t("¿Eliminar \"{0}\" y todo lo que contiene?", { 0: concept.title }))) return;
                           start(async () => {
                             await deleteConcept(concept.id);
                             router.replace(`/pursuits/${pursuitId}/learn/${mapId}`);

@@ -1,4 +1,5 @@
-import { getT } from "@/lib/i18n/server";
+import { LOCALE } from "@/lib/i18n";
+import { getLang, getT } from "@/lib/i18n/server";
 import { ArrowDown } from "@/app/icons";
 import Link from "next/link";
 import { Fragment } from "react";
@@ -60,6 +61,7 @@ export default async function PursuitPage({
     classroomError?: string;
   }>;
 }) {
+  const locale = LOCALE[await getLang()];
   const t = await getT();
   const { id } = await params;
   const { tab, classroomConnected, classroomError, edit } = await searchParams;
@@ -140,7 +142,7 @@ export default async function PursuitPage({
       ? `/pursuits/s/${SHARED}`
       : `/pursuits/s/${pursuit.section?.id ?? UNSORTED}`;
   const backLabel =
-    pursuit.owner.id !== session.user.id ? "Compartido" : (pursuit.section?.name ?? "Sin clasificar");
+    pursuit.owner.id !== session.user.id ? "Compartido" : (pursuit.section?.name ?? t("Sin clasificar"));
 
   // One card per page: the raw dump plus the note organized from it (a
   // note made from several dumps stays with the first). Notes whose
@@ -151,7 +153,7 @@ export default async function PursuitPage({
     if (first && !noteForDump.has(first.id)) noteForDump.set(first.id, n);
   }
   const filesFor = (dumpId: string) => pursuit.attachments.filter((a) => a.dumpId === dumpId).length;
-  const shortDate = (d: Date) => d.toLocaleDateString("es-ES", { day: "numeric", month: "short" });
+  const shortDate = (d: Date) => d.toLocaleDateString(locale, { day: "numeric", month: "short" });
   const pageCards: PageCard[] = [
     ...pursuit.brainDumps.map((d) => {
       const note = noteForDump.get(d.id);
@@ -254,14 +256,14 @@ export default async function PursuitPage({
       const debts = settle(mine, people.map((p) => p.id));
       content[b.id] = <ExpensesBlock pursuitId={pursuit.id} blockId={b.id} me={session.user.id} people={people} debts={debts} items={mine.map((e) => ({ id: e.id, label: e.label, amount: e.amount, paidById: e.paidById }))} />;
       const total = mine.reduce((t, e) => t + e.amount, 0);
-      summaries[b.id] = total ? `${euros(total)} en total` : "";
+      summaries[b.id] = total ? t("{0} en total", { 0: euros(total) }) : "";
       continue;
     }
     if (b.type === "dates") {
       const mine = dateOptions.filter((d) => d.blockId === b.id);
       const best = bestDay(mine.map((d) => ({ day: d.day, votes: d.votes.length })));
       content[b.id] = <DatesBlock pursuitId={pursuit.id} blockId={b.id} me={session.user.id} people={people} best={best} items={mine.map((d) => ({ id: d.id, day: d.day, voters: d.votes.map((v) => v.userId) }))} />;
-      summaries[b.id] = best ? `Mejor: ${new Date(`${best}T00:00:00Z`).toLocaleDateString("es-ES", { day: "numeric", month: "short", timeZone: "UTC" })}` : "";
+      summaries[b.id] = best ? `Mejor: ${new Date(`${best}T00:00:00Z`).toLocaleDateString(locale, { day: "numeric", month: "short", timeZone: "UTC" })}` : "";
       continue;
     }
     if (b.type === "savings") {
@@ -313,14 +315,14 @@ export default async function PursuitPage({
       if (study) after(() => backfillMaps(session.user.id, pursuit.id).catch(() => {}));
       content[b.id] = (
         <div className="flex flex-col gap-3">
-          <KnowledgeMap clusters={await folderMap(pursuit.id, color)} perRow={3} empty="El mapa de cada unidad se crea solo cuando guardas apuntes." />
+          <KnowledgeMap clusters={await folderMap(pursuit.id, color)} perRow={3} empty={t("El mapa de cada unidad se crea solo cuando guardas apuntes.")} />
         </div>
       );
     } else if (b.type === "project") {
       content[b.id] = project && (
         <TaskBoard tasks={project.tasks} projects={[{ id: project.id, title: project.title, cover: project.cover }]} today={dayOf(new Date())} view={b.view === "list" ? "list" : "board"} />
       );
-      if (project?.tasks.length) summaries[b.id] = `${project.tasks.filter((t) => t.status === "DONE").length} de ${project.tasks.length} hechas`;
+      if (project?.tasks.length) summaries[b.id] = t("{0} de {1} hechas", { 0: project.tasks.filter((t) => t.status === "DONE").length, 1: project.tasks.length });
     } else if (b.type === "review") content[b.id] = <ReviewToday pursuitId={pursuit.id} />;
     else if (b.type === "ask") content[b.id] = <AskPursuit pursuitId={pursuit.id} />;
     else if (b.type === "challenges") content[b.id] = <ChallengeCards pursuitId={pursuit.id} items={challenges} />;
@@ -409,7 +411,7 @@ export default async function PursuitPage({
 
       {(classroomConnected || classroomError) && (
         <p className={`rounded-md px-4 py-3 text-sm ${classroomError ? "bg-crimson-soft" : "bg-forest-soft"}`}>
-          {classroomError ? (CLASSROOM_ERROR_COPY[classroomError] ?? t("Algo ha fallado. Inténtalo de nuevo.")) : t("Conectado a Google Classroom.")}
+          {classroomError ? (t(CLASSROOM_ERROR_COPY[classroomError] ?? "") || t("Algo ha fallado. Inténtalo de nuevo.")) : t("Conectado a Google Classroom.")}
         </p>
       )}
 

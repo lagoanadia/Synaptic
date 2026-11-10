@@ -1,5 +1,7 @@
 "use server";
 
+import { getT } from "@/lib/i18n/server";
+
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
@@ -8,8 +10,9 @@ import { calendarToken, listCalendars, type GoogleCalendar } from "@/lib/googleC
 import { syncToGoogle, unsyncEvent } from "./sync";
 
 async function me() {
+  const t = await getT();
   const session = await auth();
-  if (!session?.user?.id) throw new Error("No autorizado");
+  if (!session?.user?.id) throw new Error(t("No autorizado"));
   return session.user.id;
 }
 
@@ -21,10 +24,11 @@ const done = () => {
 export type NewEvent = { title: string; kind: "exam" | "task" | "event"; day: string; time?: string; pursuitId?: string | null; unitId?: string | null };
 
 export async function addEvent(input: NewEvent): Promise<{ error: string | null }> {
+  const t = await getT();
   const userId = await me();
   const title = input.title.trim().slice(0, 120);
-  if (!title) return { error: "Ponle un nombre" };
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.day)) return { error: "Fecha no válida" };
+  if (!title) return { error: t("Ponle un nombre") };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.day)) return { error: t("Fecha no válida") };
   const time = input.time && /^\d{2}:\d{2}$/.test(input.time) ? input.time : null;
   // Only folders you can open, and only units of that folder.
   const pursuit = input.pursuitId

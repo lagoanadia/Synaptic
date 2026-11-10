@@ -113,7 +113,7 @@ export function Onboarding({ name, username, suggested }: { name: string | null;
   }
 
   const card = "rounded-xl border bg-white transition-colors";
-  const next = (label = "Siguiente", onClick = () => setStep(step + 1)) => (
+  const next = (label = t("Siguiente"), onClick = () => setStep(step + 1)) => (
     <button type="button" onClick={onClick} className="rounded-xl bg-ink px-8 py-3.5 text-sm font-semibold text-white">
       {t(label)} →
     </button>
@@ -348,7 +348,7 @@ export function Onboarding({ name, username, suggested }: { name: string | null;
               ))}
             </div>
             {error && <p className="text-sm text-red-500">{error}</p>}
-            {next("Crear mi espacio", finish)}
+            {next(t("Crear mi espacio"), finish)}
           </>
         )}
       </main>

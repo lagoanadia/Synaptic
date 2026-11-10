@@ -45,7 +45,7 @@ export function EditMenu({ target, onClose }: { target: EditTarget; onClose: () 
         router.refresh();
         then?.();
       } catch {
-        setError("No se ha podido cambiar el nombre");
+        setError(t("No se ha podido cambiar el nombre"));
       }
     });
   }

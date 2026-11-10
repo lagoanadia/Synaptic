@@ -1,4 +1,5 @@
-import { getT } from "@/lib/i18n/server";
+import { LOCALE } from "@/lib/i18n";
+import { getLang, getT } from "@/lib/i18n/server";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
@@ -20,6 +21,7 @@ import { ProjectTimeline } from "@/app/projects/ProjectTimeline";
 // A notebook: its folders, then — with study tools — its map and this
 // week's pages; without — open tasks and recent pages.
 export default async function NotebookPage({ params }: { params: Promise<{ sectionId: string }> }) {
+  const locale = LOCALE[await getLang()];
   const t = await getT();
   const { sectionId } = await params;
   const session = await auth();
@@ -29,7 +31,7 @@ export default async function NotebookPage({ params }: { params: Promise<{ secti
   const isVirtual = sectionId === UNSORTED || sectionId === SHARED;
   const section = isVirtual ? null : await prisma.section.findFirst({ where: { id: sectionId, userId } });
   if (!isVirtual && !section) notFound();
-  const name = section?.name ?? (sectionId === SHARED ? "Compartido" : "Sin clasificar");
+  const name = section?.name ?? (sectionId === SHARED ? "Compartido" : t("Sin clasificar"));
   const study = section?.study ?? true;
   // A "General" notebook: free folders, each with its own blocks.
   const general = section?.kind === "general";
@@ -84,7 +86,7 @@ export default async function NotebookPage({ params }: { params: Promise<{ secti
 
       {study || !section || general ? (
         <section className="flex flex-col gap-3">
-          {sectionHeader(study ? "Asignaturas" : "Carpetas")}
+          {sectionHeader(study ? t("Asignaturas") : t("Carpetas"))}
           <FolderRow items={folders} after={!isVirtual && <NewFolder sectionName={name} label={study ? t("Nueva asignatura") : t("Nueva carpeta")} template={study ? undefined : "blank"} mine={study ? [] : mine} />} />
         </section>
       ) : (
@@ -117,7 +119,7 @@ export default async function NotebookPage({ params }: { params: Promise<{ secti
 
       {openTasks.length > 0 && (
         <section className="flex flex-col gap-1">
-          {sectionHeader("Tableros por entrega")}
+          {sectionHeader(t("Tableros por entrega"))}
           <ul>
             {openTasks.map((t) => (
               <li key={t.id}>
@@ -126,7 +128,7 @@ export default async function NotebookPage({ params }: { params: Promise<{ secti
                   <span className="min-w-0 flex-1 truncate">{t.title}</span>
                   <span className="size-2 rounded-full" style={{ background: t.color }} />
                   <span className="text-xs text-ink-faint">{t.folder}</span>
-                  {t.due && <span className="w-14 text-right text-xs text-ink-faint">{t.due.toLocaleDateString("es-ES", { day: "numeric", month: "short" })}</span>}
+                  {t.due && <span className="w-14 text-right text-xs text-ink-faint">{t.due.toLocaleDateString(locale, { day: "numeric", month: "short" })}</span>}
                 </Link>
               </li>
             ))}
@@ -136,7 +138,7 @@ export default async function NotebookPage({ params }: { params: Promise<{ secti
 
       {section && (
         <section className="flex flex-col gap-1">
-          {sectionHeader(study ? "Esta semana" : "Páginas recientes")}
+          {sectionHeader(study ? t("Esta semana") : t("Páginas recientes"))}
           <RecentList pages={recent} />
         </section>
       )}

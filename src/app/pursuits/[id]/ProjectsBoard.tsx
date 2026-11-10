@@ -1,6 +1,6 @@
 "use client";
 
-import { useT } from "@/app/LangProvider";
+import { useLocale, useT } from "@/app/LangProvider";
 import { KanbanIcon } from "@/app/icons";
 import { useRef, useState, useTransition } from "react";
 import Link from "next/link";
@@ -22,9 +22,10 @@ function daysUntil(dueDate: string) {
 }
 
 function DueBadge({ dueDate }: { dueDate: string }) {
+  const locale = useLocale();
   const t = useT();
   const days = daysUntil(dueDate);
-  const label = new Date(dueDate).toLocaleDateString("es-ES", {
+  const label = new Date(dueDate).toLocaleDateString(locale, {
     timeZone: "UTC",
     month: "short",
     day: "numeric",
@@ -111,7 +112,7 @@ export function ProjectsBoard({
               const id = await createProject(pursuitId, title, dueDate);
               router.push(`/pursuits/${pursuitId}/projects/${id}`);
             } catch {
-              setError("No se ha podido crear el proyecto — inténtalo de nuevo");
+              setError(t("No se ha podido crear el proyecto — inténtalo de nuevo"));
             }
           });
         }}

@@ -182,7 +182,7 @@ export function PageView({ pursuit, crumbs, dump, note, slides, terms }: Props) 
           setDirty((d) => ({ ...d, [view]: true }));
         }}
         onUploadImage={(file) => uploadToBlob(pursuit.id, file, file.name, "image")}
-        onAsk={(text) => askPursuit(pursuit.id, `Explícame esto de forma sencilla: "${text}"`)}
+        onAsk={(text) => askPursuit(pursuit.id, t("Explícame esto de forma sencilla: \"{0}\"", { 0: text }))}
         onCard={(text) => cardFromSelection(pursuit.id, text, note?.id ?? null)}
         onMap={async (text) => {
           const r = await addToMap(pursuit.id, { dumpId: dump?.id ?? null, noteId: note?.id ?? null }, text);
@@ -222,8 +222,8 @@ export function PageView({ pursuit, crumbs, dump, note, slides, terms }: Props) 
                   type="button"
                   role="tab"
                   aria-selected={view === v}
-                  title={v === "organized" ? "Organizada" : "Original"}
-                  aria-label={v === "organized" ? "Organizada" : "Original"}
+                  title={v === "organized" ? t("Organizada") : "Original"}
+                  aria-label={v === "organized" ? t("Organizada") : "Original"}
                   onClick={() => setView(v)}
                   className={`grid size-7 place-items-center rounded-md ${view === v ? "bg-chip text-ink" : "text-ink-faint hover:text-ink"}`}
                 >
@@ -269,7 +269,7 @@ export function PageView({ pursuit, crumbs, dump, note, slides, terms }: Props) 
                     run(async () => {
                       const r = await generateFlashcards(pursuit.id, note.id);
                       return r.error ? r : { error: null };
-                    }, "Tarjetas añadidas");
+                    }, t("Tarjetas añadidas"));
                   }}
                   className="block w-full rounded-md px-2.5 py-1.5 text-left hover:bg-chip"
                 >
@@ -283,7 +283,7 @@ export function PageView({ pursuit, crumbs, dump, note, slides, terms }: Props) 
                   // file is named after the title. html.print-page hides the rest.
                   setMenu(false);
                   const before = document.title;
-                  document.title = titles[view].trim() || "Página";
+                  document.title = titles[view].trim() || t("Página");
                   document.documentElement.classList.add("print-page");
                   setTimeout(() => {
                     window.print();
@@ -298,7 +298,7 @@ export function PageView({ pursuit, crumbs, dump, note, slides, terms }: Props) 
               <button
                 type="button"
                 onClick={() => {
-                  if (!window.confirm("¿Eliminar esta página? No se puede deshacer.")) return;
+                  if (!window.confirm(t("¿Eliminar esta página? No se puede deshacer."))) return;
                   start(async () => {
                     if (dump) await deleteBrainDump(pursuit.id, dump.id);
                     else if (note) await deleteNote(pursuit.id, note.id);
@@ -325,7 +325,7 @@ export function PageView({ pursuit, crumbs, dump, note, slides, terms }: Props) 
           onClose={() => setSplit(false)}
           onTranscribe={async (image) => {
             const r = await transcribeSlide(pursuit.id, image);
-            if (r.error || !r.text) return r.error ?? "Inténtalo de nuevo";
+            if (r.error || !r.text) return r.error ?? t("Inténtalo de nuevo");
             // Into the note where the cursor is (the end if it never was in it).
             editorRef.current?.chain().focus().insertContent(textToDoc(r.text).content ?? []).run();
             return null;

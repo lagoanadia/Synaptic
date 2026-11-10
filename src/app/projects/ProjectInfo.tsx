@@ -1,5 +1,6 @@
 "use client";
-import { useT } from "@/app/LangProvider";
+import { useLocale, useT } from "@/app/LangProvider";
+import type { T } from "@/lib/i18n";
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { CalendarIcon } from "@/app/icons";
@@ -10,19 +11,20 @@ const MONTHS = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", 
 const DAY = 86400000;
 const ms = (d: string) => Date.parse(`${d}T00:00:00Z`);
 const iso = (t: number) => new Date(t).toISOString().slice(0, 10);
-const short = (d: string) => new Date(ms(d)).toLocaleDateString("es-ES", { day: "numeric", month: "short", timeZone: "UTC" });
+const short = (d: string, locale: string) => new Date(ms(d)).toLocaleDateString(locale, { day: "numeric", month: "short", timeZone: "UTC" });
 
-function countdown(due: string, today: string): { text: string; late: boolean } {
+function countdown(t: T, due: string, today: string): { text: string; late: boolean } {
   const days = Math.round((ms(due) - ms(today)) / DAY);
-  if (days === 0) return { text: "se entrega hoy", late: false };
-  if (days === 1) return { text: "queda 1 día", late: false };
-  if (days > 1) return { text: `quedan ${days} días`, late: false };
-  return { text: days === -1 ? "se pasó ayer" : `se pasó hace ${-days} días`, late: true };
+  if (days === 0) return { text: t("se entrega hoy"), late: false };
+  if (days === 1) return { text: t("queda 1 día"), late: false };
+  if (days > 1) return { text: t("quedan {0} días", { 0: days }), late: false };
+  return { text: days === -1 ? t("se pasó ayer") : t("se pasó hace {0} días", { 0: -days }), late: true };
 }
 
 // Under a project folder's title, like a Notion page's properties: its state
 // (from its tasks), its dates (one chip that opens a calendar) and progress.
 export function ProjectInfo({ project, today }: { project: ProjectItem; today: string }) {
+  const locale = useLocale();
   const t = useT();
   const [, start] = useTransition();
   const [start_, setStart] = useState(project.startDate);
@@ -32,7 +34,7 @@ export function ProjectInfo({ project, today }: { project: ProjectItem; today: s
   const s = STATE_LABEL[projectState({ finished, tasks: project.tasks })];
   const { done, total } = progress(project.tasks);
   const save = (d: Parameters<typeof setProjectInfo>[1]) => start(() => setProjectInfo(project.id, d));
-  const left = due && !finished ? countdown(due, today) : null;
+  const left = due && !finished ? countdown(t, due, today) : null;
 
   return (
     <div className="relative -mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
@@ -47,9 +49,9 @@ export function ProjectInfo({ project, today }: { project: ProjectItem; today: s
         <CalendarIcon size={15} />
         {start_ || due ? (
           <>
-            {start_ && short(start_)}
+            {start_ && short(start_, locale)}
             {start_ && due && " → "}
-            {due && short(due)}
+            {due && short(due, locale)}
             {left && <span className={left.late ? "text-[#c4554d]" : "text-ink-faint"}>· {left.text}</span>}
           </>
         ) : (
@@ -110,6 +112,7 @@ function DatePicker({
   onDates: (start: string | null, due: string | null) => void;
   onFinished: (finished: boolean) => void;
 }) {
+  const locale = useLocale();
   const t = useT();
   const ref = useRef<HTMLDivElement>(null);
   const [field, setField] = useState<"start" | "due">(start && !due ? "due" : "start");
@@ -150,15 +153,15 @@ function DatePicker({
   const box = (f: "start" | "due", label: string, value: string | null) => (
     <button type="button" onClick={() => setField(f)} className={`flex-1 rounded-md border px-2 py-1.5 text-left ${field === f ? "border-ink" : "border-border-subtle"}`}>
       <span className="block text-ink-faint">{label}</span>
-      {value ? short(value) : <span className="text-ink-faint">{t("Elegir")}</span>}
+      {value ? short(value, locale) : <span className="text-ink-faint">{t("Elegir")}</span>}
     </button>
   );
 
   return (
     <div ref={ref} className="absolute top-full left-0 z-20 mt-1 w-[300px] rounded-lg border border-border-subtle bg-white p-3 shadow-[0_12px_32px_-10px_rgba(0,0,0,.25)] sm:left-24">
       <div className="mb-2 flex gap-2 text-xs">
-        {box("start", "Inicio", start)}
-        {box("due", "Entrega", due)}
+        {box("start", t("Inicio"), start)}
+        {box("due", t("Entrega"), due)}
       </div>
       <div className="mb-1 flex items-center justify-between px-1 text-sm font-medium">
         <span>
