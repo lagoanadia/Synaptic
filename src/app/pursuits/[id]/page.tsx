@@ -32,6 +32,8 @@ import { FolderSettings } from "./FolderSettings";
 import { oneProject } from "@/lib/projectData";
 import { parseAvatar } from "@/lib/avatar";
 import { optionColumns } from "@/lib/blocks";
+import { bestDay, settle } from "@/lib/shared";
+import { DatesBlock, ExpensesBlock, SavingsBlock } from "./SharedBlocks";
 import { dayOf } from "@/lib/projects";
 import { ProjectInfo } from "@/app/projects/ProjectInfo";
 import { TaskBoard } from "@/app/projects/TaskBoard";
@@ -208,6 +210,15 @@ export default async function PursuitPage({
         prisma.budgetLine.findMany({ where: { pursuitId: pursuit.id }, orderBy: { order: "asc" } }),
       ])
     : [[], []];
+  // Gastos, Fechas, Meta de ahorro: their rows.
+  const hasShared = blocks.some((b) => b.type === "expenses" || b.type === "dates" || b.type === "savings");
+  const [expenses, dateOptions, savings] = hasShared
+    ? await Promise.all([
+        prisma.expense.findMany({ where: { pursuitId: pursuit.id }, orderBy: { createdAt: "asc" } }),
+        prisma.dateOption.findMany({ where: { pursuitId: pursuit.id }, orderBy: { day: "asc" }, include: { votes: { select: { userId: true } } } }),
+        prisma.saving.findMany({ where: { pursuitId: pursuit.id }, orderBy: { createdAt: "asc" } }),
+      ])
+    : [[], [], []];
   const pendingVotes = choices.filter((c) => c.status === "VOTING" && !c.votes.some((v) => v.userId === session.user!.id)).map((c) => c.id);
   const euros = (cents: number) => `${(cents / 100).toLocaleString("es-ES", { maximumFractionDigits: 2 })} €`;
 
@@ -234,6 +245,28 @@ export default async function PursuitPage({
         : items.length
           ? `${items.length} ${items.length === 1 ? "opción" : "opciones"}${voting ? ` · ${voting} en votación` : ""}`
           : "";
+      continue;
+    }
+    if (b.type === "expenses") {
+      const mine = expenses.filter((e) => e.blockId === b.id);
+      const debts = settle(mine, people.map((p) => p.id));
+      content[b.id] = <ExpensesBlock pursuitId={pursuit.id} blockId={b.id} me={session.user.id} people={people} debts={debts} items={mine.map((e) => ({ id: e.id, label: e.label, amount: e.amount, paidById: e.paidById }))} />;
+      const total = mine.reduce((t, e) => t + e.amount, 0);
+      summaries[b.id] = total ? `${euros(total)} en total` : "";
+      continue;
+    }
+    if (b.type === "dates") {
+      const mine = dateOptions.filter((d) => d.blockId === b.id);
+      const best = bestDay(mine.map((d) => ({ day: d.day, votes: d.votes.length })));
+      content[b.id] = <DatesBlock pursuitId={pursuit.id} blockId={b.id} me={session.user.id} people={people} best={best} items={mine.map((d) => ({ id: d.id, day: d.day, voters: d.votes.map((v) => v.userId) }))} />;
+      summaries[b.id] = best ? `Mejor: ${new Date(`${best}T00:00:00Z`).toLocaleDateString("es-ES", { day: "numeric", month: "short", timeZone: "UTC" })}` : "";
+      continue;
+    }
+    if (b.type === "savings") {
+      const mine = savings.filter((x) => x.blockId === b.id);
+      content[b.id] = <SavingsBlock pursuitId={pursuit.id} blockId={b.id} goal={b.goal ?? null} people={people} items={mine.map((x) => ({ id: x.id, amount: x.amount, userId: x.userId, createdAt: x.createdAt.toISOString() }))} />;
+      const total = mine.reduce((t, x) => t + x.amount, 0);
+      summaries[b.id] = b.goal ? `${Math.min(100, Math.round((total / b.goal) * 100))} %` : "";
       continue;
     }
     if (b.type === "budget") {

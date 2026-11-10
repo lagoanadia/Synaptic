@@ -63,6 +63,9 @@ model User {
   challenges          Challenge[]
   choiceVotes         ChoiceVote[]
   templates           UserTemplate[]
+  expenses            Expense[]
+  dateVotes           DateVote[]
+  savings             Saving[]
 }
 
 enum Plan {
@@ -207,6 +210,9 @@ model Pursuit {
   tasks           Task[]
   choices         Choice[]
   budgetLines     BudgetLine[]
+  expenses        Expense[]
+  dateOptions     DateOption[]
+  savings         Saving[]
   conceptMaps     ConceptMap[]
   challenges      Challenge[]
   calendarEvents  CalendarEvent[]
@@ -713,4 +719,54 @@ model UserTemplate {
   createdAt DateTime @default(now())
 
   @@index([userId])
+}
+
+// "Gastos": who paid what (cents); split equally between the folder's people.
+model Expense {
+  id        String   @id @default(cuid())
+  pursuitId String
+  pursuit   Pursuit  @relation(fields: [pursuitId], references: [id], onDelete: Cascade)
+  blockId   String
+  label     String
+  amount    Int
+  paidById  String
+  paidBy    User     @relation(fields: [paidById], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([pursuitId, blockId])
+}
+
+// "Fechas": a proposed day ("YYYY-MM-DD") and who can make it.
+model DateOption {
+  id        String     @id @default(cuid())
+  pursuitId String
+  pursuit   Pursuit    @relation(fields: [pursuitId], references: [id], onDelete: Cascade)
+  blockId   String
+  day       String
+  votes     DateVote[]
+
+  @@index([pursuitId, blockId])
+}
+
+model DateVote {
+  dateOptionId String
+  dateOption   DateOption @relation(fields: [dateOptionId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([dateOptionId, userId])
+}
+
+// "Meta de ahorro": a contribution (cents) towards the block's goal.
+model Saving {
+  id        String   @id @default(cuid())
+  pursuitId String
+  pursuit   Pursuit  @relation(fields: [pursuitId], references: [id], onDelete: Cascade)
+  blockId   String
+  amount    Int
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([pursuitId, blockId])
 }

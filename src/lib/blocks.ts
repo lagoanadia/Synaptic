@@ -14,10 +14,10 @@ export const HOME_BLOCK_TYPES: { type: HomeBlockType; label: string }[] = [
   { type: "recent", label: "Recientes" },
 ];
 
-export type FolderBlockType = "project" | "pages" | "map" | "review" | "ask" | "challenges" | "deadlines" | "tasks" | "options" | "budget";
+export type FolderBlockType = "project" | "pages" | "map" | "review" | "ask" | "challenges" | "deadlines" | "tasks" | "options" | "budget" | "expenses" | "dates" | "savings";
 // title/icon: what an "options" block is about (Alojamiento, bed…);
 // people: how many a "budget" block splits between (null = the members).
-export type FolderBlock = { id: string; type: FolderBlockType; view?: "list" | "board"; title?: string; icon?: BlockIcon; people?: number | null; columns?: OptionColumn[] };
+export type FolderBlock = { id: string; type: FolderBlockType; view?: "list" | "board"; title?: string; icon?: BlockIcon; people?: number | null; columns?: OptionColumn[]; goal?: number | null };
 // The columns an "options" block can show, in this order.
 export const OPTION_COLUMNS = [
   { id: "status", label: "Estado" },
@@ -46,6 +46,9 @@ export const FOLDER_BLOCK_TYPES: { type: FolderBlockType; label: string; hint: s
   { type: "tasks", label: "Tableros por entrega", hint: "Un tablero por cada entrega" },
   { type: "options", label: "Opciones", hint: "Enlaces con precio y votos: alojamiento, vuelos, planes…" },
   { type: "budget", label: "Presupuesto", hint: "Suma lo elegido y lo reparte por persona" },
+  { type: "expenses", label: "Gastos", hint: "Quién pagó qué y quién debe a quién" },
+  { type: "dates", label: "Fechas", hint: "Propón días y cada uno marca cuáles puede" },
+  { type: "savings", label: "Meta de ahorro", hint: "Un objetivo y lo que lleváis ahorrado" },
 ];
 
 // Folder templates, picked when you make a folder.
@@ -86,6 +89,8 @@ export function cleanFolderBlock(b: Partial<FolderBlock>): FolderBlock | null {
     out.icon = BLOCK_ICONS.includes(b.icon as BlockIcon) ? b.icon : "list";
     out.columns = optionColumns(b.columns);
   }
+  // goal in cents (null = not set yet)
+  if (b.type === "savings") out.goal = typeof b.goal === "number" && b.goal > 0 && b.goal < 1e11 ? Math.round(b.goal) : null;
   if (b.type === "budget") out.people = typeof b.people === "number" && b.people >= 1 && b.people <= 99 ? Math.round(b.people) : null;
   return out;
 }
