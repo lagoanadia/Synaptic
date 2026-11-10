@@ -154,11 +154,6 @@ export function CalendarView({
                     >
                       {fromKey(d).getUTCDate()}
                     </span>
-                    {isToday && (
-                      <Link href="/review" onClick={(e) => e.stopPropagation()} title={t("Repaso de hoy")} className="hidden size-5 place-items-center rounded bg-accent-soft text-[11px] text-accent sm:grid">
-                        ▤
-                      </Link>
-                    )}
                   </span>
                   <span className="hidden flex-col gap-1 sm:flex">
                     {list.slice(0, view === "week" ? 20 : 4).map((x) => (

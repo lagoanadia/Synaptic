@@ -6,14 +6,14 @@ import Link from "next/link";
 import { useT } from "@/app/LangProvider";
 import { LangPicker } from "@/app/LangPicker";
 import { disconnectGoogle } from "@/app/calendar/actions";
-import { disconnectClassroomAccount, setCodes } from "./actions";
+import { disconnectClassroomAccount, linkSignIn, setCodes, unlinkSignIn } from "./actions";
 import { DeleteAccount } from "./DeleteAccount";
 
 type Props = {
   codes: boolean;
   calendar: boolean;
   classroom: boolean;
-  signIns: string[];
+  providers: string[];
   plan: string | null;
 };
 
@@ -28,7 +28,7 @@ const Row = ({ title, hint, children }: { title: string; hint?: string; children
 );
 
 // Ajustes: language, coding tools, linked accounts, plan and deleting the account.
-export function Settings({ codes, calendar, classroom, signIns, plan }: Props) {
+export function Settings({ codes, calendar, classroom, providers, plan }: Props) {
   const t = useT();
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -63,16 +63,37 @@ export function Settings({ codes, calendar, classroom, signIns, plan }: Props) {
           </a>
         )}
       </Row>
-      <Row title="Google Classroom" hint={classroom ? t("Conectado") : t("Se conecta desde una asignatura, en Editar")}>
-        {classroom && (
-          <button type="button" disabled={pending} onClick={() => run(disconnectClassroomAccount)} className={button}>
+      <Row title="Google Classroom" hint={classroom ? t("Conectado") : t("Trae tus cursos, unidades y entregas")}>
+        {classroom ? (
+          <button type="button" disabled={pending} onClick={() => confirm(t("¿Desconectar Google Classroom?")) && run(disconnectClassroomAccount)} className={button}>
             {t("Desconectar")}
           </button>
+        ) : (
+          <a href="/api/classroom/connect?pursuitId=profile" className={button}>
+            {t("Conectar")}
+          </a>
         )}
       </Row>
-      <Row title={t("Inicias sesión con")} hint={signIns.join(" · ") || "—"}>
-        <span />
-      </Row>
+      {/* Ways to sign in: add another, or remove one while another is left. */}
+      {(["google", "github"] as const).map((p) => {
+        const on = providers.includes(p);
+        const name = p === "google" ? "Google" : "GitHub";
+        return (
+          <Row key={p} title={t("Iniciar sesión con {0}", { 0: name })} hint={on ? t("Vinculado") : t("No vinculado")}>
+            {on ? (
+              providers.length > 1 && (
+                <button type="button" disabled={pending} onClick={() => confirm(t("¿Quitar {0} como forma de entrar?", { 0: name })) && run(() => unlinkSignIn(p))} className={button}>
+                  {t("Quitar")}
+                </button>
+              )
+            ) : (
+              <button type="button" disabled={pending} onClick={() => run(() => linkSignIn(p))} className={button}>
+                {t("Vincular")}
+              </button>
+            )}
+          </Row>
+        );
+      })}
       {plan && (
         <Row title={t("Plan")} hint={plan}>
           <Link href="/billing" className={button}>

@@ -371,7 +371,11 @@ function Done({ shell }: { shell: Shell }) {
       <span className="grid size-16 place-items-center rounded-full bg-[#22c55e] text-white shadow-[0_10px_30px_rgba(34,197,94,.35)]">
         <CheckIcon size={26} className="block" />
       </span>
-      <p className="text-white/60">{t("Hasta mañana")}</p>
+      <p className="text-xl font-semibold text-white">{t("Nada que repasar hoy")}</p>
+      <p className="max-w-sm text-center text-white/60">{t("Escribe tus apuntes en una asignatura y te haremos un quiz con ellos.")}</p>
+      <Link href="/pursuits" className="mt-2 rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-[#1a1a1d]">
+        {t("Ir a mis libretas")}
+      </Link>
     </Stage>
   );
 }

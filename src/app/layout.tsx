@@ -54,8 +54,8 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   const userId = session?.user?.id;
   const [user, sections] = userId
     ? await Promise.all([
-        prisma.user.findUnique({ where: { id: userId }, select: { plan: true, avatar: true, codes: true } }),
-        prisma.section.findMany({ where: { userId }, orderBy: { order: "asc" }, select: { id: true, name: true, cover: true } }),
+        prisma.user.findUnique({ where: { id: userId }, select: { plan: true, avatar: true, codes: true, nav: true } }),
+        prisma.section.findMany({ where: { userId }, orderBy: { order: "asc" }, select: { id: true, name: true, cover: true, study: true } }),
       ])
     : [null, []];
   // Sidebar collapsed to icons? Remembered in a cookie so it renders that way.
@@ -76,6 +76,8 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
             notebooks={sections.map((s) => ({ id: s.id, name: s.name, cover: notebookCover(s.id, s.cover) }))}
             collapsed={collapsed}
             codes={user.codes}
+            calendar={(user.nav as { calendar?: boolean } | null)?.calendar ?? true}
+            study={(user.nav as { review?: boolean } | null)?.review ?? sections.some((s) => s.study)}
           />
         )}
         <div className={`flex flex-1 flex-col ${session?.user ? "app-pad pb-16 lg:pb-0" : ""}`}>{children}</div>

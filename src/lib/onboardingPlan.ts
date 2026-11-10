@@ -3,12 +3,10 @@
 
 import { NOTEBOOK_COVERS, type NotebookCover } from "@/lib/covers";
 
+// What you do: each one becomes a notebook with the same name.
 export const ROLES = [
-  { key: "fp", label: "FP" },
-  { key: "uni", label: "Universidad" },
-  { key: "bach", label: "Bachillerato" },
-  { key: "work", label: "Trabajo" },
-  { key: "projects", label: "Proyectos propios" },
+  { key: "study", label: "Estudios" },
+  { key: "projects", label: "Proyectos" },
   { key: "personal", label: "Personal" },
 ] as const;
 export type Role = (typeof ROLES)[number]["key"];
@@ -24,19 +22,15 @@ export type FolderPlan = { title: string; classroomCourseId: string | null; chal
 export type NotebookPlan = { name: string; study: boolean; groupLabel: string | null; cover: NotebookCover | null; folders: FolderPlan[] };
 export type StarterPlan = { notebooks: NotebookPlan[]; learning: { topic: string; notebook: string; subject: string } | null };
 
-const STUDY: Partial<Record<Role, string>> = { fp: "Unidad", uni: "Tema", bach: "Tema" };
-
-// What you do → your notebooks. Anything you study becomes one "Estudios"
-// notebook with study tools; work, projects and personal are plain ones.
-export function notebooksFor(roles: Role[]): { name: string; study: boolean; groupLabel: string | null }[] {
+// What you do → your notebooks, named in your language (tr). "Estudios"
+// gets the study tools; projects and personal are plain notebooks.
+export function notebooksFor(roles: Role[], tr: (s: string) => string = (s) => s): { name: string; study: boolean; groupLabel: string | null }[] {
   const set = new Set(roles);
   const out: { name: string; study: boolean; groupLabel: string | null }[] = [];
-  const study = ROLES.map((r) => r.key).find((k) => set.has(k) && STUDY[k]);
-  if (study) out.push({ name: "Estudios", study: true, groupLabel: STUDY[study] ?? null });
-  if (set.has("work")) out.push({ name: "Trabajo", study: false, groupLabel: null });
-  if (set.has("projects")) out.push({ name: "Proyectos", study: false, groupLabel: null });
-  if (set.has("personal")) out.push({ name: "Personal", study: false, groupLabel: null });
-  return out.length ? out : [{ name: "Estudios", study: true, groupLabel: "Tema" }, { name: "Personal", study: false, groupLabel: null }];
+  if (set.has("study")) out.push({ name: tr("Estudios"), study: true, groupLabel: tr("Tema") });
+  if (set.has("projects")) out.push({ name: tr("Proyectos"), study: false, groupLabel: null });
+  if (set.has("personal")) out.push({ name: tr("Personal"), study: false, groupLabel: null });
+  return out.length ? out : [{ name: tr("Estudios"), study: true, groupLabel: tr("Tema") }, { name: tr("Personal"), study: false, groupLabel: null }];
 }
 
 // Subjects where coding challenges make sense get the "Retos" block.
@@ -48,10 +42,10 @@ const clean = (s: unknown, max: number) => (typeof s === "string" ? s.replace(/\
 // Sanitizes whatever the browser sent into a plan the database writes can
 // trust: known roles, trimmed and de-duplicated subjects, real covers, and
 // this week's topic attached to a real folder.
-export function planStarterSpace(input: OnboardingAnswers): StarterPlan {
+export function planStarterSpace(input: OnboardingAnswers, tr: (s: string) => string = (s) => s): StarterPlan {
   const roles = (Array.isArray(input?.roles) ? input.roles : []).filter((r): r is Role => ROLES.some((x) => x.key === r));
   const covers = input?.covers && typeof input.covers === "object" ? input.covers : {};
-  const notebooks: NotebookPlan[] = notebooksFor(roles).map((n) => ({
+  const notebooks: NotebookPlan[] = notebooksFor(roles, tr).map((n) => ({
     ...n,
     cover: (NOTEBOOK_COVERS as readonly string[]).includes(covers[n.name]) ? (covers[n.name] as NotebookCover) : null,
     folders: [],

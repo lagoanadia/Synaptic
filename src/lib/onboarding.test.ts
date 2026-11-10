@@ -3,12 +3,12 @@ import { looksLikeProgramming, notebooksFor, planStarterSpace } from "./onboardi
 
 describe("notebooksFor", () => {
   it("turns what you do into notebooks, one study notebook at most", () => {
-    expect(notebooksFor(["fp", "uni", "projects", "personal"])).toEqual([
-      { name: "Estudios", study: true, groupLabel: "Unidad" },
+    expect(notebooksFor(["study", "projects", "personal"])).toEqual([
+      { name: "Estudios", study: true, groupLabel: "Tema" },
       { name: "Proyectos", study: false, groupLabel: null },
       { name: "Personal", study: false, groupLabel: null },
     ]);
-    expect(notebooksFor(["uni"])[0].groupLabel).toBe("Tema");
+    expect(notebooksFor(["study"], (x) => (x === "Estudios" ? "School" : x))[0].name).toBe("School");
   });
   it("has a sensible default", () => {
     expect(notebooksFor([]).map((n) => n.name)).toEqual(["Estudios", "Personal"]);
@@ -28,7 +28,7 @@ describe("looksLikeProgramming", () => {
 describe("planStarterSpace", () => {
   it("puts subjects in the study notebook, dedupes and attaches the topic", () => {
     const plan = planStarterSpace({
-      roles: ["fp", "personal"],
+      roles: ["study", "personal"],
       subjects: [{ title: " DI " }, { title: "di" }, { title: "Programación", classroomCourseId: "123" }],
       learning: { topic: "Joins en SQL", subject: "programación" },
       covers: { Estudios: "zebra", Personal: "not-a-cover" },
@@ -36,7 +36,7 @@ describe("planStarterSpace", () => {
     expect(plan.notebooks[0]).toEqual({
       name: "Estudios",
       study: true,
-      groupLabel: "Unidad",
+      groupLabel: "Tema",
       cover: "zebra",
       folders: [
         { title: "DI", classroomCourseId: null, challenges: false },
@@ -54,7 +54,7 @@ describe("planStarterSpace", () => {
   });
 
   it("caps sizes and survives garbage input", () => {
-    const plan = planStarterSpace({ roles: ["fp"], subjects: Array.from({ length: 30 }, (_, i) => ({ title: `S${i}` })), learning: { topic: "", subject: null }, covers: {} });
+    const plan = planStarterSpace({ roles: ["study"], subjects: Array.from({ length: 30 }, (_, i) => ({ title: `S${i}` })), learning: { topic: "", subject: null }, covers: {} });
     expect(plan.notebooks[0].folders).toHaveLength(12);
     expect(plan.learning).toBeNull();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

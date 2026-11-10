@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { MiniNotebook } from "../Covers";
-import { ArrowDown, XIcon } from "../icons";
+import { ArrowDown, CheckIcon, XIcon } from "../icons";
 import { HOME_BLOCK_TYPES, newBlock, type HomeBlock, type HomeBlockType } from "@/lib/blocks";
 import type { NotebookCover } from "@/lib/covers";
 import { saveHomeBlocks } from "./actions";
@@ -14,6 +14,16 @@ type Notebook = { id: string; name: string; cover: NotebookCover };
 type Project = { id: string; title: string; cover: string };
 
 const TITLE: Record<HomeBlockType, string> = { week: "Esta semana", today: "Para hoy", project: "Proyecto", folders: "Carpetas de", map: "Mapa de", recent: "Recientes de" };
+
+// What each block is for, in one line (the "?" in the add menu).
+const HELP: Record<HomeBlockType, string> = {
+  week: "Tus clases, entregas y repasos de los próximos 7 días.",
+  today: "Las tareas que tocan hoy en tus proyectos, para tacharlas.",
+  project: "La lista de tareas de un proyecto, siempre a mano.",
+  folders: "Las carpetas de una libreta, para entrar directo.",
+  map: "Cómo se conectan los temas de una libreta.",
+  recent: "Las últimas páginas que has tocado en una libreta.",
+};
 
 // The home page's blocks. Normally just the content; "Editar" lets you
 // pick each block's notebook, reorder, remove and add blocks. Changes
@@ -35,6 +45,7 @@ export function HomeBlocks({
   const [blocks, setBlocks] = useState(initial);
   const [editing, setEditing] = useState(false);
   const [adding, setAdding] = useState(false);
+  const [help, setHelp] = useState<HomeBlockType | null>(null);
   const [, start] = useTransition();
   const router = useRouter();
   const byId = new Map(notebooks.map((n) => [n.id, n]));
@@ -132,19 +143,32 @@ export function HomeBlocks({
               {t("+ Añadir bloque")}
             </button>
             {adding && (
-              <div className="absolute top-full left-0 z-10 mt-1 w-48 rounded-lg bg-white p-1 shadow-[0_0_0_1px_rgba(15,15,15,.05),0_10px_26px_rgba(15,15,15,.16)]">
+              <div className="absolute bottom-full left-0 z-10 mb-1 w-56 rounded-lg bg-white p-1 shadow-[0_0_0_1px_rgba(15,15,15,.05),0_10px_26px_rgba(15,15,15,.16)]">
                 {HOME_BLOCK_TYPES.map((item) => (
-                  <button
-                    key={item.type}
-                    type="button"
-                    onClick={() => {
-                      setAdding(false);
-                      save([...blocks, { ...newBlock(item.type), sectionId: notebooks[0]?.id ?? null, ...(item.type === "project" ? { pursuitId: projects[0]?.id ?? null } : {}) }]);
-                    }}
-                    className="block w-full rounded-md px-2.5 py-1.5 text-left text-sm hover:bg-chip"
-                  >
-                    {t(item.label)}
-                  </button>
+                  <div key={item.type} className="relative flex items-center">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAdding(false);
+                        setHelp(null);
+                        save([...blocks, { ...newBlock(item.type), sectionId: notebooks[0]?.id ?? null, ...(item.type === "project" ? { pursuitId: projects[0]?.id ?? null } : {}) }]);
+                      }}
+                      className="flex-1 rounded-md px-2.5 py-1.5 text-left text-sm hover:bg-chip"
+                    >
+                      {t(item.label)}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setHelp(help === item.type ? null : item.type)}
+                      aria-label={t("¿Para qué sirve?")}
+                      className={`grid size-6 shrink-0 place-items-center rounded-full text-xs ${help === item.type ? "bg-ink text-white" : "text-ink-faint hover:bg-chip hover:text-ink"}`}
+                    >
+                      ?
+                    </button>
+                    {help === item.type && (
+                      <p className="absolute top-0 left-full z-20 ml-3 w-60 rounded-lg bg-ink px-3 py-2 text-xs leading-snug text-white shadow-lg">{t(HELP[item.type])}</p>
+                    )}
+                  </div>
                 ))}
               </div>
             )}
@@ -156,9 +180,18 @@ export function HomeBlocks({
             setEditing((e) => !e);
             setAdding(false);
           }}
-          className={`ml-auto rounded-md px-3 py-1.5 text-sm ${editing ? "bg-ink font-medium text-white" : "text-ink-faint hover:bg-chip hover:text-ink"}`}
+          aria-label={editing ? t("Listo") : t("Editar inicio")}
+          title={editing ? t("Listo") : t("Editar inicio")}
+          className={`absolute top-10 right-6 grid size-9 place-items-center rounded-lg sm:right-12 lg:top-14 ${editing ? "bg-ink text-white" : "text-ink-faint hover:bg-chip hover:text-ink"}`}
         >
-          {editing ? t("Listo") : t("Editar inicio")}
+          {editing ? (
+            <CheckIcon size={16} className="block" />
+          ) : (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M4 20h4L19 9l-4-4L4 16z" />
+              <path d="M13.5 6.5l4 4" />
+            </svg>
+          )}
         </button>
       </div>
     </div>

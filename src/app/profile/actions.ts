@@ -3,7 +3,7 @@
 import { getT } from "@/lib/i18n/server";
 
 import { revalidatePath } from "next/cache";
-import { auth, signOut } from "@/auth";
+import { auth, signIn, signOut } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { wipeUser } from "@/lib/wipe";
 import { HANDLE, cleanHandle, parseAvatar } from "@/lib/avatar";
@@ -93,6 +93,21 @@ export async function setCodes(codes: boolean) {
   const id = await me();
   await prisma.user.update({ where: { id }, data: { codes } });
   revalidatePath("/", "layout");
+}
+
+// Settings: add another way to sign in (same email links it to this account).
+export async function linkSignIn(provider: "google" | "github") {
+  await me();
+  await signIn(provider, { redirectTo: "/profile?tab=settings" });
+}
+
+// Settings: remove a way to sign in, never the last one.
+export async function unlinkSignIn(provider: "google" | "github") {
+  const id = await me();
+  const count = await prisma.account.count({ where: { userId: id } });
+  if (count < 2) return;
+  await prisma.account.deleteMany({ where: { userId: id, provider } });
+  revalidatePath("/profile");
 }
 
 // Settings: unlink Google Classroom from the whole account.
