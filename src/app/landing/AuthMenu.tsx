@@ -97,7 +97,6 @@ export function ProviderButtons() {
     <div className="flex flex-col gap-2">
       <div className="flex flex-col gap-0.5 px-1 pb-1">
         <b className="text-base text-ink">{t("Crea tu cuenta o entra")}</b>
-        <span className="text-xs leading-snug text-ink-faint">{t("Gratis y sin contraseñas: elige con qué entrar. Si es tu primera vez, te creamos la cuenta.")}</span>
       </div>
       <form action={signInWithGoogle}>
         <button type="submit" className={providerButtonClass}>
