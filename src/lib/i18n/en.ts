@@ -1,5 +1,10 @@
 // Spanish source text → translation. Missing keys fall back to Spanish.
 export const en: Record<string, string> = {
+  "Eliminar cuenta": "Delete account",
+  "Se borran tu cuenta, tus libretas, carpetas, páginas y tarjetas. No se puede deshacer.": "Your account, notebooks, folders, pages and cards are deleted. This can't be undone.",
+  "Escribe ELIMINAR para confirmar": "Type ELIMINAR to confirm",
+  "Eliminando…": "Deleting…",
+  "Eliminar para siempre": "Delete forever",
   "resumen": "summary",
   "tu_usuario": "your_username",
   "Hola, {name}": "Hi, {name}",

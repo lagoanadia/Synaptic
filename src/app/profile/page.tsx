@@ -6,6 +6,7 @@ import { parseAvatar, randomAvatar } from "@/lib/avatar";
 import Link from "next/link";
 import { BILLING } from "@/lib/billingFlag";
 import { ProfileEditor } from "./ProfileEditor";
+import { DeleteAccount } from "./DeleteAccount";
 import { baseHandle, freeHandle } from "@/lib/username";
 import { Friends, type Friend } from "./Friends";
 
@@ -51,6 +52,7 @@ export default async function ProfilePage() {
       </header>
       <ProfileEditor name={user.name ?? user.email} username={user.username} suggested={user.username ?? (await freeHandle(baseHandle(user.name, user.email), session.user.id))} initial={avatar} saved={!!user.avatar} />
       <Friends friends={friends} hasHandle={!!user.username} />
+      <DeleteAccount />
     </div>
   );
 }
