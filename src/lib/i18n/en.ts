@@ -363,7 +363,6 @@ export const en: Record<string, string> = {
   "Otros": "Other",
   "Estrella": "Star",
   "Crea tu cuenta o entra": "Create your account or sign in",
-  "Gratis y sin contraseñas: elige con qué entrar. Si es tu primera vez, te creamos la cuenta.": "Free, no passwords: pick how to sign in. If it's your first time, we create your account.",
   "Ese ya está cogido.": "That one's taken.",
   "¿Usar @{0}?": "Use @{0}?",
   "¡Está libre!": "It's available!",
