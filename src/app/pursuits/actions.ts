@@ -37,7 +37,7 @@ export async function createPursuit(formData: FormData) {
       type: typeof type === "string" && type.trim() !== "" ? type.trim() : null,
       ownerId: session.user.id,
       sectionId,
-      // A folder template (En blanco / Proyecto / Plan) sets its blocks.
+      // A folder template (En blanco / Proyecto / Planificador) sets its blocks.
       ...(template === "blank" || template === "project" || template === "plan" ? { blocks: templateBlocks(template) } : {}),
     },
   });

@@ -39,7 +39,7 @@ export type FolderTemplate = "blank" | "project" | "plan";
 export const FOLDER_TEMPLATES: { id: FolderTemplate; label: string }[] = [
   { id: "blank", label: "En blanco" },
   { id: "project", label: "Proyecto" },
-  { id: "plan", label: "Plan" },
+  { id: "plan", label: "Planificador" },
 ];
 export function templateBlocks(t: FolderTemplate): FolderBlock[] {
   // "Plan": decide between options together and split the cost — a trip,
