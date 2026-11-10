@@ -165,24 +165,6 @@ export function NewDumpForm({
     <>
       <button
         type="button"
-        onClick={() => pptxInput.current?.click()}
-        disabled={!!busy}
-        title={t("Añadir las diapositivas de un PowerPoint como texto")}
-        className="rounded-md px-2 py-1 text-sm text-ink-muted hover:bg-chip hover:text-ink disabled:opacity-50"
-      >
-        PPT
-      </button>
-      <button
-        type="button"
-        onClick={() => pdfInput.current?.click()}
-        disabled={!!busy}
-        title={t("Añadir las páginas de un PDF como imágenes")}
-        className="rounded-md px-2 py-1 text-sm text-ink-muted hover:bg-chip hover:text-ink disabled:opacity-50"
-      >
-        PDF
-      </button>
-      <button
-        type="button"
         onClick={recordingSince ? stopRecording : startRecording}
         disabled={!!busy && !recordingSince}
         title={recordingSince ? t("Parar y transcribir") : t("Grabar una nota de voz")}

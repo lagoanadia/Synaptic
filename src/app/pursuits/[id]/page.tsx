@@ -435,9 +435,32 @@ export default async function PursuitPage({
         <FolderSettings pursuitId={pursuit.id} cover={cover} groupLabel={grouped ? groupLabel : null} title={pursuit.title} canDelete={isOwner}>
           <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]">
             {/* Quick note: a sticky note, so it doesn't get lost among the settings. */}
-            <div className="flex flex-col gap-2 self-start rounded-lg bg-[#fdf3c4] p-4 shadow-[0_1px_2px_rgba(0,0,0,.06),0_6px_14px_-8px_rgba(120,90,10,.35)]">
-              <span className="text-xs font-semibold tracking-wide text-[#8a6d1f] uppercase">{t("Nota rápida")}</span>
-              <StatusNote pursuitId={pursuit.id} initialNote={pursuit.statusNote} />
+            <div className="flex flex-col gap-4 self-start">
+              <div className="flex flex-col gap-2 rounded-lg bg-[#fdf3c4] p-4 shadow-[0_1px_2px_rgba(0,0,0,.06),0_6px_14px_-8px_rgba(120,90,10,.35)]">
+                <span className="text-xs font-semibold tracking-wide text-[#8a6d1f] uppercase">{t("Nota rápida")}</span>
+                <StatusNote pursuitId={pursuit.id} initialNote={pursuit.statusNote} />
+              </div>
+              {pursuit.classroomEnabled ? (
+                <div className="flex flex-col gap-1.5">
+                  <ClassroomImport
+                    pursuitId={pursuit.id}
+                    connected={!!classroomConnection}
+                    linkedCourseId={pursuit.classroomCourseId}
+                    linkedElsewhere={Object.fromEntries(otherLinked.filter((o) => o.classroomCourseId).map((o) => [o.classroomCourseId!, o.title]))}
+                  />
+                  <form action={setClassroomEnabled.bind(null, pursuit.id, false)}>
+                    <button type="submit" className="self-start text-xs text-ink-faint hover:text-red-500">
+                      {t("Desactivar Google Classroom en esta asignatura")}
+                    </button>
+                  </form>
+                </div>
+              ) : (
+                <form action={setClassroomEnabled.bind(null, pursuit.id, true)}>
+                  <button type="submit" className="rounded-md border border-border-subtle px-3 py-1.5 text-sm text-ink-muted hover:border-ink hover:text-ink">
+                    {t("+ Vincular Google Classroom")}
+                  </button>
+                </form>
+              )}
             </div>
             <div className="flex flex-col gap-4">
               <div id="compartir" className="flex flex-col gap-2 rounded-lg border border-border-subtle bg-white p-4">
@@ -482,27 +505,6 @@ export default async function PursuitPage({
               </div>
             </div>
           </div>
-          {pursuit.classroomEnabled ? (
-            <div className="flex flex-col gap-1.5">
-              <ClassroomImport
-                pursuitId={pursuit.id}
-                connected={!!classroomConnection}
-                linkedCourseId={pursuit.classroomCourseId}
-                linkedElsewhere={Object.fromEntries(otherLinked.filter((o) => o.classroomCourseId).map((o) => [o.classroomCourseId!, o.title]))}
-              />
-              <form action={setClassroomEnabled.bind(null, pursuit.id, false)}>
-                <button type="submit" className="self-start text-xs text-ink-faint hover:text-red-500">
-                  {t("Desactivar Google Classroom en esta asignatura")}
-                </button>
-              </form>
-            </div>
-          ) : (
-            <form action={setClassroomEnabled.bind(null, pursuit.id, true)}>
-              <button type="submit" className="rounded-md border border-border-subtle px-3 py-1.5 text-sm text-ink-muted hover:border-ink hover:text-ink">
-                {t("+ Vincular Google Classroom")}
-              </button>
-            </form>
-          )}
         </FolderSettings>
       )}
 

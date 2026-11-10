@@ -318,6 +318,9 @@ export function RichEditor({
 
   if (bare) {
     return (
+      <>
+      {/* Same formatting bar as the full editor, so a page edits the same way. */}
+      <Toolbar editor={editor} onImage={onUploadImage ? () => fileInput.current?.click() : undefined} uploading={uploading} extras={toolbarExtras} bare />
       <div
         ref={wrap}
         className="relative"
@@ -430,6 +433,7 @@ export function RichEditor({
         )}
         {uploading && <span className="absolute top-0 right-0 text-xs text-ink-faint">{t("Subiendo…")}</span>}
       </div>
+      </>
     );
   }
 
@@ -463,11 +467,14 @@ function Toolbar({
   onImage,
   uploading,
   extras,
+  bare = false,
 }: {
   editor: Editor;
   onImage?: () => void;
   uploading: boolean;
   extras?: React.ReactNode;
+  // On a page (no box around the editor): its own rounded bar.
+  bare?: boolean;
 }) {
   const t = useT();
   // Re-render the toolbar when the selection's formatting changes.
@@ -508,14 +515,14 @@ function Toolbar({
   }
 
   return (
-    <div className="sticky top-0 z-10 flex flex-wrap items-center gap-0.5 rounded-t-2xl border-b border-border-subtle bg-white/95 px-2 py-1.5 backdrop-blur">
+    <div className={`sticky top-0 z-10 flex flex-wrap items-center gap-0.5 border-border-subtle bg-white/95 px-2 py-1.5 backdrop-blur ${bare ? "mb-3 rounded-xl border" : "rounded-t-2xl border-b"}`}>
       <Btn on={s.h1} onClick={() => c().toggleHeading({ level: 1 }).run()} title={t("Título 1 (# )")}>H1</Btn>
       <Btn on={s.h2} onClick={() => c().toggleHeading({ level: 2 }).run()} title={t("Título 2 (## )")}>H2</Btn>
       <Btn on={s.h3} onClick={() => c().toggleHeading({ level: 3 }).run()} title={t("Título 3 (### )")}>H3</Btn>
       <Sep />
-      <Btn on={s.bold} onClick={() => c().toggleBold().run()} title={t("Negrita (Ctrl+B)")}><b>N</b></Btn>
-      <Btn on={s.italic} onClick={() => c().toggleItalic().run()} title={t("Cursiva (Ctrl+I)")}><i>K</i></Btn>
-      <Btn on={s.underline} onClick={() => c().toggleUnderline().run()} title={t("Subrayado (Ctrl+U)")}><u>S</u></Btn>
+      <Btn on={s.bold} onClick={() => c().toggleBold().run()} title={t("Negrita (Ctrl+B)")}><b>{t("N")}</b></Btn>
+      <Btn on={s.italic} onClick={() => c().toggleItalic().run()} title={t("Cursiva (Ctrl+I)")}><i>{t("K")}</i></Btn>
+      <Btn on={s.underline} onClick={() => c().toggleUnderline().run()} title={t("Subrayado (Ctrl+U)")}><u>{t("S")}</u></Btn>
       <Btn on={s.link} onClick={setLink} title={t("Enlace")}><LinkIcon /></Btn>
       <Sep />
       <Btn on={s.bullet} onClick={() => c().toggleBulletList().run()} title={t("Lista (- )")}>•</Btn>
@@ -535,7 +542,7 @@ function Toolbar({
           ))}
         </select>
       )}
-      <Btn on={s.table} onClick={() => c().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()} title={t("Insertar tabla")}>▦</Btn>
+      <Btn on={s.table} onClick={() => c().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()} title={t("Insertar tabla")}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden><rect x="3.5" y="4.5" width="17" height="15" rx="2" /><path d="M3.5 9.5h17M3.5 14.5h17M9.5 9.5v10M14.5 9.5v10" /></svg></Btn>
       {s.table && (
         <span className="flex items-center gap-0.5 rounded-md bg-chip px-1 text-xs">
           <Btn onClick={() => c().toggleHeaderRow().run()} title={t("Primera fila como cabecera")}>{t("Cabecera")}</Btn>
@@ -644,8 +651,8 @@ function SelectionBar({
   return (
     <div className="absolute z-20 flex max-w-[min(420px,100%)] -translate-y-full flex-col gap-1 pb-2" style={{ top: sel.top, left: sel.left }}>
       <div className="flex items-center gap-0.5 self-start rounded-lg bg-white p-1 text-sm shadow-[0_0_0_1px_rgba(15,15,15,.05),0_10px_26px_rgba(15,15,15,.16)]">
-        <Btn on={s.bold} onClick={() => c().toggleBold().run()} title={t("Negrita")}><b>N</b></Btn>
-        <Btn on={s.italic} onClick={() => c().toggleItalic().run()} title={t("Cursiva")}><i>K</i></Btn>
+        <Btn on={s.bold} onClick={() => c().toggleBold().run()} title={t("Negrita")}><b>{t("N")}</b></Btn>
+        <Btn on={s.italic} onClick={() => c().toggleItalic().run()} title={t("Cursiva")}><i>{t("K")}</i></Btn>
         <Btn
           on={s.link}
           onClick={() => {

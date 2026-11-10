@@ -36,7 +36,7 @@ export function FolderSettings({
       <div className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3 lg:grid-cols-5">
         {FOLDER_GROUPS.map((g) => (
           <div key={g.name} className="flex flex-col gap-2">
-            <span className="text-[11px] font-semibold tracking-wide text-ink-faint uppercase">{g.name}</span>
+            <span className="text-[11px] font-semibold tracking-wide text-ink-faint uppercase">{t(g.name)}</span>
             <div className="grid w-fit grid-cols-3 gap-2">
               {g.covers.map((c: FolderCover) => (
                 <button
