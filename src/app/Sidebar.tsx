@@ -22,6 +22,8 @@ type Props = {
   plan: string;
   notebooks: { id: string; name: string; cover: NotebookCover }[];
   collapsed?: boolean;
+  // "Programo" in settings: shows Retos.
+  codes?: boolean;
 };
 
 // A door with an arrow out: sign out.
@@ -44,7 +46,7 @@ const PLAN_LABEL: Record<string, string> = { FREE: "Gratis", PRO: "Student Pro",
 
 // Notion-style navigation: a fixed sidebar on wide screens (pages, your
 // notebooks, account), a bottom tab bar on phones.
-export function Sidebar({ user, plan, notebooks, collapsed: startCollapsed = false }: Props) {
+export function Sidebar({ user, plan, notebooks, collapsed: startCollapsed = false, codes = false }: Props) {
   const t = useT();
   const pathname = usePathname();
   const [sheet, setSheet] = useState(false);
@@ -102,7 +104,7 @@ export function Sidebar({ user, plan, notebooks, collapsed: startCollapsed = fal
             { href: "/pursuits", label: t("Inicio"), icon: <HomeIcon size={16} className="block" />, on: active("/pursuits", true) },
             { href: "/calendar", label: "Calendario", icon: <CalendarIcon size={16} className="block" />, on: active("/calendar") },
             { href: "/review", label: t("Repasar"), icon: <CardsIcon size={16} className="block" />, on: active("/review") },
-            { href: "/challenges", label: t("Retos"), icon: <CodeIcon size={16} className="block" />, on: active("/challenges") },
+            ...(codes ? [{ href: "/challenges", label: t("Retos"), icon: <CodeIcon size={16} className="block" />, on: active("/challenges") }] : []),
           ].map((item) => (
             <Link key={item.href} href={item.href} title={t(item.label)} aria-label={t(item.label)} className={`grid size-8 place-items-center rounded-md ${item.on ? "bg-[#ebebea] text-ink" : "text-ink-muted hover:bg-[#ebebea]/70 hover:text-ink"}`}>
               {item.icon}
@@ -146,9 +148,9 @@ export function Sidebar({ user, plan, notebooks, collapsed: startCollapsed = fal
           <Link href="/review" className={row(active("/review"))}>
             <CardsIcon size={16} className="block" />{" "}{t("Repasar")}
           </Link>
-          <Link href="/challenges" className={row(active("/challenges"))}>
+          {codes && <Link href="/challenges" className={row(active("/challenges"))}>
             <CodeIcon size={16} className="block" />{" "}{t("Retos")}
-          </Link>
+          </Link>}
         </nav>
         <div className="flex flex-col gap-1">
           <span className="px-2 text-xs font-medium text-ink-faint">{t("Libretas")}</span>
@@ -213,9 +215,9 @@ export function Sidebar({ user, plan, notebooks, collapsed: startCollapsed = fal
             {notebookList}
             <LangPicker className="self-start" />
             <div className="flex items-center gap-3 border-t border-border-subtle pt-3 text-sm">
-              <Link href="/challenges" onClick={() => setSheet(false)} className={`flex flex-1 items-center gap-2 ${active("/challenges") ? "text-ink" : "text-ink-muted"}`}>
+              {codes && <Link href="/challenges" onClick={() => setSheet(false)} className={`flex flex-1 items-center gap-2 ${active("/challenges") ? "text-ink" : "text-ink-muted"}`}>
                 <CodeIcon size={18} className="block" /> {t("Retos")}
-              </Link>
+              </Link>}
               <form action={signOutAction}>
                 <button type="submit" title={t("Cerrar sesión")} aria-label={t("Cerrar sesión")} className="grid size-8 place-items-center rounded-md text-ink-muted">
                   <LogoutIcon />

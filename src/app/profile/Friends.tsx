@@ -26,11 +26,10 @@ export function Friends({ friends, hasHandle }: { friends: Friend[]; hasHandle: 
   const run = (fn: () => Promise<unknown>) => start(async () => void (await fn()));
 
   return (
-    <section className="flex max-w-xl flex-col gap-4 border-t border-border-subtle pt-8">
-      <h2 className="text-lg font-semibold">{t("Amigos")}</h2>
+    <section className="flex flex-col gap-5">
 
       <form
-        className="flex flex-col gap-1"
+        className="flex max-w-xl flex-col gap-1"
         onSubmit={(e) => {
           e.preventDefault();
           start(async () => {
@@ -57,7 +56,7 @@ export function Friends({ friends, hasHandle }: { friends: Friend[]; hasHandle: 
       </form>
 
       {received.length > 0 && (
-        <div className="flex flex-col gap-2">
+        <div className="flex max-w-xl flex-col gap-2">
           <span className="text-xs font-semibold tracking-wide text-ink-faint uppercase">{t("Quieren ser tus amigos")}</span>
           {received.map((f) => (
             <Row key={f.id} friend={f}>
@@ -72,24 +71,35 @@ export function Friends({ friends, hasHandle }: { friends: Friend[]; hasHandle: 
         </div>
       )}
 
-      <div className="flex flex-col gap-2">
-        {others.length === 0 && <p className="text-sm text-ink-faint">{t("Aún no tienes amigos aquí. Añádelos por su @usuario.")}</p>}
-        {others.map((f) => (
-          <Row key={f.id} friend={f}>
-            {f.state === "sent" && <span className="text-xs text-ink-faint">{t("Pendiente")}</span>}
-            <button
-              type="button"
-              disabled={pending}
-              onClick={() => {
-                if (f.state === "sent" || confirm(t("¿Quitar a {0} de tus amigos?", { 0: f.name }))) run(() => removeFriend(f.id));
-              }}
-              className="rounded-md px-3 py-1 text-xs text-ink-muted hover:bg-chip"
-            >
-              {f.state === "sent" ? t("Cancelar") : t("Quitar")}
-            </button>
-          </Row>
-        ))}
-      </div>
+      {/* Friends as cards: their avatar big, name and @username. */}
+      {others.length === 0 ? (
+        <p className="text-sm text-ink-faint">{t("Aún no tienes amigos aquí. Añádelos por su @usuario.")}</p>
+      ) : (
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+          {others.map((f) => (
+            <div key={f.id} className={`group relative flex flex-col items-center gap-2 rounded-xl border border-border-subtle bg-white p-5 text-center ${f.state === "sent" ? "opacity-60" : ""}`}>
+              {f.avatar ? (
+                <AvatarFace avatar={f.avatar} size={120} uid={`c${f.id}`} />
+              ) : (
+                <span className="grid size-[120px] place-items-center rounded-full bg-chip text-4xl font-semibold text-ink-muted">{f.name.slice(0, 1).toUpperCase()}</span>
+              )}
+              <span className="w-full truncate font-semibold">{f.name}</span>
+              {f.username && <span className="-mt-1.5 w-full truncate text-sm text-ink-faint">@{f.username}</span>}
+              {f.state === "sent" && <span className="text-xs text-ink-faint">{t("Pendiente")}</span>}
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() => {
+                  if (f.state === "sent" || confirm(t("¿Quitar a {0} de tus amigos?", { 0: f.name }))) run(() => removeFriend(f.id));
+                }}
+                className="absolute top-2 right-2 rounded-md px-2 py-0.5 text-xs text-ink-faint opacity-0 group-hover:opacity-100 hover:bg-chip hover:text-ink focus:opacity-100"
+              >
+                {f.state === "sent" ? t("Cancelar") : t("Quitar")}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
     </section>
   );
 }
