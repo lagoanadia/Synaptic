@@ -49,8 +49,8 @@ export function PagesBoard({
   study?: boolean;
 }) {
   const t = useT();
-  const label = groupLabel;
-  const none = `Sin ${label.toLowerCase()}`;
+  const label = t(groupLabel);
+  const none = t("Sin {0}", { 0: label.toLowerCase() });
   const asBoard = view === "board" && units.length > 0;
   const [cards, setCards] = useState(initial);
   const [dragging, setDragging] = useState<string | null>(null);

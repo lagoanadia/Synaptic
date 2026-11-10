@@ -68,7 +68,7 @@ export default async function NotebookPage({ params }: { params: Promise<{ secti
         ),
       );
 
-  const sectionHeader = (title: string) => <h2 className="border-b border-border-subtle pb-2 text-sm font-semibold">{title}</h2>;
+  const sectionHeader = (title: string) => <h2 className="border-b border-border-subtle pb-2 text-sm font-semibold">{t(title)}</h2>;
 
   return (
     <div className="mx-auto flex w-full max-w-[1100px] flex-1 flex-col gap-10 px-6 py-8 sm:px-12 lg:py-12">

@@ -110,7 +110,7 @@ export function FolderBlocks({
                   className="rounded bg-white px-1.5 text-[17px] font-semibold"
                 />
               ) : (
-                <h2 className={card ? "text-[17px] font-semibold" : "flex-1 text-sm font-semibold"}>{b.type === "options" ? b.title : LABEL[b.type]}</h2>
+                <h2 className={card ? "text-[17px] font-semibold" : "flex-1 text-sm font-semibold"}>{b.type === "options" ? b.title : t(LABEL[b.type])}</h2>
               )}
               {card && <span className={`flex-1 text-sm text-ink-faint ${b.type === "project" ? "" : "text-right"}`}>{summaries[b.id]}</span>}
               {card && !editing && extras[b.id]}
