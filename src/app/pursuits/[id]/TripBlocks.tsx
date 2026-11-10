@@ -1,10 +1,12 @@
 "use client";
 
+import { AvatarFace } from "@/app/AvatarFace";
+import type { Avatar } from "@/lib/avatar";
 import { useState, useTransition } from "react";
 import type { BlockIcon } from "@/lib/blocks";
 import { addBudgetLine, addChoice, deleteBudgetLine, deleteChoice, setBudgetPeople, toggleVote, updateBudgetLine, updateChoice, type ChoiceStatus } from "./choices";
 
-export type Person = { id: string; name: string; initial: string; color: string };
+export type Person = { id: string; name: string; initial: string; color: string; avatar?: Avatar | null };
 export type ChoiceItem = { id: string; title: string; url: string | null; status: ChoiceStatus; price: number | null; voters: string[] };
 export type BudgetLineItem = { id: string; label: string; unit: number; days: number; perPerson: boolean };
 
@@ -96,20 +98,26 @@ const LinkIcon = () => (
   </svg>
 );
 
-// Overlapping initials, one per person.
+// Overlapping faces, one per person: their avatar, or their initial.
 export function Faces({ people, size = 22 }: { people: Person[]; size?: number }) {
   return (
     <span className="flex">
-      {people.map((p, i) => (
-        <span
-          key={p.id}
-          title={p.name}
-          className="grid place-items-center rounded-full font-semibold text-white ring-2 ring-white"
-          style={{ width: size, height: size, fontSize: size * 0.48, background: p.color, marginLeft: i ? -size * 0.28 : 0 }}
-        >
-          {p.initial}
-        </span>
-      ))}
+      {people.map((p, i) =>
+        p.avatar ? (
+          <span key={p.id} title={p.name} className="rounded-full ring-2 ring-white" style={{ marginLeft: i ? -size * 0.28 : 0 }}>
+            <AvatarFace avatar={p.avatar} size={size} uid={`f${p.id}${size}`} />
+          </span>
+        ) : (
+          <span
+            key={p.id}
+            title={p.name}
+            className="grid place-items-center rounded-full font-semibold text-white ring-2 ring-white"
+            style={{ width: size, height: size, fontSize: size * 0.48, background: p.color, marginLeft: i ? -size * 0.28 : 0 }}
+          >
+            {p.initial}
+          </span>
+        ),
+      )}
     </span>
   );
 }
@@ -189,7 +197,7 @@ export function OptionsBlock({ pursuitId, blockId, items, people, me }: { pursui
                 onClick={() => start(() => toggleVote(c.id))}
                 title={mine ? "Quitar mi voto" : "Votar"}
                 aria-pressed={mine}
-                className={`rounded p-1 ${mine ? "text-accent" : "text-ink-faint/60 hover:text-ink"}`}
+                className={`rounded p-1 ${mine ? "text-ink" : "text-ink-faint/60 hover:text-ink"}`}
               >
                 <ThumbIcon filled={mine} />
               </button>

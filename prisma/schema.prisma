@@ -38,6 +38,10 @@ model User {
   // flashcards } ids), so "Quitar lo de ejemplo" can remove exactly that.
   sampleContent Json?
 
+  // Profile: public @handle and the drawn avatar (lib/avatar.ts).
+  username String? @unique
+  avatar   Json?
+
   // "en" | "de" | "fr" | "es" (lib/i18n.ts).
   locale String @default("en")
 
