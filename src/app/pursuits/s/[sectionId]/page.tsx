@@ -31,7 +31,7 @@ export default async function NotebookPage({ params }: { params: Promise<{ secti
   const isVirtual = sectionId === UNSORTED || sectionId === SHARED;
   const section = isVirtual ? null : await prisma.section.findFirst({ where: { id: sectionId, userId } });
   if (!isVirtual && !section) notFound();
-  const name = section?.name ?? (sectionId === SHARED ? "Compartido" : t("Sin clasificar"));
+  const name = section?.name ?? (sectionId === SHARED ? t("Compartido") : t("Sin clasificar"));
   const study = section?.study ?? true;
   // A "General" notebook: free folders, each with its own blocks.
   const general = section?.kind === "general";

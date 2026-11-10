@@ -1,5 +1,6 @@
 // Spanish source text → translation. Missing keys fall back to Spanish.
 export const en: Record<string, string> = {
+  "Compartido": "Shared",
   "Elige un amigo o escribe un email o @usuario": "Pick a friend or type an email or @username",
   "No hay ninguna cuenta con ese email o @usuario — tiene que entrar en Synaptic una vez primero": "No account with that email or @username — they need to sign in to Synaptic once first",
   "Tus amigos": "Your friends",

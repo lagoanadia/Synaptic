@@ -45,7 +45,7 @@ export default async function HomePage() {
   if (pursuitBuckets.some((p) => p.ownerId === userId && !p.sectionId))
     shelf.push({ id: UNSORTED, name: t("Sin clasificar"), cover: "marble", href: `/pursuits/s/${UNSORTED}`, movable: false });
   if (pursuitBuckets.some((p) => p.ownerId !== userId))
-    shelf.push({ id: SHARED, name: "Compartido", cover: "ocean", href: `/pursuits/s/${SHARED}`, movable: false });
+    shelf.push({ id: SHARED, name: t("Compartido"), cover: "ocean", href: `/pursuits/s/${SHARED}`, movable: false });
 
   const sample = viewer.sampleContent as { topic: string; flashcards?: string[] } | null;
   const blocks = homeBlocks(viewer.homeBlocks, sections);
