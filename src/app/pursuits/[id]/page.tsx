@@ -142,7 +142,7 @@ export default async function PursuitPage({
       ? `/pursuits/s/${SHARED}`
       : `/pursuits/s/${pursuit.section?.id ?? UNSORTED}`;
   const backLabel =
-    pursuit.owner.id !== session.user.id ? "Compartido" : (pursuit.section?.name ?? t("Sin clasificar"));
+    pursuit.owner.id !== session.user.id ? t("Compartido") : (pursuit.section?.name ?? t("Sin clasificar"));
 
   // One card per page: the raw dump plus the note organized from it (a
   // note made from several dumps stays with the first). Notes whose
