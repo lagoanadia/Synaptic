@@ -7,7 +7,6 @@ import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { signOutAction } from "./actions";
-import { LangPicker } from "./LangPicker";
 import { createSection } from "./pursuits/actions";
 import { TemplatePick, type Template } from "./pursuits/TemplatePick";
 import { MiniNotebook } from "./Covers";
@@ -156,8 +155,7 @@ export function Sidebar({ user, plan, notebooks, collapsed: startCollapsed = fal
           <span className="px-2 text-xs font-medium text-ink-faint">{t("Libretas")}</span>
           {notebookList}
         </div>
-        <LangPicker className="mt-auto self-start" />
-        <div className="flex items-center gap-1 border-t border-border-subtle pt-3">
+        <div className="mt-auto flex items-center gap-1 border-t border-border-subtle pt-3">
           <Account href="/profile" className={`${row(active("/profile"))} min-w-0 flex-1`}>
             <Avatar user={user} size={24} />
             <span className="min-w-0 flex-1 truncate">{user.name ?? user.email}</span>
@@ -213,7 +211,6 @@ export function Sidebar({ user, plan, notebooks, collapsed: startCollapsed = fal
               </button>
             </div>
             {notebookList}
-            <LangPicker className="self-start" />
             <div className="flex items-center gap-3 border-t border-border-subtle pt-3 text-sm">
               {codes && <Link href="/challenges" onClick={() => setSheet(false)} className={`flex flex-1 items-center gap-2 ${active("/challenges") ? "text-ink" : "text-ink-muted"}`}>
                 <CodeIcon size={18} className="block" /> {t("Retos")}
