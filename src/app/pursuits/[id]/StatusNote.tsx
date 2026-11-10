@@ -39,10 +39,10 @@ export function StatusNote({
         autoResize(e.target);
       }}
       onBlur={save}
-      placeholder={t("Notas rápidas — cómo va, qué queda pendiente…")}
+      placeholder={t("Cómo va, qué queda pendiente…")}
       rows={1}
       disabled={isPending}
-      className="w-full resize-none overflow-hidden rounded-xl border border-dashed border-border-subtle bg-callout px-4 py-3 text-sm leading-relaxed text-ink outline-none placeholder:text-ink-faint disabled:opacity-50"
+      className="min-h-24 w-full resize-none overflow-hidden bg-transparent text-[15px] leading-relaxed text-ink outline-none placeholder:text-[#a08a4f] disabled:opacity-50"
     />
   );
 }

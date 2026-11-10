@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { cleanHomeBlocks, folderBlocks, homeBlocks } from "./blocks";
-import { cleanFolderBlock, templateBlocks } from "./blocks";
+import { blocksFromTemplate, cleanFolderBlock, cleanHomeBlocks, folderBlocks, homeBlocks, optionColumns } from "./blocks";
+import { templateBlocks } from "./blocks";
 
 describe("homeBlocks", () => {
   const sections = [
@@ -68,11 +68,25 @@ describe("cleanHomeBlocks projects", () => {
 });
 
 describe("folder templates and options/budget blocks", () => {
-  it("a trip starts with Alojamiento, Vuelos and Presupuesto", () => {
-    const b = templateBlocks("trip");
+  it("options keep only known columns, in order; defaults when missing", () => {
+    expect(optionColumns(["note", "price", "x"])).toEqual(["price", "note"]);
+    expect(optionColumns(undefined)).toEqual(["status", "price", "votes"]);
+    expect(cleanFolderBlock({ type: "options", columns: ["rating"] as never })?.columns).toEqual(["rating"]);
+  });
+
+  it("a saved template gives fresh blocks with new ids", () => {
+    const saved = [{ id: "a", type: "options", title: "Pisos", icon: "bed", columns: ["price", "rating"] }, { id: "b", type: "nope" }];
+    const b = blocksFromTemplate(saved);
+    expect(b).toHaveLength(1);
+    expect(b[0]).toMatchObject({ type: "options", title: "Pisos", columns: ["price", "rating"] });
+    expect(b[0].id).not.toBe("a");
+    expect(blocksFromTemplate(null).map((x) => x.type)).toEqual(["pages"]);
+  });
+
+  it("a plan starts with Opciones and Presupuesto", () => {
+    const b = templateBlocks("plan");
     expect(b.map((x) => [x.type, x.title ?? null, x.icon ?? null])).toEqual([
-      ["options", "Alojamiento", "bed"],
-      ["options", "Vuelos", "plane"],
+      ["options", "Opciones", "list"],
       ["budget", null, null],
     ]);
   });
@@ -83,8 +97,8 @@ describe("folder templates and options/budget blocks", () => {
   });
 
   it("cleans what the browser sends", () => {
-    expect(cleanFolderBlock({ id: "a", type: "options", title: "  Restaurantes ", icon: "food" })).toEqual({ id: "a", type: "options", title: "Restaurantes", icon: "food" });
-    expect(cleanFolderBlock({ id: "b", type: "options", icon: "nope" as never })).toEqual({ id: "b", type: "options", title: "Opciones", icon: "list" });
+    expect(cleanFolderBlock({ id: "a", type: "options", title: "  Restaurantes ", icon: "food" })).toEqual({ id: "a", type: "options", title: "Restaurantes", icon: "food", columns: ["status", "price", "votes"] });
+    expect(cleanFolderBlock({ id: "b", type: "options", icon: "nope" as never })).toEqual({ id: "b", type: "options", title: "Opciones", icon: "list", columns: ["status", "price", "votes"] });
     expect(cleanFolderBlock({ id: "c", type: "budget", people: 4 })).toEqual({ id: "c", type: "budget", people: 4 });
     expect(cleanFolderBlock({ id: "d", type: "budget", people: 0 })).toEqual({ id: "d", type: "budget", people: null });
     expect(cleanFolderBlock({ id: "e", type: "hack" as never })).toBeNull();

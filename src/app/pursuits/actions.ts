@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { templateBlocks } from "@/lib/blocks";
+import { blocksFromTemplate, templateBlocks } from "@/lib/blocks";
 import { cleanHomeBlocks } from "@/lib/blocks";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
@@ -31,14 +31,20 @@ export async function createPursuit(formData: FormData) {
     sectionId = section.id;
   }
 
+  // A template you saved: "u:<id>", only your own.
+  const mine = typeof template === "string" && template.startsWith("u:")
+    ? await prisma.userTemplate.findFirst({ where: { id: template.slice(2), userId: session.user.id }, select: { blocks: true } })
+    : null;
+
   await prisma.pursuit.create({
     data: {
       title: title.trim(),
       type: typeof type === "string" && type.trim() !== "" ? type.trim() : null,
       ownerId: session.user.id,
       sectionId,
-      // A folder template (En blanco / Proyecto / Viaje) sets its blocks.
-      ...(template === "blank" || template === "project" || template === "trip" ? { blocks: templateBlocks(template) } : {}),
+      // A folder template (En blanco / Proyecto / Planificador) sets its blocks.
+      ...(template === "blank" || template === "project" || template === "plan" ? { blocks: templateBlocks(template) } : {}),
+      ...(mine ? { blocks: blocksFromTemplate(mine.blocks) } : {}),
     },
   });
 
@@ -201,4 +207,34 @@ export async function setNotebook(sectionId: string, data: { study?: boolean; ki
   }
   revalidatePath("/pursuits", "layout");
   return { error: null };
+}
+
+// "Guardar como plantilla": this folder's blocks (not their content) under a
+// name, to start new folders from. Same name again replaces it.
+export async function saveFolderTemplate(pursuitId: string, name: string): Promise<{ error: string | null }> {
+  const session = await auth();
+  if (!session?.user?.id) return { error: "No has iniciado sesión" };
+  const clean = name.trim().slice(0, 30);
+  if (!clean) return { error: "Ponle un nombre" };
+  const pursuit = await prisma.pursuit.findFirst({
+    where: { id: pursuitId, OR: [{ ownerId: session.user.id }, { members: { some: { userId: session.user.id } } }] },
+    select: { blocks: true },
+  });
+  if (!pursuit) return { error: "Carpeta no encontrada" };
+  const blocks = blocksFromTemplate(pursuit.blocks);
+  const existing = await prisma.userTemplate.findFirst({ where: { userId: session.user.id, name: clean }, select: { id: true } });
+  if (existing) await prisma.userTemplate.update({ where: { id: existing.id }, data: { blocks } });
+  else {
+    if ((await prisma.userTemplate.count({ where: { userId: session.user.id } })) >= 20) return { error: "Máximo 20 plantillas" };
+    await prisma.userTemplate.create({ data: { userId: session.user.id, name: clean, blocks } });
+  }
+  revalidatePath("/pursuits", "layout");
+  return { error: null };
+}
+
+export async function deleteFolderTemplate(id: string) {
+  const session = await auth();
+  if (!session?.user?.id) return;
+  await prisma.userTemplate.deleteMany({ where: { id, userId: session.user.id } });
+  revalidatePath("/pursuits", "layout");
 }

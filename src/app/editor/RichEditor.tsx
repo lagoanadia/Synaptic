@@ -13,7 +13,7 @@ import type { Node as PmNode } from "@tiptap/pm/model";
 import StarterKit from "@tiptap/starter-kit";
 import { OrderedList } from "@tiptap/extension-list";
 import { TableKit } from "@tiptap/extension-table";
-import Image from "@tiptap/extension-image";
+import { ImageWithBoards } from "./Whiteboard";
 import { Placeholder } from "@tiptap/extensions";
 import { docToText, textToDoc } from "@/lib/richText";
 import { termMatches, type TermHint } from "@/lib/terms";
@@ -103,6 +103,7 @@ export function RichEditor({
   onCard,
   onMap,
   terms = [],
+  onBoard,
 }: {
   initialText: string;
   onChange: (text: string) => void;
@@ -122,6 +123,8 @@ export function RichEditor({
   onMap?: (text: string) => Promise<{ error: string | null; href?: string }>;
   // Words that name a concept on a map: underlined, with a card on hover.
   terms?: TermHint[];
+  // "/ Pizarra": makes a board and returns its image URL.
+  onBoard?: () => Promise<string>;
 }) {
   const t = useT();
   const [hint, setHint] = useState<{ i: number; top: number; left: number } | null>(null);
@@ -173,7 +176,7 @@ export function RichEditor({
       LetterableOrderedList,
       CalloutShortcut,
       TableKit.configure({ table: { resizable: false } }),
-      Image,
+      ImageWithBoards,
       Placeholder.configure({ placeholder }),
       KeyTerms,
       BlockMoves,
@@ -250,12 +253,13 @@ export function RichEditor({
     setBlockMenu(true);
   }
 
-  const items = slash ? slashItems(!!onUploadImage).filter((it) => fold(it.label).split(" ").some((w) => w.startsWith(fold(slash.query)))) : [];
+  const items = slash ? slashItems(!!onUploadImage, !!onBoard).filter((it) => fold(it.label).split(" ").some((w) => w.startsWith(fold(slash.query)))) : [];
   const pick = (it: SlashItem) => {
     if (!slash || !editor) return;
     const to = editor.state.selection.from;
     it.run(editor.chain().focus().deleteRange({ from: slash.from, to }));
     if (it.image) fileInput.current?.click();
+    if (it.board && onBoard) onBoard().then((src) => editor.chain().focus().setImage({ src }).createParagraphNear().run());
     setSlash(null);
   };
 
@@ -590,11 +594,11 @@ const Sep = () => <span className="mx-1 h-5 w-px bg-border-subtle" aria-hidden /
 type Slash = { from: number; query: string; top: number; left: number; index: number };
 type Sel = { text: string; top: number; left: number };
 type Chain = ReturnType<Editor["chain"]>;
-type SlashItem = { label: string; icon: React.ReactNode; run: (c: Chain) => void; image?: boolean };
+type SlashItem = { label: string; icon: React.ReactNode; run: (c: Chain) => void; image?: boolean; board?: boolean };
 
 const fold = (t: string) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
-function slashItems(images: boolean): SlashItem[] {
+function slashItems(images: boolean, boards = false): SlashItem[] {
   return [
     { label: "Título", icon: "H1", run: (c) => c.setHeading({ level: 1 }).run() },
     { label: "Subtítulo", icon: "H2", run: (c) => c.setHeading({ level: 2 }).run() },
@@ -605,6 +609,7 @@ function slashItems(images: boolean): SlashItem[] {
     { label: "Código", icon: "</>", run: (c) => c.toggleCodeBlock().run() },
     { label: "Tabla", icon: "▦", run: (c) => c.insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run() },
     ...(images ? [{ label: "Imagen", icon: <ImageIcon />, run: (c: Chain) => c.run(), image: true }] : []),
+    ...(boards ? [{ label: "Pizarra", icon: "✎", run: (c: Chain) => c.run(), board: true }] : []),
   ];
 }
 

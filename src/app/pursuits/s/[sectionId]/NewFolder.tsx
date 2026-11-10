@@ -2,17 +2,18 @@
 
 import { useT } from "@/app/LangProvider";
 import { useState, useTransition } from "react";
-import { createPursuit } from "../../actions";
+import { createPursuit, deleteFolderTemplate } from "../../actions";
 import { FOLDER_TEMPLATES, type FolderTemplate } from "@/lib/blocks";
 
 // "+" at the end of a notebook's folders: type a name, Enter. Outside
-// study notebooks you also pick a template (En blanco / Proyecto / Viaje).
+// study notebooks you also pick a template (En blanco / Proyecto / Planificador).
 // `fill`: take the full width of its slot instead of a small tile at the bottom.
-export function NewFolder({ sectionName, label, fill = false, template: initial }: { sectionName: string; label: string; fill?: boolean; template?: FolderTemplate }) {
+// mine: the templates you saved; picked as "u:<id>".
+export function NewFolder({ sectionName, label, fill = false, template: initial, mine = [] }: { sectionName: string; label: string; fill?: boolean; template?: FolderTemplate; mine?: { id: string; name: string }[] }) {
   const t = useT();
-  const size = fill ? "w-full" : "w-full self-end sm:w-44";
+  const size = fill ? "w-full" : "w-full sm:w-44";
   const [open, setOpen] = useState(false);
-  const [template, setTemplate] = useState<FolderTemplate | undefined>(initial);
+  const [template, setTemplate] = useState<string | undefined>(initial);
   const [pending, start] = useTransition();
   return open ? (
     <form
@@ -37,6 +38,27 @@ export function NewFolder({ sectionName, label, fill = false, template: initial 
               {t(item.label)}
             </button>
           ))}
+          {mine.map((item) => (
+            <span key={item.id} className={`flex items-center rounded-full text-[11px] ${template === `u:${item.id}` ? "bg-ink text-white" : "bg-chip text-ink-muted"}`}>
+              <button type="button" role="radio" aria-checked={template === `u:${item.id}`} onMouseDown={(e) => e.preventDefault()} onClick={() => setTemplate(`u:${item.id}`)} className="py-0.5 pl-2 hover:text-ink">
+                {item.name}
+              </button>
+              <button
+                type="button"
+                title={t("Borrar plantilla")}
+                aria-label={t("Borrar la plantilla {0}", { 0: item.name })}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => {
+                  if (!window.confirm(`¿Borrar la plantilla "${item.name}"? Las carpetas hechas con ella no cambian.`)) return;
+                  if (template === `u:${item.id}`) setTemplate(initial);
+                  start(() => deleteFolderTemplate(item.id));
+                }}
+                className="px-1.5 py-0.5 opacity-50 hover:opacity-100"
+              >
+                ×
+              </button>
+            </span>
+          ))}
         </span>
       )}
       <span className="flex gap-1.5">
@@ -49,7 +71,7 @@ export function NewFolder({ sectionName, label, fill = false, template: initial 
       </span>
     </form>
   ) : (
-    <button type="button" onClick={() => setOpen(true)} title={label} aria-label={label} className={`grid aspect-[3/2] ${fill ? "w-full" : "w-full self-end sm:w-28"} place-items-center rounded-md border-[1.5px] border-dashed border-[#d3d1cb] text-xl text-ink-faint hover:border-ink-faint hover:text-ink`}>
+    <button type="button" onClick={() => setOpen(true)} title={label} aria-label={label} className={`grid aspect-[3/2] ${fill ? "w-full" : "w-full sm:w-28"} place-items-center rounded-md border-[1.5px] border-dashed border-[#d3d1cb] text-xl text-ink-faint hover:border-ink-faint hover:text-ink`}>
       +
     </button>
   );

@@ -14,9 +14,11 @@ import { MiniNotebook } from "./Covers";
 import { SearchIcon, SearchPalette } from "./SearchPalette";
 import { CalendarIcon, CardsIcon, CodeIcon, HomeIcon, XIcon } from "./icons";
 import type { NotebookCover } from "@/lib/covers";
+import type { Avatar as AvatarData } from "@/lib/avatar";
+import { AvatarFace } from "./AvatarFace";
 
 type Props = {
-  user: { name: string | null; email: string | null; image: string | null };
+  user: { name: string | null; email: string | null; image: string | null; avatar: AvatarData | null };
   plan: string;
   notebooks: { id: string; name: string; cover: NotebookCover }[];
   collapsed?: boolean;
@@ -115,7 +117,7 @@ export function Sidebar({ user, plan, notebooks, collapsed: startCollapsed = fal
               <MiniNotebook cover={n.cover} size={18} />
             </Link>
           ))}
-          <Account href={BILLING ? "/billing" : null} title={user.name ?? user.email ?? t("Cuenta")} className="mt-auto grid size-8 place-items-center rounded-md hover:bg-[#ebebea]/70">
+          <Account href="/profile" title={user.name ?? user.email ?? t("Cuenta")} className="mt-auto grid size-8 place-items-center rounded-md hover:bg-[#ebebea]/70">
             <Avatar user={user} />
           </Account>
         </aside>
@@ -154,8 +156,8 @@ export function Sidebar({ user, plan, notebooks, collapsed: startCollapsed = fal
         </div>
         <LangPicker className="mt-auto self-start" />
         <div className="flex items-center gap-1 border-t border-border-subtle pt-3">
-          <Account href={BILLING ? "/billing" : null} className={`${row(active("/billing"))} min-w-0 flex-1`}>
-            <Avatar user={user} />
+          <Account href="/profile" className={`${row(active("/profile"))} min-w-0 flex-1`}>
+            <Avatar user={user} size={24} />
             <span className="min-w-0 flex-1 truncate">{user.name ?? user.email}</span>
             {BILLING && <span className="text-[11px] text-accent">{PLAN_LABEL[plan] ?? plan}</span>}
           </Account>
@@ -206,7 +208,7 @@ export function Sidebar({ user, plan, notebooks, collapsed: startCollapsed = fal
             {notebookList}
             <LangPicker className="self-start" />
             <div className="flex items-center gap-3 border-t border-border-subtle pt-3 text-sm">
-              <Account href={BILLING ? "/billing" : null} className="flex flex-1 items-center gap-2 text-ink-muted">
+              <Account href="/profile" className="flex flex-1 items-center gap-2 text-ink-muted">
                 <Avatar user={user} /> {user.name ?? user.email}
               </Account>
               <form action={signOutAction}>
@@ -222,7 +224,8 @@ export function Sidebar({ user, plan, notebooks, collapsed: startCollapsed = fal
   );
 }
 
-function Avatar({ user }: { user: Props["user"] }) {
+function Avatar({ user, size = 18 }: { user: Props["user"]; size?: number }) {
+  if (user.avatar) return <AvatarFace avatar={user.avatar} size={size} uid="me" />;
   return user.image ? (
     // eslint-disable-next-line @next/next/no-img-element
     <img src={user.image} alt="" width={18} height={18} className="size-[18px] rounded-full" />
@@ -290,7 +293,7 @@ function NewNotebook({ className }: { className: string }) {
   );
 }
 
-// Your name and photo: links to Facturación when paid plans are on.
+// Your name and avatar: opens your profile.
 function Account({ href, className, title, children }: { href: string | null; className: string; title?: string; children: React.ReactNode }) {
   return href ? (
     <Link href={href} title={title} className={className}>

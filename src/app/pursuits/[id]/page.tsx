@@ -31,6 +31,10 @@ import { Folder } from "@/app/Covers";
 import { FolderBlocks } from "./FolderBlocks";
 import { FolderSettings } from "./FolderSettings";
 import { oneProject } from "@/lib/projectData";
+import { parseAvatar } from "@/lib/avatar";
+import { optionColumns } from "@/lib/blocks";
+import { bestDay, settle } from "@/lib/shared";
+import { DatesBlock, ExpensesBlock, SavingsBlock } from "./SharedBlocks";
 import { dayOf } from "@/lib/projects";
 import { ProjectInfo } from "@/app/projects/ProjectInfo";
 import { TaskBoard } from "@/app/projects/TaskBoard";
@@ -81,10 +85,10 @@ export default async function PursuitPage({
         include: {
           pursuitTags: true,
           section: true,
-          owner: { select: { id: true, name: true, email: true, image: true } },
+          owner: { select: { id: true, name: true, email: true, image: true, avatar: true } },
           members: {
             orderBy: { invitedAt: "asc" },
-            include: { user: { select: { id: true, name: true, email: true, image: true } } },
+            include: { user: { select: { id: true, name: true, email: true, image: true, avatar: true } } },
           },
           brainDumps: {
             orderBy: { createdAt: "desc" },
@@ -198,7 +202,7 @@ export default async function PursuitPage({
   const FACE_COLORS = ["#2f7fdc", "#ee6a35", "#1fae7c", "#e2a21b", "#8b7bf5", "#e5605a"];
   const people: Person[] = [pursuit.owner, ...pursuit.members.map((m) => m.user)].map((u, i) => {
     const name = u.name ?? u.email;
-    return { id: u.id, name, initial: name.trim().charAt(0).toUpperCase(), color: FACE_COLORS[i % FACE_COLORS.length] };
+    return { id: u.id, name, initial: name.trim().charAt(0).toUpperCase(), color: FACE_COLORS[i % FACE_COLORS.length], avatar: u.avatar ? parseAvatar(u.avatar) : null };
   });
   // Options and budget blocks (a trip, a move…): their rows.
   const hasChoices = blocks.some((b) => b.type === "options" || b.type === "budget");
@@ -208,6 +212,15 @@ export default async function PursuitPage({
         prisma.budgetLine.findMany({ where: { pursuitId: pursuit.id }, orderBy: { order: "asc" } }),
       ])
     : [[], []];
+  // Gastos, Fechas, Meta de ahorro: their rows.
+  const hasShared = blocks.some((b) => b.type === "expenses" || b.type === "dates" || b.type === "savings");
+  const [expenses, dateOptions, savings] = hasShared
+    ? await Promise.all([
+        prisma.expense.findMany({ where: { pursuitId: pursuit.id }, orderBy: { createdAt: "asc" } }),
+        prisma.dateOption.findMany({ where: { pursuitId: pursuit.id }, orderBy: { day: "asc" }, include: { votes: { select: { userId: true } } } }),
+        prisma.saving.findMany({ where: { pursuitId: pursuit.id }, orderBy: { createdAt: "asc" } }),
+      ])
+    : [[], [], []];
   const pendingVotes = choices.filter((c) => c.status === "VOTING" && !c.votes.some((v) => v.userId === session.user!.id)).map((c) => c.id);
   const euros = (cents: number) => `${(cents / 100).toLocaleString("es-ES", { maximumFractionDigits: 2 })} €`;
 
@@ -223,7 +236,8 @@ export default async function PursuitPage({
           blockId={b.id}
           me={session.user.id}
           people={people}
-          items={items.map((c) => ({ id: c.id, title: c.title, url: c.url, status: c.status as "IDEA" | "VOTING" | "CHOSEN", price: c.price, voters: c.votes.map((v) => v.userId) }))}
+          columns={optionColumns(b.columns)}
+          items={items.map((c) => ({ id: c.id, title: c.title, url: c.url, status: c.status as "IDEA" | "VOTING" | "CHOSEN", price: c.price, rating: c.rating, date: c.date, note: c.note, voters: c.votes.map((v) => v.userId) }))}
         />
       );
       const chosen = items.filter((c) => c.status === "CHOSEN");
@@ -233,6 +247,28 @@ export default async function PursuitPage({
         : items.length
           ? `${items.length} ${items.length === 1 ? "opción" : "opciones"}${voting ? ` · ${voting} en votación` : ""}`
           : "";
+      continue;
+    }
+    if (b.type === "expenses") {
+      const mine = expenses.filter((e) => e.blockId === b.id);
+      const debts = settle(mine, people.map((p) => p.id));
+      content[b.id] = <ExpensesBlock pursuitId={pursuit.id} blockId={b.id} me={session.user.id} people={people} debts={debts} items={mine.map((e) => ({ id: e.id, label: e.label, amount: e.amount, paidById: e.paidById }))} />;
+      const total = mine.reduce((t, e) => t + e.amount, 0);
+      summaries[b.id] = total ? `${euros(total)} en total` : "";
+      continue;
+    }
+    if (b.type === "dates") {
+      const mine = dateOptions.filter((d) => d.blockId === b.id);
+      const best = bestDay(mine.map((d) => ({ day: d.day, votes: d.votes.length })));
+      content[b.id] = <DatesBlock pursuitId={pursuit.id} blockId={b.id} me={session.user.id} people={people} best={best} items={mine.map((d) => ({ id: d.id, day: d.day, voters: d.votes.map((v) => v.userId) }))} />;
+      summaries[b.id] = best ? `Mejor: ${new Date(`${best}T00:00:00Z`).toLocaleDateString("es-ES", { day: "numeric", month: "short", timeZone: "UTC" })}` : "";
+      continue;
+    }
+    if (b.type === "savings") {
+      const mine = savings.filter((x) => x.blockId === b.id);
+      content[b.id] = <SavingsBlock pursuitId={pursuit.id} blockId={b.id} goal={b.goal ?? null} people={people} items={mine.map((x) => ({ id: x.id, amount: x.amount, userId: x.userId, createdAt: x.createdAt.toISOString() }))} />;
+      const total = mine.reduce((t, x) => t + x.amount, 0);
+      summaries[b.id] = b.goal ? `${Math.min(100, Math.round((total / b.goal) * 100))} %` : "";
       continue;
     }
     if (b.type === "budget") {
@@ -310,7 +346,6 @@ export default async function PursuitPage({
   const props = [
     pursuit.classroomEnabled && pursuit.classroomCourseName ? ["Classroom", pursuit.classroomCourseName] : null,
     grouped ? ["Agrupado por", groupLabel] : null,
-    pursuit.members.length > 0 ? ["Compartida con", String(pursuit.members.length)] : null,
   ].filter((x): x is string[] => !!x);
 
   return (
@@ -380,31 +415,54 @@ export default async function PursuitPage({
 
       {editing && (
         <FolderSettings pursuitId={pursuit.id} cover={cover} groupLabel={grouped ? groupLabel : null} title={pursuit.title} canDelete={isOwner}>
-          <StatusNote pursuitId={pursuit.id} initialNote={pursuit.statusNote} />
-          <div className="flex flex-wrap items-center gap-2">
-            {pursuit.pursuitTags.map((t) => (
-              <span key={t.id} className="flex items-center gap-1.5 rounded-md bg-chip px-2.5 py-1 text-sm text-ink-muted">
-                {t.name}
-                <DeleteButton action={removePursuitTag.bind(null, pursuit.id, t.id)} className="text-ink-faint hover:text-red-500">
-                  ×
-                </DeleteButton>
-              </span>
-            ))}
-            <TagForm pursuitId={pursuit.id} />
-          </div>
-          <div id="compartir" className="flex flex-wrap items-center gap-2">
-            <span className="text-sm text-ink-faint">{t("Compartido con")}</span>
-            <span className="text-sm text-ink-muted">{pursuit.owner.name ?? pursuit.owner.email}{" "}{t("(propietaria)")}</span>
-            {pursuit.members.map((m) =>
-              isOwner ? (
-                <MemberRow key={m.id} pursuitId={pursuit.id} memberId={m.id} name={m.user.name ?? m.user.email} role={m.role} />
-              ) : (
-                <span key={m.id} className="text-sm text-ink-muted">
-                  · {m.user.name ?? m.user.email} ({m.role.toLowerCase()})
-                </span>
-              ),
-            )}
-            {isOwner && <MemberForm pursuitId={pursuit.id} />}
+          <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]">
+            {/* Quick note: a sticky note, so it doesn't get lost among the settings. */}
+            <div className="flex flex-col gap-2 self-start rounded-lg bg-[#fdf3c4] p-4 shadow-[0_1px_2px_rgba(0,0,0,.06),0_6px_14px_-8px_rgba(120,90,10,.35)]">
+              <span className="text-xs font-semibold tracking-wide text-[#8a6d1f] uppercase">{t("Nota rápida")}</span>
+              <StatusNote pursuitId={pursuit.id} initialNote={pursuit.statusNote} />
+            </div>
+            <div className="flex flex-col gap-4">
+              <div id="compartir" className="flex flex-col gap-2 rounded-lg border border-border-subtle bg-white p-4">
+                <span className="text-xs font-semibold tracking-wide text-ink-faint uppercase">{t("Compartido con")}</span>
+                <div className="flex items-center gap-2.5 text-sm">
+                  <Faces people={people.slice(0, 1)} size={28} />
+                  <span className="text-ink">{pursuit.owner.name ?? pursuit.owner.email}</span>
+                  <span className="flex-1" />
+                  <span className="text-xs text-ink-faint">{t("Propietaria")}</span>
+                </div>
+                {pursuit.members.map((m, i) => (
+                  <div key={m.id} className="flex items-center gap-2.5 text-sm">
+                    <Faces people={people.slice(i + 1, i + 2)} size={28} />
+                    {isOwner ? (
+                      <span className="flex-1">
+                        <MemberRow pursuitId={pursuit.id} memberId={m.id} name={m.user.name ?? m.user.email} role={m.role} />
+                      </span>
+                    ) : (
+                      <>
+                        <span className="flex-1 text-ink">{m.user.name ?? m.user.email}</span>
+                        <span className="text-xs text-ink-faint">{m.role === "VIEWER" ? t("Lee") : t("Edita")}</span>
+                      </>
+                    )}
+                  </div>
+                ))}
+                {isOwner && <MemberForm pursuitId={pursuit.id} />}
+              </div>
+              <div className="flex flex-col gap-2 rounded-lg border border-border-subtle bg-white p-4">
+                <span className="text-xs font-semibold tracking-wide text-ink-faint uppercase">{t("Etiquetas")}</span>
+                <div className="flex flex-wrap items-center gap-2">
+                  {pursuit.pursuitTags.map((t) => (
+                    <span key={t.id} className="flex items-center gap-1 rounded-full bg-chip px-3 py-1 text-sm text-ink">
+                      <span className="text-ink-faint">#</span>
+                      {t.name}
+                      <DeleteButton action={removePursuitTag.bind(null, pursuit.id, t.id)} className="ml-0.5 text-ink-faint hover:text-red-500">
+                        ×
+                      </DeleteButton>
+                    </span>
+                  ))}
+                  <TagForm pursuitId={pursuit.id} />
+                </div>
+              </div>
+            </div>
           </div>
           {pursuit.classroomEnabled ? (
             <div className="flex flex-col gap-1.5">

@@ -53,6 +53,7 @@ export default async function NotebookPage({ params }: { params: Promise<{ secti
     return { id: p.id, title: p.title, cover: folderCover(p.id, p.cover), sheets: sheetsFor(study ? p._count.flashcards + left : tasks), href: `/pursuits/${p.id}` };
   });
 
+  const mine = await prisma.userTemplate.findMany({ where: { userId }, orderBy: { createdAt: "asc" }, select: { id: true, name: true } });
   const [map, recent, projects] = await Promise.all([
     study && section ? notebookMap(userId, section.id) : Promise.resolve([]),
     section ? recentPages(userId, section.id, 8) : Promise.resolve([]),
@@ -84,13 +85,13 @@ export default async function NotebookPage({ params }: { params: Promise<{ secti
       {study || !section || general ? (
         <section className="flex flex-col gap-3">
           {sectionHeader(study ? "Asignaturas" : "Carpetas")}
-          <FolderRow items={folders} after={!isVirtual && <NewFolder sectionName={name} label={study ? t("Nueva asignatura") : t("Nueva carpeta")} template={study ? undefined : "blank"} />} />
+          <FolderRow items={folders} after={!isVirtual && <NewFolder sectionName={name} label={study ? t("Nueva asignatura") : t("Nueva carpeta")} template={study ? undefined : "blank"} mine={study ? [] : mine} />} />
         </section>
       ) : (
         <>
           <section className="flex flex-col gap-3">
             <h2 className="text-[22px] font-bold">{t("Proyectos")}</h2>
-            <ProjectGrid projects={projects} today={today} after={<NewFolder sectionName={name} label={t("Nuevo proyecto")} template="project" fill />} />
+            <ProjectGrid projects={projects} today={today} after={<NewFolder sectionName={name} label={t("Nuevo proyecto")} template="project" mine={mine} fill />} />
           </section>
           <section className="flex flex-col gap-3">
             <h2 className="text-[22px] font-bold">{t("Tareas")}</h2>

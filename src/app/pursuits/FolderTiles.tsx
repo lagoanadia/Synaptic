@@ -21,7 +21,7 @@ export function FolderTiles({ items }: { items: FolderItem[] }) {
           }}
           className="group flex min-w-0 flex-col gap-2 sm:w-28"
         >
-          <Folder cover={f.cover} sheets={f.sheets} className="transition-transform group-hover:-translate-y-0.5" />
+          <Folder cover={f.cover} sheets={f.sheets} reserveSheets className="transition-transform group-hover:-translate-y-0.5" />
           <span className="truncate text-sm font-medium">{f.title}</span>
         </Link>
       ))}

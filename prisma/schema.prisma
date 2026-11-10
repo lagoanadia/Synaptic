@@ -38,6 +38,10 @@ model User {
   // flashcards } ids), so "Quitar lo de ejemplo" can remove exactly that.
   sampleContent Json?
 
+  // Profile: public @handle and the drawn avatar (lib/avatar.ts).
+  username String? @unique
+  avatar   Json?
+
   // "en" | "de" | "fr" | "es" (lib/i18n.ts).
   locale String @default("en")
 
@@ -58,6 +62,10 @@ model User {
   sentNotifications   SentDeadlineNotification[]
   challenges          Challenge[]
   choiceVotes         ChoiceVote[]
+  templates           UserTemplate[]
+  expenses            Expense[]
+  dateVotes           DateVote[]
+  savings             Saving[]
 }
 
 enum Plan {
@@ -202,6 +210,10 @@ model Pursuit {
   tasks           Task[]
   choices         Choice[]
   budgetLines     BudgetLine[]
+  expenses        Expense[]
+  dateOptions     DateOption[]
+  savings         Saving[]
+  whiteboards     Whiteboard[]
   conceptMaps     ConceptMap[]
   challenges      Challenge[]
   calendarEvents  CalendarEvent[]
@@ -660,6 +672,11 @@ model Choice {
   // IDEA | VOTING | CHOSEN
   status    String   @default("IDEA")
   price     Int?
+  // Optional columns (the block chooses which show): 1-5 stars, a day
+  // "YYYY-MM-DD", a short note.
+  rating    Int?
+  date      String?
+  note      String?
   order     Int      @default(0)
   createdAt DateTime @default(now())
   votes     ChoiceVote[]
@@ -690,4 +707,77 @@ model BudgetLine {
   order     Int     @default(0)
 
   @@index([pursuitId, blockId])
+}
+
+// A folder template you saved ("Mudanza", "Regalo"…): the blocks of a
+// folder and their settings, not their content.
+model UserTemplate {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  blocks    Json
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// "Gastos": who paid what (cents); split equally between the folder's people.
+model Expense {
+  id        String   @id @default(cuid())
+  pursuitId String
+  pursuit   Pursuit  @relation(fields: [pursuitId], references: [id], onDelete: Cascade)
+  blockId   String
+  label     String
+  amount    Int
+  paidById  String
+  paidBy    User     @relation(fields: [paidById], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([pursuitId, blockId])
+}
+
+// "Fechas": a proposed day ("YYYY-MM-DD") and who can make it.
+model DateOption {
+  id        String     @id @default(cuid())
+  pursuitId String
+  pursuit   Pursuit    @relation(fields: [pursuitId], references: [id], onDelete: Cascade)
+  blockId   String
+  day       String
+  votes     DateVote[]
+
+  @@index([pursuitId, blockId])
+}
+
+model DateVote {
+  dateOptionId String
+  dateOption   DateOption @relation(fields: [dateOptionId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([dateOptionId, userId])
+}
+
+// "Meta de ahorro": a contribution (cents) towards the block's goal.
+model Saving {
+  id        String   @id @default(cuid())
+  pursuitId String
+  pursuit   Pursuit  @relation(fields: [pursuitId], references: [id], onDelete: Cascade)
+  blockId   String
+  amount    Int
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([pursuitId, blockId])
+}
+
+// A whiteboard drawn inside a page (stored in the page as an image that
+// points to /api/boards/<id>). data: lib/whiteboard.ts shapes.
+model Whiteboard {
+  id        String   @id @default(cuid())
+  pursuitId String
+  pursuit   Pursuit  @relation(fields: [pursuitId], references: [id], onDelete: Cascade)
+  data      Json     @default("[]")
+  updatedAt DateTime @updatedAt
 }

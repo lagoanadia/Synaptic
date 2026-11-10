@@ -31,29 +31,31 @@ export const TEMPLATES: { id: Template; icon: () => React.ReactElement; label: s
   { id: "general", icon: GeneralIcon, label: "General", hint: "Libre: tú eliges los bloques" },
 ];
 
-// The notebook templates, as a row of buttons.
+// The notebook templates: icon over name, three in a row; the chosen
+// one's hint goes underneath on one line (not in compact spots).
 export function TemplatePick({ value, onChange, compact = false }: { value: Template; onChange: (t: Template) => void; compact?: boolean }) {
   const t = useT();
+  const hint = TEMPLATES.find((t) => t.id === value)?.hint;
   return (
-    <div className={`grid grid-cols-3 gap-1.5 ${compact ? "text-xs" : "text-sm"}`} role="radiogroup" aria-label={t("Plantilla")}>
-      {TEMPLATES.map((item) => (
-        <button
-          key={item.id}
-          type="button"
-          role="radio"
-          aria-checked={value === item.id}
-          title={t(item.hint)}
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={() => onChange(item.id)}
-          className={`flex flex-col items-start rounded-md px-2 py-1.5 text-left ${value === item.id ? "bg-ink text-white" : "bg-chip text-ink-muted hover:text-ink"}`}
-        >
-          <span className="flex items-center gap-1.5 font-medium">
+    <div className="flex flex-col gap-1.5">
+      <div className={`grid grid-cols-3 gap-1.5 ${compact ? "text-[11px]" : "text-sm"}`} role="radiogroup" aria-label={t("Plantilla")}>
+        {TEMPLATES.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            role="radio"
+            aria-checked={value === item.id}
+            title={t(item.hint)}
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => onChange(item.id)}
+            className={`flex min-w-0 flex-col items-center gap-1 rounded-md px-1 ${compact ? "py-1.5" : "py-2.5"} font-medium ${value === item.id ? "bg-ink text-white" : "bg-chip text-ink-muted hover:text-ink"}`}
+          >
             <item.icon />
-            {t(item.label)}
-          </span>
-          {!compact && <span className={`text-[11px] ${value === item.id ? "text-white/75" : "text-ink-faint"}`}>{t(item.hint)}</span>}
-        </button>
-      ))}
+            <span className="max-w-full truncate">{t(item.label)}</span>
+          </button>
+        ))}
+      </div>
+      {!compact && hint && <span className="text-xs text-ink-faint">{hint}</span>}
     </div>
   );
 }

@@ -1,12 +1,14 @@
 "use client";
 
 import { useT } from "@/app/LangProvider";
+import { AvatarFace } from "@/app/AvatarFace";
+import type { Avatar } from "@/lib/avatar";
 import { useState, useTransition } from "react";
-import type { BlockIcon } from "@/lib/blocks";
+import { DEFAULT_OPTION_COLUMNS, OPTION_COLUMNS, type BlockIcon, type OptionColumn } from "@/lib/blocks";
 import { addBudgetLine, addChoice, deleteBudgetLine, deleteChoice, setBudgetPeople, toggleVote, updateBudgetLine, updateChoice, type ChoiceStatus } from "./choices";
 
-export type Person = { id: string; name: string; initial: string; color: string };
-export type ChoiceItem = { id: string; title: string; url: string | null; status: ChoiceStatus; price: number | null; voters: string[] };
+export type Person = { id: string; name: string; initial: string; color: string; avatar?: Avatar | null };
+export type ChoiceItem = { id: string; title: string; url: string | null; status: ChoiceStatus; price: number | null; rating: number | null; date: string | null; note: string | null; voters: string[] };
 export type BudgetLineItem = { id: string; label: string; unit: number; days: number; perPerson: boolean };
 
 const euros = (cents: number) => `${(cents / 100).toLocaleString("es-ES", { maximumFractionDigits: 2 })} €`;
@@ -97,20 +99,26 @@ const LinkIcon = () => (
   </svg>
 );
 
-// Overlapping initials, one per person.
+// Overlapping faces, one per person: their avatar, or their initial.
 export function Faces({ people, size = 22 }: { people: Person[]; size?: number }) {
   return (
     <span className="flex">
-      {people.map((p, i) => (
-        <span
-          key={p.id}
-          title={p.name}
-          className="grid place-items-center rounded-full font-semibold text-white ring-2 ring-white"
-          style={{ width: size, height: size, fontSize: size * 0.48, background: p.color, marginLeft: i ? -size * 0.28 : 0 }}
-        >
-          {p.initial}
-        </span>
-      ))}
+      {people.map((p, i) =>
+        p.avatar ? (
+          <span key={p.id} title={p.name} className="rounded-full ring-2 ring-white" style={{ marginLeft: i ? -size * 0.28 : 0 }}>
+            <AvatarFace avatar={p.avatar} size={size} uid={`f${p.id}${size}`} />
+          </span>
+        ) : (
+          <span
+            key={p.id}
+            title={p.name}
+            className="grid place-items-center rounded-full font-semibold text-white ring-2 ring-white"
+            style={{ width: size, height: size, fontSize: size * 0.48, background: p.color, marginLeft: i ? -size * 0.28 : 0 }}
+          >
+            {p.initial}
+          </span>
+        ),
+      )}
     </span>
   );
 }
@@ -148,32 +156,93 @@ function PriceCell({ cents, onSave }: { cents: number | null; onSave: (cents: nu
   );
 }
 
-const COLS = "grid grid-cols-[minmax(0,1fr)_110px_90px_96px] items-center gap-3";
+// Column widths after the option's name; the last one holds ×.
+const WIDTH: Record<OptionColumn, string> = { status: "110px", price: "90px", votes: "96px", rating: "92px", date: "92px", note: "minmax(0,0.8fr)" };
+const LABEL = Object.fromEntries(OPTION_COLUMNS.map((c) => [c.id, c.label])) as Record<OptionColumn, string>;
 
-// An options block: each option with its link, state, price and votes;
-// paste a link to add one.
-export function OptionsBlock({ pursuitId, blockId, items, people, me }: { pursuitId: string; blockId: string; items: ChoiceItem[]; people: Person[]; me: string }) {
+// "12 nov" ↔ "2026-11-12"; typed as dd/mm or dd/mm/aaaa.
+const shortDay = (d: string) => new Date(`${d}T00:00:00Z`).toLocaleDateString("es-ES", { day: "numeric", month: "short", timeZone: "UTC" });
+function parseDay(text: string): string | null | undefined {
+  const t = text.trim();
+  if (!t) return null;
+  const m = /^(\d{1,2})[/.-](\d{1,2})(?:[/.-](\d{2,4}))?$/.exec(t);
+  if (!m) return undefined;
+  const y = m[3] ? (m[3].length === 2 ? 2000 + Number(m[3]) : Number(m[3])) : new Date().getFullYear();
+  const d = new Date(Date.UTC(y, Number(m[2]) - 1, Number(m[1])));
+  if (d.getUTCMonth() !== Number(m[2]) - 1) return undefined;
+  return d.toISOString().slice(0, 10);
+}
+
+function DateCell({ value, onSave }: { value: string | null; onSave: (v: string | null) => void }) {
+  const t = useT();
+  const [editing, setEditing] = useState(false);
+  if (editing)
+    return (
+      <input
+        autoFocus
+        defaultValue={value ? value.split("-").reverse().join("/") : ""}
+        placeholder={t("dd/mm")}
+        aria-label={t("Fecha")}
+        onBlur={(e) => {
+          const v = parseDay(e.target.value);
+          setEditing(false);
+          if (v !== undefined && v !== value) onSave(v);
+        }}
+        onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
+        className="w-full rounded bg-chip px-1.5 py-0.5 outline-none"
+      />
+    );
+  return (
+    <button type="button" onClick={() => setEditing(true)} className={`text-left ${value ? "" : "text-ink-faint"}`}>
+      {value ? shortDay(value) : t("+ fecha")}
+    </button>
+  );
+}
+
+function Stars({ value, onSave }: { value: number | null; onSave: (v: number | null) => void }) {
+  const t = useT();
+  return (
+    <span className="flex" role="radiogroup" aria-label={t("Valoración")}>
+      {[1, 2, 3, 4, 5].map((n) => (
+        <button key={n} type="button" role="radio" aria-checked={value === n} aria-label={`${n} de 5`} onClick={() => onSave(value === n ? null : n)} className={`px-px text-[15px] leading-none ${value && n <= value ? "text-ink" : "text-ink-faint/30 hover:text-ink-faint"}`}>
+          ★
+        </button>
+      ))}
+    </span>
+  );
+}
+
+// An options block: each option with its link and the columns the block
+// shows (state, price, votes, rating, date, note); paste a link to add one.
+export function OptionsBlock({ pursuitId, blockId, items, people, me, columns = DEFAULT_OPTION_COLUMNS }: { pursuitId: string; blockId: string; items: ChoiceItem[]; people: Person[]; me: string; columns?: OptionColumn[] }) {
   const t = useT();
   const [, start] = useTransition();
   const [adding, setAdding] = useState(false);
   const byId = new Map(people.map((p) => [p.id, p]));
+  const grid = { gridTemplateColumns: ["minmax(0,1fr)", ...columns.map((c) => WIDTH[c]), "20px"].join(" ") };
+  const save = (id: string, data: Parameters<typeof updateChoice>[1]) => start(() => updateChoice(id, data));
   return (
     <div className="flex flex-col text-sm">
       {items.length > 0 && (
-        <div className={`${COLS} pb-2 text-xs text-ink-faint`}>
+        <div className="grid items-center gap-3 pb-2 text-xs text-ink-faint" style={grid}>
           <span>{t("Opción")}</span>
-          <span>{t("Estado")}</span>
-          <span>{t("Precio")}</span>
-          <span aria-label={t("Votos")}>
-            <ThumbIcon />
-          </span>
+          {columns.map((c) =>
+            c === "votes" ? (
+              <span key={c} aria-label={t("Votos")}>
+                <ThumbIcon />
+              </span>
+            ) : (
+              <span key={c}>{t(LABEL[c])}</span>
+            ),
+          )}
+          <span />
         </div>
       )}
       {items.map((c) => {
         const s = STATUS[c.status];
         const mine = c.voters.includes(me);
         return (
-          <div key={c.id} id={`choice-${c.id}`} className={`group ${COLS} scroll-mt-24 border-b border-[#f1f0ee] py-3`}>
+          <div key={c.id} id={`choice-${c.id}`} className="group grid scroll-mt-24 items-center gap-3 border-b border-[#f1f0ee] py-3" style={grid}>
             <span className="flex min-w-0 flex-col">
               <span className="truncate font-medium">{c.title}</span>
               {c.url && (
@@ -182,31 +251,51 @@ export function OptionsBlock({ pursuitId, blockId, items, people, me }: { pursui
                 </a>
               )}
             </span>
-            <button type="button" onClick={() => start(() => updateChoice(c.id, { status: s.next }))} title={t("Cambiar estado")} className={`w-fit rounded px-1.5 py-0.5 text-xs ${s.cls}`}>
-              {t(s.label)}
+            {columns.map((col) => {
+              if (col === "status")
+                return (
+                  <button key={col} type="button" onClick={() => save(c.id, { status: s.next })} title={t("Cambiar estado")} className={`w-fit rounded px-1.5 py-0.5 text-xs ${s.cls}`}>
+                    {t(s.label)}
+                  </button>
+                );
+              if (col === "price") return <PriceCell key={col} cents={c.price} onSave={(price) => save(c.id, { price })} />;
+              if (col === "rating") return <Stars key={col} value={c.rating} onSave={(rating) => save(c.id, { rating })} />;
+              if (col === "date") return <DateCell key={col} value={c.date} onSave={(date) => save(c.id, { date })} />;
+              if (col === "note")
+                return (
+                  <input
+                    key={col}
+                    defaultValue={c.note ?? ""}
+                    placeholder={t("+ nota")}
+                    aria-label={t("Nota")}
+                    onBlur={(e) => e.target.value !== (c.note ?? "") && save(c.id, { note: e.target.value })}
+                    className="min-w-0 bg-transparent outline-none placeholder:text-ink-faint"
+                  />
+                );
+              return (
+                <span key={col} className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => start(() => toggleVote(c.id))}
+                    title={mine ? t("Quitar mi voto") : t("Votar")}
+                    aria-pressed={mine}
+                    className={`rounded p-1 ${mine ? "text-ink" : "text-ink-faint/60 hover:text-ink"}`}
+                  >
+                    <ThumbIcon filled={mine} />
+                  </button>
+                  <Faces people={c.voters.map((v) => byId.get(v)).filter((p): p is Person => !!p)} size={20} />
+                </span>
+              );
+            })}
+            <button
+              type="button"
+              onClick={() => window.confirm(`¿Quitar "${c.title}"?`) && start(() => deleteChoice(c.id))}
+              title={t("Quitar")}
+              aria-label={t("Quitar opción")}
+              className="text-ink-faint/40 hover:text-red-600"
+            >
+              ×
             </button>
-            <PriceCell cents={c.price} onSave={(price) => start(() => updateChoice(c.id, { price }))} />
-            <span className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => start(() => toggleVote(c.id))}
-                title={mine ? t("Quitar mi voto") : t("Votar")}
-                aria-pressed={mine}
-                className={`rounded p-1 ${mine ? "text-accent" : "text-ink-faint/60 hover:text-ink"}`}
-              >
-                <ThumbIcon filled={mine} />
-              </button>
-              <Faces people={c.voters.map((v) => byId.get(v)).filter((p): p is Person => !!p)} size={20} />
-              <button
-                type="button"
-                onClick={() => window.confirm(`¿Quitar "${c.title}"?`) && start(() => deleteChoice(c.id))}
-                title={t("Quitar")}
-                aria-label={t("Quitar opción")}
-                className="ml-auto text-ink-faint/40 hover:text-red-600"
-              >
-                ×
-              </button>
-            </span>
           </div>
         );
       })}
@@ -230,7 +319,7 @@ export function OptionsBlock({ pursuitId, blockId, items, people, me }: { pursui
           aria-label={t("Pega un enlace o escribe una opción")}
           onPaste={(e) => {
             const text = e.clipboardData.getData("text").trim();
-            if (!/^https?:\/\//.test(text)) return;
+            if (!/^(https?:\/\/|www\.)\S+$|^[a-z0-9-]+(\.[a-z0-9-]+)+\/\S*$/i.test(text)) return;
             e.preventDefault();
             setAdding(true);
             start(async () => {
@@ -364,5 +453,40 @@ export function VotesBanner({ pending }: { pending: string[] }) {
         {t("Votar")}
       </button>
     </div>
+  );
+}
+
+// "Columnas": which columns an options block shows.
+export function ColumnsMenu({ value, onChange }: { value: OptionColumn[]; onChange: (cols: OptionColumn[]) => void }) {
+  const t = useT();
+  const [open, setOpen] = useState(false);
+  return (
+    <span className="relative">
+      <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} title={t("Columnas")} aria-label={t("Columnas")} className="grid size-7 place-items-center rounded-md bg-white text-ink-faint shadow-[0_0_0_1px_rgba(55,53,47,.09)] hover:text-ink">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden>
+          <path d="M4 6h16M4 12h16M4 18h16M9 4v16M15 4v16" />
+        </svg>
+      </button>
+      {open && (
+        <div className="absolute top-full right-0 z-20 mt-1 w-48 rounded-lg border border-border-subtle bg-white p-1.5 text-sm font-normal shadow-[0_12px_30px_-10px_rgba(0,0,0,.25)]">
+          {OPTION_COLUMNS.map((c) => {
+            const on = value.includes(c.id);
+            return (
+              <button
+                key={c.id}
+                type="button"
+                role="checkbox"
+                aria-checked={on}
+                onClick={() => onChange(on ? value.filter((x) => x !== c.id) : [...value, c.id])}
+                className="flex w-full items-center justify-between rounded-md px-2 py-1.5 hover:bg-chip"
+              >
+                {t(c.label)}
+                <span className={`grid size-4 place-items-center rounded border-[1.5px] text-[10px] text-white ${on ? "border-ink bg-ink" : "border-[#c7c5c0]"}`}>{on && "✓"}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </span>
   );
 }

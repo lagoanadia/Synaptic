@@ -6,6 +6,7 @@ import { RegisterServiceWorker } from "./RegisterServiceWorker";
 import { Sidebar } from "./Sidebar";
 import { CoverDefs } from "./CoverDefs";
 import { notebookCover } from "@/lib/covers";
+import { parseAvatar } from "@/lib/avatar";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { cookies } from "next/headers";
@@ -53,7 +54,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   const userId = session?.user?.id;
   const [user, sections] = userId
     ? await Promise.all([
-        prisma.user.findUnique({ where: { id: userId }, select: { plan: true } }),
+        prisma.user.findUnique({ where: { id: userId }, select: { plan: true, avatar: true } }),
         prisma.section.findMany({ where: { userId }, orderBy: { order: "asc" }, select: { id: true, name: true, cover: true } }),
       ])
     : [null, []];
@@ -70,7 +71,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         <CoverDefs />
         {session?.user && user && (
           <Sidebar
-            user={{ name: session.user.name ?? null, email: session.user.email ?? null, image: session.user.image ?? null }}
+            user={{ name: session.user.name ?? null, email: session.user.email ?? null, image: session.user.image ?? null, avatar: user.avatar ? parseAvatar(user.avatar) : null }}
             plan={user.plan}
             notebooks={sections.map((s) => ({ id: s.id, name: s.name, cover: notebookCover(s.id, s.cover) }))}
             collapsed={collapsed}
