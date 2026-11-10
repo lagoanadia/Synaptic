@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/app/LangProvider";
 import { useTransition } from "react";
 import { DeleteButton } from "../DeleteButton";
 import { removeMember, updateMemberRole } from "./actions";
@@ -15,6 +16,7 @@ export function MemberRow({
   name: string;
   role: string;
 }) {
+  const t = useT();
   const [isPending, startTransition] = useTransition();
 
   return (
@@ -30,13 +32,13 @@ export function MemberRow({
         }
         className="border-none bg-transparent text-sm text-ink-muted disabled:opacity-50"
       >
-        <option value="EDITOR">editor</option>
-        <option value="VIEWER">viewer</option>
+        <option value="EDITOR">{t("editor")}</option>
+        <option value="VIEWER">{t("viewer")}</option>
       </select>
       )
       <DeleteButton
         action={removeMember.bind(null, pursuitId, memberId)}
-        confirmMessage={`¿Quitar a ${name} de esta asignatura?`}
+        confirmMessage={t("¿Quitar a {0} de esta asignatura?", { 0: name })}
         className="text-ink-faint hover:text-red-500"
       >
         ×

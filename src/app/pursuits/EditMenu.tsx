@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/app/LangProvider";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Folder, MiniNotebook } from "../Covers";
@@ -17,6 +18,7 @@ export const menuAt = (e: React.MouseEvent) => ({ x: Math.max(8, Math.min(e.clie
 // Right-click on a notebook or folder: rename it and pick its cover, right
 // where you clicked. Enter or clicking away saves the name.
 export function EditMenu({ target, onClose }: { target: EditTarget; onClose: () => void }) {
+  const t = useT();
   const router = useRouter();
   const [name, setName] = useState(target.name);
   const [cover, setCover] = useState<string>(target.cover);
@@ -61,10 +63,10 @@ export function EditMenu({ target, onClose }: { target: EditTarget; onClose: () 
 
   return (
     <>
-      <button type="button" aria-label="Cerrar" className="fixed inset-0 z-[55] cursor-default" onClick={() => saveName(onClose)} onContextMenu={(e) => { e.preventDefault(); saveName(onClose); }} />
+      <button type="button" aria-label={t("Cerrar")} className="fixed inset-0 z-[55] cursor-default" onClick={() => saveName(onClose)} onContextMenu={(e) => { e.preventDefault(); saveName(onClose); }} />
       <div
         role="dialog"
-        aria-label={target.kind === "notebook" ? "Editar libreta" : "Editar carpeta"}
+        aria-label={target.kind === "notebook" ? t("Editar libreta") : t("Editar carpeta")}
         className="fixed z-[56] flex w-[280px] flex-col gap-3 rounded-xl bg-white p-3 shadow-[0_0_0_1px_rgba(15,15,15,.05),0_14px_36px_rgba(15,15,15,.18)]"
         style={{ left: target.x, top: target.y }}
       >
@@ -73,7 +75,7 @@ export function EditMenu({ target, onClose }: { target: EditTarget; onClose: () 
           value={name}
           onChange={(e) => setName(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && saveName(onClose)}
-          aria-label="Nombre"
+          aria-label={t("Nombre")}
           className="rounded-md border border-border-subtle px-2 py-1.5 text-sm font-medium outline-none focus:border-ink-faint"
         />
         <div className="flex max-h-[60vh] flex-col gap-2.5 overflow-y-auto">

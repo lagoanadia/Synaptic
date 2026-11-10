@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/app/LangProvider";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
@@ -64,6 +65,7 @@ function brief(v: unknown): string {
 // strip of results under it: one dot per check, the failing case spelled
 // out. Run = Ctrl/Cmd+Enter.
 export function ChallengeIDE({ challenge }: { challenge: Challenge }) {
+  const t = useT();
   const [code, setCode] = useState(challenge.code ?? challenge.starterCode);
   const [output, setOutput] = useState<RunOutput | null>(null);
   // "Ejecutar": a free run with the example only, nothing marked.
@@ -184,26 +186,26 @@ export function ChallengeIDE({ challenge }: { challenge: Challenge }) {
     <div className="flex h-[100dvh] flex-col bg-white lg:h-screen">
       <header className="flex h-[54px] shrink-0 items-center gap-3 border-b border-border-subtle px-4 sm:px-5">
         <Link href="/challenges" className="flex items-center gap-1 text-sm text-ink-faint hover:text-ink">
-          <ArrowLeft /> <span className="hidden sm:inline">Retos</span>
+          <ArrowLeft /> <span className="hidden sm:inline">{t("Retos")}</span>
         </Link>
         <h1 className="min-w-0 truncate text-[15px] font-semibold">{challenge.title}</h1>
         <Badge language={challenge.language} small />
-        <span title={d.label}>
+        <span title={t(d.label)}>
           <Bars n={DIFFICULTIES.indexOf(d)} color={d.bar} />
         </span>
         {solved && <CheckIcon size={15} className="text-[#448361]" />}
         <span className="flex-1" />
-        <button type="button" onClick={hint} disabled={isHinting || hints.length >= 3} title={hints.length >= 3 ? "No quedan pistas" : "Pista"} aria-label="Pista" className={icon}>
+        <button type="button" onClick={hint} disabled={isHinting || hints.length >= 3} title={hints.length >= 3 ? t("No quedan pistas") : t("Pista")} aria-label={t("Pista")} className={icon}>
           {isHinting ? "…" : "💡"}
         </button>
-        <button type="button" onClick={dontKnow} disabled={isExplaining || !!explained} title="Explícame cómo se hace" className="rounded-md px-2.5 py-1.5 text-sm text-ink-muted hover:bg-chip hover:text-ink disabled:opacity-40">
-          {isExplaining ? "Explicando…" : "No lo sé"}
+        <button type="button" onClick={dontKnow} disabled={isExplaining || !!explained} title={t("Explícame cómo se hace")} className="rounded-md px-2.5 py-1.5 text-sm text-ink-muted hover:bg-chip hover:text-ink disabled:opacity-40">
+          {isExplaining ? t("Explicando…") : "No lo sé"}
         </button>
         <button
           type="button"
           onClick={() => window.confirm("¿Volver al código inicial?") && setCode(challenge.starterCode)}
-          title="Volver al código inicial"
-          aria-label="Reiniciar"
+          title={t("Volver al código inicial")}
+          aria-label={t("Reiniciar")}
           className={`${icon} text-lg`}
         >
           ↺
@@ -218,18 +220,18 @@ export function ChallengeIDE({ challenge }: { challenge: Challenge }) {
             })
           }
           disabled={isDeleting}
-          title="Eliminar reto"
-          aria-label="Eliminar reto"
+          title={t("Eliminar reto")}
+          aria-label={t("Eliminar reto")}
           className={`${icon} hover:text-red-600`}
         >
           <TrashIcon size={15} />
         </button>
-        <button type="button" onClick={tryRun} disabled={running} title="Prueba tu código con el ejemplo" className="flex items-center gap-2 rounded-lg border border-border-subtle px-3.5 py-2 text-sm font-semibold text-ink hover:bg-chip disabled:opacity-60">
-          ▶ Ejecutar
-          <kbd className="hidden text-xs font-normal text-ink-faint sm:inline">Ctrl ↵</kbd>
+        <button type="button" onClick={tryRun} disabled={running} title={t("Prueba tu código con el ejemplo")} className="flex items-center gap-2 rounded-lg border border-border-subtle px-3.5 py-2 text-sm font-semibold text-ink hover:bg-chip disabled:opacity-60">
+          {t("▶ Ejecutar")}
+          <kbd className="hidden text-xs font-normal text-ink-faint sm:inline">{t("Ctrl ↵")}</kbd>
         </button>
-        <button type="button" onClick={run} disabled={running} title="Pasa todas las comprobaciones" className="flex items-center gap-1.5 rounded-lg bg-[#448361] px-3.5 py-2 text-sm font-semibold text-white hover:brightness-105 disabled:opacity-60">
-          <CheckIcon size={14} /> Listo
+        <button type="button" onClick={run} disabled={running} title={t("Pasa todas las comprobaciones")} className="flex items-center gap-1.5 rounded-lg bg-[#448361] px-3.5 py-2 text-sm font-semibold text-white hover:brightness-105 disabled:opacity-60">
+          <CheckIcon size={14} />{" "}{t("Listo")}
         </button>
       </header>
 
@@ -238,13 +240,13 @@ export function ChallengeIDE({ challenge }: { challenge: Challenge }) {
           <section
             style={{ "--task-w": `${taskW}px` } as React.CSSProperties}
             className="relative flex max-h-[45vh] shrink-0 flex-col gap-5 overflow-y-auto border-b border-border-subtle px-6 py-5 lg:max-h-none lg:w-[var(--task-w)] lg:border-b-0"
-            aria-label="Enunciado"
+            aria-label={t("Enunciado")}
           >
-            <button type="button" onClick={() => toggleTask(false)} title="Ocultar el enunciado" aria-label="Ocultar el enunciado" className="absolute top-4 right-3 rounded px-1.5 text-ink-faint hover:bg-chip hover:text-ink">
+            <button type="button" onClick={() => toggleTask(false)} title={t("Ocultar el enunciado")} aria-label={t("Ocultar el enunciado")} className="absolute top-4 right-3 rounded px-1.5 text-ink-faint hover:bg-chip hover:text-ink">
               «
             </button>
             <div className="flex flex-col gap-2.5">
-              <h2 className="text-[11px] font-semibold tracking-wider text-ink-faint uppercase">Enunciado</h2>
+              <h2 className="text-[11px] font-semibold tracking-wider text-ink-faint uppercase">{t("Enunciado")}</h2>
               {(task.note || challenge.pursuitTitle) && (
                 <span className="text-xs text-ink-faint">{[challenge.pursuitTitle, task.note && `De tu nota “${task.note}”`].filter(Boolean).join(" · ")}</span>
               )}
@@ -252,7 +254,7 @@ export function ChallengeIDE({ challenge }: { challenge: Challenge }) {
             </div>
             {challenge.tests[0] && (
               <div className="flex flex-col gap-2.5">
-                <h2 className="text-[11px] font-semibold tracking-wider text-ink-faint uppercase">Ejemplo</h2>
+                <h2 className="text-[11px] font-semibold tracking-wider text-ink-faint uppercase">{t("Ejemplo")}</h2>
                 <Example inputs={inputs(challenge.tests[0])} expected={challenge.tests[0].expected} react={react} />
               </div>
             )}
@@ -271,8 +273,8 @@ export function ChallengeIDE({ challenge }: { challenge: Challenge }) {
           <div
             role="separator"
             aria-orientation="vertical"
-            aria-label="Ancho del enunciado"
-            title="Arrastra para cambiar el ancho"
+            aria-label={t("Ancho del enunciado")}
+            title={t("Arrastra para cambiar el ancho")}
             onPointerDown={startResize}
             onDoubleClick={() => setTaskW(380)}
             className="group hidden w-[5px] shrink-0 cursor-col-resize justify-center lg:flex"
@@ -280,12 +282,12 @@ export function ChallengeIDE({ challenge }: { challenge: Challenge }) {
             <span className="w-px bg-border-subtle transition-colors group-hover:w-[3px] group-hover:bg-accent/60" />
           </div>
         ) : (
-          <button type="button" onClick={() => toggleTask(true)} title="Mostrar el enunciado" aria-label="Mostrar el enunciado" className="hidden w-8 shrink-0 items-start justify-center border-r border-border-subtle pt-4 text-ink-faint hover:bg-chip hover:text-ink lg:flex">
+          <button type="button" onClick={() => toggleTask(true)} title={t("Mostrar el enunciado")} aria-label={t("Mostrar el enunciado")} className="hidden w-8 shrink-0 items-start justify-center border-r border-border-subtle pt-4 text-ink-faint hover:bg-chip hover:text-ink lg:flex">
             »
           </button>
         )}
 
-        <section className="flex min-h-0 min-w-0 flex-1 flex-col" aria-label="Código">
+        <section className="flex min-h-0 min-w-0 flex-1 flex-col" aria-label={t("Código")}>
           <div className="min-h-[220px] flex-1">
             <CodeEditor value={code} language={challenge.language} onChange={setCode} onRun={tryRun} />
           </div>
@@ -294,7 +296,7 @@ export function ChallengeIDE({ challenge }: { challenge: Challenge }) {
           <div className="flex shrink-0 flex-col bg-[#0e0e10] text-[#d4d4d8]" aria-live="polite">
             <div className="flex flex-wrap items-center gap-1.5 border-t border-white/10 px-4 py-2 text-[13px]">
               <button type="button" onClick={() => setTermOpen((o) => !o)} aria-expanded={termOpen} className="mr-2 flex items-center gap-1.5 font-mono text-xs text-white/60 hover:text-white">
-                <span className={`inline-block transition-transform ${termOpen ? "rotate-90" : ""}`}>›</span> Terminal
+                <span className={`inline-block transition-transform ${termOpen ? "rotate-90" : ""}`}>›</span>{" "}{t("Terminal")}
               </button>
               {challenge.tests.map((_, i) => {
                 const r = output?.results[i];
@@ -306,8 +308,8 @@ export function ChallengeIDE({ challenge }: { challenge: Challenge }) {
                       setPicked(i);
                       setTermOpen(true);
                     }}
-                    title={`Comprobación ${i + 1}`}
-                    aria-label={`Comprobación ${i + 1}${r ? (r.ok ? ", correcta" : ", falla") : ""}`}
+                    title={t("Comprobación {0}", { 0: i + 1 })}
+                    aria-label={t("Comprobación {0}{1}", { 0: i + 1, 1: r ? (r.ok ? ", correcta" : ", falla") : "" })}
                     className={`grid size-[16px] place-items-center rounded-full text-white ${r ? (r.ok ? "bg-[#3fa36b]" : "bg-[#e5484d]") : "border-[1.5px] border-white/25"} ${termOpen && shown === i ? "ring-2 ring-white/40 ring-offset-1 ring-offset-[#0e0e10]" : ""}`}
                   >
                     {r && (r.ok ? <CheckIcon size={9} /> : <XIcon size={9} />)}
@@ -315,7 +317,7 @@ export function ChallengeIDE({ challenge }: { challenge: Challenge }) {
                 );
               })}
               <span className="ml-1.5 text-white/50">
-                {running ? "Ejecutando…" : output ? (output.error ? "No se ha podido ejecutar" : `${passedCount} de ${output.results.length}`) : trial ? "Prueba con el ejemplo" : "Ejecutar para probar · Listo para comprobar"}
+                {running ? t("Ejecutando…") : output ? (output.error ? t("No se ha podido ejecutar") : `${passedCount} de ${output.results.length}`) : trial ? t("Prueba con el ejemplo") : t("Ejecutar para probar · Listo para comprobar")}
               </span>
               {allGreen && (
                 <button
@@ -331,18 +333,18 @@ export function ChallengeIDE({ challenge }: { challenge: Challenge }) {
                   }
                   className="ml-auto text-[13px] text-[#82aaff] hover:underline disabled:opacity-50"
                 >
-                  {isReviewing ? "Revisando…" : "Revisar mi código"}
+                  {isReviewing ? t("Revisando…") : t("Revisar mi código")}
                 </button>
               )}
             </div>
             {termOpen && (
               <div className="flex max-h-[38vh] flex-col gap-2.5 overflow-y-auto px-4 pt-1 pb-4 font-mono text-[12.5px]">
-                {!output && !trial && !running && <p className="text-white/40">Ejecutar prueba tu código con el ejemplo y enseña tus console.log. Listo pasa todas las comprobaciones.</p>}
+                {!output && !trial && !running && <p className="text-white/40">{t("Ejecutar prueba tu código con el ejemplo y enseña tus console.log. Listo pasa todas las comprobaciones.")}</p>}
                 {trial?.error && <pre className="whitespace-pre-wrap text-[#ff7b7b]">{trial.error}</pre>}
                 {trial && !trial.error && challenge.tests[0] && <Case inputs={inputs(challenge.tests[0])} expected={challenge.tests[0].expected} result={trial.results[0]} react={react} />}
                 {trial && trial.logs.length > 0 && (
                   <div className="border-t border-white/10 pt-2">
-                    <p className="mb-1 text-white/40">console.log</p>
+                    <p className="mb-1 text-white/40">{t("console.log")}</p>
                     <pre className="whitespace-pre-wrap text-white/80">{trial.logs.slice(0, 200).join("\n")}</pre>
                   </div>
                 )}
@@ -350,10 +352,10 @@ export function ChallengeIDE({ challenge }: { challenge: Challenge }) {
                 {shown !== null && challenge.tests[shown] && output && (
                   <Case inputs={inputs(challenge.tests[shown])} expected={challenge.tests[shown].expected} result={output.results[shown]} react={react} />
                 )}
-                {allGreen && shown === null && <p className="text-[#3fa36b]">Todas las comprobaciones correctas.</p>}
+                {allGreen && shown === null && <p className="text-[#3fa36b]">{t("Todas las comprobaciones correctas.")}</p>}
                 {output && output.logs.length > 0 && (
                   <div className="border-t border-white/10 pt-2">
-                    <p className="mb-1 text-white/40">console.log</p>
+                    <p className="mb-1 text-white/40">{t("console.log")}</p>
                     <pre className="whitespace-pre-wrap text-white/80">{output.logs.slice(0, 200).join("\n")}</pre>
                   </div>
                 )}
@@ -420,16 +422,17 @@ function Example({ inputs, expected, react }: { inputs: [string, unknown][]; exp
 
 // One check, spelled out: what goes in, what should come out, what came out.
 function Case({ inputs, expected, result, react }: { inputs: [string, unknown][]; expected: unknown; result?: { ok: boolean; got?: unknown; error?: string }; react: boolean }) {
+  const t = useT();
   const failed = result && !result.ok;
   return (
     <div className="grid grid-cols-[76px_1fr] gap-x-3 gap-y-1.5">
-      <span className="text-white/40">Entrada</span>
+      <span className="text-white/40">{t("Entrada")}</span>
       <span className="font-mono text-[12.5px] break-words">{inputs.map(([k, v]) => `${k} = ${brief(v)}`).join(" · ") || (react ? "sin props" : "—")}</span>
-      <span className="text-white/40">Esperado</span>
+      <span className="text-white/40">{t("Esperado")}</span>
       <span className="font-mono text-[12.5px]">{show(expected)}</span>
       {result && (
         <>
-          <span className="text-white/40">Obtenido</span>
+          <span className="text-white/40">{t("Obtenido")}</span>
           <span className={`font-mono text-[12.5px] break-words ${failed ? "text-[#ff7b7b]" : "text-[#3fa36b]"}`}>{result.error ?? show(result.got)}</span>
         </>
       )}
@@ -441,6 +444,7 @@ function Case({ inputs, expected, result, react }: { inputs: [string, unknown][]
 // adds — then everything together. To read and write yourself, not paste.
 // Code scrolls sideways instead of wrapping, so lines stay lines.
 function Explained({ steps, code, challenge }: { steps: ExplainStep[]; code: string; challenge: Challenge }) {
+  const t = useT();
   const router = useRouter();
   const [at, setAt] = useState(0);
   const [making, setMaking] = useState(false);
@@ -484,7 +488,7 @@ function Explained({ steps, code, challenge }: { steps: ExplainStep[]; code: str
   return (
     <div className="flex flex-col gap-2 rounded-lg bg-sidebar px-3 py-2.5">
       <div className="flex items-center justify-between">
-        <span className="text-[10.5px] font-semibold tracking-wider text-accent uppercase">Cómo se hace</span>
+        <span className="text-[10.5px] font-semibold tracking-wider text-accent uppercase">{t("Cómo se hace")}</span>
         <span className="text-[11px] text-ink-faint">{at < last ? `${at + 1}/${last}` : "todo"}</span>
       </div>
       {step ? (
@@ -497,22 +501,22 @@ function Explained({ steps, code, challenge }: { steps: ExplainStep[]; code: str
       ) : (
         <>
           {block(code)}
-          <p className="text-[11px] text-ink-faint">Ahora escríbelo tú en el editor, sin copiar.</p>
+          <p className="text-[11px] text-ink-faint">{t("Ahora escríbelo tú en el editor, sin copiar.")}</p>
         </>
       )}
       <div className="flex items-center gap-3 text-xs">
         {at > 0 && (
           <button type="button" onClick={() => setAt(at - 1)} className="text-ink-faint hover:text-ink">
-            ← Atrás
+            {t("← Atrás")}
           </button>
         )}
         {at < last ? (
           <button type="button" onClick={() => setAt(at + 1)} className="ml-auto flex items-center gap-1 font-medium text-accent hover:underline">
-            {at === last - 1 ? "Ver todo junto" : "Siguiente"} <ArrowRight size={11} />
+            {at === last - 1 ? t("Ver todo junto") : t("Siguiente")} <ArrowRight size={11} />
           </button>
         ) : (
           <button type="button" onClick={similar} disabled={making} className="ml-auto flex items-center gap-1 font-medium text-accent hover:underline disabled:opacity-50">
-            {making ? "Creando reto…" : <>Practícalo tú <ArrowRight size={11} /></>}
+            {making ? t("Creando reto…") : <>{t("Practícalo tú")}{" "}<ArrowRight size={11} /></>}
           </button>
         )}
       </div>
@@ -521,14 +525,14 @@ function Explained({ steps, code, challenge }: { steps: ExplainStep[]; code: str
           {[...chat, ...(asking ? [{ q: asking, a: "" }] : [])].map((m, i) => (
             <div key={i} className="flex flex-col gap-1">
               <p className="self-end rounded-lg bg-white px-2.5 py-1.5 text-ink-muted">{m.q}</p>
-              <p>{m.a ? inline(m.a) : <span className="text-ink-faint">Pensando…</span>}</p>
+              <p>{m.a ? inline(m.a) : <span className="text-ink-faint">{t("Pensando…")}</span>}</p>
             </div>
           ))}
         </div>
       )}
       <form onSubmit={ask} className="flex items-center gap-2 rounded-md border border-border-subtle bg-white px-2.5 py-1.5">
-        <input name="q" placeholder="Pregunta lo que no entiendas…" aria-label="Pregunta sobre la explicación" className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-ink-faint" />
-        <button type="submit" disabled={!!asking} aria-label="Preguntar" className="text-accent disabled:opacity-40">
+        <input name="q" placeholder={t("Pregunta lo que no entiendas…")} aria-label={t("Pregunta sobre la explicación")} className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-ink-faint" />
+        <button type="submit" disabled={!!asking} aria-label={t("Preguntar")} className="text-accent disabled:opacity-40">
           <ArrowRight size={13} />
         </button>
       </form>
@@ -546,6 +550,7 @@ const REVIEW_STYLE = {
 // The code review as three short blocks; `code` shows as code. Each
 // "Siguiente" idea can become a new challenge that practises it.
 function Review({ text, challenge }: { text: string; challenge: Challenge }) {
+  const t = useT();
   const router = useRouter();
   const [making, setMaking] = useState<number | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
@@ -595,7 +600,7 @@ function Review({ text, challenge }: { text: string; challenge: Challenge }) {
                       disabled={making !== null}
                       className="mt-1 flex items-center gap-1 text-xs font-medium text-accent hover:underline disabled:opacity-50"
                     >
-                      {making === i ? "Creando reto…" : <>Practicarlo en un reto <ArrowRight size={11} /></>}
+                      {making === i ? t("Creando reto…") : <>{t("Practicarlo en un reto")}{" "}<ArrowRight size={11} /></>}
                     </button>
                   )}
                 </li>

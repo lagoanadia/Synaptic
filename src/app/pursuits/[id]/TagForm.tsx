@@ -1,11 +1,13 @@
 "use client";
 
+import { useT } from "@/app/LangProvider";
 import { useActionState } from "react";
 import { addPursuitTag, type FormState } from "./actions";
 
 const initialState: FormState = { error: null };
 
 export function TagForm({ pursuitId }: { pursuitId: string }) {
+  const t = useT();
   const [state, formAction, isPending] = useActionState(
     addPursuitTag.bind(null, pursuitId),
     initialState,
@@ -16,7 +18,7 @@ export function TagForm({ pursuitId }: { pursuitId: string }) {
       <input
         type="text"
         name="name"
-        placeholder="+ etiqueta"
+        placeholder={t("+ etiqueta")}
         disabled={isPending}
         className="w-28 rounded-md border border-dashed border-border-subtle bg-transparent px-2.5 py-1 text-sm focus:w-40 focus:outline-none disabled:opacity-50"
       />

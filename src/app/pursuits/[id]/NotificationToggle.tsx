@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/app/LangProvider";
 import { BellIcon, BellOffIcon } from "@/app/icons";
 import { useEffect, useState } from "react";
 import { subscribeToPush, unsubscribeFromPush } from "../actions";
@@ -18,6 +19,7 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
 // deadline reminders for every Classroom-linked Pursuit this account has,
 // since a push subscription belongs to the browser, not to any one page.
 export function NotificationToggle() {
+  const t = useT();
   // Computed once at init, not set from inside the effect below — reading
   // navigator/window synchronously during render is fine (it can't change
   // mid-session), only the async subscription check needs the effect.
@@ -86,7 +88,7 @@ export function NotificationToggle() {
       disabled={busy}
       className="shrink-0 text-xs text-ink-faint hover:text-ink disabled:opacity-50"
     >
-      {subscribed ? <><BellIcon size={14} className="inline-block align-[-2px]" /> Recordatorios activados</> : <><BellOffIcon size={14} /> Recordatorios</>}
+      {subscribed ? <><BellIcon size={14} className="inline-block align-[-2px]" />{" "}{t("Recordatorios activados")}</> : <><BellOffIcon size={14} />{" "}{t("Recordatorios")}</>}
     </button>
   );
 }

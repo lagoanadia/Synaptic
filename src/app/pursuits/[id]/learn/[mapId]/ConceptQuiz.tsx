@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/app/LangProvider";
 import { useEffect, useState } from "react";
 import { CheckIcon, XIcon } from "@/app/icons";
 import { isCorrect, shuffledOrder, type QuizAnswer, type QuizQuestion } from "@/lib/conceptQuiz";
@@ -25,6 +26,7 @@ export function ConceptQuiz({
   auto?: boolean;
   onFinish?: (passed: boolean, status: Status | null) => void;
 }) {
+  const t = useT();
   const [questions, setQuestions] = useState<QuizQuestion[] | null>(null);
   const [i, setI] = useState(0);
   const [answer, setAnswer] = useState<QuizAnswer>(null);
@@ -100,22 +102,22 @@ export function ConceptQuiz({
 
   if (!questions && auto) {
     return (
-      <section className={card} aria-label="Comprobar">
+      <section className={card} aria-label={t("Comprobar")}>
         {error ? (
           <p className="flex items-center gap-3 text-sm text-red-500">
             <span className="flex-1">{error}</span>
-            <button type="button" onClick={start} disabled={loading} aria-label="Reintentar" title="Reintentar" className="rounded-md px-2 py-1 text-lg text-ink-muted hover:bg-chip hover:text-ink disabled:opacity-40">
+            <button type="button" onClick={start} disabled={loading} aria-label={t("Reintentar")} title={t("Reintentar")} className="rounded-md px-2 py-1 text-lg text-ink-muted hover:bg-chip hover:text-ink disabled:opacity-40">
               ↻
             </button>
           </p>
-        ) : <span className="h-1 w-24 animate-pulse rounded-full bg-chip" aria-label="Preparando preguntas" />}
+        ) : <span className="h-1 w-24 animate-pulse rounded-full bg-chip" aria-label={t("Preparando preguntas")} />}
       </section>
     );
   }
 
   if (!questions) {
     return (
-      <section className={card} aria-label="Examen">
+      <section className={card} aria-label={t("Examen")}>
         <div className="flex flex-wrap gap-2">
           <button
             ref={startRef}
@@ -124,10 +126,10 @@ export function ConceptQuiz({
             disabled={loading}
             className="rounded-full bg-tile-sky px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50"
           >
-            {loading ? "Escribiendo tu examen…" : "Ponme un examen"} <kbd className="ml-1 text-xs opacity-70">q</kbd>
+            {loading ? t("Escribiendo tu examen…") : t("Ponme un examen")} <kbd className="ml-1 text-xs opacity-70">q</kbd>
           </button>
           <button type="button" onClick={onDontKnow} className="rounded-full px-4 py-2.5 text-sm text-ink-muted hover:bg-chip">
-            No lo sé
+            {t("No lo sé")}
           </button>
         </div>
         {error && <p className="text-sm text-red-500">{error}</p>}
@@ -141,13 +143,13 @@ export function ConceptQuiz({
     const correct = results.filter(Boolean).length;
     const pct = correct / questions.length;
     return (
-      <section className={card} aria-label="Resultado del examen">
+      <section className={card} aria-label={t("Resultado del examen")}>
         <div className="flex items-baseline gap-3">
           <span className={`text-4xl font-extrabold ${pct >= 0.8 ? "text-mint" : pct >= 0.5 ? "text-amber" : "text-crimson"}`}>
             {correct}/{questions.length}
           </span>
           <span className="text-sm font-semibold text-ink-muted">
-            {pct >= 0.8 ? "Entendido" : pct >= 0.5 ? "Casi" : "Repásalo"}
+            {pct >= 0.8 ? t("Entendido") : pct >= 0.5 ? t("Casi") : t("Repásalo")}
           </span>
         </div>
         <ol className="flex flex-col gap-1.5 text-sm">
@@ -162,7 +164,7 @@ export function ConceptQuiz({
           ))}
         </ol>
         <button type="button" onClick={start} disabled={loading} className="self-start rounded-full bg-chip px-5 py-2.5 text-sm font-semibold disabled:opacity-50">
-          {loading ? "Escribiendo…" : "Nuevo examen"}
+          {loading ? t("Escribiendo…") : t("Nuevo examen")}
         </button>
       </section>
     );
@@ -183,8 +185,8 @@ export function ConceptQuiz({
     }`;
 
   return (
-    <section className={card} aria-label="Examen">
-      <div className="flex gap-1" aria-label={`Pregunta ${i + 1} de ${questions.length}`}>
+    <section className={card} aria-label={t("Examen")}>
+      <div className="flex gap-1" aria-label={t("Pregunta {0} de {1}", { 0: i + 1, 1: questions.length })}>
         {questions.map((_, k) => (
           <span
             key={k}
@@ -211,7 +213,7 @@ export function ConceptQuiz({
           {[true, false].map((v, k) => (
             <button key={k} type="button" disabled={checked} onClick={() => setAnswer(v)} className={opt(answer === v, checked && v === q.answer)}>
               <kbd className="mr-2 text-xs opacity-50">{k + 1}</kbd>
-              {v ? "Verdadero" : "Falso"}
+              {v ? t("Verdadero") : t("Falso")}
             </button>
           ))}
         </div>
@@ -231,8 +233,8 @@ export function ConceptQuiz({
             disabled={checked}
             value={typeof answer === "string" ? answer : ""}
             onChange={(e) => setAnswer(e.target.value)}
-            placeholder="Tu respuesta"
-            aria-label="Tu respuesta"
+            placeholder={t("Tu respuesta")}
+            aria-label={t("Tu respuesta")}
             className={`rounded-2xl border-2 px-4 py-3 text-sm ${checked ? (right ? "border-mint bg-mint/10" : "border-crimson bg-crimson-soft") : "border-border-subtle"}`}
           />
           {checked && !right && <span className="text-sm font-semibold">{q.accepted[0]}</span>}
@@ -253,7 +255,7 @@ export function ConceptQuiz({
           checked ? (right ? "bg-mint" : "bg-crimson") : "bg-ink"
         }`}
       >
-        {checked ? (i + 1 < questions.length ? "Siguiente" : "Ver resultado") : "Comprobar"}
+        {checked ? (i + 1 < questions.length ? t("Siguiente") : t("Ver resultado")) : t("Comprobar")}
       </button>
     </section>
   );

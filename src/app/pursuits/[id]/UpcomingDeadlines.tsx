@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/app/LangProvider";
 import { CheckIcon } from "@/app/icons";
 import { useEffect, useState } from "react";
 import { listPursuitDeadlines } from "./actions";
@@ -16,6 +17,7 @@ export function UpcomingDeadlines({
   pursuitId: string;
   hasCourse: boolean;
 }) {
+  const t = useT();
   const [deadlines, setDeadlines] = useState<ClassroomDeadline[] | null>(null);
   // Captured alongside the fetch, not read via Date.now() during render —
   // render has to stay a pure function of props/state.
@@ -55,18 +57,18 @@ export function UpcomingDeadlines({
     <div className="flex flex-col gap-1.5 rounded-xl border border-border-subtle bg-white p-3">
       <div className="flex items-center justify-between">
         <span className="text-xs font-semibold text-ink-faint">
-          Próximas entregas de Classroom
+          {t("Próximas entregas de Classroom")}
           {deadlines.length > 0 && (
             <span className="font-normal text-ink-faint">
               {" "}
-              · {pending.length} pending
+              · {pending.length}{" "}{t("pending")}
             </span>
           )}
         </span>
         <NotificationToggle />
       </div>
       {deadlines.length === 0 && (
-        <p className="text-xs text-ink-muted">Nada pendiente pronto.</p>
+        <p className="text-xs text-ink-muted">{t("Nada pendiente pronto.")}</p>
       )}
       {ordered.map((d) => {
         const overdue = !d.turnedIn && d.dueAt.getTime() < now;
@@ -83,13 +85,13 @@ export function UpcomingDeadlines({
               <span
                 className={`shrink-0 text-xs ${d.late ? "text-amber-600" : "text-forest"}`}
               >
-                <CheckIcon size={12} /> {d.late ? "Tarde" : "Hecho"}
+                <CheckIcon size={12} /> {d.late ? t("Tarde") : t("Hecho")}
               </span>
             ) : (
               <span
                 className={`shrink-0 text-xs ${overdue ? "text-red-500" : "text-ink-faint"}`}
               >
-                {overdue ? "Atrasada · " : "Entrega "}
+                {overdue ? t("Atrasada · ") : t("Entrega ")}
                 {d.dueAt.toLocaleDateString("es-ES", {
                   weekday: "short",
                   month: "short",

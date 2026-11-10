@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/app/LangProvider";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { reviewFlashcard } from "../pursuits/[id]/actions";
@@ -35,13 +36,14 @@ function Stage({
   streak,
   children,
 }: Shell & { total: number; done: number; streak?: number; children?: React.ReactNode }) {
+  const t = useT();
   return (
     <div
       className="fixed inset-x-0 top-0 bottom-16 z-40 flex flex-col overflow-y-auto bg-[#18181b] text-white lg:bottom-0 lg:z-50"
       style={{ backgroundImage: "radial-gradient(rgba(255,255,255,.07) 1px, transparent 1.3px)", backgroundSize: "22px 22px" }}
     >
       <header className="flex items-center gap-4 px-4 py-4 sm:gap-7 sm:px-10 sm:py-5">
-        <Link href={backHref} aria-label="Cerrar" title="Cerrar" className="rounded-md p-1 text-white/50 hover:text-white">
+        <Link href={backHref} aria-label={t("Cerrar")} title={t("Cerrar")} className="rounded-md p-1 text-white/50 hover:text-white">
           <XIcon size={20} className="block" />
         </Link>
         <div className="mx-auto flex max-w-[520px] flex-1 gap-1.5" aria-hidden>
@@ -56,15 +58,18 @@ function Stage({
   );
 }
 
-const Streak = ({ n, className = "" }: { n: number; className?: string }) => (
-  <div className={`gap-1 ${className}`} aria-label={`Racha de ${n}`}>
+const Streak = ({ n, className = "" }: { n: number; className?: string }) => {
+  const t = useT();
+  return ((
+  <div className={`gap-1 ${className}`} aria-label={t("Racha de {0}", { 0: n })}>
     {[...Array(5)].map((_, i) => (
       <i key={i} className={`w-3.5 text-center text-[15px] not-italic ${i < n ? "text-[#f5b82e]" : "text-white/25"}`}>
         {i < n ? "✦" : "·"}
       </i>
     ))}
   </div>
-);
+));
+};
 
 // White card with the question, and the timer draining underneath.
 function QuestionCard({ item, timer, onTimeout, children }: { item: LearnItem; timer?: boolean; onTimeout?: () => void; children?: React.ReactNode }) {
@@ -134,11 +139,14 @@ function Tile({ i, label, keycap, state, onClick }: { i: number; label: string; 
 
 const Grid = ({ children }: { children: React.ReactNode }) => <div className="grid w-full max-w-[900px] gap-2.5 sm:grid-cols-2 sm:gap-4">{children}</div>;
 
-const Continue = ({ onClick }: { onClick: () => void }) => (
-  <button type="button" autoFocus onClick={onClick} aria-label="Continuar" title="Continuar (Enter)" className="grid size-12 place-items-center rounded-full bg-white text-xl text-[#18181b] shadow-lg">
+const Continue = ({ onClick }: { onClick: () => void }) => {
+  const t = useT();
+  return ((
+  <button type="button" autoFocus onClick={onClick} aria-label={t("Continuar")} title={t("Continuar (Enter)")} className="grid size-12 place-items-center rounded-full bg-white text-xl text-[#18181b] shadow-lg">
     →
   </button>
-);
+));
+};
 
 const TRUE = "Verdadero";
 const FALSE = "Falso";
@@ -302,11 +310,12 @@ function Summary({
   avgSeconds: number;
   onAgain?: () => void;
 }) {
+  const t = useT();
   const right = total - missed.length;
   const pct = total ? (right / total) * 100 : 0;
   return (
     <Stage {...shell} total={total} done={total}>
-      <div className="grid size-44 place-items-center rounded-full sm:size-52" style={{ background: `conic-gradient(#22c55e 0 ${pct}%, rgba(255,255,255,.1) ${pct}% 100%)` }} aria-label={`${right} de ${total} a la primera`}>
+      <div className="grid size-44 place-items-center rounded-full sm:size-52" style={{ background: `conic-gradient(#22c55e 0 ${pct}%, rgba(255,255,255,.1) ${pct}% 100%)` }} aria-label={t("{0} de {1} a la primera", { 0: right, 1: total })}>
         <div className="grid size-[148px] place-items-center rounded-full bg-[#18181b] sm:size-[172px]">
           <b className="text-5xl leading-none tabular-nums">
             {right}/{total}
@@ -314,10 +323,10 @@ function Summary({
         </div>
       </div>
       <div className="flex gap-3">
-        <span className="flex items-center gap-2 rounded-xl bg-white/8 px-4 py-2.5 text-xl font-bold" title="Mejor racha" aria-label={`Mejor racha: ${best}`}>
+        <span className="flex items-center gap-2 rounded-xl bg-white/8 px-4 py-2.5 text-xl font-bold" title={t("Mejor racha")} aria-label={t("Mejor racha: {0}", { 0: best })}>
           <span className="text-[#f5b82e]">✦</span> {best}
         </span>
-        <span className="flex items-center gap-2 rounded-xl bg-white/8 px-4 py-2.5 text-xl font-bold" title="Segundos por pregunta" aria-label={`${avgSeconds} segundos por pregunta`}>
+        <span className="flex items-center gap-2 rounded-xl bg-white/8 px-4 py-2.5 text-xl font-bold" title={t("Segundos por pregunta")} aria-label={`${avgSeconds} segundos por pregunta`}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-white/60" aria-hidden>
             <circle cx="12" cy="13" r="8" />
             <path d="M12 9v4l2.5 2.5M9.5 2.5h5" />
@@ -340,11 +349,11 @@ function Summary({
       )}
       <div className="flex items-center gap-3">
         {onAgain && (
-          <button type="button" onClick={onAgain} title="Repetir los fallos" aria-label="Repetir los fallos" className="grid size-12 place-items-center rounded-xl bg-[#8b5cf6] text-xl shadow-[inset_0_-4px_0_rgba(0,0,0,.2)]">
+          <button type="button" onClick={onAgain} title={t("Repetir los fallos")} aria-label={t("Repetir los fallos")} className="grid size-12 place-items-center rounded-xl bg-[#8b5cf6] text-xl shadow-[inset_0_-4px_0_rgba(0,0,0,.2)]">
             ↻
           </button>
         )}
-        <Link href={shell.backHref} title="Terminar" aria-label="Terminar" className="grid size-12 place-items-center rounded-xl bg-[#22c55e] shadow-[inset_0_-4px_0_rgba(0,0,0,.2)]">
+        <Link href={shell.backHref} title={t("Terminar")} aria-label={t("Terminar")} className="grid size-12 place-items-center rounded-xl bg-[#22c55e] shadow-[inset_0_-4px_0_rgba(0,0,0,.2)]">
           <CheckIcon size={22} className="block" />
         </Link>
       </div>
@@ -355,12 +364,13 @@ function Summary({
 // ─── Hecho por hoy ───
 
 function Done({ shell }: { shell: Shell }) {
+  const t = useT();
   return (
     <Stage {...shell} total={1} done={1}>
       <span className="grid size-16 place-items-center rounded-full bg-[#22c55e] text-white shadow-[0_10px_30px_rgba(34,197,94,.35)]">
         <CheckIcon size={26} className="block" />
       </span>
-      <p className="text-white/60">Hasta mañana</p>
+      <p className="text-white/60">{t("Hasta mañana")}</p>
     </Stage>
   );
 }

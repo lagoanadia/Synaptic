@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/app/LangProvider";
 import Link from "next/link";
 import { useRef, useState, useTransition } from "react";
 import { createContentSection, deleteContentSection, listClassroomFiles, movePage, renamePage, renameUnit, setUnitClassroom } from "./actions";
@@ -47,6 +48,7 @@ export function PagesBoard({
   view?: "list" | "board";
   study?: boolean;
 }) {
+  const t = useT();
   const label = groupLabel;
   const none = `Sin ${label.toLowerCase()}`;
   const asBoard = view === "board" && units.length > 0;
@@ -64,11 +66,11 @@ export function PagesBoard({
     setRenaming(null);
     if (renameDone.current) return;
     renameDone.current = true;
-    const t = title.trim();
-    if (!t || t === card.title) return;
-    setCards((cs) => cs.map((c) => (c.key === card.key ? { ...c, title: t } : c)));
+    const trimmed = title.trim();
+    if (!trimmed || trimmed === card.title) return;
+    setCards((cs) => cs.map((c) => (c.key === card.key ? { ...c, title: trimmed } : c)));
     startTransition(async () => {
-      await renamePage(pursuitId, { dumpId: card.dumpId, noteId: card.noteId }, t);
+      await renamePage(pursuitId, { dumpId: card.dumpId, noteId: card.noteId }, trimmed);
       router.refresh();
     });
   }
@@ -113,7 +115,7 @@ export function PagesBoard({
               onFocus={(e) => e.currentTarget.select()}
               onKeyDown={(e) => e.key === "Escape" && setRenaming(null)}
               onBlur={(e) => rename(renaming.card, e.currentTarget.value)}
-              aria-label="Título de la página"
+              aria-label={t("Título de la página")}
               className="w-full rounded-md border border-border-subtle px-2 py-1.5 text-sm outline-none focus:border-ink/30"
             />
           </form>
@@ -121,7 +123,7 @@ export function PagesBoard({
       )}
       {!asBoard && <div className="flex flex-wrap items-center gap-2">
         <Link href={`/pursuits/${pursuitId}/dump/new`} className="rounded-md bg-ink px-3 py-1.5 text-sm font-medium text-white">
-          + Página
+          {t("+ Página")}
         </Link>
         <ImportSlides pursuitId={pursuitId} sectionId={null} />
         {units.length === 0 ? null : newUnit === null ? (
@@ -142,8 +144,8 @@ export function PagesBoard({
               value={newUnit}
               onChange={(e) => setNewUnit(e.target.value)}
               onBlur={() => !newUnit.trim() && setNewUnit(null)}
-              placeholder={`Nombre (${label})`}
-              aria-label={`Nombre (${label})`}
+              placeholder={t("Nombre ({0})", { 0: label })}
+              aria-label={t("Nombre ({0})", { 0: label })}
               className="rounded-md border border-border-subtle bg-white px-3 py-1.5 text-sm"
             />
           </form>
@@ -243,7 +245,7 @@ export function PagesBoard({
                 href={`/pursuits/${pursuitId}/dump/new${col.id ? `?section=${col.id}` : ""}`}
                 className="rounded-md px-1.5 py-1 text-sm text-ink-faint hover:bg-white/70 hover:text-ink"
               >
-                + Página
+                {t("+ Página")}
               </Link>
             </section>
           );
@@ -267,8 +269,8 @@ export function PagesBoard({
                 value={newUnit}
                 onChange={(e) => setNewUnit(e.target.value)}
                 onBlur={() => !newUnit.trim() && setNewUnit(null)}
-                placeholder={`Nombre (${label})`}
-                aria-label={`Nombre (${label})`}
+                placeholder={t("Nombre ({0})", { 0: label })}
+                aria-label={t("Nombre ({0})", { 0: label })}
                 className="w-40 rounded-md border border-border-subtle bg-white px-2 py-1 text-sm"
               />
             </form>
@@ -295,7 +297,8 @@ function PagesList({
   grouped: boolean;
   onMove: (card: PageCard, sectionId: string | null) => void;
 }) {
-  if (cards.length === 0) return <p className="py-6 text-sm text-ink-faint">Aún no hay páginas.</p>;
+  const t = useT();
+  if (cards.length === 0) return <p className="py-6 text-sm text-ink-faint">{t("Aún no hay páginas.")}</p>;
   return (
     <ul className="flex flex-col">
       {cards.map((c) => (
@@ -308,7 +311,7 @@ function PagesList({
             <select
               value={c.sectionId ?? ""}
               onChange={(e) => onMove(c, e.target.value || null)}
-              aria-label="Grupo"
+              aria-label={t("Grupo")}
               className="rounded bg-[#e7f3f8] px-1.5 py-0.5 text-xs text-[#337ea9]"
             >
               <option value="">{none}</option>
@@ -329,6 +332,7 @@ function PagesList({
 
 // Click the unit's name to rename it (Enter saves, Esc cancels).
 function UnitName({ pursuitId, id, name }: { pursuitId: string; id: string; name: string }) {
+  const t = useT();
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(name);
   const [error, setError] = useState<string | null>(null);
@@ -361,7 +365,7 @@ function UnitName({ pursuitId, id, name }: { pursuitId: string; id: string; name
             setEditing(false);
           }
         }}
-        aria-label="Nombre de la unidad"
+        aria-label={t("Nombre de la unidad")}
         className="min-w-0 flex-1 rounded-lg bg-white px-2 py-0.5 text-sm font-extrabold"
       />
     );
@@ -370,7 +374,7 @@ function UnitName({ pursuitId, id, name }: { pursuitId: string; id: string; name
     <button
       type="button"
       onClick={() => setEditing(true)}
-      title={error ?? "Renombrar"}
+      title={error ?? t("Renombrar")}
       className={`min-w-0 flex-1 truncate rounded-lg px-1 text-left text-sm font-extrabold hover:bg-white/60 ${error ? "text-red-600" : ""}`}
     >
       {value}
@@ -380,9 +384,10 @@ function UnitName({ pursuitId, id, name }: { pursuitId: string; id: string; name
 
 // Organized pages get these little stars; the rest, nothing.
 function Sparkles() {
+  const t = useT();
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" className="mt-0.5 shrink-0 text-[#c99a2e]" role="img" aria-label="Organizada">
-      <title>Organizada</title>
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" className="mt-0.5 shrink-0 text-[#c99a2e]" role="img" aria-label={t("Organizada")}>
+      <title>{t("Organizada")}</title>
       <path d="M10 3.5 11.8 8l4.7 1.8-4.7 1.8L10 16l-1.8-4.4L3.5 9.8 8.2 8z" />
       <path d="M17.5 14l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" />
     </svg>
@@ -402,27 +407,28 @@ function ColumnMenu({
   classroom: { value: string; options: string[]; load: () => void; set: (v: string) => void } | null;
   onDelete: (() => void) | null;
 }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   if (!reviewHref && !classroom && !onDelete) return null;
   return (
     <span className="relative">
-      <button type="button" onClick={() => setOpen((o) => !o)} aria-label={`Opciones de ${name}`} title="Opciones" className="rounded px-1.5 text-ink-faint hover:bg-white hover:text-ink">
+      <button type="button" onClick={() => setOpen((o) => !o)} aria-label={t("Opciones de {0}", { 0: name })} title={t("Opciones")} className="rounded px-1.5 text-ink-faint hover:bg-white hover:text-ink">
         ⋯
       </button>
       {open && (
         <>
-          <button type="button" aria-label="Cerrar" className="fixed inset-0 z-10 cursor-default" onClick={() => setOpen(false)} />
+          <button type="button" aria-label={t("Cerrar")} className="fixed inset-0 z-10 cursor-default" onClick={() => setOpen(false)} />
           <div className="absolute top-full right-0 z-20 mt-1 flex w-56 flex-col rounded-lg bg-white p-1 text-sm shadow-[0_0_0_1px_rgba(15,15,15,.05),0_10px_26px_rgba(15,15,15,.16)]">
             {reviewHref && (
               <Link href={reviewHref} className="rounded-md px-2.5 py-1.5 hover:bg-chip">
-                ▶ Repasar esta unidad
+                {t("▶ Repasar esta unidad")}
               </Link>
             )}
             {classroom && (
               <label className="flex items-center justify-between gap-2 rounded-md px-2.5 py-1.5 hover:bg-chip">
-                <span>Diapositivas de</span>
+                <span>{t("Diapositivas de")}</span>
                 <select value={classroom.value} onFocus={classroom.load} onChange={(e) => classroom.set(e.target.value)} className="rounded bg-chip px-1.5 py-0.5 text-xs">
-                  <option value="">Classroom…</option>
+                  <option value="">{t("Classroom…")}</option>
                   {classroom.options.map((u) => (
                     <option key={u} value={u}>
                       {u}
@@ -433,7 +439,7 @@ function ColumnMenu({
             )}
             {onDelete && (
               <button type="button" onClick={() => { setOpen(false); onDelete(); }} className="rounded-md px-2.5 py-1.5 text-left text-red-600 hover:bg-chip">
-                Eliminar
+                {t("Eliminar")}
               </button>
             )}
           </div>

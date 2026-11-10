@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/app/LangProvider";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { draftChallenge } from "./actions";
@@ -11,6 +12,7 @@ import { Badge, Bars } from "./ChallengeList";
 // "Dame 3": language, difficulty, which folder's notes. The AI maps the
 // skills in that material and writes one challenge per skill.
 export function NewChallenge({ subjects, defaultSubject }: { subjects: { id: string; title: string }[]; defaultSubject: string | null }) {
+  const t = useT();
   const router = useRouter();
   const [language, setLanguage] = useState<Language>("javascript");
   const [difficulty, setDifficulty] = useState<"easy" | "medium" | "hard">("easy");
@@ -40,25 +42,25 @@ export function NewChallenge({ subjects, defaultSubject }: { subjects: { id: str
 
   return (
     <aside className="flex flex-col gap-3 rounded-xl border border-border-subtle p-4 lg:sticky lg:top-6">
-      <div className="grid grid-cols-4 gap-2" role="radiogroup" aria-label="Lenguaje">
+      <div className="grid grid-cols-4 gap-2" role="radiogroup" aria-label={t("Lenguaje")}>
         {LANGUAGES.map((l) => (
-          <button key={l} type="button" role="radio" aria-checked={language === l} title={LANGUAGE_INFO[l].label} onClick={() => setLanguage(l)} className={tile(language === l)}>
+          <button key={l} type="button" role="radio" aria-checked={language === l} title={t(LANGUAGE_INFO[l].label)} onClick={() => setLanguage(l)} className={tile(language === l)}>
             <Badge language={l} />
           </button>
         ))}
       </div>
       <p className="-mt-1 text-xs leading-snug text-ink-faint">
-        <span className="font-medium text-ink-muted">{LANGUAGE_INFO[language].label}:</span> {LANGUAGE_INFO[language].hint}
+        <span className="font-medium text-ink-muted">{t(LANGUAGE_INFO[language].label)}:</span> {t(LANGUAGE_INFO[language].hint)}
       </p>
-      <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Dificultad">
+      <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label={t("Dificultad")}>
         {DIFFICULTIES.map((d, n) => (
-          <button key={d.key} type="button" role="radio" aria-checked={difficulty === d.key} title={d.label} onClick={() => setDifficulty(d.key)} className={`${tile(difficulty === d.key)} py-3.5`}>
+          <button key={d.key} type="button" role="radio" aria-checked={difficulty === d.key} title={t(d.label)} onClick={() => setDifficulty(d.key)} className={`${tile(difficulty === d.key)} py-3.5`}>
             <Bars n={n} color={d.bar} />
           </button>
         ))}
       </div>
       {subjects.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 pt-1" role="radiogroup" aria-label="De qué carpeta">
+        <div className="flex flex-wrap gap-1.5 pt-1" role="radiogroup" aria-label={t("De qué carpeta")}>
           {[...subjects.slice(0, 6), { id: "", title: "Todo" }].map((s) => (
             <button
               key={s.id || "all"}
@@ -75,7 +77,7 @@ export function NewChallenge({ subjects, defaultSubject }: { subjects: { id: str
       )}
       <button type="button" onClick={create} disabled={pending} className="mt-2 flex items-center justify-center gap-2.5 rounded-lg bg-accent py-3 text-sm font-semibold text-white disabled:opacity-60">
         {pending ? (
-          (status ?? "Trabajando…")
+          (status ?? t("Trabajando…"))
         ) : (
           <>
             <span className="flex gap-1" aria-hidden>
@@ -83,7 +85,7 @@ export function NewChallenge({ subjects, defaultSubject }: { subjects: { id: str
                 <span key={k} className="size-2.5 rounded-[3px] border-[1.5px] border-white/90" />
               ))}
             </span>
-            Dame 3
+            {t("Dame 3")}
           </>
         )}
       </button>

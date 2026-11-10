@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/app/LangProvider";
 import { useEffect, useRef, useState } from "react";
 import { upload } from "@vercel/blob/client";
 import { SlidesIcon, XIcon } from "@/app/icons";
@@ -52,6 +53,7 @@ export function SlidePanel({
   onTranscribe?: (image: string, page: number) => Promise<string | null>;
   children: React.ReactNode;
 }) {
+  const t = useT();
   const [showAllUnits, setShowAllUnits] = useState(false);
   const key = `synaptic.slides.${pursuitId}`;
   const [deck, setDeck] = useState<Deck | null>(null);
@@ -136,7 +138,7 @@ export function SlidePanel({
           onClick={startPicking}
           className="flex items-center gap-2 self-start rounded-full bg-chip px-4 py-2 text-sm font-semibold text-ink-muted hover:text-ink"
         >
-          <SlidesIcon /> Diapositivas
+          <SlidesIcon />{" "}{t("Diapositivas")}
         </button>
         {children}
       </div>
@@ -152,10 +154,10 @@ export function SlidePanel({
       {open_ ? (
         <section
           className="flex flex-col overflow-hidden rounded-2xl border border-border-subtle bg-white lg:sticky lg:top-4 lg:h-[calc(100vh-2rem)]"
-          aria-label="Diapositivas"
+          aria-label={t("Diapositivas")}
         >
           <div className="flex flex-wrap items-center gap-2 border-b border-border-subtle px-3 py-2 text-sm">
-            <span className="min-w-0 flex-1 truncate font-semibold">{deck?.name ?? "Diapositivas"}</span>
+            <span className="min-w-0 flex-1 truncate font-semibold">{deck?.name ?? t("Diapositivas")}</span>
             <span className="hidden rounded-full bg-chip p-0.5 text-xs lg:flex">
               {(Object.keys(WIDTHS) as (keyof typeof WIDTHS)[]).map((k) => (
                 <button
@@ -170,11 +172,11 @@ export function SlidePanel({
               ))}
             </span>
             <button type="button" onClick={() => (picking ? setPicking(false) : startPicking())} className="rounded-full px-3 py-1 text-xs text-ink-muted hover:bg-chip">
-              {picking ? "Hecho" : "Cambiar"}
+              {picking ? t("Hecho") : t("Cambiar")}
             </button>
             {deck && !onClose && (
               <button type="button" onClick={() => setCollapsed(true)} className="rounded-full px-3 py-1 text-xs text-ink-muted hover:bg-chip">
-                Ocultar
+                {t("Ocultar")}
               </button>
             )}
             <button
@@ -184,7 +186,7 @@ export function SlidePanel({
                 if (onClose) return onClose();
                 setDeck(null);
               }}
-              aria-label="Cerrar diapositivas"
+              aria-label={t("Cerrar diapositivas")}
               className="rounded-full px-2 py-1 text-ink-muted hover:bg-chip"
             >
               <XIcon />
@@ -204,14 +206,14 @@ export function SlidePanel({
               )}
               {classroomCourseId && (
                 <div className="flex flex-wrap items-center gap-1.5">
-                  <span className="text-xs font-semibold text-ink-muted">Classroom</span>
+                  <span className="text-xs font-semibold text-ink-muted">{t("Classroom")}</span>
                   {classroomUnit && (
                     <button
                       type="button"
                       onClick={() => setShowAllUnits((v) => !v)}
                       className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${showAllUnits ? "bg-chip text-ink-muted" : "bg-tile-sky text-white"}`}
                     >
-                      {showAllUnits ? "Todas" : classroomUnit}
+                      {showAllUnits ? t("Todas") : classroomUnit}
                     </button>
                   )}
                   {classroom === null ? (
@@ -240,7 +242,7 @@ export function SlidePanel({
                   }}
                 />
                 <button type="button" onClick={() => fileInput.current?.click()} className="rounded-full bg-ink px-3 py-1.5 text-xs font-semibold text-white">
-                  Subir
+                  {t("Subir")}
                 </button>
                 <form
                   onSubmit={(e) => {
@@ -252,8 +254,8 @@ export function SlidePanel({
                   <input
                     value={link}
                     onChange={(e) => setLink(e.target.value)}
-                    placeholder="Enlace de Google Slides / Drive"
-                    aria-label="Enlace de diapositivas"
+                    placeholder={t("Enlace de Google Slides / Drive")}
+                    aria-label={t("Enlace de diapositivas")}
                     className="flex-1 rounded-full border border-border-subtle px-3 py-1.5 text-xs"
                   />
                 </form>
@@ -271,7 +273,7 @@ export function SlidePanel({
                   <iframe
                     key={source.src}
                     src={source.src}
-                    title={deck?.name ?? "Diapositivas"}
+                    title={deck?.name ?? t("Diapositivas")}
                     className="min-h-[50vh] w-full flex-1 border-0"
                     allow="fullscreen"
                     referrerPolicy="no-referrer"
@@ -281,7 +283,7 @@ export function SlidePanel({
                       page: Google answers 400. Opening it there works. */}
                   {deck && (
                     <a href={deck.url} target="_blank" rel="noopener noreferrer" className="bg-white py-2 text-center text-xs text-ink-muted hover:text-ink">
-                      ¿No se ve? Abrir en Google ↗
+                      {t("¿No se ve? Abrir en Google ↗")}
                     </a>
                   )}
                 </div>
@@ -293,7 +295,7 @@ export function SlidePanel({
         <button
           type="button"
           onClick={() => setCollapsed(false)}
-          title="Mostrar diapositivas"
+          title={t("Mostrar diapositivas")}
           className="flex items-center justify-center gap-2 rounded-2xl bg-chip py-3 text-ink-muted hover:text-ink lg:sticky lg:top-4 lg:h-[calc(100vh-2rem)] lg:flex-col"
         >
           <SlidesIcon size={18} />
@@ -303,7 +305,7 @@ export function SlidePanel({
       <div
         role="separator"
         aria-orientation="vertical"
-        aria-label="Arrastra para cambiar el tamaño"
+        aria-label={t("Arrastra para cambiar el tamaño")}
         onPointerDown={(e) => {
           if (!open_) return;
           (e.target as Element).setPointerCapture(e.pointerId);

@@ -1,4 +1,5 @@
 "use client";
+import { useT } from "@/app/LangProvider";
 
 import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
@@ -55,6 +56,7 @@ const SaveIcon = () => (
 // original ✎, the slides split, save (Ctrl+S; a ✓ shows for a moment),
 // and ⋯ for the rest.
 export function PageView({ pursuit, crumbs, dump, note, slides, terms }: Props) {
+  const t = useT();
   const router = useRouter();
   const [view, setView] = useState<"organized" | "original">(note ? "organized" : "original");
   // The title has its own field; the editor holds the rest. Stored as the
@@ -99,8 +101,8 @@ export function PageView({ pursuit, crumbs, dump, note, slides, terms }: Props) 
   // The ✓ shows for a moment after each save.
   useEffect(() => {
     if (!saved) return;
-    const t = window.setTimeout(() => setSaved(false), 1600);
-    return () => window.clearTimeout(t);
+    const timer = window.setTimeout(() => setSaved(false), 1600);
+    return () => window.clearTimeout(timer);
   }, [saved]);
 
   useEffect(() => {
@@ -146,8 +148,8 @@ export function PageView({ pursuit, crumbs, dump, note, slides, terms }: Props) 
           setTitles((t) => ({ ...t, [view]: e.target.value }));
           setDirty((d) => ({ ...d, [view]: true }));
         }}
-        placeholder="Sin título"
-        aria-label="Título"
+        placeholder={t("Sin título")}
+        aria-label={t("Título")}
         className="w-full bg-transparent text-[2.1rem] leading-tight font-bold tracking-tight outline-none placeholder:text-ink-faint/50"
       />
       <RichEditor
@@ -168,7 +170,7 @@ export function PageView({ pursuit, crumbs, dump, note, slides, terms }: Props) 
           return r;
         }}
         terms={terms}
-        placeholder="Escribe, o pulsa / para añadir un bloque"
+        placeholder={t("Escribe, o pulsa / para añadir un bloque")}
       />
     </article>
   );
@@ -176,31 +178,31 @@ export function PageView({ pursuit, crumbs, dump, note, slides, terms }: Props) 
   return (
     <div className={`mx-auto flex w-full flex-1 flex-col gap-6 px-6 py-8 sm:px-12 ${split ? "max-w-[1800px]" : "max-w-[900px]"}`}>
       <header className="flex items-center gap-3">
-        <nav className="min-w-0 flex-1 truncate text-sm text-ink-faint" aria-label="Ruta">
+        <nav className="min-w-0 flex-1 truncate text-sm text-ink-faint" aria-label={t("Ruta")}>
           {crumbs.map((c, i) => (
             <span key={i}>
               {i > 0 && <span className="mx-1.5">/</span>}
               {c.href ? (
                 <Link href={c.href} className="hover:text-ink hover:underline">
-                  {c.label}
+                  {t(c.label)}
                 </Link>
               ) : (
-                <span className="text-ink-muted">{c.label}</span>
+                <span className="text-ink-muted">{t(c.label)}</span>
               )}
             </span>
           ))}
         </nav>
         <div className="relative flex items-center gap-1.5">
           {note && dump ? (
-            <span className="flex rounded-lg bg-white p-0.5 shadow-[0_0_0_1px_rgba(15,15,15,.06),0_2px_6px_rgba(15,15,15,.06)]" role="tablist" aria-label="Versión">
+            <span className="flex rounded-lg bg-white p-0.5 shadow-[0_0_0_1px_rgba(15,15,15,.06),0_2px_6px_rgba(15,15,15,.06)]" role="tablist" aria-label={t("Versión")}>
               {(["organized", "original"] as const).map((v) => (
                 <button
                   key={v}
                   type="button"
                   role="tab"
                   aria-selected={view === v}
-                  title={v === "organized" ? "Organizada" : "Original"}
-                  aria-label={v === "organized" ? "Organizada" : "Original"}
+                  title={v === "organized" ? t("Organizada") : t("Original")}
+                  aria-label={v === "organized" ? t("Organizada") : t("Original")}
                   onClick={() => setView(v)}
                   className={`grid size-7 place-items-center rounded-md ${view === v ? "bg-chip text-ink" : "text-ink-faint hover:text-ink"}`}
                 >
@@ -210,7 +212,7 @@ export function PageView({ pursuit, crumbs, dump, note, slides, terms }: Props) 
             </span>
           ) : (
             dump && (
-              <button type="button" disabled={pending} onClick={() => run(() => organizeDumps(pursuit.id, [dump.id]))} title="Organizar" aria-label="Organizar" className={icon}>
+              <button type="button" disabled={pending} onClick={() => run(() => organizeDumps(pursuit.id, [dump.id]))} title={t("Organizar")} aria-label={t("Organizar")} className={icon}>
                 <SparklesIcon />
               </button>
             )
@@ -219,20 +221,20 @@ export function PageView({ pursuit, crumbs, dump, note, slides, terms }: Props) 
             type="button"
             onClick={() => setSplit((s) => !s)}
             aria-pressed={split}
-            title="Diapositivas al lado"
-            aria-label="Diapositivas al lado"
+            title={t("Diapositivas al lado")}
+            aria-label={t("Diapositivas al lado")}
             className={`${icon} ${split ? "bg-accent-soft text-accent hover:bg-accent-soft hover:text-accent" : ""}`}
           >
             <SlidesIcon size={17} />
           </button>
-          <button type="button" onClick={save} disabled={!dirty[view] || pending} title="Guardar (Ctrl+S)" aria-label="Guardar" className={icon}>
+          <button type="button" onClick={save} disabled={!dirty[view] || pending} title={t("Guardar (Ctrl+S)")} aria-label={t("Guardar")} className={icon}>
             <SaveIcon />
           </button>
           <span className={`grid size-7 place-items-center rounded-full bg-[#e8f3ec] text-[#448361] transition-opacity duration-300 ${saved ? "opacity-100" : "opacity-0"}`} aria-live="polite">
             {saved && <CheckIcon size={14} className="block" />}
-            <span className="sr-only">{saved ? "Guardado" : ""}</span>
+            <span className="sr-only">{saved ? t("Guardado") : ""}</span>
           </span>
-          <button type="button" onClick={() => setMenu((m) => !m)} aria-label="Más" title="Más" className={icon}>
+          <button type="button" onClick={() => setMenu((m) => !m)} aria-label={t("Más")} title={t("Más")} className={icon}>
             ⋯
           </button>
           {menu && (
@@ -250,7 +252,7 @@ export function PageView({ pursuit, crumbs, dump, note, slides, terms }: Props) 
                   }}
                   className="block w-full rounded-md px-2.5 py-1.5 text-left hover:bg-chip"
                 >
-                  Crear tarjetas
+                  {t("Crear tarjetas")}
                 </button>
               )}
               <a
@@ -259,7 +261,7 @@ export function PageView({ pursuit, crumbs, dump, note, slides, terms }: Props) 
                 rel="noopener noreferrer"
                 className="block rounded-md px-2.5 py-1.5 hover:bg-chip"
               >
-                Descargar PDF
+                {t("Descargar PDF")}
               </a>
               <button
                 type="button"
@@ -273,7 +275,7 @@ export function PageView({ pursuit, crumbs, dump, note, slides, terms }: Props) 
                 }}
                 className="block w-full rounded-md px-2.5 py-1.5 text-left text-red-600 hover:bg-chip"
               >
-                Eliminar
+                {t("Eliminar")}
               </button>
             </div>
           )}

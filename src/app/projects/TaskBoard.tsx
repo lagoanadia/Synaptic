@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/app/LangProvider";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { Folder } from "../Covers";
 import { TASK_COLUMNS, dueLabel, type TaskItem, type TaskStatus } from "@/lib/projects";
@@ -14,6 +15,7 @@ type View = "board" | "list" | "project";
 // shows which project it's from. Changes show at once and save behind.
 // `view`: set from outside (a folder block's header), which hides the tabs.
 export function TaskBoard({ tasks: initial, projects, today, view: fixed }: { tasks: TaskItem[]; projects: BoardProject[]; today: string; view?: "board" | "list" }) {
+  const t = useT();
   const [tasks, setTasks] = useState(initial);
   const [picked, setView] = useState<View>("board");
   const view = fixed ?? picked;
@@ -137,7 +139,7 @@ export function TaskBoard({ tasks: initial, projects, today, view: fixed }: { ta
               >
                 <h3 className="flex items-center gap-2 px-1 pb-0.5 text-[13px] font-semibold">
                   <span className="size-2 rounded-full" style={{ background: c.dot }} />
-                  {c.label}
+                  {t(c.label)}
                   <span className="font-normal text-ink-faint">{items.length}</span>
                 </h3>
                 {items.map(card)}
@@ -198,6 +200,7 @@ function Card({
   faded?: boolean;
   lineAbove?: boolean;
 }) {
+  const t = useT();
   const [editing, setEditing] = useState(false);
   const done = task.status === "DONE";
   const due = task.dueDate ? dueLabel(task.dueDate, today) : null;
@@ -211,7 +214,7 @@ function Card({
         <button
           type="button"
           onClick={() => onChange({ status: done ? "TODO" : "DONE" })}
-          aria-label={done ? "Marcar como pendiente" : "Marcar como hecha"}
+          aria-label={done ? t("Marcar como pendiente") : t("Marcar como hecha")}
           className={`mt-0.5 grid size-4 shrink-0 place-items-center rounded-full border-[1.5px] text-[9px] text-white ${done ? "border-[#448361] bg-[#448361]" : "border-[#c7c6c2] hover:border-[#448361]"}`}
         >
           {done && "✓"}
@@ -226,7 +229,7 @@ function Card({
                 if (e.target.value.trim() && e.target.value !== task.title) onChange({ title: e.target.value });
               }}
               onKeyDown={(e) => (e.key === "Enter" ? (e.target as HTMLInputElement).blur() : e.key === "Escape" && setEditing(false))}
-              aria-label="Tarea"
+              aria-label={t("Tarea")}
               className="w-full rounded border border-border-subtle px-1 outline-none"
             />
           ) : (
@@ -247,7 +250,7 @@ function Card({
           )}
         </div>
         <span className="flex shrink-0 items-center gap-0.5 opacity-40 group-hover:opacity-100">
-          <label title="Fecha" className="relative grid size-6 cursor-pointer place-items-center rounded text-ink-faint hover:bg-chip hover:text-ink">
+          <label title={t("Fecha")} className="relative grid size-6 cursor-pointer place-items-center rounded text-ink-faint hover:bg-chip hover:text-ink">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
               <rect x="3.5" y="5" width="17" height="15" rx="2" />
               <path d="M3.5 10h17M8 3v4M16 3v4" />
@@ -256,11 +259,11 @@ function Card({
               type="date"
               value={task.dueDate ?? ""}
               onChange={(e) => onChange({ dueDate: e.target.value || null })}
-              aria-label="Fecha límite"
+              aria-label={t("Fecha límite")}
               className="absolute inset-0 cursor-pointer opacity-0"
             />
           </label>
-          <button type="button" onClick={onDelete} title="Eliminar" aria-label="Eliminar tarea" className="grid size-6 place-items-center rounded text-ink-faint hover:bg-chip hover:text-red-600">
+          <button type="button" onClick={onDelete} title={t("Eliminar")} aria-label={t("Eliminar tarea")} className="grid size-6 place-items-center rounded text-ink-faint hover:bg-chip hover:text-red-600">
             ×
           </button>
         </span>
@@ -270,6 +273,7 @@ function Card({
 }
 
 function AddTask({ projects, onAdd }: { projects: BoardProject[]; onAdd: (pursuitId: string, title: string) => void }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [project, setProject] = useState(projects[0]?.id ?? "");
   if (projects.length === 0) return null;
@@ -283,9 +287,9 @@ function AddTask({ projects, onAdd }: { projects: BoardProject[]; onAdd: (pursui
       }}
       className="flex flex-col gap-1.5 rounded-lg bg-white p-2 shadow-[0_0_0_1px_rgba(15,15,15,.08)]"
     >
-      <input name="title" autoFocus placeholder="Nueva tarea" aria-label="Nueva tarea" onKeyDown={(e) => e.key === "Escape" && setOpen(false)} onBlur={(e) => !e.target.value && projects.length === 1 && setOpen(false)} className="px-1 text-sm outline-none" />
+      <input name="title" autoFocus placeholder={t("Nueva tarea")} aria-label={t("Nueva tarea")} onKeyDown={(e) => e.key === "Escape" && setOpen(false)} onBlur={(e) => !e.target.value && projects.length === 1 && setOpen(false)} className="px-1 text-sm outline-none" />
       {projects.length > 1 && (
-        <select value={project} onChange={(e) => setProject(e.target.value)} aria-label="Proyecto" className="rounded bg-chip px-1.5 py-0.5 text-xs">
+        <select value={project} onChange={(e) => setProject(e.target.value)} aria-label={t("Proyecto")} className="rounded bg-chip px-1.5 py-0.5 text-xs">
           {projects.map((p) => (
             <option key={p.id} value={p.id}>
               {p.title}
@@ -296,7 +300,7 @@ function AddTask({ projects, onAdd }: { projects: BoardProject[]; onAdd: (pursui
     </form>
   ) : (
     <button type="button" onClick={() => setOpen(true)} className="rounded-md px-1.5 py-1 text-left text-[13px] text-ink-faint hover:bg-white/70 hover:text-ink">
-      + Tarea
+      {t("+ Tarea")}
     </button>
   );
 }

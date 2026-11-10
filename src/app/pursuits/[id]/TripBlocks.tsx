@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/app/LangProvider";
 import { useState, useTransition } from "react";
 import type { BlockIcon } from "@/lib/blocks";
 import { addBudgetLine, addChoice, deleteBudgetLine, deleteChoice, setBudgetPeople, toggleVote, updateBudgetLine, updateChoice, type ChoiceStatus } from "./choices";
@@ -122,6 +123,7 @@ const STATUS: Record<ChoiceStatus, { label: string; cls: string; next: ChoiceSta
 
 // "Precio": shows "540 €", click to type a new one.
 function PriceCell({ cents, onSave }: { cents: number | null; onSave: (cents: number | null) => void }) {
+  const t = useT();
   const [editing, setEditing] = useState(false);
   if (editing)
     return (
@@ -129,7 +131,7 @@ function PriceCell({ cents, onSave }: { cents: number | null; onSave: (cents: nu
         autoFocus
         defaultValue={cents === null ? "" : String(cents / 100)}
         inputMode="decimal"
-        aria-label="Precio en euros"
+        aria-label={t("Precio en euros")}
         onBlur={(e) => {
           setEditing(false);
           const v = e.target.value.replace(",", ".").replace(/[^\d.]/g, "");
@@ -141,7 +143,7 @@ function PriceCell({ cents, onSave }: { cents: number | null; onSave: (cents: nu
     );
   return (
     <button type="button" onClick={() => setEditing(true)} className={`text-left text-sm tabular-nums ${cents === null ? "text-ink-faint" : ""}`}>
-      {cents === null ? "+ precio" : euros(cents)}
+      {cents === null ? t("+ precio") : euros(cents)}
     </button>
   );
 }
@@ -151,6 +153,7 @@ const COLS = "grid grid-cols-[minmax(0,1fr)_110px_90px_96px] items-center gap-3"
 // An options block: each option with its link, state, price and votes;
 // paste a link to add one.
 export function OptionsBlock({ pursuitId, blockId, items, people, me }: { pursuitId: string; blockId: string; items: ChoiceItem[]; people: Person[]; me: string }) {
+  const t = useT();
   const [, start] = useTransition();
   const [adding, setAdding] = useState(false);
   const byId = new Map(people.map((p) => [p.id, p]));
@@ -158,10 +161,10 @@ export function OptionsBlock({ pursuitId, blockId, items, people, me }: { pursui
     <div className="flex flex-col text-sm">
       {items.length > 0 && (
         <div className={`${COLS} pb-2 text-xs text-ink-faint`}>
-          <span>Opción</span>
-          <span>Estado</span>
-          <span>Precio</span>
-          <span aria-label="Votos">
+          <span>{t("Opción")}</span>
+          <span>{t("Estado")}</span>
+          <span>{t("Precio")}</span>
+          <span aria-label={t("Votos")}>
             <ThumbIcon />
           </span>
         </div>
@@ -179,15 +182,15 @@ export function OptionsBlock({ pursuitId, blockId, items, people, me }: { pursui
                 </a>
               )}
             </span>
-            <button type="button" onClick={() => start(() => updateChoice(c.id, { status: s.next }))} title="Cambiar estado" className={`w-fit rounded px-1.5 py-0.5 text-xs ${s.cls}`}>
-              {s.label}
+            <button type="button" onClick={() => start(() => updateChoice(c.id, { status: s.next }))} title={t("Cambiar estado")} className={`w-fit rounded px-1.5 py-0.5 text-xs ${s.cls}`}>
+              {t(s.label)}
             </button>
             <PriceCell cents={c.price} onSave={(price) => start(() => updateChoice(c.id, { price }))} />
             <span className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => start(() => toggleVote(c.id))}
-                title={mine ? "Quitar mi voto" : "Votar"}
+                title={mine ? t("Quitar mi voto") : t("Votar")}
                 aria-pressed={mine}
                 className={`rounded p-1 ${mine ? "text-accent" : "text-ink-faint/60 hover:text-ink"}`}
               >
@@ -197,8 +200,8 @@ export function OptionsBlock({ pursuitId, blockId, items, people, me }: { pursui
               <button
                 type="button"
                 onClick={() => window.confirm(`¿Quitar "${c.title}"?`) && start(() => deleteChoice(c.id))}
-                title="Quitar"
-                aria-label="Quitar opción"
+                title={t("Quitar")}
+                aria-label={t("Quitar opción")}
                 className="ml-auto text-ink-faint/40 hover:text-red-600"
               >
                 ×
@@ -223,8 +226,8 @@ export function OptionsBlock({ pursuitId, blockId, items, people, me }: { pursui
       >
         <input
           name="q"
-          placeholder={adding ? "Añadiendo…" : "+ Pega un enlace"}
-          aria-label="Pega un enlace o escribe una opción"
+          placeholder={adding ? t("Añadiendo…") : t("+ Pega un enlace")}
+          aria-label={t("Pega un enlace o escribe una opción")}
           onPaste={(e) => {
             const text = e.clipboardData.getData("text").trim();
             if (!/^https?:\/\//.test(text)) return;
@@ -257,6 +260,7 @@ export function BudgetBlock({
   lines: BudgetLineItem[];
   people: number;
 }) {
+  const t = useT();
   const [, start] = useTransition();
   const lineTotal = (l: BudgetLineItem) => l.unit * l.days * (l.perPerson ? people : 1);
   const total = chosen.reduce((t, c) => t + (c.cents ?? 0), 0) + lines.reduce((t, l) => t + lineTotal(l), 0);
@@ -266,25 +270,25 @@ export function BudgetBlock({
     <div className="flex max-w-[640px] flex-col text-sm">
       {chosen.map((c) => (
         <div key={c.label} className={row}>
-          <span>{c.label}</span>
-          <span className={`truncate ${c.what ? "text-ink-muted" : "text-ink-faint"}`}>{c.what || "Sin elegir"}</span>
+          <span>{t(c.label)}</span>
+          <span className={`truncate ${c.what ? "text-ink-muted" : "text-ink-faint"}`}>{c.what || t("Sin elegir")}</span>
           <span className="tabular-nums">{c.cents === null ? "—" : euros(c.cents)}</span>
         </div>
       ))}
       {lines.map((l) => (
         <div key={l.id} className={`group ${row}`}>
-          <input defaultValue={l.label} aria-label="Concepto" onBlur={(e) => e.target.value !== l.label && start(() => updateBudgetLine(l.id, { label: e.target.value }))} className="min-w-0 bg-transparent outline-none" />
+          <input defaultValue={l.label} aria-label={t("Concepto")} onBlur={(e) => e.target.value !== l.label && start(() => updateBudgetLine(l.id, { label: e.target.value }))} className="min-w-0 bg-transparent outline-none" />
           <span className="flex flex-wrap items-center gap-1 text-ink-muted">
-            <input defaultValue={l.unit ? String(l.unit / 100) : ""} placeholder="0" inputMode="decimal" aria-label="Precio" onBlur={(e) => start(() => updateBudgetLine(l.id, { unit: num(e.target.value) * 100 }))} className="w-12 rounded bg-chip px-1 text-right" />€ ×
-            <input defaultValue={String(l.days)} inputMode="numeric" aria-label="Días" onBlur={(e) => start(() => updateBudgetLine(l.id, { days: Math.max(1, num(e.target.value)) }))} className="w-8 rounded bg-chip px-1 text-right" />
-            días
-            <button type="button" onClick={() => start(() => updateBudgetLine(l.id, { perPerson: !l.perPerson }))} title="Por persona" className={`rounded px-1 ${l.perPerson ? "text-ink" : "text-ink-faint line-through"}`}>
+            <input defaultValue={l.unit ? String(l.unit / 100) : ""} placeholder="0" inputMode="decimal" aria-label={t("Precio")} onBlur={(e) => start(() => updateBudgetLine(l.id, { unit: num(e.target.value) * 100 }))} className="w-12 rounded bg-chip px-1 text-right" />€ ×
+            <input defaultValue={String(l.days)} inputMode="numeric" aria-label={t("Días")} onBlur={(e) => start(() => updateBudgetLine(l.id, { days: Math.max(1, num(e.target.value)) }))} className="w-8 rounded bg-chip px-1 text-right" />
+            {t("días")}
+            <button type="button" onClick={() => start(() => updateBudgetLine(l.id, { perPerson: !l.perPerson }))} title={t("Por persona")} className={`rounded px-1 ${l.perPerson ? "text-ink" : "text-ink-faint line-through"}`}>
               × {people}
             </button>
           </span>
           <span className="flex items-center gap-2 tabular-nums">
             {euros(lineTotal(l))}
-            <button type="button" onClick={() => start(() => deleteBudgetLine(l.id))} aria-label="Quitar línea" className="text-ink-faint/40 hover:text-red-600">
+            <button type="button" onClick={() => start(() => deleteBudgetLine(l.id))} aria-label={t("Quitar línea")} className="text-ink-faint/40 hover:text-red-600">
               ×
             </button>
           </span>
@@ -300,12 +304,12 @@ export function BudgetBlock({
         }}
         className="border-b border-[#f1f0ee] py-2.5"
       >
-        <input name="l" placeholder="+ Gasto (comida, transporte…)" aria-label="Nuevo gasto" className="w-full outline-none placeholder:text-ink-faint" />
+        <input name="l" placeholder={t("+ Gasto (comida, transporte…)")} aria-label={t("Nuevo gasto")} className="w-full outline-none placeholder:text-ink-faint" />
       </form>
       <div className="flex items-baseline justify-between pt-4">
-        <span className="text-ink-muted">Total {euros(total)}</span>
+        <span className="text-ink-muted">{t("Total")}{" "}{euros(total)}</span>
         <span>
-          <b className="font-semibold">{euros(Math.round(total / Math.max(1, people)))}</b> por persona
+          <b className="font-semibold">{euros(Math.round(total / Math.max(1, people)))}</b>{" "}{t("por persona")}
         </span>
       </div>
     </div>
@@ -314,11 +318,12 @@ export function BudgetBlock({
 
 // "4 personas", with − and + to change how many split the budget.
 export function PeopleCount({ pursuitId, blockId, people }: { pursuitId: string; blockId: string; people: number }) {
+  const t = useT();
   const [, start] = useTransition();
   const set = (n: number) => start(() => setBudgetPeople(pursuitId, blockId, n));
   return (
     <span className="flex items-center gap-1.5 text-sm text-ink-faint">
-      <button type="button" onClick={() => people > 1 && set(people - 1)} aria-label="Una persona menos" className="rounded px-1 hover:bg-white hover:text-ink">
+      <button type="button" onClick={() => people > 1 && set(people - 1)} aria-label={t("Una persona menos")} className="rounded px-1 hover:bg-white hover:text-ink">
         −
       </button>
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" aria-hidden>
@@ -326,7 +331,7 @@ export function PeopleCount({ pursuitId, blockId, people }: { pursuitId: string;
         <path d="M3.5 19a5.5 5.5 0 0 1 11 0M16 5.2a3.2 3.2 0 0 1 0 6M17.5 14.2A5.5 5.5 0 0 1 20.5 19" />
       </svg>
       {people} {people === 1 ? "persona" : "personas"}
-      <button type="button" onClick={() => set(people + 1)} aria-label="Una persona más" className="rounded px-1 hover:bg-white hover:text-ink">
+      <button type="button" onClick={() => set(people + 1)} aria-label={t("Una persona más")} className="rounded px-1 hover:bg-white hover:text-ink">
         +
       </button>
     </span>
@@ -335,15 +340,16 @@ export function PeopleCount({ pursuitId, blockId, people }: { pursuitId: string;
 
 // "2 votaciones te esperan": options put to the vote you haven't voted on.
 export function VotesBanner({ pending }: { pending: string[] }) {
+  const t = useT();
   if (pending.length === 0) return null;
   return (
     <div className="flex items-center gap-3 rounded-lg bg-callout px-4 py-3 text-sm">
       <ThumbIcon />
       <span className="flex-1">
         <b className="font-semibold">
-          {pending.length} {pending.length === 1 ? "votación" : "votaciones"}
+          {pending.length === 1 ? t("1 votación") : t("{0} votaciones", { 0: pending.length })}
         </b>{" "}
-        te {pending.length === 1 ? "espera" : "esperan"}
+        {pending.length === 1 ? t("te espera") : t("te esperan")}
       </span>
       <button
         type="button"
@@ -355,7 +361,7 @@ export function VotesBanner({ pending }: { pending: string[] }) {
         }}
         className="rounded-md bg-ink px-3 py-1.5 font-medium text-white"
       >
-        Votar
+        {t("Votar")}
       </button>
     </div>
   );

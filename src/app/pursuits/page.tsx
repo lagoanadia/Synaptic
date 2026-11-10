@@ -1,3 +1,4 @@
+import { getT } from "@/lib/i18n/server";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
@@ -22,6 +23,7 @@ import { ProjectChecklist, TodayFocus } from "@/app/projects/HomeTasks";
 // Home: your notebooks, then the blocks you chose (folders of a notebook,
 // its map, recent pages). Editable like a Notion page.
 export default async function HomePage() {
+  const t = await getT();
   const session = await auth();
   if (!session?.user?.id) redirect("/");
   const userId = session.user.id;
@@ -62,9 +64,9 @@ export default async function HomePage() {
       }
       if (b.type === "project") {
         const p = projects.find((x) => x.id === b.pursuitId);
-        return [b.id, p ? <ProjectChecklist key={b.id} project={p} today={today} /> : <p key={b.id} className="text-sm text-ink-faint">Elige un proyecto en «Editar inicio».</p>] as const;
+        return [b.id, p ? <ProjectChecklist key={b.id} project={p} today={today} /> : <p key={b.id} className="text-sm text-ink-faint">{t("Elige un proyecto en «Editar inicio».")}</p>] as const;
       }
-      if (!b.sectionId) return [b.id, <p key={b.id} className="text-sm text-ink-faint">Elige una libreta.</p>] as const;
+      if (!b.sectionId) return [b.id, <p key={b.id} className="text-sm text-ink-faint">{t("Elige una libreta.")}</p>] as const;
       if (b.type === "folders") return [b.id, <FolderRow key={b.id} items={await folderItems(userId, b.sectionId, studyOf.get(b.sectionId) ?? true)} />] as const;
       if (b.type === "map")
         return [b.id, <KnowledgeMap key={b.id} clusters={await notebookMap(userId, b.sectionId)} empty="Crea un mapa desde una asignatura y aparecerá aquí." />] as const;

@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/app/LangProvider";
 import { useState, useTransition } from "react";
 import { createPursuit } from "../../actions";
 import { FOLDER_TEMPLATES, type FolderTemplate } from "@/lib/blocks";
@@ -8,6 +9,7 @@ import { FOLDER_TEMPLATES, type FolderTemplate } from "@/lib/blocks";
 // study notebooks you also pick a template (En blanco / Proyecto / Viaje).
 // `fill`: take the full width of its slot instead of a small tile at the bottom.
 export function NewFolder({ sectionName, label, fill = false, template: initial }: { sectionName: string; label: string; fill?: boolean; template?: FolderTemplate }) {
+  const t = useT();
   const size = fill ? "w-full" : "w-full self-end sm:w-44";
   const [open, setOpen] = useState(false);
   const [template, setTemplate] = useState<FolderTemplate | undefined>(initial);
@@ -21,28 +23,28 @@ export function NewFolder({ sectionName, label, fill = false, template: initial 
       {template && <input type="hidden" name="template" value={template} />}
       <input autoFocus name="title" required disabled={pending} placeholder={label} aria-label={label} className="w-full rounded border border-border-subtle bg-white px-1.5 py-1 text-xs" />
       {initial && (
-        <span className="flex flex-wrap gap-1" role="radiogroup" aria-label="Plantilla">
-          {FOLDER_TEMPLATES.map((t) => (
+        <span className="flex flex-wrap gap-1" role="radiogroup" aria-label={t("Plantilla")}>
+          {FOLDER_TEMPLATES.map((item) => (
             <button
-              key={t.id}
+              key={item.id}
               type="button"
               role="radio"
-              aria-checked={template === t.id}
+              aria-checked={template === item.id}
               onMouseDown={(e) => e.preventDefault()}
-              onClick={() => setTemplate(t.id)}
-              className={`rounded-full px-2 py-0.5 text-[11px] ${template === t.id ? "bg-ink text-white" : "bg-chip text-ink-muted hover:text-ink"}`}
+              onClick={() => setTemplate(item.id)}
+              className={`rounded-full px-2 py-0.5 text-[11px] ${template === item.id ? "bg-ink text-white" : "bg-chip text-ink-muted hover:text-ink"}`}
             >
-              {t.label}
+              {t(item.label)}
             </button>
           ))}
         </span>
       )}
       <span className="flex gap-1.5">
         <button type="submit" disabled={pending} className="rounded bg-ink px-2 py-0.5 text-[11px] font-medium text-white disabled:opacity-60">
-          Crear
+          {t("Crear")}
         </button>
         <button type="button" onClick={() => setOpen(false)} className="rounded px-2 py-0.5 text-[11px] text-ink-faint hover:text-ink">
-          Cancelar
+          {t("Cancelar")}
         </button>
       </span>
     </form>

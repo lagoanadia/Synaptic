@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/app/LangProvider";
 import Link from "next/link";
 import { BrokenThread, errorButton } from "./BrokenThread";
 import { useEffect, useState, useTransition } from "react";
@@ -29,6 +30,7 @@ const COPY: Record<Kind, { title: string; text: string }> = {
 // Any page that fails: what happened in plain words, what to do, and the
 // technical details tucked away for a bug report. Nothing is lost.
 export default function ErrorPage({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+  const t = useT();
   const router = useRouter();
   const [pending, start] = useTransition();
   const [open, setOpen] = useState(false);
@@ -51,19 +53,19 @@ export default function ErrorPage({ error, reset }: { error: Error & { digest?: 
   return (
     <BrokenThread title={copy.title} text={copy.text}>
       <button type="button" onClick={retry} disabled={pending} className={errorButton}>
-        {kind === "update" ? "↻ Recargar" : pending ? "Reintentando…" : "↻ Reintentar"}
+        {kind === "update" ? t("↻ Recargar") : pending ? t("Reintentando…") : t("↻ Reintentar")}
       </button>
       <Link href="/" className="rounded-full px-5 py-3.5 text-[15px] font-medium text-white/90 hover:text-white">
-        Ir al inicio
+        {t("Ir al inicio")}
       </Link>
       <div className="basis-full">
         <button type="button" onClick={() => setOpen((o) => !o)} className="mt-4 text-xs text-white/70 hover:text-white">
-          {open ? "Ocultar detalles" : "Detalles"}
+          {open ? t("Ocultar detalles") : t("Detalles")}
         </button>
         {open && (
           <pre className="mx-auto mt-2 max-w-md overflow-x-auto rounded-md bg-white/15 px-3 py-2 text-left text-[11px] whitespace-pre-wrap">
-            {error.message || "Error sin mensaje"}
-            {error.digest && `\nCódigo: ${error.digest}`}
+            {error.message || t("Error sin mensaje")}
+            {error.digest && t("\nCódigo: {0}", { 0: error.digest })}
           </pre>
         )}
       </div>

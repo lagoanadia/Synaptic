@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/app/LangProvider";
 export type Template = "study" | "projects" | "general";
 
 const StudyIcon = () => (
@@ -32,24 +33,25 @@ export const TEMPLATES: { id: Template; icon: () => React.ReactElement; label: s
 
 // The notebook templates, as a row of buttons.
 export function TemplatePick({ value, onChange, compact = false }: { value: Template; onChange: (t: Template) => void; compact?: boolean }) {
+  const t = useT();
   return (
-    <div className={`grid grid-cols-3 gap-1.5 ${compact ? "text-xs" : "text-sm"}`} role="radiogroup" aria-label="Plantilla">
-      {TEMPLATES.map((t) => (
+    <div className={`grid grid-cols-3 gap-1.5 ${compact ? "text-xs" : "text-sm"}`} role="radiogroup" aria-label={t("Plantilla")}>
+      {TEMPLATES.map((item) => (
         <button
-          key={t.id}
+          key={item.id}
           type="button"
           role="radio"
-          aria-checked={value === t.id}
-          title={t.hint}
+          aria-checked={value === item.id}
+          title={t(item.hint)}
           onMouseDown={(e) => e.preventDefault()}
-          onClick={() => onChange(t.id)}
-          className={`flex flex-col items-start rounded-md px-2 py-1.5 text-left ${value === t.id ? "bg-ink text-white" : "bg-chip text-ink-muted hover:text-ink"}`}
+          onClick={() => onChange(item.id)}
+          className={`flex flex-col items-start rounded-md px-2 py-1.5 text-left ${value === item.id ? "bg-ink text-white" : "bg-chip text-ink-muted hover:text-ink"}`}
         >
           <span className="flex items-center gap-1.5 font-medium">
-            <t.icon />
-            {t.label}
+            <item.icon />
+            {t(item.label)}
           </span>
-          {!compact && <span className={`text-[11px] ${value === t.id ? "text-white/75" : "text-ink-faint"}`}>{t.hint}</span>}
+          {!compact && <span className={`text-[11px] ${value === item.id ? "text-white/75" : "text-ink-faint"}`}>{t(item.hint)}</span>}
         </button>
       ))}
     </div>

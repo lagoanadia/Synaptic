@@ -1,4 +1,5 @@
 "use client";
+import { useT } from "@/app/LangProvider";
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { CalendarIcon } from "@/app/icons";
@@ -22,6 +23,7 @@ function countdown(due: string, today: string): { text: string; late: boolean } 
 // Under a project folder's title, like a Notion page's properties: its state
 // (from its tasks), its dates (one chip that opens a calendar) and progress.
 export function ProjectInfo({ project, today }: { project: ProjectItem; today: string }) {
+  const t = useT();
   const [, start] = useTransition();
   const [start_, setStart] = useState(project.startDate);
   const [due, setDue] = useState(project.dueDate);
@@ -36,7 +38,7 @@ export function ProjectInfo({ project, today }: { project: ProjectItem; today: s
     <div className="relative -mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
       <span className="flex items-center gap-1.5 px-2 py-1">
         <span className="size-2 rounded-full" style={{ background: s.fg }} />
-        {s.label}
+        {t(s.label)}
       </span>
       <span className="text-ink-faint/50 max-sm:hidden" aria-hidden>
         ·
@@ -51,7 +53,7 @@ export function ProjectInfo({ project, today }: { project: ProjectItem; today: s
             {left && <span className={left.late ? "text-[#c4554d]" : "text-ink-faint"}>· {left.text}</span>}
           </>
         ) : (
-          "Añadir fechas"
+          t("Añadir fechas")
         )}
       </button>
       {total > 0 && (
@@ -63,7 +65,7 @@ export function ProjectInfo({ project, today }: { project: ProjectItem; today: s
             <span className="h-1.5 w-24 overflow-hidden rounded bg-[#ededeb]">
               <span className="block h-full rounded" style={{ width: `${(done / total) * 100}%`, background: project.color }} />
             </span>
-            {done} de {total}
+            {done}{" "}{t("de")}{" "}{total}
           </span>
         </>
       )}
@@ -108,6 +110,7 @@ function DatePicker({
   onDates: (start: string | null, due: string | null) => void;
   onFinished: (finished: boolean) => void;
 }) {
+  const t = useT();
   const ref = useRef<HTMLDivElement>(null);
   const [field, setField] = useState<"start" | "due">(start && !due ? "due" : "start");
   const anchor = new Date(ms(start ?? due ?? today));
@@ -117,10 +120,10 @@ function DatePicker({
     const close = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && onClose();
     const esc = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     // Next tick, so the click that opened it doesn't close it.
-    const t = setTimeout(() => document.addEventListener("mousedown", close));
+    const timer = setTimeout(() => document.addEventListener("mousedown", close));
     document.addEventListener("keydown", esc);
     return () => {
-      clearTimeout(t);
+      clearTimeout(timer);
       document.removeEventListener("mousedown", close);
       document.removeEventListener("keydown", esc);
     };
@@ -147,7 +150,7 @@ function DatePicker({
   const box = (f: "start" | "due", label: string, value: string | null) => (
     <button type="button" onClick={() => setField(f)} className={`flex-1 rounded-md border px-2 py-1.5 text-left ${field === f ? "border-ink" : "border-border-subtle"}`}>
       <span className="block text-ink-faint">{label}</span>
-      {value ? short(value) : <span className="text-ink-faint">Elegir</span>}
+      {value ? short(value) : <span className="text-ink-faint">{t("Elegir")}</span>}
     </button>
   );
 
@@ -162,10 +165,10 @@ function DatePicker({
           {MONTHS[month.m]} {month.y}
         </span>
         <span className="flex text-ink-faint">
-          <button type="button" onClick={() => shift(-1)} aria-label="Mes anterior" className="rounded px-1.5 hover:bg-chip hover:text-ink">
+          <button type="button" onClick={() => shift(-1)} aria-label={t("Mes anterior")} className="rounded px-1.5 hover:bg-chip hover:text-ink">
             ‹
           </button>
-          <button type="button" onClick={() => shift(1)} aria-label="Mes siguiente" className="rounded px-1.5 hover:bg-chip hover:text-ink">
+          <button type="button" onClick={() => shift(1)} aria-label={t("Mes siguiente")} className="rounded px-1.5 hover:bg-chip hover:text-ink">
             ›
           </button>
         </span>
@@ -197,11 +200,11 @@ function DatePicker({
       </div>
       <div className="mt-2 flex items-center justify-between gap-2 border-t border-border-subtle pt-2 text-xs whitespace-nowrap text-ink-faint">
         <button type="button" onClick={() => onFinished(!finished)} className="rounded px-1 py-0.5 hover:bg-chip hover:text-ink">
-          {finished ? "Reabrir proyecto" : "Marcar como terminado"}
+          {finished ? t("Reabrir proyecto") : t("Marcar como terminado")}
         </button>
         {(start || due) && (
           <button type="button" onClick={() => onDates(null, null)} className="rounded px-1 py-0.5 hover:bg-chip hover:text-ink">
-            Quitar fechas
+            {t("Quitar fechas")}
           </button>
         )}
       </div>

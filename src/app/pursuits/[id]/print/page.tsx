@@ -1,3 +1,4 @@
+import { getT } from "@/lib/i18n/server";
 import { ArrowLeft } from "@/app/icons";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -15,6 +16,7 @@ export default async function PrintPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ note?: string; dump?: string }>;
 }) {
+  const t = await getT();
   const { id } = await params;
   const { note: noteId, dump: dumpId } = await searchParams;
 
@@ -91,9 +93,9 @@ export default async function PrintPage({
       <h1 className="text-2xl font-bold">{pursuit.title}</h1>
 
       <section className="flex flex-col gap-4">
-        <h2 className="text-lg font-semibold">Notas organizadas</h2>
+        <h2 className="text-lg font-semibold">{t("Notas organizadas")}</h2>
         {pursuit.notes.length === 0 ? (
-          <p className="text-sm text-ink-muted">Aún no hay notas organizadas.</p>
+          <p className="text-sm text-ink-muted">{t("Aún no hay notas organizadas.")}</p>
         ) : (
           pursuit.notes.map((note) => (
             <div
@@ -112,9 +114,9 @@ export default async function PrintPage({
       </section>
 
       <section className="flex flex-col gap-4">
-        <h2 className="text-lg font-semibold">Notas en bruto</h2>
+        <h2 className="text-lg font-semibold">{t("Notas en bruto")}</h2>
         {pursuit.brainDumps.length === 0 ? (
-          <p className="text-sm text-ink-muted">Aún no hay notas en bruto.</p>
+          <p className="text-sm text-ink-muted">{t("Aún no hay notas en bruto.")}</p>
         ) : (
           pursuit.brainDumps.map((dump) => (
             <div

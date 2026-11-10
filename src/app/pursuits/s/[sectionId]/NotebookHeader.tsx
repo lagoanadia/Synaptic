@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/app/LangProvider";
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -25,6 +26,7 @@ export function NotebookHeader({
   kind?: "study" | "projects" | "general" | null;
   editable: boolean;
 }) {
+  const t = useT();
   const [name, setName] = useState(initialName);
   const [renaming, setRenaming] = useState(false);
   const [menu, setMenu] = useState(false);
@@ -53,13 +55,13 @@ export function NotebookHeader({
             else setName(initialName);
           }}
           onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
-          aria-label="Nombre de la libreta"
+          aria-label={t("Nombre de la libreta")}
           className="min-w-0 flex-1 rounded-md text-[2.1rem] leading-tight font-bold tracking-tight outline-none"
         />
       ) : (
         <h1
           onClick={() => editable && setRenaming(true)}
-          title={editable ? "Renombrar" : undefined}
+          title={editable ? t("Renombrar") : undefined}
           className={`min-w-0 flex-1 text-[2.1rem] leading-tight font-bold tracking-tight ${editable ? "cursor-text" : ""}`}
         >
           {name}
@@ -68,23 +70,23 @@ export function NotebookHeader({
       <span className="relative flex items-center gap-2">
         {study && (
           <Link href={`/review?section=${id}`} className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-white">
-            ▶ Repasar
+            {t("▶ Repasar")}
           </Link>
         )}
         {editable && (
-          <button type="button" onClick={() => setMenu((m) => !m)} aria-label="Ajustes de la libreta" title="Ajustes" className="rounded-md px-2 py-1.5 text-ink-faint hover:bg-chip hover:text-ink">
+          <button type="button" onClick={() => setMenu((m) => !m)} aria-label={t("Ajustes de la libreta")} title={t("Ajustes")} className="rounded-md px-2 py-1.5 text-ink-faint hover:bg-chip hover:text-ink">
             ⚙
           </button>
         )}
         {menu && (
           <div className="absolute top-full right-0 z-20 mt-2 flex w-72 flex-col gap-4 rounded-xl bg-white p-4 text-sm shadow-[0_0_0_1px_rgba(15,15,15,.05),0_12px_32px_rgba(15,15,15,.18)]">
             <div className="flex flex-col gap-2">
-              <span className="text-xs text-ink-faint">Plantilla</span>
+              <span className="text-xs text-ink-faint">{t("Plantilla")}</span>
               <TemplatePick value={kind ?? (study ? "study" : "projects")} onChange={(t) => update({ kind: t })} />
-              <span className="text-[11px] text-ink-faint">Cambiarla no borra nada: solo cambia lo que ves.</span>
+              <span className="text-[11px] text-ink-faint">{t("Cambiarla no borra nada: solo cambia lo que ves.")}</span>
             </div>
             <div className="flex flex-col gap-2">
-              <span className="text-xs text-ink-faint">Tapa</span>
+              <span className="text-xs text-ink-faint">{t("Tapa")}</span>
               <div className="flex flex-wrap gap-2">
                 {NOTEBOOK_COVERS.map((c) => (
                   <button key={c} type="button" title={c} onClick={() => update({ cover: c })} className={`rounded-sm ${c === cover ? "ring-2 ring-ink ring-offset-2" : ""}`}>
@@ -101,7 +103,7 @@ export function NotebookHeader({
               }}
               className="self-start text-xs text-ink-faint hover:text-red-600"
             >
-              Eliminar libreta
+              {t("Eliminar libreta")}
             </button>
             {error && <span className="text-xs text-red-500">{error}</span>}
           </div>

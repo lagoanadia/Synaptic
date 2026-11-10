@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/app/LangProvider";
 import { SlidesIcon } from "@/app/icons";
 import { useRef, useState, useTransition } from "react";
 import { importSlides } from "./actions";
@@ -7,6 +8,7 @@ import { readPptx, slidesToText } from "@/lib/pptx";
 
 // The teacher's PowerPoint → a page + its AI summary, in one click.
 export function ImportSlides({ pursuitId, sectionId }: { pursuitId: string; sectionId: string | null }) {
+  const t = useT();
   const input = useRef<HTMLInputElement>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -50,7 +52,7 @@ export function ImportSlides({ pursuitId, sectionId }: { pursuitId: string; sect
         disabled={isPending}
         className="self-start rounded-md px-3 py-1.5 text-sm text-ink-muted transition-colors hover:bg-chip hover:text-ink disabled:opacity-60"
       >
-        {isPending ? (status ?? "Trabajando…") : <><SlidesIcon /> Importar</>}
+        {isPending ? (status ?? t("Trabajando…")) : <><SlidesIcon />{" "}{t("Importar")}</>}
       </button>
       {error && <p className="text-xs text-red-500">{error}</p>}
     </div>

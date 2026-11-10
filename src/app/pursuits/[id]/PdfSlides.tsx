@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/app/LangProvider";
 import { ChevronLeft, ChevronRight } from "@/app/icons";
 import { useEffect, useRef, useState } from "react";
 import type { PDFDocumentProxy } from "pdfjs-dist";
@@ -11,6 +12,7 @@ type Box = { x0: number; y0: number; x1: number; y1: number };
 // box over part of the slide (or take it whole) and send that image off
 // to be written into the note.
 export function PdfSlides({ src, onTranscribe }: { src: string; onTranscribe?: (image: string, page: number) => Promise<string | null> }) {
+  const t = useT();
   const [selecting, setSelecting] = useState(false);
   const [sel, setSel] = useState<Box | null>(null);
   const [busy, setBusy] = useState(false);
@@ -109,7 +111,7 @@ export function PdfSlides({ src, onTranscribe }: { src: string; onTranscribe?: (
   }
   const big = sel && Math.abs(sel.x1 - sel.x0) > 12 && Math.abs(sel.y1 - sel.y0) > 12 ? sel : null;
 
-  if (error) return <p className="p-4 text-sm text-ink-muted">No he podido abrir ese PDF.</p>;
+  if (error) return <p className="p-4 text-sm text-ink-muted">{t("No he podido abrir ese PDF.")}</p>;
 
   return (
     <div
@@ -119,7 +121,7 @@ export function PdfSlides({ src, onTranscribe }: { src: string; onTranscribe?: (
         if (e.key === "ArrowRight") go(1);
         if (e.key === "ArrowLeft") go(-1);
       }}
-      aria-label="Diapositivas"
+      aria-label={t("Diapositivas")}
     >
       <div ref={box} className="flex min-h-0 flex-1 items-center justify-center overflow-hidden bg-[#2a2a2a]">
         {doc ? (
@@ -141,7 +143,7 @@ export function PdfSlides({ src, onTranscribe }: { src: string; onTranscribe?: (
                 }}
                 onPointerUp={() => setDrag(null)}
               >
-                {!sel && <span className="pointer-events-none absolute top-2 left-1/2 -translate-x-1/2 rounded-full bg-black/60 px-3 py-1 text-[11px] whitespace-nowrap text-white">Arrastra sobre lo que quieras copiar</span>}
+                {!sel && <span className="pointer-events-none absolute top-2 left-1/2 -translate-x-1/2 rounded-full bg-black/60 px-3 py-1 text-[11px] whitespace-nowrap text-white">{t("Arrastra sobre lo que quieras copiar")}</span>}
                 {sel && (
                   <span
                     className="pointer-events-none absolute rounded-sm border-2 border-[#2383e2] bg-[#2383e2]/10"
@@ -157,21 +159,21 @@ export function PdfSlides({ src, onTranscribe }: { src: string; onTranscribe?: (
                     className="absolute rounded-lg bg-[#2383e2] px-3 py-1.5 text-xs font-semibold text-white shadow-lg disabled:opacity-70"
                     style={{ left: Math.min(big.x0, big.x1), top: Math.min(Math.max(big.y0, big.y1) + 6, cssH - 30) }}
                   >
-                    {busy ? "Transcribiendo…" : "Transcribir"}
+                    {busy ? t("Transcribiendo…") : t("Transcribir")}
                   </button>
                 )}
               </div>
             )}
           </div>
         ) : (
-          <span className="text-sm text-white/60">Cargando…</span>
+          <span className="text-sm text-white/60">{t("Cargando…")}</span>
         )}
       </div>
       {total > 0 && (
         <div className="flex items-center justify-center gap-3 bg-[#2a2a2a] pb-2 text-sm text-white">
-          <button type="button" onClick={() => go(-1)} disabled={page === 1} className="rounded px-3 py-1 hover:bg-white/10 disabled:opacity-30" aria-label="Diapositiva anterior"><ChevronLeft size={18} /></button>
+          <button type="button" onClick={() => go(-1)} disabled={page === 1} className="rounded px-3 py-1 hover:bg-white/10 disabled:opacity-30" aria-label={t("Diapositiva anterior")}><ChevronLeft size={18} /></button>
           <span className="tabular-nums">{page} / {total}</span>
-          <button type="button" onClick={() => go(1)} disabled={page === total} className="rounded px-3 py-1 hover:bg-white/10 disabled:opacity-30" aria-label="Diapositiva siguiente"><ChevronRight size={18} /></button>
+          <button type="button" onClick={() => go(1)} disabled={page === total} className="rounded px-3 py-1 hover:bg-white/10 disabled:opacity-30" aria-label={t("Diapositiva siguiente")}><ChevronRight size={18} /></button>
           {onTranscribe && (
             <span className="ml-3 flex items-center gap-1 text-xs">
               <button
@@ -184,11 +186,11 @@ export function PdfSlides({ src, onTranscribe }: { src: string; onTranscribe?: (
                 aria-pressed={selecting}
                 className={`rounded-full px-3 py-1 ${selecting ? "bg-[#2383e2] text-white" : "bg-white/10 hover:bg-white/20"}`}
               >
-                Seleccionar
+                {t("Seleccionar")}
               </button>
               {selecting && (
                 <button type="button" onClick={() => transcribe(null)} disabled={busy} className="rounded-full bg-white/10 px-3 py-1 hover:bg-white/20 disabled:opacity-50">
-                  {busy && !big ? "Transcribiendo…" : "Toda la diapositiva"}
+                  {busy && !big ? t("Transcribiendo…") : t("Toda la diapositiva")}
                 </button>
               )}
             </span>

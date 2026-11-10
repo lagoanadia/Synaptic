@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/app/LangProvider";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { CheckIcon, TrashIcon } from "@/app/icons";
@@ -30,6 +31,7 @@ const KEY = "synaptic.challenges.filters";
 
 // Your challenges: a row of filters and a grid of cards.
 export function ChallengeList({ items }: { items: ChallengeItem[] }) {
+  const t = useT();
   const [f, setF] = useState<Filters>(EMPTY);
   // Browser storage, so only after mount.
   useEffect(() => {
@@ -58,7 +60,7 @@ export function ChallengeList({ items }: { items: ChallengeItem[] }) {
   );
 
   if (items.length === 0) {
-    return <p className="rounded-lg bg-[#fbfbfa] px-6 py-12 text-center text-sm text-ink-faint">Aún no hay retos. Pide tres a la derecha.</p>;
+    return <p className="rounded-lg bg-[#fbfbfa] px-6 py-12 text-center text-sm text-ink-faint">{t("Aún no hay retos. Pide tres a la derecha.")}</p>;
   }
 
   const chip = (on: boolean) => `flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs transition-colors ${on ? "bg-ink text-white" : "bg-chip text-ink-muted hover:text-ink"}`;
@@ -72,13 +74,13 @@ export function ChallengeList({ items }: { items: ChallengeItem[] }) {
       <div className="flex flex-wrap items-center gap-1.5">
         {STATUSES.map((s) => (
           <button key={s.key} type="button" aria-pressed={f.status === s.key} onClick={() => set({ status: s.key })} className={chip(f.status === s.key)}>
-            {s.label}
+            {t(s.label)}
           </button>
         ))}
         {languages.length > 1 && <span className="mx-1 h-4 w-px bg-border-subtle" />}
         {languages.length > 1 &&
           languages.map((l) => (
-            <button key={l} type="button" aria-pressed={f.language === l} title={LANGUAGE_INFO[l].label} onClick={() => set({ language: f.language === l ? null : l })} className={chip(f.language === l)}>
+            <button key={l} type="button" aria-pressed={f.language === l} title={t(LANGUAGE_INFO[l].label)} onClick={() => set({ language: f.language === l ? null : l })} className={chip(f.language === l)}>
               <Badge language={l} small />
             </button>
           ))}
@@ -86,8 +88,8 @@ export function ChallengeList({ items }: { items: ChallengeItem[] }) {
         <button
           type="button"
           onClick={() => set({ difficulty: nextDifficulty() })}
-          title={f.difficulty ? `Solo ${difficultyOf(f.difficulty).label}` : "Cualquier dificultad"}
-          aria-label="Dificultad"
+          title={f.difficulty ? t("Solo {0}", { 0: difficultyOf(f.difficulty).label }) : t("Cualquier dificultad")}
+          aria-label={t("Dificultad")}
           className={chip(!!f.difficulty)}
         >
           {f.difficulty ? <Bars n={DIFFICULTIES.findIndex((d) => d.key === f.difficulty)} color={difficultyOf(f.difficulty).bar} /> : <Bars n={2} color="bg-ink-muted" />}
@@ -96,7 +98,7 @@ export function ChallengeList({ items }: { items: ChallengeItem[] }) {
 
       {shown.length === 0 ? (
         <button type="button" onClick={() => set(EMPTY)} className="rounded-lg bg-[#fbfbfa] px-6 py-10 text-sm text-ink-faint hover:text-ink">
-          Nada con estos filtros · quitar filtros
+          {t("Nada con estos filtros · quitar filtros")}
         </button>
       ) : (
         <ul className="grid gap-3 sm:grid-cols-2">
@@ -108,10 +110,10 @@ export function ChallengeList({ items }: { items: ChallengeItem[] }) {
                   <Badge language={c.language} />
                   <DeleteButton
                     action={deleteChallenge.bind(null, c.id)}
-                    confirmMessage={`¿Eliminar "${c.title}"?`}
+                    confirmMessage={t("¿Eliminar \"{0}\"?", { 0: c.title })}
                     className="relative z-10 rounded p-1 text-ink-faint/60 hover:bg-chip hover:text-red-600"
                   >
-                    <TrashIcon size={14} title="Eliminar reto" />
+                    <TrashIcon size={14} title={t("Eliminar reto")} />
                   </DeleteButton>
                 </div>
                 <Link href={`/challenges/${c.id}`} className="font-semibold leading-snug after:absolute after:inset-0">
@@ -119,7 +121,7 @@ export function ChallengeList({ items }: { items: ChallengeItem[] }) {
                 </Link>
                 {c.skill && <span className="-mt-1.5 text-xs text-ink-muted">{c.skill}</span>}
                 <div className="flex items-center gap-2 text-xs">
-                  <span title={d.label}>
+                  <span title={t(d.label)}>
                     <Bars n={DIFFICULTIES.indexOf(d)} color={d.bar} />
                   </span>
                   {c.subject && <span className="max-w-40 truncate rounded bg-chip px-1.5 py-0.5 text-ink-muted">{c.subject}</span>}

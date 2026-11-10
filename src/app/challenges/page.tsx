@@ -1,3 +1,4 @@
+import { getT } from "@/lib/i18n/server";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
@@ -8,6 +9,7 @@ import { ChallengeList } from "./ChallengeList";
 
 // Your challenges on the left, "Dame 3" on the right.
 export default async function ChallengesPage({ searchParams }: { searchParams: Promise<{ pursuit?: string }> }) {
+  const t = await getT();
   const session = await auth();
   if (!session?.user?.id) redirect("/");
   const { pursuit } = await searchParams;
@@ -28,7 +30,7 @@ export default async function ChallengesPage({ searchParams }: { searchParams: P
 
   return (
     <div className="mx-auto flex w-full max-w-[1200px] flex-1 flex-col gap-8 px-6 py-10 sm:px-12 lg:py-14">
-      <h1 className="text-[2.4rem] leading-tight font-bold tracking-tight">Retos</h1>
+      <h1 className="text-[2.4rem] leading-tight font-bold tracking-tight">{t("Retos")}</h1>
       <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="max-lg:order-last">
           <ChallengeList
