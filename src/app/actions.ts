@@ -15,6 +15,13 @@ export async function setLang(lang: string) {
   (await cookies()).set(LANG_COOKIE, asLang(lang), { path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax" });
 }
 
+// Light, dark or follow the device ("system"), kept in a cookie.
+export async function setTheme(theme: string) {
+  const { cookies } = await import("next/headers");
+  const value = theme === "dark" || theme === "system" ? theme : "light";
+  (await cookies()).set("theme", value, { path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax" });
+}
+
 // Sidebar "edit menu": show or hide Calendar, Review or Challenges.
 export async function setNavItem(key: "calendar" | "review" | "codes", on: boolean) {
   const session = await auth();

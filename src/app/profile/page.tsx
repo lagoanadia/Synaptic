@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { parseAvatar, randomAvatar } from "@/lib/avatar";
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { BILLING } from "@/lib/billingFlag";
 import { ProfileEditor } from "./ProfileEditor";
 import { Settings } from "./Settings";
@@ -19,6 +20,7 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
   const { tab: raw } = await searchParams;
   const tab = raw === "friends" || raw === "settings" ? raw : "avatar";
   const t = await getT();
+  const theme = (await cookies()).get("theme")?.value;
   const session = await auth();
   if (!session?.user?.id) redirect("/");
   const user = await prisma.user.findUnique({ where: { id: session.user.id }, select: { name: true, email: true, username: true, avatar: true, codes: true, plan: true, accounts: { select: { provider: true } }, calendarConnection: { select: { userId: true } }, classroomConnection: { select: { userId: true } } } });
@@ -71,6 +73,7 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
           classroom={!!user.classroomConnection}
           providers={[...new Set(user.accounts.map((a) => a.provider))]}
           plan={BILLING ? user.plan : null}
+          theme={theme === "dark" || theme === "system" ? theme : "light"}
         />
       )}
     </div>

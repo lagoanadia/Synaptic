@@ -3,8 +3,11 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { folderColor } from "@/lib/covers";
 import { calendarItems } from "@/lib/calendarData";
-import { MONTHS, addDays, dayKey, monthGrid, monthKey, parseMonth, shiftMonth, weekOf } from "@/lib/calendar";
+import { monthName, addDays, dayKey, monthGrid, monthKey, parseMonth, shiftMonth, weekOf } from "@/lib/calendar";
 import { CalendarView } from "./CalendarView";
+import { getLang } from "@/lib/i18n/server";
+import { LOCALE } from "@/lib/i18n";
+
 
 // Month (or week) of exams, deliverables, tasks and Google events.
 export default async function CalendarPage({ searchParams }: { searchParams: Promise<{ m?: string; v?: string; d?: string; google?: string }> }) {
@@ -38,7 +41,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
 
   return (
     <CalendarView
-      title={MONTHS[(view === "week" ? Number(focus.slice(5, 7)) : month) - 1]}
+      title={monthName(view === "week" ? Number(focus.slice(5, 7)) : month, LOCALE[await getLang()])}
       view={view}
       nav={nav}
       switchTo={view === "week" ? `?m=${focus.slice(0, 7)}` : `?v=week&d=${focus}`}

@@ -5,6 +5,9 @@
 :root {
   --background: #ffffff;
   --foreground: #37352f;
+  /* Drawn index cards (review stack). */
+  --paper: #ffffff;
+  --paper-line: #eef2f7;
 }
 
 @theme inline {
@@ -65,6 +68,8 @@ html.dark {
   color-scheme: dark;
   --background: #191919;
   --foreground: #e6e6e3;
+  --paper: #2c2c2c;
+  --paper-line: #383838;
   --color-ink: #e6e6e3;
   --color-ink-muted: #a5a49f;
   --color-ink-faint: #8f8e89;
@@ -88,6 +93,7 @@ html.dark .bg-white\/95, html.dark .bg-white\/90, html.dark .bg-white\/80 { back
 html.dark .hover\:bg-white:hover, html.dark .hover\:bg-white\/70:hover { background-color: #2a2a2a; }
 html.dark .bg-ink, html.dark .bg-ink .text-white, html.dark .bg-ink.text-white { color: #191919; }
 html.dark .text-red-600, html.dark .text-red-500 { color: #ff7b72; }
+html.dark .bg-black\/5 { background-color: rgba(255, 255, 255, 0.08); }
 html.dark ::selection { background: #2b4a6e; }
 html.dark .bg-\[\#d3d1cb\] { background-color: #3e3d3c; }
 html.dark .bg-\[\#e3e2de\] { background-color: #2a2a2a; }

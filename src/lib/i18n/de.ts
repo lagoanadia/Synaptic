@@ -1006,4 +1006,9 @@ export const de: Record<string, string> = {
   "N": "F",
   "K": "K",
   "S": "U",
+  "Apariencia": "Darstellung",
+  "Claro, oscuro o como tu dispositivo": "Hell, dunkel oder wie dein Gerät",
+  "Claro": "Hell",
+  "Oscuro": "Dunkel",
+  "Auto": "Auto",
 };

@@ -4,9 +4,8 @@ import { useLocale, useT } from "@/app/LangProvider";
 import Link from "next/link";
 import { useState } from "react";
 import type { ProjectItem } from "@/lib/projects";
+import { monthName } from "@/lib/calendar";
 
-const MONTHS = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
-const WEEKDAYS = ["D", "L", "M", "X", "J", "V", "S"];
 const DAY = 86400000;
 const ms = (day: string) => Date.parse(`${day}T00:00:00Z`);
 const short = (t: number, locale: string) => new Date(t).toLocaleDateString(locale, { day: "numeric", month: "short", timeZone: "UTC" });
@@ -51,7 +50,7 @@ export function ProjectTimeline({ projects, today }: { projects: ProjectItem[]; 
     <div className="flex flex-col gap-3">
       <div className="flex items-center gap-1.5 text-sm">
         <span className="mr-1 font-medium">
-          {MONTHS[month.m]} {month.y}
+          {monthName(month.m + 1, locale)} {month.y}
         </span>
         <button type="button" onClick={() => shift(-1)} aria-label={t("Mes anterior")} className="rounded px-1.5 text-ink-faint hover:bg-chip hover:text-ink">
           ‹
@@ -82,7 +81,7 @@ export function ProjectTimeline({ projects, today }: { projects: ProjectItem[]; 
             <div className="grid" style={cols}>
               {Array.from({ length: days }, (_, i) => (
                 <span key={i} className="flex flex-col items-center py-1.5 text-[11px] leading-tight text-ink-faint">
-                  <span className="text-[9px] opacity-70">{WEEKDAYS[new Date(Date.UTC(month.y, month.m, i + 1)).getUTCDay()]}</span>
+                  <span className="text-[9px] opacity-70">{new Date(Date.UTC(month.y, month.m, i + 1)).toLocaleDateString(locale, { weekday: "narrow", timeZone: "UTC" })}</span>
                   <span className={todayDay === i + 1 ? "rounded-full bg-[#e16259] px-1 font-semibold text-white" : ""}>{i + 1}</span>
                 </span>
               ))}

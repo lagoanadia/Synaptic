@@ -1006,4 +1006,9 @@ export const en: Record<string, string> = {
   "N": "B",
   "K": "I",
   "S": "U",
+  "Apariencia": "Appearance",
+  "Claro, oscuro o como tu dispositivo": "Light, dark or like your device",
+  "Claro": "Light",
+  "Oscuro": "Dark",
+  "Auto": "Auto",
 };
