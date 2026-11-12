@@ -10,6 +10,11 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --font-sans: var(--font-app);
+}
+
+/* Not inline: utilities read these variables, so html.dark can swap them. */
+@theme {
   --color-ink: #37352f;
   --color-ink-muted: #6f6e69;
   /* The lightest gray that still passes WCAG AA (4.5:1) on white. */
@@ -52,8 +57,84 @@
   --color-tile-cyan: #0fa8c9;
   --color-tile-blue: #2383e2;
   --color-tile-deep: #1d5fc4;
-  --font-sans: var(--font-app);
 }
+
+/* Dark mode (html.dark, set from the theme cookie): the same warm greys,
+   inverted. Notebook and folder covers keep their colours. */
+html.dark {
+  color-scheme: dark;
+  --background: #191919;
+  --foreground: #e6e6e3;
+  --color-ink: #e6e6e3;
+  --color-ink-muted: #a5a49f;
+  --color-ink-faint: #8f8e89;
+  --color-border-subtle: rgba(255, 255, 255, 0.09);
+  --color-sidebar: #202020;
+  --color-accent-soft: #1d2d40;
+  --color-chip: #2a2a2a;
+  --color-hover: #2f2f2f;
+  --color-callout: #232323;
+  --color-flame-soft: #3a2620;
+  --color-crimson-soft: #3a2424;
+  --color-cobalt-soft: #222838;
+  --color-gold-soft: #35301f;
+  --color-rose-soft: #382a2e;
+  --color-forest-soft: #1f2e27;
+}
+/* White surfaces become the dark card colour; solid "ink" buttons turn
+   light, so their white text turns dark. */
+html.dark .bg-white { background-color: #202020; }
+html.dark .bg-white\/95, html.dark .bg-white\/90, html.dark .bg-white\/80 { background-color: rgba(32, 32, 32, 0.95); }
+html.dark .hover\:bg-white:hover, html.dark .hover\:bg-white\/70:hover { background-color: #2a2a2a; }
+html.dark .bg-ink, html.dark .bg-ink .text-white, html.dark .bg-ink.text-white { color: #191919; }
+html.dark .text-red-600, html.dark .text-red-500 { color: #ff7b72; }
+html.dark ::selection { background: #2b4a6e; }
+html.dark .bg-\[\#d3d1cb\] { background-color: #3e3d3c; }
+html.dark .bg-\[\#e3e2de\] { background-color: #2a2a2a; }
+html.dark .bg-\[\#e6f2ea\] { background-color: #252525; }
+html.dark .bg-\[\#e7f3f8\] { background-color: #37393a; }
+html.dark .bg-\[\#e8f3ec\] { background-color: #252525; }
+html.dark .bg-\[\#ebebea\] { background-color: #2a2a2a; }
+html.dark .bg-\[\#ededeb\] { background-color: #2a2a2a; }
+html.dark .bg-\[\#efefec\] { background-color: #252525; }
+html.dark .bg-\[\#f3f8f4\] { background-color: #252525; }
+html.dark .bg-\[\#f4f8f3\] { background-color: #252525; }
+html.dark .bg-\[\#f7f7f5\] { background-color: #252525; }
+html.dark .bg-\[\#f8f4ea\] { background-color: #3a3938; }
+html.dark .bg-\[\#fbecc4\] { background-color: #3a3833; }
+html.dark .bg-\[\#fbf0d3\] { background-color: #3a3835; }
+html.dark .bg-\[\#fbf3db\] { background-color: #3a3936; }
+html.dark .bg-\[\#fbf8f1\] { background-color: #3a3938; }
+html.dark .bg-\[\#fbfbfa\] { background-color: #202020; }
+html.dark .bg-\[\#fdf3c4\] { background-color: #3a3833; }
+html.dark .bg-\[\#fffef9\] { background-color: #3a3939; }
+html.dark .border-\[\#c7c5c0\] { border-color: rgba(255,255,255,.12); }
+html.dark .border-\[\#c7c6c2\] { border-color: rgba(255,255,255,.12); }
+html.dark .border-\[\#d3d1cb\] { border-color: rgba(255,255,255,.12); }
+html.dark .border-\[\#d8cfbd\] { border-color: rgba(255,255,255,.12); }
+html.dark .border-\[\#dfeee4\] { border-color: rgba(255,255,255,.12); }
+html.dark .border-\[\#e3ddcf\] { border-color: rgba(255,255,255,.12); }
+html.dark .border-\[\#e3e1dc\] { border-color: rgba(255,255,255,.12); }
+html.dark .border-\[\#e3e2de\] { border-color: rgba(255,255,255,.12); }
+html.dark .border-\[\#ebe7dd\] { border-color: rgba(255,255,255,.12); }
+html.dark .border-\[\#ebeae6\] { border-color: rgba(255,255,255,.12); }
+html.dark .border-\[\#ededeb\] { border-color: rgba(255,255,255,.12); }
+html.dark .border-\[\#f1efe9\] { border-color: rgba(255,255,255,.12); }
+html.dark .border-\[\#f1f0ee\] { border-color: rgba(255,255,255,.12); }
+html.dark .border-\[\#f1f1ef\] { border-color: rgba(255,255,255,.12); }
+html.dark .border-\[\#f4f4f2\] { border-color: rgba(255,255,255,.12); }
+html.dark .outline-\[\#d3d1cb\] { outline-color: rgba(255,255,255,.12); }
+html.dark .text-\[\#0d0d0d\] { color: #e6e6e3; }
+html.dark .text-\[\#111\] { color: #e6e6e3; }
+html.dark .text-\[\#18181b\] { color: #e6e6e3; }
+html.dark .text-\[\#1a1a1d\] { color: #e6e6e3; }
+html.dark .text-\[\#2b2a28\] { color: #e6e6e3; }
+html.dark .text-\[\#787774\] { color: #9b9a97; }
+html.dark .hover\:bg-\[\#ebebea\]:hover { background-color: #2a2a2a; }
+html.dark .hover\:bg-\[\#ebebea\]\/70:hover { background-color: #2a2a2a; }
+html.dark .hover\:bg-\[\#f7f6f3\]:hover { background-color: #252525; }
+html.dark .hover\:bg-\[\#fbfbfa\]:hover { background-color: #202020; }
+html.dark .hover\:border-\[\#d3d1cb\]:hover { border-color: rgba(255,255,255,.12); }
 
 body {
   background: var(--background);
