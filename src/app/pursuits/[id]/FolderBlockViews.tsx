@@ -16,7 +16,7 @@ export async function ReviewToday({ pursuitId }: { pursuitId: string }) {
           <span
             key={i}
             className="absolute inset-0 rounded-md bg-white shadow-[0_0_0_1px_rgba(15,15,15,.06),0_4px_10px_rgba(15,15,15,.06)]"
-            style={{ transform: `rotate(${rot}deg)`, backgroundImage: "repeating-linear-gradient(#fff 0 15px, #eef2f7 15px 16px)" }}
+            style={{ transform: `rotate(${rot}deg)`, backgroundImage: "repeating-linear-gradient(var(--paper) 0 15px, var(--paper-line) 15px 16px)" }}
           />
         ))}
       </div>

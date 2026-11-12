@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useT } from "@/app/LangProvider";
 import { LangPicker } from "@/app/LangPicker";
+import { ThemePicker } from "@/app/ThemePicker";
 import { disconnectGoogle } from "@/app/calendar/actions";
 import { disconnectClassroomAccount, linkSignIn, setCodes, unlinkSignIn } from "./actions";
 import { DeleteAccount } from "./DeleteAccount";
@@ -14,6 +15,7 @@ type Props = {
   calendar: boolean;
   classroom: boolean;
   providers: string[];
+  theme: "light" | "dark" | "system";
   plan: string | null;
 };
 
@@ -28,7 +30,7 @@ const Row = ({ title, hint, children }: { title: string; hint?: string; children
 );
 
 // Ajustes: language, coding tools, linked accounts, plan and deleting the account.
-export function Settings({ codes, calendar, classroom, providers, plan }: Props) {
+export function Settings({ codes, calendar, classroom, providers, plan, theme }: Props) {
   const t = useT();
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -38,6 +40,9 @@ export function Settings({ codes, calendar, classroom, providers, plan }: Props)
     <div className="flex max-w-2xl flex-col">
       <Row title={t("Idioma")} hint={t("La app y lo que escribe la IA")}>
         <LangPicker />
+      </Row>
+      <Row title={t("Apariencia")} hint={t("Claro, oscuro o como tu dispositivo")}>
+        <ThemePicker initial={theme} />
       </Row>
       <Row title={t("Programo")} hint={t("Muestra Retos de código en el menú")}>
         <button

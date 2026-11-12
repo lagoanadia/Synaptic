@@ -60,12 +60,15 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
     : [null, []];
   // Sidebar collapsed to icons? Remembered in a cookie so it renders that way.
   const collapsed = (await cookies()).get("sidebar")?.value === "collapsed";
+  // Light, dark or "system" (follows the device; set by the script below).
+  const theme = (await cookies()).get("theme")?.value ?? "light";
   const lang = await getLang();
   const t = makeT(lang);
 
   return (
-    <html lang={lang} data-sidebar={collapsed ? "collapsed" : undefined} className={`${appFont.variable} h-full antialiased`}>
+    <html lang={lang} data-sidebar={collapsed ? "collapsed" : undefined} className={`${appFont.variable} h-full antialiased ${theme === "dark" ? "dark" : ""}`} suppressHydrationWarning>
       <body className="min-h-full flex flex-col">
+        {theme === "system" && <script dangerouslySetInnerHTML={{ __html: "if(matchMedia('(prefers-color-scheme: dark)').matches)document.documentElement.classList.add('dark')" }} />}
         <LangProvider lang={lang}>
         <RegisterServiceWorker />
         <CoverDefs />

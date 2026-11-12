@@ -6,8 +6,8 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { CalendarIcon } from "@/app/icons";
 import { STATE_LABEL, progress, projectState, type ProjectItem } from "@/lib/projects";
 import { setProjectInfo } from "./actions";
+import { monthName } from "@/lib/calendar";
 
-const MONTHS = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
 const DAY = 86400000;
 const ms = (d: string) => Date.parse(`${d}T00:00:00Z`);
 const iso = (t: number) => new Date(t).toISOString().slice(0, 10);
@@ -165,7 +165,7 @@ function DatePicker({
       </div>
       <div className="mb-1 flex items-center justify-between px-1 text-sm font-medium">
         <span>
-          {MONTHS[month.m]} {month.y}
+          {monthName(month.m + 1, locale)} {month.y}
         </span>
         <span className="flex text-ink-faint">
           <button type="button" onClick={() => shift(-1)} aria-label={t("Mes anterior")} className="rounded px-1.5 hover:bg-chip hover:text-ink">

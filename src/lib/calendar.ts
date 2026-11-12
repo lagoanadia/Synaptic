@@ -80,6 +80,12 @@ export const shiftMonth = (year: number, month: number, n: number) => {
   return monthKey(Math.floor(i / 12), (i % 12) + 1);
 };
 
+// "November" / "Noviembre" / "November" (1-12), in the given locale.
+export function monthName(m: number, locale: string) {
+  const s = new Date(Date.UTC(2000, m - 1, 1)).toLocaleDateString(locale, { month: "long", timeZone: "UTC" });
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
 export const MONTHS = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 export const WEEKDAYS = ["lun", "mar", "mié", "jue", "vie", "sáb", "dom"];
 
