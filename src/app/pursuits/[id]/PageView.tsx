@@ -8,7 +8,7 @@ import { CheckIcon, SlidesIcon } from "@/app/icons";
 import { RichEditor } from "../../editor/RichEditor";
 import { createBoard, generateMindMap } from "./boards";
 import { splitTitle, withTitle } from "@/lib/text";
-import { textToDoc } from "@/lib/richText";
+import { docToText, textToDoc } from "@/lib/richText";
 import type { Editor } from "@tiptap/core";
 import { uploadToBlob } from "@/lib/blobUpload";
 import { SlidePanel } from "./SlidePanel";
@@ -73,6 +73,10 @@ export function PageView({ pursuit, crumbs, dump, note, slides, terms, stale: st
     original: parts.original.title ?? parts.organized.title ?? "",
   });
   const [dirty, setDirty] = useState({ organized: false, original: false });
+  // What's saved of each version, to tell a real change from the editor
+  // just tidying the format when it opens (that isn't "unsaved").
+  const [savedBodies, setSavedBodies] = useState({ organized: parts.organized.body, original: parts.original.body });
+  const same = (a: string, b: string) => a === b || docToText(textToDoc(a)).trimEnd() === docToText(textToDoc(b)).trimEnd();
   const editorRef = useRef<Editor | null>(null);
   const versions = useRef({ organized: note?.updatedAt ?? "", original: dump?.updatedAt ?? "" });
   const [split, setSplit] = useState(false);
@@ -101,6 +105,7 @@ export function PageView({ pursuit, crumbs, dump, note, slides, terms, stale: st
       if (r.error || r.content === undefined) return setMessage(r.error ?? t("Inténtalo de nuevo"));
       const fresh = splitTitle(r.content);
       setDrafts((d) => ({ ...d, organized: fresh.body }));
+      setSavedBodies((b) => ({ ...b, organized: fresh.body }));
       setTitles((tt) => ({ ...tt, organized: fresh.title ?? tt.organized }));
       if (r.updatedAt) versions.current.organized = r.updatedAt;
       setStale(false);
@@ -125,6 +130,7 @@ export function PageView({ pursuit, crumbs, dump, note, slides, terms, stale: st
     if (note) {
       const fresh = splitTitle(note.content);
       setDrafts((d) => ({ ...d, organized: fresh.body }));
+      setSavedBodies((b) => ({ ...b, organized: fresh.body }));
       setTitles((t) => ({ ...t, organized: fresh.title ?? t.original }));
       setDirty((d) => ({ ...d, organized: false }));
       setView("organized");
@@ -144,6 +150,7 @@ export function PageView({ pursuit, crumbs, dump, note, slides, terms, stale: st
     } else return null;
     if (r.error) return r.error;
     if (r.updatedAt) versions.current[v] = r.updatedAt;
+    setSavedBodies((b) => ({ ...b, [v]: drafts[v] }));
     setDirty((d) => ({ ...d, [v]: false }));
     return null;
   }
@@ -226,9 +233,10 @@ export function PageView({ pursuit, crumbs, dump, note, slides, terms, stale: st
         editorRef={editorRef}
         bare
         initialText={content}
-        onChange={(t) => {
-          setDrafts((d) => ({ ...d, [view]: t }));
-          setDirty((d) => ({ ...d, [view]: true }));
+        onChange={(text) => {
+          setDrafts((d) => ({ ...d, [view]: text }));
+          const changed = !same(text, savedBodies[view]);
+          setDirty((d) => (d[view] === changed ? d : { ...d, [view]: changed }));
         }}
         onUploadImage={(file) => uploadToBlob(pursuit.id, file, file.name, "image")}
         onAsk={(text) => askPursuit(pursuit.id, t("Explícame esto de forma sencilla: \"{0}\"", { 0: text }))}
