@@ -1,5 +1,13 @@
 // Spanish source text → translation. Missing keys fall back to Spanish.
 export const de: Record<string, string> = {
+  "Preparando…": "Wird vorbereitet…",
+  "Letra": "Schrift",
+  "Otro color": "Andere Farbe",
+  "Redondeo": "Rundung",
+  "Filas de tablas": "Tabellenzeilen",
+  "Alternas": "Gestreift",
+  "Lisas": "Einfarbig",
+  "Se abre el diálogo de imprimir: elige «Guardar como PDF».": "Der Druckdialog öffnet sich: Wähle „Als PDF speichern“.",
   "Pizarra: dibuja a mano": "Whiteboard: von Hand zeichnen",
   "Ordenando…": "Wird geordnet…",
   "✓ Añadido": "✓ Hinzugefügt",

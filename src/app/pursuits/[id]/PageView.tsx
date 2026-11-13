@@ -12,6 +12,7 @@ import { textToDoc } from "@/lib/richText";
 import type { Editor } from "@tiptap/core";
 import { uploadToBlob } from "@/lib/blobUpload";
 import { SlidePanel } from "./SlidePanel";
+import { ExportPdfDialog } from "./ExportPdfDialog";
 import type { TermHint } from "@/lib/terms";
 import {
   addToMap,
@@ -74,6 +75,7 @@ export function PageView({ pursuit, crumbs, dump, note, slides, terms }: Props) 
   const [split, setSplit] = useState(false);
   const [saved, setSaved] = useState(false);
   const [menu, setMenu] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const back = `/pursuits/${pursuit.id}`;
@@ -279,17 +281,9 @@ export function PageView({ pursuit, crumbs, dump, note, slides, terms }: Props) 
               <button
                 type="button"
                 onClick={() => {
-                  // Prints this very page (title + editor, as you see it); the
-                  // file is named after the title. html.print-page hides the rest.
+                  // A styled A4 preview; Export prints it as a PDF.
                   setMenu(false);
-                  const before = document.title;
-                  document.title = titles[view].trim() || t("Página");
-                  document.documentElement.classList.add("print-page");
-                  setTimeout(() => {
-                    window.print();
-                    document.documentElement.classList.remove("print-page");
-                    document.title = before;
-                  }, 50);
+                  setExporting(true);
                 }}
                 className="block w-full rounded-md px-2.5 py-1.5 text-left hover:bg-chip"
               >
@@ -314,6 +308,7 @@ export function PageView({ pursuit, crumbs, dump, note, slides, terms }: Props) 
         </div>
       </header>
       {message && <p className="text-sm text-ink-muted">{message}</p>}
+      {exporting && <ExportPdfDialog title={titles[view].trim()} content={drafts[view]} onClose={() => setExporting(false)} />}
 
       {split ? (
         <SlidePanel
