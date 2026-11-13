@@ -30,7 +30,8 @@ export function layoutMindMap(m: MindMap): Shape[] {
     const w = Math.min(t === "ellipse" ? 330 : 170, label.length * fs * 0.55 + padX * 2);
     const id = newShapeId();
     const x0 = Math.max(4, Math.min(BOARD_W - 4 - w, cx - w / 2));
-    const y0 = Math.max(4, Math.min(BOARD_H - 4 - h, cy - h / 2));
+    // 50 at the top: the drawing toolbar sits there.
+    const y0 = Math.max(50, Math.min(BOARD_H - 4 - h, cy - h / 2));
     boxes.push({ t, c, a: [Math.round(x0), Math.round(y0)], b: [Math.round(x0 + w), Math.round(y0 + h)], id });
     texts.push({ t: "text", c, a: [Math.round(x0 + w / 2), Math.round(y0 + h / 2)], s: label, fs, mid: true });
     return id;
@@ -42,8 +43,8 @@ export function layoutMindMap(m: MindMap): Shape[] {
   ];
   for (const [dir, list] of sides) {
     const rows = list.reduce((n, b) => n + Math.max(1, b.children.length), 0);
-    const rowH = Math.min(46, (BOARD_H - 24) / Math.max(rows, 1));
-    let y = (BOARD_H - rows * rowH) / 2;
+    const rowH = Math.min(46, (BOARD_H - 66) / Math.max(rows, 1));
+    let y = 54 + (BOARD_H - 58 - rows * rowH) / 2;
     list.forEach((b) => {
       const c = (m.branches.indexOf(b) % 3) + 1;
       const span = Math.max(1, b.children.length) * rowH;

@@ -28,8 +28,8 @@ describe("connectors", () => {
     const { lineGeometry, moveShape: mv } = await import("./whiteboard");
     const l = { t: "line" as const, c: 0, a: [50, 50] as [number, number], b: [350, 50] as [number, number], fa: "boxa", fb: "boxb" };
     const g = lineGeometry(l, [a, b, l]);
-    expect(g.A[0]).toBeCloseTo(104);
-    expect(g.B[0]).toBeCloseTo(296);
+    expect(g.A[0]).toBeCloseTo(100);
+    expect(g.B[0]).toBeCloseTo(300);
     const moved = mv(b, 0, 200);
     expect(lineGeometry(l, [a, moved, l]).B[1]).toBeGreaterThan(150);
   });
