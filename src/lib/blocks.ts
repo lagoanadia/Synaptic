@@ -17,7 +17,7 @@ export const HOME_BLOCK_TYPES: { type: HomeBlockType; label: string }[] = [
 export type FolderBlockType = "project" | "pages" | "map" | "review" | "ask" | "challenges" | "deadlines" | "tasks" | "options" | "budget" | "expenses" | "dates" | "savings";
 // title/icon: what an "options" block is about (Alojamiento, bed…);
 // people: how many a "budget" block splits between (null = the members).
-export type FolderBlock = { id: string; type: FolderBlockType; view?: "list" | "board"; title?: string; icon?: BlockIcon; people?: number | null; columns?: OptionColumn[]; goal?: number | null };
+export type FolderBlock = { id: string; type: FolderBlockType; view?: "list" | "board"; title?: string; icon?: BlockIcon; people?: number | null; exclude?: string[]; columns?: OptionColumn[]; goal?: number | null };
 // The columns an "options" block can show, in this order.
 export const OPTION_COLUMNS = [
   { id: "status", label: "Estado" },
@@ -91,7 +91,11 @@ export function cleanFolderBlock(b: Partial<FolderBlock>): FolderBlock | null {
   }
   // goal in cents (null = not set yet)
   if (b.type === "savings") out.goal = typeof b.goal === "number" && b.goal > 0 && b.goal < 1e11 ? Math.round(b.goal) : null;
-  if (b.type === "budget") out.people = typeof b.people === "number" && b.people >= 1 && b.people <= 99 ? Math.round(b.people) : null;
+  if (b.type === "budget") {
+    out.people = typeof b.people === "number" && b.people >= 1 && b.people <= 99 ? Math.round(b.people) : null;
+    // Options blocks left out of the shared total (e.g. flights each person books).
+    if (Array.isArray(b.exclude)) out.exclude = b.exclude.filter((x): x is string => typeof x === "string").slice(0, 50);
+  }
   return out;
 }
 

@@ -143,6 +143,19 @@ export async function deleteBudgetLine(id: string) {
   done(line.pursuitId);
 }
 
+// Whether an options block counts toward this budget's shared total.
+export async function setBudgetIncludes(pursuitId: string, blockId: string, optionsBlockId: string, included: boolean) {
+  const { pursuit } = await requirePursuitAccess(pursuitId);
+  const saved = Array.isArray(pursuit.blocks) ? (pursuit.blocks as { id: string; exclude?: string[] }[]) : [];
+  const blocks = saved.map((b) => {
+    if (b.id !== blockId) return b;
+    const rest = (b.exclude ?? []).filter((x) => x !== optionsBlockId);
+    return { ...b, exclude: included ? rest : [...rest, optionsBlockId] };
+  });
+  await prisma.pursuit.update({ where: { id: pursuitId }, data: { blocks } });
+  done(pursuitId);
+}
+
 // How many people a budget splits between: the block's number, else
 // everyone in the folder.
 export async function setBudgetPeople(pursuitId: string, blockId: string, people: number | null) {

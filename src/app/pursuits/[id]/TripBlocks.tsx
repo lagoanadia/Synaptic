@@ -5,7 +5,7 @@ import { AvatarFace } from "@/app/AvatarFace";
 import type { Avatar } from "@/lib/avatar";
 import { useState, useTransition } from "react";
 import { DEFAULT_OPTION_COLUMNS, OPTION_COLUMNS, type BlockIcon, type OptionColumn } from "@/lib/blocks";
-import { addBudgetLine, addChoice, deleteBudgetLine, deleteChoice, setBudgetPeople, toggleVote, updateBudgetLine, updateChoice, type ChoiceStatus } from "./choices";
+import { addBudgetLine, addChoice, deleteBudgetLine, deleteChoice, setBudgetIncludes, setBudgetPeople, toggleVote, updateBudgetLine, updateChoice, type ChoiceStatus } from "./choices";
 
 export type Person = { id: string; name: string; initial: string; color: string; avatar?: Avatar | null };
 export type ChoiceItem = { id: string; title: string; url: string | null; status: ChoiceStatus; price: number | null; rating: number | null; date: string | null; note: string | null; voters: string[] };
@@ -347,23 +347,26 @@ export function BudgetBlock({
 }: {
   pursuitId: string;
   blockId: string;
-  chosen: { label: string; what: string; cents: number | null }[];
+  chosen: { id: string; included: boolean; label: string; what: string; cents: number | null }[];
   lines: BudgetLineItem[];
   people: number;
 }) {
   const t = useT();
   const [, start] = useTransition();
   const lineTotal = (l: BudgetLineItem) => l.unit * l.days * (l.perPerson ? people : 1);
-  const total = chosen.reduce((t, c) => t + (c.cents ?? 0), 0) + lines.reduce((t, l) => t + lineTotal(l), 0);
+  const total = chosen.reduce((sum, c) => sum + (c.included ? (c.cents ?? 0) : 0), 0) + lines.reduce((t, l) => t + lineTotal(l), 0);
   const num = (v: string) => Math.round(Number(v.replace(",", ".").replace(/[^\d.]/g, "")) || 0);
   const row = "grid grid-cols-[110px_minmax(0,1fr)_auto] items-center gap-4 border-b border-[#f1f0ee] py-3";
   return (
     <div className="flex max-w-[640px] flex-col text-sm">
       {chosen.map((c) => (
-        <div key={c.label} className={row}>
-          <span>{t(c.label)}</span>
-          <span className={`truncate ${c.what ? "text-ink-muted" : "text-ink-faint"}`}>{c.what || t("Sin elegir")}</span>
-          <span className="tabular-nums">{c.cents === null ? "—" : euros(c.cents)}</span>
+        <div key={c.id} className={`${row} ${c.included ? "" : "opacity-50"}`}>
+          <label className="flex min-w-0 cursor-pointer items-center gap-2" title={c.included ? t("Entra en el total (quítalo si cada uno lo paga aparte)") : t("No entra en el total: cada uno lo paga aparte")}>
+            <input type="checkbox" checked={c.included} onChange={(e) => start(() => setBudgetIncludes(pursuitId, blockId, c.id, e.target.checked))} className="size-4 shrink-0 accent-ink" />
+            <span className="truncate">{t(c.label)}</span>
+          </label>
+          <span className={`truncate ${c.what ? "text-ink-muted" : "text-ink-faint"}`}>{c.included ? c.what || t("Sin elegir") : t("Cada uno lo suyo")}</span>
+          <span className={`tabular-nums ${c.included ? "" : "line-through"}`}>{c.cents === null ? "—" : euros(c.cents)}</span>
         </div>
       ))}
       {lines.map((l) => (
@@ -421,7 +424,7 @@ export function PeopleCount({ pursuitId, blockId, people }: { pursuitId: string;
         <circle cx="9" cy="8" r="3.2" />
         <path d="M3.5 19a5.5 5.5 0 0 1 11 0M16 5.2a3.2 3.2 0 0 1 0 6M17.5 14.2A5.5 5.5 0 0 1 20.5 19" />
       </svg>
-      {people} {people === 1 ? "persona" : "personas"}
+      <span title={people === 1 ? t("1 persona") : t("{0} personas", { 0: people })}>{people}</span>
       <button type="button" onClick={() => set(people + 1)} aria-label={t("Una persona más")} className="rounded px-1 hover:bg-white hover:text-ink">
         +
       </button>

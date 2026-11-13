@@ -296,6 +296,8 @@ export default async function PursuitPage({
         .map((o) => {
           const picked = choices.filter((c) => c.blockId === o.id && c.status === "CHOSEN");
           return {
+            id: o.id,
+            included: !(b.exclude ?? []).includes(o.id),
             label: o.title ?? "Opciones",
             what: picked.map((c) => c.title).join(", "),
             cents: picked.length ? picked.reduce((t, c) => t + (c.price ?? 0), 0) : null,

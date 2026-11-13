@@ -1,5 +1,10 @@
 // Spanish source text → translation. Missing keys fall back to Spanish.
 export const de: Record<string, string> = {
+  "1 persona": "1 Person",
+  "{0} personas": "{0} Personen",
+  "Entra en el total (quítalo si cada uno lo paga aparte)": "Zählt zur Summe (abhaken, wenn jeder selbst zahlt)",
+  "No entra en el total: cada uno lo paga aparte": "Nicht in der Summe: jeder zahlt selbst",
+  "Cada uno lo suyo": "Jeder zahlt selbst",
   "ELIMINAR": "LÖSCHEN",
   "Escribe {word} para confirmar": "Tippe {word} zur Bestätigung",
   "No se ha confirmado": "Nicht bestätigt",
