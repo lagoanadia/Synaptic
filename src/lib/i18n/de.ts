@@ -1,5 +1,10 @@
 // Spanish source text → translation. Missing keys fall back to Spanish.
 export const de: Record<string, string> = {
+  "Flecha": "Pfeil",
+  "Arrastra para curvar": "Ziehen zum Biegen",
+  "Sin flecha": "Kein Pfeil",
+  "Flecha al final": "Pfeil am Ende",
+  "Flecha en los dos lados": "Pfeile an beiden Enden",
   "Abre el PDF desde tu ordenador para seleccionar texto": "Öffne das PDF von deinem Computer, um Text zu markieren",
   "Volver a la vista de Google": "Zurück zur Google-Ansicht",
   "Escribe…": "Schreib…",

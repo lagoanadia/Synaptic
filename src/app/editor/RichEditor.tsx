@@ -12,6 +12,7 @@ import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import type { Node as PmNode } from "@tiptap/pm/model";
 import StarterKit from "@tiptap/starter-kit";
+import { CodeHighlight } from "./codeHighlight";
 import { OrderedList } from "@tiptap/extension-list";
 import { TableKit } from "@tiptap/extension-table";
 import { ImageWithBoards } from "./Whiteboard";
@@ -241,6 +242,7 @@ export function RichEditor({
       Placeholder.configure({ placeholder }),
       KeyTerms,
       BlockMoves,
+      CodeHighlight,
     ],
     content: textToDoc(initialText),
     editorProps: {

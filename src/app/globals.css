@@ -233,8 +233,9 @@ body:has(#landing, #login) .app-pad {
   padding: 0.6em 0.9em;
 }
 .rich-editor pre {
-  background: #0d0d0d;
-  color: #f2f1ee;
+  background: #1e1e2e;
+  color: #e4e4ef;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.06);
   border-radius: 0.75rem;
   padding: 0.8em 1em;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -378,3 +379,13 @@ body:has(#landing, #login) .app-pad {
 .textLayer span.markedContent { top: 0; height: 0; }
 .textLayer ::selection { background: rgb(35 131 226 / 0.35); }
 .textLayer .endOfContent { display: block; position: absolute; inset: 100% 0 0; z-index: -1; cursor: default; user-select: none; }
+
+/* Code colours in the editor (Prism tokens via codeHighlight.ts). */
+.rich-editor pre .tok-keyword, .rich-editor pre .tok-boolean, .rich-editor pre .tok-important { color: #c792ea; }
+.rich-editor pre .tok-string, .rich-editor pre .tok-char, .rich-editor pre .tok-template-string, .rich-editor pre .tok-attr-value { color: #a5d6a7; }
+.rich-editor pre .tok-number, .rich-editor pre .tok-constant { color: #f8b26a; }
+.rich-editor pre .tok-comment, .rich-editor pre .tok-prolog { color: #7f8496; font-style: italic; }
+.rich-editor pre .tok-function, .rich-editor pre .tok-function-variable { color: #82aaff; }
+.rich-editor pre .tok-class-name, .rich-editor pre .tok-builtin, .rich-editor pre .tok-tag { color: #ffcb6b; }
+.rich-editor pre .tok-operator, .rich-editor pre .tok-punctuation { color: #89ddff; }
+.rich-editor pre .tok-property, .rich-editor pre .tok-attr-name { color: #f07178; }
