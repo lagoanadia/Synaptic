@@ -356,6 +356,9 @@ model BrainDump {
   content   String?
   images    String[] @default([])
   processed Boolean  @default(false)
+  // When it was last turned into its organized note; edited after this =
+  // the ✦ button glows to add what's new.
+  organizedAt DateTime?
   createdAt DateTime @default(now())
   // Optimistic concurrency for simultaneous editors (see updateBrainDump).
   updatedAt DateTime @updatedAt

@@ -29,12 +29,15 @@ export default async function DumpPage({ params }: { params: Promise<{ id: strin
         },
       },
       section: { select: { name: true, classroomUnit: true } },
-      notes: { orderBy: { createdAt: "asc" }, take: 1, select: { id: true, content: true, updatedAt: true } },
+      notes: { orderBy: { createdAt: "asc" }, take: 1, select: { id: true, content: true, updatedAt: true, createdAt: true } },
     },
   });
   if (!dump) notFound();
   const note = dump.notes[0] ?? null;
   const p = dump.pursuit;
+  // Handwritten version edited after it was organized → ✦ glows.
+  const organizedAt = dump.organizedAt ?? note?.createdAt ?? null;
+  const stale = !!note && !!organizedAt && dump.updatedAt.getTime() - organizedAt.getTime() > 5000;
 
   await fillMissingTerms(p.id).catch(() => {});
   const terms = await pageTerms(p.id, dump.sectionId);
@@ -50,6 +53,7 @@ export default async function DumpPage({ params }: { params: Promise<{ id: strin
         ...(dump.section ? [{ label: dump.section.name }] : []),
       ]}
       dump={{ id: dump.id, content: dump.content ?? "", updatedAt: dump.updatedAt.toISOString() }}
+      stale={stale}
       note={note && { id: note.id, content: note.content, updatedAt: note.updatedAt.toISOString() }}
       slides={{
         decks: p.attachments.filter((a) => isSlideFile(a.url)),

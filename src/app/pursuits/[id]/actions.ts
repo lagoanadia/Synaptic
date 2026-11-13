@@ -22,6 +22,7 @@ import { askJson, languageRule, TEXT_MODEL, VISION_MODEL, createJsonCompletion }
 import { parseFlashcardsResponse } from "@/lib/flashcards";
 import { computeNextReview, dueDateAfter } from "@/lib/sm2";
 import { aiBudget, requirePursuitAccess } from "@/lib/access";
+import { mergeAdditions } from "@/lib/mergeNote";
 import { FREE_MONTHLY_FLASHCARD_LIMIT, getFlashcardsThisMonth } from "@/lib/flashcardLimit";
 import {
   getValidAccessToken,
@@ -514,7 +515,7 @@ JSON object, no other text: {"content": "...", "tags": ["...", "..."]}`;
 
   await prisma.brainDump.updateMany({
     where: { id: { in: dumps.map((d) => d.id) } },
-    data: { processed: true },
+    data: { processed: true, organizedAt: new Date() },
   });
 
   await prisma.pursuit.update({
@@ -1513,4 +1514,51 @@ Respond with ONLY JSON: {"text": "..."}`,
   if (!content) return { error: t("No he encontrado contenido en esa parte") };
   await budget.charge();
   return { error: null, text: content.slice(0, 20000) };
+}
+
+// ✦ again after editing the handwritten version: the AI finds what's new in
+// it and adds only that to the organized note (under the right heading),
+// leaving everything already there — your edits included — as it is.
+export async function reorganizeDump(pursuitId: string, dumpId: string): Promise<{ error: string | null; content?: string; updatedAt?: string; added?: number }> {
+  const t = await getT();
+  const { session } = await requireAccess(pursuitId);
+  const dump = await prisma.brainDump.findFirst({
+    where: { id: dumpId, pursuitId },
+    include: { notes: { orderBy: { createdAt: "asc" }, take: 1, select: { id: true, content: true } } },
+  });
+  const note = dump?.notes[0];
+  if (!dump || !note) return { error: t("Página no encontrada") };
+  const budget = await aiBudget(session.user.id, session.user.email);
+  const limited = await budget.check();
+  if (limited) return { error: limited };
+  const data = (await askJson(
+    `A student keeps two versions of a page: their HANDWRITTEN notes and an ORGANIZED note made from them earlier (which they may have edited since). They have added or changed things in the handwritten notes.
+
+Find only the information in HANDWRITTEN that the ORGANIZED note does not have yet, and write it in the organized note's style. Do NOT rewrite, repeat or reorder anything already in ORGANIZED.
+For each addition, "under" is the exact text of the ORGANIZED heading it belongs under (without the #), or null if it fits none — then it may start with its own "## " heading.
+Use only these formats: "## " / "### " headings, "- " bullets (2 spaces per nesting level), "1. " numbered lists, "**bold**", "| a | b |" table rows, "! " callouts, code as a line "<lang", the code, then a line ">". Write in the notes' language.
+If nothing is new, return {"additions": []}.
+Respond with ONLY JSON: {"additions": [{"under": "heading or null", "text": "..."}]}
+
+ORGANIZED:
+${note.content.slice(0, 20000)}
+
+HANDWRITTEN:
+${(dump.content ?? "").slice(0, 20000)}`,
+    { maxTokens: 6000 },
+  )) as { additions?: unknown } | null;
+  if (!data || !Array.isArray(data.additions)) return { error: t("No se ha podido contactar con la IA ahora mismo") };
+  const additions = data.additions
+    .map((a) => (a && typeof a === "object" ? (a as Record<string, unknown>) : {}))
+    .map((a) => ({ under: typeof a.under === "string" && a.under.trim() ? a.under : null, text: typeof a.text === "string" ? a.text.slice(0, 8000) : "" }))
+    .filter((a) => a.text.trim())
+    .slice(0, 20);
+  await budget.charge();
+  const content = additions.length ? mergeAdditions(note.content, additions) : note.content;
+  const [saved] = await prisma.$transaction([
+    prisma.note.update({ where: { id: note.id }, data: { content }, select: { updatedAt: true } }),
+    prisma.brainDump.update({ where: { id: dump.id }, data: { organizedAt: new Date() } }),
+  ]);
+  revalidatePath(`/pursuits/${pursuitId}`);
+  return { error: null, content, updatedAt: saved.updatedAt.toISOString(), added: additions.length };
 }
