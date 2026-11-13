@@ -32,8 +32,10 @@ export function layoutMindMap(m: MindMap): Shape[] {
     const x0 = Math.max(4, Math.min(BOARD_W - 4 - w, cx - w / 2));
     // 50 at the top: the drawing toolbar sits there.
     const y0 = Math.max(50, Math.min(BOARD_H - 4 - h, cy - h / 2));
-    boxes.push({ t, c, a: [Math.round(x0), Math.round(y0)], b: [Math.round(x0 + w), Math.round(y0 + h)], id });
-    texts.push({ t: "text", c, a: [Math.round(x0 + w / 2), Math.round(y0 + h / 2)], s: label, fs, mid: true });
+    // Box and its words are one group: they move together.
+    const g = newShapeId();
+    boxes.push({ t, c, a: [Math.round(x0), Math.round(y0)], b: [Math.round(x0 + w), Math.round(y0 + h)], id, g });
+    texts.push({ t: "text", c, a: [Math.round(x0 + w / 2), Math.round(y0 + h / 2)], s: label, fs, mid: true, g });
     return id;
   };
   const centerId = box("ellipse", BOARD_W / 2, BOARD_H / 2, cut(m.center, 34), 16, 0, 26, 64);
