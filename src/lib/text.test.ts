@@ -272,15 +272,12 @@ describe("parseNoteBlocks", () => {
     ]);
   });
 
-  it("treats a tab-indented dash as plain text, not an infinite loop", () => {
-    // Regression: a tab-indented "- " line used to loop forever.
-    const blocks = parseNoteBlocks("\t- tab indented, not a real list item");
-    expect(blocks).toEqual([
-      {
-        type: "paragraph",
-        inline: [{ type: "text", value: "\t- tab indented, not a real list item" }],
-      },
-    ]);
+  it("reads a tab-indented dash as a list item, without looping", () => {
+    // Regression: a tab-indented "- " line used to loop forever. Tabs now
+    // count as indentation (pasted lists use them), so it's a list.
+    const blocks = parseNoteBlocks("- top\n\t- tab indented");
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0].type).toBe("bulletList");
   });
 
   it("renders an inline image marker as its own block", () => {
