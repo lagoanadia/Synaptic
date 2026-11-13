@@ -23,7 +23,7 @@ export type Breakdown = {
 
 const RULES = (language: string) => `Rules:
 - Write titles, summaries and explanations in ${language}. Keep code identifiers as they are.
-- Explanations are for a curious learner: plain words, one idea, a concrete example when it helps. 3-6 sentences.
+- Explanations are for a curious learner and must be easy to scan: ONE short plain sentence, then 2-4 lines starting with "- " (each under ~15 words: what it does, how you use it, a tiny example). **bold** the 1-2 key terms; put code in \`backticks\`. No long paragraphs.
 - "excerpt" MUST be copied character-for-character from the source (max ~20 lines), or null. Never invent or edit code/text in an excerpt.
 - "excerpt_from" is where the excerpt is (file path from the "=== FILE: ... ===" markers, page, or section), or null.
 - Only describe what the source actually contains.`;
@@ -143,7 +143,7 @@ export async function answerQuestion(
     await askJson(
       `A learner is studying the concept "${concept.title}" (${concept.explanation}) and asks: "${question}"
 
-Answer in ${language}, in at most 6 sentences, grounded in the SOURCE below. If the source doesn't cover it, say so and answer briefly from general knowledge, marked as such. Encourage them to connect it to what they know.
+Answer in ${language}, grounded in the SOURCE below, easy to scan: one short sentence that answers directly, then at most 3 lines starting with "- " (under ~15 words each; an everyday example if it helps). **bold** the key term; code in \`backticks\`. If the source doesn't cover it, start the answer with "[fuera]" and answer briefly from general knowledge — no other disclaimer.
 
 Respond with ONLY JSON: {"answer": "..."}
 
