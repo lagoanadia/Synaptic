@@ -117,6 +117,13 @@ export function PageView({ pursuit, crumbs, dump, note, slides, terms }: Props) 
       if (r.updatedAt) versions.current[v] = r.updatedAt;
       setDirty((d) => ({ ...d, [v]: false }));
       setSaved(true);
+      // Lines typed or pasted as "- item" in a paragraph become a real list
+      // (with their indentation) as soon as you save.
+      const ed = editorRef.current;
+      if (ed && v === view && /(^|\n)[ \t]*([-*•]|\d+[.)])\s+\S/.test(drafts[v])) {
+        const doc = textToDoc(drafts[v]);
+        if (JSON.stringify(doc.content?.map((n) => n.type)) !== JSON.stringify(ed.getJSON().content?.map((n) => n.type))) ed.commands.setContent(doc, { emitUpdate: false });
+      }
     });
   }
 

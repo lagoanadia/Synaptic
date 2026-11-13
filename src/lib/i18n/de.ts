@@ -1,5 +1,8 @@
 // Spanish source text → translation. Missing keys fall back to Spanish.
 export const de: Record<string, string> = {
+  "Ver todo": "Alles zeigen",
+  "Acercar": "Vergrößern",
+  "Alejar": "Verkleinern",
   "Escribe algo más en la página para hacer un mapa mental": "Schreib etwas mehr auf die Seite, um eine Mindmap zu erstellen",
   "Mapa mental de esta página (IA)": "Mindmap dieser Seite (KI)",
   "Haciendo tu mapa mental…": "Deine Mindmap wird erstellt…",

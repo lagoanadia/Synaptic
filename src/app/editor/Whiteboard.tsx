@@ -4,7 +4,7 @@ import { useT } from "@/app/LangProvider";
 import { useEffect, useRef, useState } from "react";
 import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from "@tiptap/react";
 import Image from "@tiptap/extension-image";
-import { BOARD_COLORS, BOARD_H, BOARD_SRC, BOARD_W, attachTarget, bendFor, hitShape, lineGeometry, lineMiddle, moveShape, newShapeId, resizeShape, shapeBox, shapeSvg, tooSmall, type Arrow, type LineShape, type Shape } from "@/lib/whiteboard";
+import { BOARD_COLORS, colorOf, type Color, BOARD_H, BOARD_SRC, BOARD_W, WORLD_H, WORLD_W, attachTarget, bendFor, hitShape, lineGeometry, lineMiddle, moveShape, newShapeId, resizeShape, shapeBox, shapeSvg, tooSmall, type Arrow, type LineShape, type Shape } from "@/lib/whiteboard";
 import { saveBoard } from "@/app/pursuits/[id]/boards";
 
 type Tool = "select" | "pen" | "line" | "arrow" | "rect" | "ellipse" | "text";
@@ -31,9 +31,33 @@ function Board({ id }: { id: string }) {
   const t = useT();
   const [shapes, setShapes] = useState<Shape[] | null>(null);
   const [tool, setTool] = useState<Tool>("pen");
-  const [color, setColor] = useState(0);
+  const [color, setColor] = useState<Color>(0);
+  const [palette, setPalette] = useState(false);
+  // Your last 3 picked colours, remembered in this browser.
+  const [saved, setSaved] = useState<string[]>([]);
+  useEffect(() => {
+    try {
+      const v = JSON.parse(localStorage.getItem("synaptic.boardColors") ?? "[]");
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (Array.isArray(v)) setSaved(v.filter((x) => typeof x === "string" && /^#[0-9a-f]{6}$/i.test(x)).slice(0, 3));
+    } catch {}
+  }, []);
+  const pick = (c: Color, remember = false) => {
+    setColor(c);
+    if (selected !== null && shapes?.[selected]) commit(shapes.map((sh, j) => (j === selected ? { ...sh, c } : sh)));
+    if (remember && typeof c === "string") {
+      const next = [c, ...saved.filter((x) => x !== c)].slice(0, 3);
+      setSaved(next);
+      try {
+        localStorage.setItem("synaptic.boardColors", JSON.stringify(next));
+      } catch {}
+    }
+  };
   const [draft, setDraft] = useState<Shape | null>(null);
   const svg = useRef<SVGSVGElement>(null);
+  const wrap = useRef<HTMLDivElement>(null);
+  const [view, setView] = useState({ x: 0, y: 0, z: 1 });
+  const [panning, setPanning] = useState<{ sx: number; sy: number; vx: number; vy: number } | null>(null);
   // Select tool: the chosen shape, and what a drag on it does.
   const [selected, setSelected] = useState<number | null>(null);
   const [moving, setMoving] = useState<{ kind: "move" | "resize" | "endA" | "endB" | "bend"; from: [number, number]; orig: Shape; live: Shape } | null>(null);
@@ -41,7 +65,7 @@ function Board({ id }: { id: string }) {
   const [snap, setSnap] = useState<number | null>(null);
   // Typing on the board, Canva-style: a box right where you clicked.
   // `edit` = index of the text being changed (it's hidden meanwhile).
-  const [typing, setTypingState] = useState<{ x: number; y: number; value: string; c: number; edit: number | null; k: number; fs?: number; mid?: boolean; id?: string } | null>(null);
+  const [typing, setTypingState] = useState<{ x: number; y: number; value: string; c: Color; edit: number | null; k: number; fs?: number; mid?: boolean; id?: string } | null>(null);
   // Mirrors `typing` so a click outside and the box's blur save it only once.
   const typingRef = useRef(typing);
   const setTyping = (v: typeof typing) => {
@@ -75,14 +99,56 @@ function Board({ id }: { id: string }) {
     return { list, line: { ...rest, [key]: id } };
   };
 
+  // Ctrl/⌘ + scroll (or a trackpad pinch) zooms toward the cursor; plain scroll
+  // still scrolls the page.
+  useEffect(() => {
+    const el = wrap.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey && !e.metaKey) return;
+      e.preventDefault();
+      const r = el.getBoundingClientRect();
+      setView((v) => {
+        const z = Math.max(0.5, Math.min(4, v.z * Math.exp(-e.deltaY * 0.01)));
+        const fx = (e.clientX - r.left) / r.width;
+        const fy = (e.clientY - r.top) / r.height;
+        const bx = v.x + fx * (BOARD_W / v.z);
+        const by = v.y + fy * (BOARD_H / v.z);
+        const nz = { z, x: bx - fx * (BOARD_W / z), y: by - fy * (BOARD_H / z) };
+        return { z: nz.z, x: Math.max(0, Math.min(WORLD_W - BOARD_W / z, nz.x)), y: Math.max(0, Math.min(WORLD_H - BOARD_H / z, nz.y)) };
+      });
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, [shapes === null]);
+
   const commit = (next: Shape[]) => {
     setShapes(next);
     if (saveTimer.current) window.clearTimeout(saveTimer.current);
     saveTimer.current = window.setTimeout(() => saveBoard(id, next), 600);
   };
+  // Zoom (50%-400%) and pan: the part of the board on screen.
+  const vbW = BOARD_W / view.z;
+  const vbH = BOARD_H / view.z;
+  const fitView = (v: { x: number; y: number; z: number }) => {
+    const z = Math.max(0.5, Math.min(4, v.z));
+    return { z, x: Math.max(0, Math.min(WORLD_W - BOARD_W / z, v.x)), y: Math.max(0, Math.min(WORLD_H - BOARD_H / z, v.y)) };
+  };
+  // Zoom keeping the board point under (fx, fy) — 0..1 of the box — in place.
+  const zoomAt = (factor: number, fx = 0.5, fy = 0.5) =>
+    setView((v) => {
+      const z = Math.max(0.5, Math.min(4, v.z * factor));
+      const px = v.x + fx * (BOARD_W / v.z);
+      const py = v.y + fy * (BOARD_H / v.z);
+      return fitView({ z, x: px - fx * (BOARD_W / z), y: py - fy * (BOARD_H / z) });
+    });
+  const px = (x: number) => `${((x - view.x) / vbW) * 100}%`;
+  const py = (y: number) => `${((y - view.y) / vbH) * 100}%`;
+  const sw = (w: number) => `${(w / vbW) * 100}%`;
+  const sh = (h: number) => `${(h / vbH) * 100}%`;
   const at = (e: React.PointerEvent): [number, number] => {
     const r = svg.current!.getBoundingClientRect();
-    return [Math.round(((e.clientX - r.left) / r.width) * BOARD_W), Math.round(((e.clientY - r.top) / r.height) * BOARD_H)];
+    return [Math.round(view.x + ((e.clientX - r.left) / r.width) * vbW), Math.round(view.y + ((e.clientY - r.top) / r.height) * vbH)];
   };
 
   const finishTyping = () => {
@@ -107,11 +173,10 @@ function Board({ id }: { id: string }) {
   const geo = sel?.t === "line" ? lineGeometry(sel, shown) : null;
   const middle = sel?.t === "line" ? lineMiddle(sel, shown) : null;
   const snapBox = snap !== null && shapes[snap] ? shapeBox(shapes[snap]) : null;
-  const pct = (v: number, of: number) => `${(v / of) * 100}%`;
 
   return (
-    <div className="relative my-2 overflow-hidden rounded-xl border border-border-subtle bg-white" contentEditable={false} data-board>
-      <div className="absolute top-2 left-2 z-10 flex flex-col items-center gap-1 rounded-xl border border-border-subtle bg-white p-1.5 shadow-sm" data-no-print>
+    <div ref={wrap} className="relative my-2 overflow-hidden rounded-xl border border-border-subtle bg-white" contentEditable={false} data-board>
+      <div className="absolute top-2 left-2 z-10 flex items-center gap-0.5 rounded-xl border border-border-subtle bg-white p-1 shadow-sm" data-no-print>
         {TOOLS.map((item) => (
           <button key={item.id} type="button" title={t(item.label)} aria-label={t(item.label)} aria-pressed={tool === item.id} onClick={() => {
               setTool(item.id);
@@ -120,23 +185,45 @@ function Board({ id }: { id: string }) {
             {item.icon}
           </button>
         ))}
-        <span className="my-1 h-px w-5 bg-border-subtle" />
-        {BOARD_COLORS.map((c, i) => (
-          <button key={c} type="button" aria-label={t("Color {0}", { 0: i + 1 })} aria-pressed={color === i} onClick={() => {
-              setColor(i);
-              if (selected !== null && shapes[selected]) commit(shapes.map((sh, j) => (j === selected ? { ...sh, c: i } : sh)));
-            }} className={`m-0.5 size-4 rounded-full ${color === i ? "ring-2 ring-ink ring-offset-2" : ""}`} style={{ background: c }} />
-        ))}
-        <span className="my-1 h-px w-5 bg-border-subtle" />
+        <span className="mx-1 h-5 w-px bg-border-subtle" />
+        <span className="relative">
+          <button type="button" title={t("Color")} aria-label={t("Color")} aria-expanded={palette} onClick={() => setPalette((o) => !o)} className="grid size-8 place-items-center rounded-lg hover:bg-chip">
+            <span className="size-5 rounded-full shadow-[inset_0_0_0_1px_rgba(0,0,0,.15)]" style={{ background: colorOf(color) }} />
+          </button>
+          {palette && (
+            <span className="absolute top-full left-0 z-20 mt-1.5 flex items-center gap-1.5 rounded-xl border border-border-subtle bg-white p-2 shadow-lg">
+              {[...BOARD_COLORS.map((_, i) => i as Color), ...saved].map((c) => (
+                <button
+                  key={String(c)}
+                  type="button"
+                  aria-label={colorOf(c)}
+                  onClick={() => {
+                    pick(c);
+                    setPalette(false);
+                  }}
+                  className={`size-6 shrink-0 rounded-full shadow-[inset_0_0_0_1px_rgba(0,0,0,.12)] ${colorOf(c) === colorOf(color) ? "ring-2 ring-ink ring-offset-2" : ""}`}
+                  style={{ background: colorOf(c) }}
+                />
+              ))}
+              <span className="mx-0.5 h-5 w-px bg-border-subtle" />
+              {/* Any colour: the system colour wheel; it's saved among your last 3. */}
+              <label title={t("Otro color")} className="relative grid size-6 shrink-0 cursor-pointer place-items-center rounded-full" style={{ background: "conic-gradient(#e16259, #eda100, #4dab9a, #2383e2, #9065b0, #e16259)" }}>
+                <span className="size-2.5 rounded-full bg-white" />
+                <input type="color" value={colorOf(color)} onChange={(e) => pick(e.target.value.toLowerCase(), true)} className="absolute inset-0 cursor-pointer opacity-0" aria-label={t("Otro color")} />
+              </label>
+            </span>
+          )}
+        </span>
+        <span className="mx-1 h-5 w-px bg-border-subtle" />
         <button type="button" title={t("Deshacer")} aria-label={t("Deshacer")} disabled={!shapes.length} onClick={() => commit(shapes.slice(0, -1))} className="grid size-8 place-items-center rounded-lg text-ink-muted hover:text-ink disabled:opacity-30">
           {S("M9 14 4 9l5-5|M4 9h10a6 6 0 0 1 0 12h-3")}
         </button>
       </div>
       <svg
         ref={svg}
-        viewBox={`0 0 ${BOARD_W} ${BOARD_H}`}
+        viewBox={`${view.x} ${view.y} ${vbW} ${vbH}`}
         className="block w-full touch-none select-none"
-        style={{ aspectRatio: `${BOARD_W}/${BOARD_H}`, backgroundImage: "radial-gradient(#dcdad5 1px, transparent 1px)", backgroundSize: "18px 18px", cursor: tool === "text" ? "text" : tool === "select" ? (moving ? "grabbing" : "default") : "crosshair" }}
+        style={{ aspectRatio: `${BOARD_W}/${BOARD_H}`, backgroundImage: "radial-gradient(#dcdad5 1px, transparent 1px)", backgroundSize: "18px 18px", cursor: tool === "text" ? "text" : tool === "select" ? (moving || panning ? "grabbing" : "grab") : "crosshair" }}
         onPointerDown={(e) => {
           const p = at(e);
           if (tool === "select") {
@@ -161,16 +248,16 @@ function Board({ id }: { id: string }) {
             }
             const hit = hitShape(shapes, p);
             setSelected(hit >= 0 ? hit : null);
-            if (hit >= 0) {
-              (e.target as Element).setPointerCapture?.(e.pointerId);
-              setMoving({ kind: "move", from: p, orig: shapes[hit], live: shapes[hit] });
-            }
+            (e.target as Element).setPointerCapture?.(e.pointerId);
+            if (hit >= 0) setMoving({ kind: "move", from: p, orig: shapes[hit], live: shapes[hit] });
+            // Empty space: drag to move around the board.
+            else setPanning({ sx: e.clientX, sy: e.clientY, vx: view.x, vy: view.y });
             return;
           }
           if (tool === "text") {
             e.preventDefault();
             if (typingRef.current) return finishTyping();
-            const k = svg.current!.getBoundingClientRect().width / BOARD_W;
+            const k = svg.current!.getBoundingClientRect().width / vbW;
             // On an existing text: edit it. Elsewhere: a new one.
             const hit = shapes.findIndex((sh) => {
               if (sh.t !== "text") return false;
@@ -186,6 +273,10 @@ function Board({ id }: { id: string }) {
           setDraft(tool === "pen" ? { t: "pen", c: color, p: [p] } : tool === "line" || tool === "arrow" ? { t: "line", c: color, a: p, b: p, ...(tool === "arrow" ? { arrow: "end" as const } : {}) } : { t: tool, c: color, a: p, b: p });
         }}
         onPointerMove={(e) => {
+          if (panning) {
+            const r = svg.current!.getBoundingClientRect();
+            return setView(fitView({ z: view.z, x: panning.vx - ((e.clientX - panning.sx) / r.width) * vbW, y: panning.vy - ((e.clientY - panning.sy) / r.height) * vbH }));
+          }
           if (moving) {
             const p = at(e);
             const o = moving.orig;
@@ -207,6 +298,7 @@ function Board({ id }: { id: string }) {
         }}
         onPointerUp={() => {
           setSnap(null);
+          if (panning) return setPanning(null);
           if (moving && selected !== null) {
             let list = shapes;
             let live = moving.live;
@@ -234,26 +326,26 @@ function Board({ id }: { id: string }) {
       {snapBox && (
         <span
           className="pointer-events-none absolute rounded-md bg-[#2383e2]/10 ring-2 ring-[#2383e2]"
-          style={{ left: pct(snapBox.x0 - 6, BOARD_W), top: pct(snapBox.y0 - 6, BOARD_H), width: pct(snapBox.x1 - snapBox.x0 + 12, BOARD_W), height: pct(snapBox.y1 - snapBox.y0 + 12, BOARD_H) }}
+          style={{ left: px(snapBox.x0 - 6), top: py(snapBox.y0 - 6), width: sw(snapBox.x1 - snapBox.x0 + 12), height: sh(snapBox.y1 - snapBox.y0 + 12) }}
         />
       )}
       {box && !draft && (
         <>
           <span
             className={`pointer-events-none absolute rounded-sm border-[1.5px] border-dashed border-[#2383e2] ${sel?.t === "line" ? "hidden" : ""}`}
-            style={{ left: pct(box.x0 - 6, BOARD_W), top: pct(box.y0 - 6, BOARD_H), width: pct(box.x1 - box.x0 + 12, BOARD_W), height: pct(box.y1 - box.y0 + 12, BOARD_H) }}
+            style={{ left: px(box.x0 - 6), top: py(box.y0 - 6), width: sw(box.x1 - box.x0 + 12), height: sh(box.y1 - box.y0 + 12) }}
           />
           {geo && middle && (
             <>
               {[geo.A, geo.B].map((q, i) => (
-                <span key={i} className="pointer-events-none absolute size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[#2383e2] bg-white" style={{ left: pct(q[0], BOARD_W), top: pct(q[1], BOARD_H) }} />
+                <span key={i} className="pointer-events-none absolute size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[#2383e2] bg-white" style={{ left: px(q[0]), top: py(q[1]) }} />
               ))}
-              <span className="pointer-events-none absolute size-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-[#2383e2] shadow" style={{ left: pct(middle[0], BOARD_W), top: pct(middle[1], BOARD_H) }} title={t("Arrastra para curvar")} />
+              <span className="pointer-events-none absolute size-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-[#2383e2] shadow" style={{ left: px(middle[0]), top: py(middle[1]) }} title={t("Arrastra para curvar")} />
             </>
           )}
-          {sel?.t !== "text" && sel?.t !== "line" && <span className="pointer-events-none absolute size-3 -translate-x-1/2 -translate-y-1/2 rounded-sm border-2 border-[#2383e2] bg-white" style={{ left: pct(box.x1, BOARD_W), top: pct(box.y1, BOARD_H) }} />}
+          {sel?.t !== "text" && sel?.t !== "line" && <span className="pointer-events-none absolute size-3 -translate-x-1/2 -translate-y-1/2 rounded-sm border-2 border-[#2383e2] bg-white" style={{ left: px(box.x1), top: py(box.y1) }} />}
           {!moving && (
-            <span className="absolute flex -translate-x-1/2 items-center gap-0.5 rounded-full border border-border-subtle bg-white p-0.5 shadow-sm" style={{ left: pct((box.x0 + box.x1) / 2, BOARD_W), top: `calc(${pct(box.y0 - 6, BOARD_H)} - 36px)` }}>
+            <span className="absolute flex -translate-x-1/2 items-center gap-0.5 rounded-full border border-border-subtle bg-white p-0.5 shadow-sm" style={{ left: px((box.x0 + box.x1) / 2), top: `calc(${py(box.y0 - 6)} - 36px)` }}>
               {sel?.t === "line" &&
                 ([
                   [undefined, t("Sin flecha"), "M4 12h16"],
@@ -304,6 +396,11 @@ function Board({ id }: { id: string }) {
           )}
         </>
       )}
+      <div className="absolute right-2 bottom-2 z-10 flex items-center gap-0.5 rounded-full border border-border-subtle bg-white p-0.5 text-xs text-ink-muted shadow-sm" data-no-print>
+        <button type="button" onClick={() => zoomAt(1 / 1.25)} disabled={view.z <= 0.5} aria-label={t("Alejar")} title={t("Alejar")} className="grid size-7 place-items-center rounded-full hover:bg-chip disabled:opacity-30">−</button>
+        <button type="button" onClick={() => setView({ x: 0, y: 0, z: 1 })} title={t("Ver todo")} className="min-w-11 rounded-full px-1.5 py-1 tabular-nums hover:bg-chip">{Math.round(view.z * 100)}%</button>
+        <button type="button" onClick={() => zoomAt(1.25)} disabled={view.z >= 4} aria-label={t("Acercar")} title={t("Acercar")} className="grid size-7 place-items-center rounded-full hover:bg-chip disabled:opacity-30">+</button>
+      </div>
       {typing && (
         <input
           autoFocus
@@ -322,16 +419,16 @@ function Board({ id }: { id: string }) {
           }}
           className="absolute z-20 rounded-sm bg-transparent p-0 outline-2 outline-offset-4 outline-[#2383e2] outline-dashed placeholder:text-ink-faint/60"
           style={{
-            left: `${(typing.x / BOARD_W) * 100}%`,
-            top: `${((typing.y - (typing.fs ?? 20) * (typing.mid ? 0.6 : 0.82)) / BOARD_H) * 100}%`,
+            left: px(typing.x),
+            top: py(typing.y - (typing.fs ?? 20) * (typing.mid ? 0.6 : 0.82)),
             fontSize: (typing.fs ?? 20) * typing.k,
             transform: typing.mid ? "translateX(-50%)" : undefined,
             textAlign: typing.mid ? "center" : undefined,
             lineHeight: 1,
             fontFamily: "Inter, system-ui, sans-serif",
-            color: BOARD_COLORS[typing.c],
+            color: colorOf(typing.c),
             width: `${Math.max(4, typing.value.length + 2)}ch`,
-            maxWidth: `${100 - (typing.x / BOARD_W) * 100}%`,
+            maxWidth: `calc(100% - ${px(typing.x)})`,
           }}
         />
       )}

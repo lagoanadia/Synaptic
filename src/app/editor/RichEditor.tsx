@@ -251,10 +251,19 @@ export function RichEditor({
     editorProps: {
       attributes: { class: "rich-editor", "aria-label": t("Contenido de la página") },
       handleKeyDown: (_view, event) => keyRef.current(event),
-      handlePaste: (_view, event) => {
+      handlePaste: (view, event) => {
         const files = [...(event.clipboardData?.files ?? [])].filter((f) => f.type.startsWith("image/"));
-        if (files.length === 0 || !uploadRef.current || !editorInstance.current) return false;
-        insertImages(editorInstance.current, files);
+        if (files.length && uploadRef.current && editorInstance.current) {
+          insertImages(editorInstance.current, files);
+          return true;
+        }
+        // Plain text with "- ", "1. ", "# " lines (notes, ChatGPT, a .txt):
+        // paste it as real lists and headings, nesting from the indentation.
+        const plain = event.clipboardData?.getData("text/plain") ?? "";
+        const html = event.clipboardData?.getData("text/html") ?? "";
+        const structured = /^[ \t]*([-*•]|\d+[.)]|#{1,3})\s+\S/m.test(plain) && plain.includes("\n");
+        if (!structured || /<(ul|ol|h[1-3])[\s>]/i.test(html) || view.state.selection.$from.parent.type.name === "codeBlock" || !editorInstance.current) return false;
+        editorInstance.current.chain().focus().insertContent(textToDoc(plain.replace(/\r\n?/g, "\n").replace(/^([ \t]*)•\s+/gm, "$1- ")).content ?? []).run();
         return true;
       },
       handleDrop: (view, event) => {
