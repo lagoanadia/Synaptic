@@ -18,7 +18,7 @@ import { buildOrTsQuery } from "@/lib/search";
 import { parseOrganizeResponse } from "@/lib/organize";
 import { parseJsonLoosely } from "@/lib/json";
 import { MAX_VISION_IMAGES } from "@/lib/visionLimits";
-import { languageRule, TEXT_MODEL, VISION_MODEL, createJsonCompletion } from "@/lib/ai";
+import { askJson, languageRule, TEXT_MODEL, VISION_MODEL, createJsonCompletion } from "@/lib/ai";
 import { parseFlashcardsResponse } from "@/lib/flashcards";
 import { computeNextReview, dueDateAfter } from "@/lib/sm2";
 import { aiBudget, requirePursuitAccess } from "@/lib/access";
@@ -1437,6 +1437,37 @@ export async function renamePage(pursuitId: string, page: { dumpId: string | nul
 // A slide (or the part of it you selected) → clean note text: only what
 // it teaches, no header, footer, logo, school, course or slide number.
 // The image is a JPEG data URL cropped in the browser.
+// Text selected in a PDF, one line per row with its size next to the
+// body text ("[1.6] Title", cells split by " ⇥ "), rebuilt as note text:
+// headings, lists, tables and paragraphs. Text only, so it's cheap.
+export async function structurePdfSelection(pursuitId: string, lines: string): Promise<{ error: string | null; text?: string }> {
+  const t = await getT();
+  const { userId, session } = await requireAccess(pursuitId);
+  const clean = lines.trim().slice(0, 12000);
+  if (!clean) return { error: t("Selecciona un trozo de texto") };
+  const budget = await aiBudget(userId, session.user?.email);
+  const limited = await budget.check();
+  if (limited) return { error: limited };
+  const parsed = (await askJson(
+    `Below is text a student selected in a PDF, one visual line per row. Each row starts with [size], the line's font size relative to the body text (1.0 = body, bigger = heading). Cells that sit in separate columns are split by " ⇥ ".
+
+Rebuild it as notes, keeping the original words and language:
+- headings: "# " for the biggest (size ≥ 1.6), "## " (≥ 1.3), "### " (≥ 1.12) — only for short lines that really are titles
+- lists: "- item" (indent 2 spaces per level) or "1. item"; a line that continues the previous item joins it
+- tables: when rows keep the same columns, write "| a | b |" lines, first row = header
+- paragraphs: join lines broken by the page width into one paragraph; fix words split with "-" at line ends
+- drop page numbers, running headers/footers and repeated slide furniture
+Respond with ONLY JSON: {"text": "..."}
+
+${clean}`,
+    { maxTokens: 4000 },
+  )) as { text?: unknown } | null;
+  const text = typeof parsed?.text === "string" ? parsed.text.trim() : "";
+  if (!text) return { error: t("No se ha podido contactar con la IA ahora mismo") };
+  await budget.charge();
+  return { error: null, text: text.slice(0, 20000) };
+}
+
 export async function transcribeSlide(pursuitId: string, image: string): Promise<{ error: string | null; text?: string }> {
   const t = await getT();
   const { userId, session } = await requireAccess(pursuitId);

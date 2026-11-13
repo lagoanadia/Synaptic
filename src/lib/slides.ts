@@ -1,7 +1,9 @@
 // What the slide panel shows for a URL: Google Slides embed, Drive preview
 // (Classroom files), Office viewer for an uploaded .pptx, pdf.js for PDFs.
 
-export type SlideSource = { kind: "iframe"; src: string } | { kind: "pdf"; src: string };
+// "pdf" with a fallback: a Google file read through /api/drive (needs Drive
+// access); if that fails, Google's own viewer.
+export type SlideSource = { kind: "iframe"; src: string } | { kind: "pdf"; src: string; fallback?: string };
 
 export function slideSourceFor(raw: string): SlideSource | null {
   let url: URL;
@@ -14,11 +16,11 @@ export function slideSourceFor(raw: string): SlideSource | null {
 
   const slides = url.pathname.match(/^\/presentation\/d\/([\w-]+)/);
   if (url.hostname === "docs.google.com" && slides) {
-    return { kind: "iframe", src: `https://docs.google.com/presentation/d/${slides[1]}/embed?rm=minimal` };
+    return { kind: "pdf", src: `/api/drive/${slides[1]}`, fallback: `https://docs.google.com/presentation/d/${slides[1]}/embed?rm=minimal` };
   }
   if (url.hostname === "drive.google.com") {
     const id = url.pathname.match(/\/file\/d\/([\w-]+)/)?.[1] ?? url.searchParams.get("id");
-    if (id && /^[\w-]+$/.test(id)) return { kind: "iframe", src: `https://drive.google.com/file/d/${id}/preview` };
+    if (id && /^[\w-]+$/.test(id)) return { kind: "pdf", src: `/api/drive/${id}`, fallback: `https://drive.google.com/file/d/${id}/preview` };
     return null;
   }
   const path = url.pathname.toLowerCase();

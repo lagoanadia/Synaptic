@@ -1,5 +1,10 @@
 // Spanish source text → translation. Missing keys fall back to Spanish.
 export const en: Record<string, string> = {
+  "Pizarra: dibuja a mano": "Whiteboard: draw by hand",
+  "Ordenando…": "Structuring…",
+  "✓ Añadido": "✓ Added",
+  "+ Añadir a la página": "+ Add to page",
+  "Para seleccionar texto aquí, vuelve a conectar Google Classroom": "To select text here, reconnect Google Classroom",
   "1 persona": "1 person",
   "{0} personas": "{0} people",
   "Entra en el total (quítalo si cada uno lo paga aparte)": "Counts toward the total (untick it if everyone pays their own)",

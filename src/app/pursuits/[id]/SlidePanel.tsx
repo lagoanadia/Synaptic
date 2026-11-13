@@ -38,6 +38,7 @@ export function SlidePanel({
   dumpId,
   onClose,
   onTranscribe,
+  onAddText,
   children,
 }: {
   pursuitId: string;
@@ -51,10 +52,14 @@ export function SlidePanel({
   onClose?: () => void;
   // Selected part of a slide (JPEG data URL) → into the note; an error or null.
   onTranscribe?: (image: string, page: number) => Promise<string | null>;
+  // Text selected in a PDF (lines with sizes) → structured into the note.
+  onAddText?: (lines: string) => Promise<string | null>;
   children: React.ReactNode;
 }) {
   const t = useT();
   const [showAllUnits, setShowAllUnits] = useState(false);
+  // A Google file Synaptic couldn't read itself (no Drive access yet): Google's viewer.
+  const [failed, setFailed] = useState<string | null>(null);
   const key = `synaptic.slides.${pursuitId}`;
   const [deck, setDeck] = useState<Deck | null>(null);
   const [width, setWidth] = useState(WIDTHS.M);
@@ -266,13 +271,18 @@ export function SlidePanel({
 
           {source && (
             <div className="min-h-[50vh] flex-1 bg-[#2a2a2a]">
-              {source.kind === "pdf" ? (
-                <PdfSlides src={source.src} onTranscribe={onTranscribe} />
+              {source.kind === "pdf" && !(source.fallback && failed === source.src) ? (
+                <PdfSlides key={source.src} src={source.src} onTranscribe={onTranscribe} onAddText={onAddText} onFail={source.fallback ? () => setFailed(source.src) : undefined} />
               ) : (
                 <div className="flex h-full flex-col">
+                  {source.kind === "pdf" && (
+                    <a href={`/api/classroom/connect?pursuitId=${pursuitId}`} className="bg-[#fdf3c4] px-3 py-1.5 text-center text-xs text-ink">
+                      {t("Para seleccionar texto aquí, vuelve a conectar Google Classroom")}
+                    </a>
+                  )}
                   <iframe
-                    key={source.src}
-                    src={source.src}
+                    key={source.kind === "pdf" ? source.fallback : source.src}
+                    src={source.kind === "pdf" ? source.fallback : source.src}
                     title={deck?.name ?? t("Diapositivas")}
                     className="min-h-[50vh] w-full flex-1 border-0"
                     allow="fullscreen"
