@@ -17,7 +17,8 @@ export type Shape =
   | LineShape
   | { t: "rect"; c: number; a: Pt; b: Pt; id?: string }
   | { t: "ellipse"; c: number; a: Pt; b: Pt; id?: string }
-  | { t: "text"; c: number; a: Pt; s: string; id?: string };
+  // fs: font size (default 20); mid: `a` is the text's centre, not its start.
+  | { t: "text"; c: number; a: Pt; s: string; id?: string; fs?: number; mid?: boolean };
 
 const num = (v: unknown, max: number) => (typeof v === "number" && Number.isFinite(v) ? Math.max(0, Math.min(max, Math.round(v))) : 0);
 const pt = (v: unknown): Pt => (Array.isArray(v) ? [num(v[0], BOARD_W), num(v[1], BOARD_H)] : [0, 0]);
@@ -44,7 +45,16 @@ export function cleanShapes(raw: unknown): Shape[] {
       if (idOf(o.fb)) l.fb = idOf(o.fb);
       out.push(l);
     } else if (o.t === "rect" || o.t === "ellipse") out.push({ t: o.t, c, a: pt(o.a), b: pt(o.b), ...(id ? { id } : {}) });
-    else if (o.t === "text" && typeof o.s === "string" && o.s.trim()) out.push({ t: "text", c, a: pt(o.a), s: o.s.slice(0, 120), ...(id ? { id } : {}) });
+    else if (o.t === "text" && typeof o.s === "string" && o.s.trim())
+      out.push({
+        t: "text",
+        c,
+        a: pt(o.a),
+        s: o.s.slice(0, 120),
+        ...(id ? { id } : {}),
+        ...(typeof o.fs === "number" && o.fs >= 10 && o.fs <= 40 && Math.round(o.fs) !== 20 ? { fs: Math.round(o.fs) } : {}),
+        ...(o.mid === true ? { mid: true } : {}),
+      });
   }
   return out;
 }
@@ -56,7 +66,14 @@ const clampPt = ([x, y]: Pt): Pt => [Math.max(0, Math.min(BOARD_W, Math.round(x)
 
 // The rectangle a (non-line) shape covers (text: an estimate from its length).
 function ownBox(s: Exclude<Shape, LineShape>): Box {
-  const pts: Pt[] = s.t === "pen" ? s.p : s.t === "text" ? [[s.a[0], s.a[1] - 20], [s.a[0] + s.s.length * 11, s.a[1] + 5]] : [s.a, s.b];
+  if (s.t === "text") {
+    const fs = s.fs ?? 20;
+    const w = s.s.length * fs * 0.55;
+    const x0 = s.mid ? s.a[0] - w / 2 : s.a[0];
+    const y0 = s.mid ? s.a[1] - fs * 0.6 : s.a[1] - fs;
+    return { x0, y0, x1: x0 + w, y1: y0 + fs * 1.25 };
+  }
+  const pts: Pt[] = s.t === "pen" ? s.p : [s.a, s.b];
   const xs = pts.map((p) => p[0]);
   const ys = pts.map((p) => p[1]);
   return { x0: Math.min(...xs), y0: Math.min(...ys), x1: Math.max(...xs), y1: Math.max(...ys) };
@@ -158,7 +175,7 @@ export function shapeSvg(s: Shape, all: Shape[] = []): string {
     case "ellipse":
       return `<ellipse cx="${(s.a[0] + s.b[0]) / 2}" cy="${(s.a[1] + s.b[1]) / 2}" rx="${Math.abs(s.b[0] - s.a[0]) / 2}" ry="${Math.abs(s.b[1] - s.a[1]) / 2}" ${stroke}/>`;
     case "text":
-      return `<text x="${s.a[0]}" y="${s.a[1]}" font-size="20" font-family="Inter, system-ui, sans-serif" fill="${col}">${esc(s.s)}</text>`;
+      return `<text x="${s.a[0]}" y="${s.a[1]}" font-size="${s.fs ?? 20}" font-family="Inter, system-ui, sans-serif" fill="${col}"${s.mid ? ' text-anchor="middle" dominant-baseline="central"' : ""}>${esc(s.s)}</text>`;
   }
 }
 

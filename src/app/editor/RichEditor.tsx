@@ -165,6 +165,7 @@ export function RichEditor({
   onMap,
   terms = [],
   onBoard,
+  onMindMap,
 }: {
   initialText: string;
   onChange: (text: string) => void;
@@ -186,6 +187,8 @@ export function RichEditor({
   terms?: TermHint[];
   // "/ Pizarra": makes a board and returns its image URL.
   onBoard?: () => Promise<string>;
+  // Toolbar mind map: the AI maps the page into a board (its URL) or an error.
+  onMindMap?: () => Promise<{ error: string | null; src?: string }>;
 }) {
   const t = useT();
   const placeholder = placeholderProp ?? t("Escribe, o usa # para un título, - para una lista, ! para un aviso…");
@@ -381,7 +384,7 @@ export function RichEditor({
     return (
       <>
       {/* Same formatting bar as the full editor, so a page edits the same way. */}
-      <Toolbar editor={editor} onImage={onUploadImage ? () => fileInput.current?.click() : undefined} onBoard={onBoard ? () => onBoard().then((src) => editor.chain().focus().setImage({ src }).createParagraphNear().run()) : undefined} uploading={uploading} extras={toolbarExtras} bare />
+      <Toolbar editor={editor} onImage={onUploadImage ? () => fileInput.current?.click() : undefined} onBoard={onBoard ? () => onBoard().then((src) => editor.chain().focus().setImage({ src }).createParagraphNear().run()) : undefined} onMindMap={onMindMap ? async () => { const r = await onMindMap(); if (r.src) editor.chain().focus("end").setImage({ src: r.src }).createParagraphNear().run(); return r.error; } : undefined} uploading={uploading} extras={toolbarExtras} bare />
       <div
         ref={wrap}
         className="relative"
@@ -503,7 +506,7 @@ export function RichEditor({
       <Toolbar
         editor={editor}
         onImage={onUploadImage ? () => fileInput.current?.click() : undefined}
-        onBoard={onBoard ? () => onBoard().then((src) => editor.chain().focus().setImage({ src }).createParagraphNear().run()) : undefined}
+        onBoard={onBoard ? () => onBoard().then((src) => editor.chain().focus().setImage({ src }).createParagraphNear().run()) : undefined} onMindMap={onMindMap ? async () => { const r = await onMindMap(); if (r.src) editor.chain().focus("end").setImage({ src: r.src }).createParagraphNear().run(); return r.error; } : undefined}
         uploading={uploading}
         extras={toolbarExtras}
       />
@@ -528,6 +531,7 @@ function Toolbar({
   editor,
   onImage,
   onBoard,
+  onMindMap,
   uploading,
   extras,
   bare = false,
@@ -536,6 +540,8 @@ function Toolbar({
   onImage?: () => void;
   // Insert a new whiteboard (drawn picture) where the cursor is.
   onBoard?: () => void;
+  // Make a mind map of the page with AI (inserted at the end); an error or null.
+  onMindMap?: () => Promise<string | null>;
   uploading: boolean;
   extras?: React.ReactNode;
   // On a page (no box around the editor): its own rounded bar.
@@ -612,6 +618,7 @@ function Toolbar({
       {onImage && (
         <Btn onClick={onImage} title={t("Insertar imagen (o pégala / arrástrala)")}>{uploading ? "…" : <ImageIcon />}</Btn>
       )}
+      {onMindMap && <MindMapBtn run={onMindMap} />}
       {onBoard && (
         <Btn onClick={onBoard} title={t("Pizarra: dibuja a mano")}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -758,5 +765,44 @@ function SelectionBar({
         </div>
       )}
     </div>
+  );
+}
+
+// "Mapa mental": a toolbar button that maps the page with AI (a few seconds).
+function MindMapBtn({ run }: { run: () => Promise<string | null> }) {
+  const t = useT();
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  return (
+    <span className="relative">
+      <Btn
+        onClick={async () => {
+          if (busy) return;
+          setBusy(true);
+          setErr(null);
+          const e = await run().catch(() => t("Inténtalo de nuevo"));
+          setBusy(false);
+          if (e) {
+            setErr(e);
+            setTimeout(() => setErr(null), 4000);
+          }
+        }}
+        title={busy ? t("Haciendo tu mapa mental…") : t("Mapa mental de esta página (IA)")}
+      >
+        {busy ? (
+          <span className="block size-4 animate-spin rounded-full border-2 border-ink/20 border-t-ink/70" />
+        ) : (
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <circle cx="12" cy="12" r="3" />
+            <circle cx="4.5" cy="5.5" r="2" />
+            <circle cx="19.5" cy="5.5" r="2" />
+            <circle cx="4.5" cy="18.5" r="2" />
+            <circle cx="19.5" cy="18.5" r="2" />
+            <path d="M9.6 10.2 6.2 7M14.4 10.2l3.4-3.2M9.6 13.8 6.2 17M14.4 13.8l3.4 3.2" />
+          </svg>
+        )}
+      </Btn>
+      {err && <span className="absolute top-full right-0 z-30 mt-1 w-56 rounded-lg bg-ink px-2.5 py-1.5 text-xs text-white shadow-lg">{err}</span>}
+    </span>
   );
 }

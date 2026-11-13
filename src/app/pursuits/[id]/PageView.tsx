@@ -6,7 +6,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { CheckIcon, SlidesIcon } from "@/app/icons";
 import { RichEditor } from "../../editor/RichEditor";
-import { createBoard } from "./boards";
+import { createBoard, generateMindMap } from "./boards";
 import { splitTitle, withTitle } from "@/lib/text";
 import { textToDoc } from "@/lib/richText";
 import type { Editor } from "@tiptap/core";
@@ -193,6 +193,7 @@ export function PageView({ pursuit, crumbs, dump, note, slides, terms }: Props) 
         }}
         terms={terms}
         onBoard={() => createBoard(pursuit.id)}
+        onMindMap={() => generateMindMap(pursuit.id, `${titles[view]}\n${drafts[view]}`)}
         placeholder={t("Escribe, o pulsa / para añadir un bloque")}
       />
     </article>

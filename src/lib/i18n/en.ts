@@ -1,5 +1,8 @@
 // Spanish source text → translation. Missing keys fall back to Spanish.
 export const en: Record<string, string> = {
+  "Escribe algo más en la página para hacer un mapa mental": "Write a bit more on the page to make a mind map",
+  "Mapa mental de esta página (IA)": "Mind map of this page (AI)",
+  "Haciendo tu mapa mental…": "Making your mind map…",
   "Fuera de tus apuntes": "Not in your notes",
   "Flecha": "Arrow",
   "Arrastra para curvar": "Drag to curve",

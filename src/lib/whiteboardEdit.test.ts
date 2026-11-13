@@ -42,3 +42,16 @@ describe("connectors", () => {
     expect(shapeSvg({ ...l, bend })).toContain("Q");
   });
 });
+
+describe("mind map", () => {
+  it("lays out topic, ideas and details as connected, on-board shapes", async () => {
+    const { cleanMindMap, layoutMindMap } = await import("./mindmap");
+    const { BOARD_W, BOARD_H, cleanShapes } = await import("./whiteboard");
+    const m = cleanMindMap({ center: "Redes", branches: [{ label: "TCP/IP", children: ["Aplicación", "Transporte"] }, { label: "Direcciones", children: ["IP", "Puertos", "localhost"] }, { label: "Sockets", children: [] }, { label: "" }] });
+    expect(m?.branches).toHaveLength(3);
+    const shapes = layoutMindMap(m!);
+    expect(shapes.filter((s) => s.t === "line")).toHaveLength(3 + 5);
+    for (const s of shapes) if (s.t === "rect" || s.t === "ellipse") expect(s.b[0] <= BOARD_W && s.b[1] <= BOARD_H && s.a[0] >= 0 && s.a[1] >= 0).toBe(true);
+    expect(cleanShapes(shapes)).toHaveLength(shapes.length);
+  });
+});
