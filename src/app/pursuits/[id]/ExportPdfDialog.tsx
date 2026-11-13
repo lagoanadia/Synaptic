@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useT } from "@/app/LangProvider";
 import { XIcon } from "@/app/icons";
-import { COLORS, DEFAULT_STYLE, FONTS, RADII, printSheet, sheetCss, sheetHtml, type FontKey, type SheetStyle } from "@/lib/exportSheet";
+import { COLORS, DEFAULT_STYLE, FONTS, printSheet, sheetCss, sheetHtml, type FontKey, type SheetStyle } from "@/lib/exportSheet";
 
 const KEY = "synaptic.exportStyle";
 const FONT_NAME: Record<FontKey, string> = { inter: "Inter", lora: "Lora", mono: "Mono" };
@@ -12,7 +12,9 @@ const A4 = { w: 794, pad: 76 };
 
 function loadStyle(): SheetStyle {
   try {
-    return { ...DEFAULT_STYLE, ...JSON.parse(localStorage.getItem(KEY) ?? "{}") };
+    // Only letter and colour are chosen; rounding and rows stay the default.
+    const saved = JSON.parse(localStorage.getItem(KEY) ?? "{}");
+    return { ...DEFAULT_STYLE, font: saved.font ?? DEFAULT_STYLE.font, color: saved.color ?? DEFAULT_STYLE.color };
   } catch {
     return DEFAULT_STYLE;
   }
@@ -111,21 +113,6 @@ export function ExportPdfDialog({ title, content, onClose }: { title: string; co
                   +
                   <input type="color" value={st.color} onChange={(e) => set({ color: e.target.value })} className="absolute inset-0 cursor-pointer opacity-0" aria-label={t("Otro color")} />
                 </label>
-              </div>
-            </div>
-            <div className="flex flex-col gap-2">
-              <span className="text-xs font-semibold tracking-wide text-ink-faint uppercase">{t("Redondeo")}</span>
-              <div className="flex gap-2">
-                {RADII.map((r) => (
-                  <button key={r} type="button" onClick={() => set({ radius: r })} aria-pressed={st.radius === r} aria-label={`${r}px`} className={`size-8 border-2 ${st.radius === r ? "border-ink" : "border-border-subtle"}`} style={{ borderRadius: r / 1.4, background: st.color + "22" }} />
-                ))}
-              </div>
-            </div>
-            <div className="flex flex-col gap-2">
-              <span className="text-xs font-semibold tracking-wide text-ink-faint uppercase">{t("Filas de tablas")}</span>
-              <div className="flex gap-1.5">
-                <button type="button" onClick={() => set({ stripes: true })} className={pill(st.stripes)}>{t("Alternas")}</button>
-                <button type="button" onClick={() => set({ stripes: false })} className={pill(!st.stripes)}>{t("Lisas")}</button>
               </div>
             </div>
             <p className="mt-auto text-xs text-ink-faint">{t("Se abre el diálogo de imprimir: elige «Guardar como PDF».")}</p>
