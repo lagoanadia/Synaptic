@@ -4,7 +4,7 @@ import { useT } from "@/app/LangProvider";
 import { useEffect, useRef, useState } from "react";
 import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from "@tiptap/react";
 import Image from "@tiptap/extension-image";
-import { BOARD_COLORS, colorOf, type Color, BOARD_H, BOARD_SRC, BOARD_W, WORLD_H, WORLD_W, attachTarget, bendFor, hitShape, lineGeometry, lineMiddle, moveShape, newShapeId, resizeShape, shapeBox, shapeSvg, tooSmall, type Arrow, type LineShape, type Shape } from "@/lib/whiteboard";
+import { BOARD_COLORS, colorOf, type Color, BOARD_H, BOARD_SRC, BOARD_W, WORLD, attachTarget, bendFor, hitShape, lineGeometry, lineMiddle, moveShape, newShapeId, resizeShape, shapeBox, shapeSvg, tooSmall, type Arrow, type LineShape, type Shape } from "@/lib/whiteboard";
 import { saveBoard } from "@/app/pursuits/[id]/boards";
 
 type Tool = "select" | "pen" | "line" | "arrow" | "rect" | "ellipse" | "text";
@@ -117,7 +117,7 @@ function Board({ id }: { id: string }) {
         const bx = v.x + fx * (BOARD_W / v.z);
         const by = v.y + fy * (BOARD_H / v.z);
         const nz = { z, x: bx - fx * (BOARD_W / z), y: by - fy * (BOARD_H / z) };
-        return { z: nz.z, x: Math.max(0, Math.min(WORLD_W - BOARD_W / z, nz.x)), y: Math.max(0, Math.min(WORLD_H - BOARD_H / z, nz.y)) };
+        return { z: nz.z, x: Math.max(WORLD.x0, Math.min(WORLD.x1 - BOARD_W / z, nz.x)), y: Math.max(WORLD.y0, Math.min(WORLD.y1 - BOARD_H / z, nz.y)) };
       });
     };
     el.addEventListener("wheel", onWheel, { passive: false });
@@ -134,7 +134,7 @@ function Board({ id }: { id: string }) {
   const vbH = BOARD_H / view.z;
   const fitView = (v: { x: number; y: number; z: number }) => {
     const z = Math.max(0.5, Math.min(4, v.z));
-    return { z, x: Math.max(0, Math.min(WORLD_W - BOARD_W / z, v.x)), y: Math.max(0, Math.min(WORLD_H - BOARD_H / z, v.y)) };
+    return { z, x: Math.max(WORLD.x0, Math.min(WORLD.x1 - BOARD_W / z, v.x)), y: Math.max(WORLD.y0, Math.min(WORLD.y1 - BOARD_H / z, v.y)) };
   };
   // Zoom keeping the board point under (fx, fy) — 0..1 of the box — in place.
   const zoomAt = (factor: number, fx = 0.5, fy = 0.5) =>

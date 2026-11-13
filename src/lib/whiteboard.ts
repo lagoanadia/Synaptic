@@ -7,6 +7,8 @@ export const BOARD_H = 400;
 // around a board three times as wide and tall.
 export const WORLD_W = BOARD_W * 3;
 export const WORLD_H = BOARD_H * 3;
+// The board reaches out on every side of the starting frame (0,0)-(900,400).
+export const WORLD = { x0: -BOARD_W * 2, y0: -BOARD_H * 2, x1: BOARD_W * 4, y1: BOARD_H * 4 };
 export const BOARD_COLORS = ["#37352f", "#e16259", "#2383e2", "#eda100"] as const;
 export const BOARD_SRC = /^\/api\/boards\/([a-z0-9]{10,40})$/;
 
@@ -28,8 +30,8 @@ export type Shape =
   // fs: font size (default 20); mid: `a` is the text's centre, not its start.
   | { g?: string; t: "text"; c: Color; a: Pt; s: string; id?: string; fs?: number; mid?: boolean };
 
-const num = (v: unknown, max: number) => (typeof v === "number" && Number.isFinite(v) ? Math.max(0, Math.min(max, Math.round(v))) : 0);
-const pt = (v: unknown): Pt => (Array.isArray(v) ? [num(v[0], WORLD_W), num(v[1], WORLD_H)] : [0, 0]);
+const num = (v: unknown, min: number, max: number) => (typeof v === "number" && Number.isFinite(v) ? Math.max(min, Math.min(max, Math.round(v))) : 0);
+const pt = (v: unknown): Pt => (Array.isArray(v) ? [num(v[0], WORLD.x0, WORLD.x1), num(v[1], WORLD.y0, WORLD.y1)] : [0, 0]);
 const color = (v: unknown): Color =>
   typeof v === "string" && /^#[0-9a-f]{6}$/i.test(v) ? v.toLowerCase() : Number.isInteger(v) && (v as number) >= 0 && (v as number) < BOARD_COLORS.length ? (v as number) : 0;
 const ID = /^[a-z0-9]{4,16}$/;
@@ -78,7 +80,7 @@ export function cleanShapes(raw: unknown): Shape[] {
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
 export type Box = { x0: number; y0: number; x1: number; y1: number };
-const clampPt = ([x, y]: Pt): Pt => [Math.max(0, Math.min(WORLD_W, Math.round(x))), Math.max(0, Math.min(WORLD_H, Math.round(y)))];
+const clampPt = ([x, y]: Pt): Pt => [Math.max(WORLD.x0, Math.min(WORLD.x1, Math.round(x))), Math.max(WORLD.y0, Math.min(WORLD.y1, Math.round(y)))];
 
 // The rectangle a (non-line) shape covers (text: an estimate from its length).
 function ownBox(s: Exclude<Shape, LineShape>): Box {
