@@ -11,7 +11,19 @@ type Box = { x0: number; y0: number; x1: number; y1: number };
 // while the pointer is over it. With onTranscribe: "Seleccionar", drag a
 // box over part of the slide (or take it whole) and send that image off
 // to be written into the note.
-export function PdfSlides({ src, onTranscribe }: { src: string; onTranscribe?: (image: string, page: number) => Promise<string | null> }) {
+// Selecting text on the page offers "Añadir a la página": the selected
+// lines (with their size and columns) go to onAddText to be structured.
+export function PdfSlides({
+  src,
+  onTranscribe,
+  onAddText,
+  onFail,
+}: {
+  src: string;
+  onTranscribe?: (image: string, page: number) => Promise<string | null>;
+  onAddText?: (lines: string) => Promise<string | null>;
+  onFail?: () => void;
+}) {
   const t = useT();
   const [selecting, setSelecting] = useState(false);
   const [sel, setSel] = useState<Box | null>(null);
@@ -25,6 +37,10 @@ export function PdfSlides({ src, onTranscribe }: { src: string; onTranscribe?: (
   const canvas = useRef<HTMLCanvasElement>(null);
   const box = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
+  const textLayer = useRef<HTMLDivElement>(null);
+  const holder = useRef<HTMLDivElement>(null);
+  const [pick, setPick] = useState<{ x: number; y: number; lines: string } | null>(null);
+  const [adding, setAdding] = useState<"idle" | "busy" | "done">("idle");
 
   useEffect(() => {
     let cancelled = false;
@@ -35,7 +51,10 @@ export function PdfSlides({ src, onTranscribe }: { src: string; onTranscribe?: (
         const d = await pdfjs.getDocument(src).promise;
         if (!cancelled) setDoc(d);
       } catch {
-        if (!cancelled) setError(true);
+        if (!cancelled) {
+          setError(true);
+          onFail?.();
+        }
       }
     })();
     return () => {
@@ -67,14 +86,62 @@ export function PdfSlides({ src, onTranscribe }: { src: string; onTranscribe?: (
       setCssH(viewport.height / (window.devicePixelRatio || 1));
       const r = p.render({ canvasContext: c.getContext("2d")!, viewport });
       task = r;
+      // Invisible text on top, so it can be selected.
+      const layer = textLayer.current;
+      if (layer) {
+        layer.replaceChildren();
+        const css = p.getViewport({ scale: scale / (window.devicePixelRatio || 1) });
+        layer.style.setProperty("--scale-factor", String(css.scale));
+        const pdfjs = await import("pdfjs-dist");
+        new pdfjs.TextLayer({ textContentSource: p.streamTextContent(), container: layer, viewport: css }).render().catch(() => {});
+      }
       await r.promise.catch(() => {});
     })();
     return () => task?.cancel();
   }, [doc, page, size]);
 
+  // A text selection inside the page → the button, and the lines it covers.
+  useEffect(() => {
+    if (!onAddText) return;
+    const check = () => {
+      const s = window.getSelection();
+      const layer = textLayer.current;
+      if (!s || s.isCollapsed || !layer || !layer.contains(s.anchorNode) || !layer.contains(s.focusNode)) return setPick(null);
+      const lines = selectedLines(layer, s);
+      if (!lines) return setPick(null);
+      const r = s.getRangeAt(0).getBoundingClientRect();
+      const h = holder.current!.getBoundingClientRect();
+      setAdding("idle");
+      setPick({ x: Math.max(4, r.left - h.left), y: Math.min(r.bottom - h.top + 6, h.height - 34), lines });
+    };
+    document.addEventListener("mouseup", check);
+    document.addEventListener("keyup", check);
+    document.addEventListener("touchend", check);
+    return () => {
+      document.removeEventListener("mouseup", check);
+      document.removeEventListener("keyup", check);
+      document.removeEventListener("touchend", check);
+    };
+  }, [onAddText]);
+
+  async function addText() {
+    if (!onAddText || !pick || adding === "busy") return;
+    setAdding("busy");
+    setErr(null);
+    const e = await onAddText(pick.lines);
+    if (e) {
+      setAdding("idle");
+      return setErr(e);
+    }
+    setAdding("done");
+    window.getSelection()?.removeAllRanges();
+    setTimeout(() => setPick(null), 900);
+  }
+
   const total = doc?.numPages ?? 0;
   const go = (d: number) => {
     setSel(null);
+    setPick(null);
     setPage((p) => Math.min(Math.max(1, p + d), total || 1));
   };
 
@@ -125,8 +192,21 @@ export function PdfSlides({ src, onTranscribe }: { src: string; onTranscribe?: (
     >
       <div ref={box} className="flex min-h-0 flex-1 items-center justify-center overflow-hidden bg-[#2a2a2a]">
         {doc ? (
-          <div className="relative">
+          <div ref={holder} className="relative">
             <canvas ref={canvas} className="block shadow-lg" />
+            <div ref={textLayer} className="textLayer" />
+            {pick && !selecting && (
+              <button
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={addText}
+                disabled={adding === "busy"}
+                className="absolute z-10 rounded-lg bg-[#2383e2] px-3 py-1.5 text-xs font-semibold whitespace-nowrap text-white shadow-lg disabled:opacity-70"
+                style={{ left: pick.x, top: pick.y }}
+              >
+                {adding === "busy" ? t("Ordenando…") : adding === "done" ? t("✓ Añadido") : t("+ Añadir a la página")}
+              </button>
+            )}
             {selecting && (
               <div
                 className="absolute inset-0 cursor-crosshair"
@@ -200,4 +280,49 @@ export function PdfSlides({ src, onTranscribe }: { src: string; onTranscribe?: (
       {err && <p className="bg-[#2a2a2a] px-3 pb-2 text-center text-xs text-[#ff9b94]">{err}</p>}
     </div>
   );
+}
+
+// The selected text as lines: "[1.4] Title" (size next to the page's body
+// text) and " ⇥ " between cells that sit in separate columns.
+function selectedLines(layer: HTMLElement, sel: Selection): string | null {
+  const all = [...layer.querySelectorAll<HTMLElement>("span")].filter((s) => s.textContent?.trim() && !s.classList.contains("markedContent"));
+  const size = (s: HTMLElement) => s.getBoundingClientRect().height;
+  const sizes = all.map(size).filter(Boolean).sort((a, b) => a - b);
+  const body = sizes[Math.floor(sizes.length / 2)] || 1;
+  const mine = all
+    .filter((s) => {
+      try {
+        return sel.containsNode(s, true);
+      } catch {
+        return false;
+      }
+    })
+    .map((s) => {
+      const r = s.getBoundingClientRect();
+      return { text: s.textContent ?? "", left: r.left, right: r.right, mid: (r.top + r.bottom) / 2, h: r.height };
+    })
+    .sort((a, b) => a.mid - b.mid || a.left - b.left);
+  if (!mine.length) return null;
+  const rows: { mid: number; h: number; parts: typeof mine }[] = [];
+  for (const m of mine) {
+    const row = rows.find((r) => Math.abs(r.mid - m.mid) < m.h * 0.5);
+    if (row) {
+      row.parts.push(m);
+      row.h = Math.max(row.h, m.h);
+    } else rows.push({ mid: m.mid, h: m.h, parts: [m] });
+  }
+  return rows
+    .sort((a, b) => a.mid - b.mid)
+    .map((r) => {
+      const parts = r.parts.sort((a, b) => a.left - b.left);
+      let line = "";
+      parts.forEach((p, i) => {
+        const gap = i ? p.left - parts[i - 1].right : 0;
+        line += i === 0 ? p.text : gap > p.h * 0.9 ? ` ⇥ ${p.text}` : gap > p.h * 0.15 && !/\s$/.test(line) ? ` ${p.text}` : p.text;
+      });
+      return `[${(r.h / body).toFixed(1)}] ${line.replace(/\s+/g, " ").trim()}`;
+    })
+    .filter((l) => l.length > 6)
+    .join("\n")
+    .slice(0, 12000);
 }

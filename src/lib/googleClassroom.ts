@@ -8,6 +8,8 @@ const CLASSROOM_SCOPES = [
   "https://www.googleapis.com/auth/classroom.coursework.me.readonly",
   // Posted materials (not assignments) need their own scope.
   "https://www.googleapis.com/auth/classroom.courseworkmaterials.readonly",
+  // Open class files (PDFs, slides) in Synaptic's own viewer so text can be selected.
+  "https://www.googleapis.com/auth/drive.readonly",
 ];
 
 function redirectUri(baseUrl: string) {

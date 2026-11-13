@@ -22,7 +22,7 @@ import {
   generateFlashcards,
   organizeDumps,
   updateBrainDump,
-  transcribeSlide,
+  structurePdfSelection, transcribeSlide,
   updateNote,
 } from "./actions";
 
@@ -327,6 +327,12 @@ export function PageView({ pursuit, crumbs, dump, note, slides, terms }: Props) 
             const r = await transcribeSlide(pursuit.id, image);
             if (r.error || !r.text) return r.error ?? t("Inténtalo de nuevo");
             // Into the note where the cursor is (the end if it never was in it).
+            editorRef.current?.chain().focus().insertContent(textToDoc(r.text).content ?? []).run();
+            return null;
+          }}
+          onAddText={async (lines) => {
+            const r = await structurePdfSelection(pursuit.id, lines);
+            if (r.error || !r.text) return r.error ?? t("Inténtalo de nuevo");
             editorRef.current?.chain().focus().insertContent(textToDoc(r.text).content ?? []).run();
             return null;
           }}

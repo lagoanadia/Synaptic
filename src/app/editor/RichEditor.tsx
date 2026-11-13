@@ -320,7 +320,7 @@ export function RichEditor({
     return (
       <>
       {/* Same formatting bar as the full editor, so a page edits the same way. */}
-      <Toolbar editor={editor} onImage={onUploadImage ? () => fileInput.current?.click() : undefined} uploading={uploading} extras={toolbarExtras} bare />
+      <Toolbar editor={editor} onImage={onUploadImage ? () => fileInput.current?.click() : undefined} onBoard={onBoard ? () => onBoard().then((src) => editor.chain().focus().setImage({ src }).createParagraphNear().run()) : undefined} uploading={uploading} extras={toolbarExtras} bare />
       <div
         ref={wrap}
         className="relative"
@@ -442,6 +442,7 @@ export function RichEditor({
       <Toolbar
         editor={editor}
         onImage={onUploadImage ? () => fileInput.current?.click() : undefined}
+        onBoard={onBoard ? () => onBoard().then((src) => editor.chain().focus().setImage({ src }).createParagraphNear().run()) : undefined}
         uploading={uploading}
         extras={toolbarExtras}
       />
@@ -465,12 +466,15 @@ export function RichEditor({
 function Toolbar({
   editor,
   onImage,
+  onBoard,
   uploading,
   extras,
   bare = false,
 }: {
   editor: Editor;
   onImage?: () => void;
+  // Insert a new whiteboard (drawn picture) where the cursor is.
+  onBoard?: () => void;
   uploading: boolean;
   extras?: React.ReactNode;
   // On a page (no box around the editor): its own rounded bar.
@@ -555,6 +559,13 @@ function Toolbar({
       )}
       {onImage && (
         <Btn onClick={onImage} title={t("Insertar imagen (o pégala / arrástrala)")}>{uploading ? "…" : <ImageIcon />}</Btn>
+      )}
+      {onBoard && (
+        <Btn onClick={onBoard} title={t("Pizarra: dibuja a mano")}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M3 5h18v11H3zM8 20l4-4 4 4M7 12l3-3 2 2 4-4" />
+          </svg>
+        </Btn>
       )}
       {extras && (
         <>
