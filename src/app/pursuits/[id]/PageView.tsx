@@ -89,9 +89,14 @@ export function PageView({ pursuit, crumbs, dump, note, slides, terms, stale: st
   // organized one, keeping everything that was already there.
   function addNew() {
     if (!dump || !note) return;
-    if (dirty.original || dirty.organized) return setMessage(t("Guarda primero (Ctrl+S) y vuelve a pulsar ✦"));
     setMessage(null);
     start(async () => {
+      // Unsaved changes are saved first, so nothing is lost or left out.
+      for (const v of ["original", "organized"] as const) {
+        if (!dirty[v]) continue;
+        const err = await persist(v);
+        if (err) return setMessage(err);
+      }
       const r = await reorganizeDump(pursuit.id, dump.id);
       if (r.error || r.content === undefined) return setMessage(r.error ?? t("Inténtalo de nuevo"));
       const fresh = splitTitle(r.content);
@@ -126,23 +131,30 @@ export function PageView({ pursuit, crumbs, dump, note, slides, terms, stale: st
     }
   }
 
+  // Saves one version; an error message or null.
+  async function persist(v: "organized" | "original"): Promise<string | null> {
+    const text = withTitle(titles[v], drafts[v]);
+    let r: { error: string | null; updatedAt?: string };
+    if (v === "organized" && note) r = await updateNote(pursuit.id, note.id, text, versions.current.organized);
+    else if (v === "original" && dump) {
+      const fd = new FormData();
+      fd.set("content", text);
+      fd.set("expectedUpdatedAt", versions.current.original);
+      r = await updateBrainDump(pursuit.id, dump.id, { error: null }, fd);
+    } else return null;
+    if (r.error) return r.error;
+    if (r.updatedAt) versions.current[v] = r.updatedAt;
+    setDirty((d) => ({ ...d, [v]: false }));
+    return null;
+  }
+
   function save() {
     if (!dirty[view] || pending) return;
     const v = view;
-    const text = withTitle(titles[v], drafts[v]);
     setMessage(null);
     start(async () => {
-      let r: { error: string | null; updatedAt?: string };
-      if (v === "organized" && note) r = await updateNote(pursuit.id, note.id, text, versions.current.organized);
-      else if (dump) {
-        const fd = new FormData();
-        fd.set("content", text);
-        fd.set("expectedUpdatedAt", versions.current.original);
-        r = await updateBrainDump(pursuit.id, dump.id, { error: null }, fd);
-      } else return;
-      if (r.error) return setMessage(r.error);
-      if (r.updatedAt) versions.current[v] = r.updatedAt;
-      setDirty((d) => ({ ...d, [v]: false }));
+      const err = await persist(v);
+      if (err) return setMessage(err);
       setSaved(true);
       if (v === "original" && note) setStale(true);
       // Lines typed or pasted as "- item" in a paragraph become a real list
