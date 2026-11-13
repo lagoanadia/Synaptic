@@ -41,7 +41,7 @@ function Board({ id }: { id: string }) {
   const [snap, setSnap] = useState<number | null>(null);
   // Typing on the board, Canva-style: a box right where you clicked.
   // `edit` = index of the text being changed (it's hidden meanwhile).
-  const [typing, setTypingState] = useState<{ x: number; y: number; value: string; c: number; edit: number | null; k: number } | null>(null);
+  const [typing, setTypingState] = useState<{ x: number; y: number; value: string; c: number; edit: number | null; k: number; fs?: number; mid?: boolean; id?: string } | null>(null);
   // Mirrors `typing` so a click outside and the box's blur save it only once.
   const typingRef = useRef(typing);
   const setTyping = (v: typeof typing) => {
@@ -92,7 +92,8 @@ function Board({ id }: { id: string }) {
     const value = typing.value.trim().slice(0, 120);
     const rest = typing.edit === null ? shapes : shapes.filter((_, i) => i !== typing.edit);
     const at = typing.edit === null ? rest.length : typing.edit;
-    const next = value ? [...rest.slice(0, at), { t: "text" as const, c: typing.c, a: [typing.x, typing.y] as [number, number], s: value }, ...rest.slice(at)] : rest;
+    const shape: Shape = { t: "text", c: typing.c, a: [typing.x, typing.y], s: value, ...(typing.fs ? { fs: typing.fs } : {}), ...(typing.mid ? { mid: true } : {}), ...(typing.id ? { id: typing.id } : {}) };
+    const next = value ? [...rest.slice(0, at), shape, ...rest.slice(at)] : rest;
     setTyping(null);
     if (value || typing.edit !== null) commit(next);
   };
@@ -171,9 +172,13 @@ function Board({ id }: { id: string }) {
             if (typingRef.current) return finishTyping();
             const k = svg.current!.getBoundingClientRect().width / BOARD_W;
             // On an existing text: edit it. Elsewhere: a new one.
-            const hit = shapes.findIndex((sh) => sh.t === "text" && p[0] >= sh.a[0] - 6 && p[0] <= sh.a[0] + sh.s.length * 11 + 6 && p[1] >= sh.a[1] - 22 && p[1] <= sh.a[1] + 6);
+            const hit = shapes.findIndex((sh) => {
+              if (sh.t !== "text") return false;
+              const b = shapeBox(sh);
+              return p[0] >= b.x0 - 6 && p[0] <= b.x1 + 6 && p[1] >= b.y0 - 6 && p[1] <= b.y1 + 6;
+            });
             const old = hit >= 0 ? shapes[hit] : null;
-            if (old && old.t === "text") setTyping({ x: old.a[0], y: old.a[1], value: old.s, c: old.c, edit: hit, k });
+            if (old && old.t === "text") setTyping({ x: old.a[0], y: old.a[1], value: old.s, c: old.c, edit: hit, k, fs: old.fs, mid: old.mid, id: old.id });
             else setTyping({ x: p[0], y: p[1] + 7, value: "", c: color, edit: null, k });
             return;
           }
@@ -318,8 +323,10 @@ function Board({ id }: { id: string }) {
           className="absolute z-20 rounded-sm bg-transparent p-0 outline-2 outline-offset-4 outline-[#2383e2] outline-dashed placeholder:text-ink-faint/60"
           style={{
             left: `${(typing.x / BOARD_W) * 100}%`,
-            top: `${((typing.y - 20 * 0.82) / BOARD_H) * 100}%`,
-            fontSize: 20 * typing.k,
+            top: `${((typing.y - (typing.fs ?? 20) * (typing.mid ? 0.6 : 0.82)) / BOARD_H) * 100}%`,
+            fontSize: (typing.fs ?? 20) * typing.k,
+            transform: typing.mid ? "translateX(-50%)" : undefined,
+            textAlign: typing.mid ? "center" : undefined,
             lineHeight: 1,
             fontFamily: "Inter, system-ui, sans-serif",
             color: BOARD_COLORS[typing.c],
