@@ -263,7 +263,7 @@ export function PageView({ pursuit, crumbs, dump, note, slides, terms, stale: st
                   title={v === "organized" ? (stale ? t("Hay cambios: pulsa para añadir lo nuevo a la versión organizada") : t("Organizada")) : "Original"}
                   aria-label={v === "organized" ? t("Organizada") : "Original"}
                   onClick={() => (v === "organized" && stale ? addNew() : setView(v))}
-                  className={`relative grid size-7 place-items-center rounded-md ${v === "organized" && stale ? "animate-pulse bg-accent-soft text-accent shadow-[0_0_0_2px_var(--color-accent),0_0_14px_var(--color-accent)]" : view === v ? "bg-chip text-ink" : "text-ink-faint hover:text-ink"}`}
+                  className={`relative grid size-7 place-items-center rounded-md ${v === "organized" && stale ? "animate-pulse bg-accent-soft text-accent shadow-[inset_0_0_0_1.5px_var(--color-accent)]" : view === v ? "bg-chip text-ink" : "text-ink-faint hover:text-ink"}`}
                 >
                   {v === "organized" ? <SparklesIcon /> : <PencilIcon />}
                 </button>

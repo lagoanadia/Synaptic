@@ -263,8 +263,38 @@ function parseTextBlocks(text: string): NoteBlock[] {
 // Full pipeline for rendering saved content: split out images first (they
 // can land anywhere, images included), then run the markdown-shortcut
 // parser over each surrounding run of plain text.
+// Pasted or typed text often carries Windows line ends, tabs or
+// non-breaking spaces as indentation, invisible characters, or "*", "•",
+// "–" as bullets: all of it means the same list. Code blocks stay as written.
+export function normalizeNoteText(text: string): string {
+  let inCode = false;
+  return text
+    .replace(/\r\n?/g, "\n")
+    .split("\n")
+    .map((line) => {
+      if (inCode) {
+        if (line.trim() === ">") inCode = false;
+        return line;
+      }
+      if (/^<[\w+#-]*\s*$/.test(line.trim()) && line.trim() !== "<") {
+        inCode = true;
+        return line;
+      }
+      if (line.trim() === "<") {
+        inCode = true;
+        return line;
+      }
+      const m = /^([\t \u00a0\u200b\u200c\u200d\ufeff]*)(.*)$/.exec(line)!;
+      const indent = m[1].replace(/[\u200b\u200c\u200d\ufeff]/g, "").replace(/\u00a0/g, " ").replace(/\t/g, "  ");
+      const rest = m[2].replace(/^[*•●▪◦–—]\s+(?=\S)/, "- ");
+      return indent + rest;
+    })
+    .join("\n");
+}
+
 export function parseNoteBlocks(content: string): NoteBlock[] {
   const blocks: NoteBlock[] = [];
+  content = normalizeNoteText(content);
   for (const segment of parseContent(content)) {
     if (segment.type === "image") {
       blocks.push({ type: "image", url: segment.url });
