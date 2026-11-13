@@ -240,12 +240,18 @@ export function hitShape(shapes: Shape[], p: Pt, tolerance = 8): number {
 
 // The box/circle/text under the point a line end could stick to, or -1.
 export function attachTarget(shapes: Shape[], p: Pt): number {
+  const inBox = (b: Box, q: Pt, pad: number) => q[0] >= b.x0 - pad && q[0] <= b.x1 + pad && q[1] >= b.y0 - pad && q[1] <= b.y1 + pad;
   for (let i = shapes.length - 1; i >= 0; i--) {
     const s = shapes[i];
-    if (s.t === "rect" || s.t === "ellipse" || s.t === "text") {
-      const b = ownBox(s);
-      if (p[0] >= b.x0 - 6 && p[0] <= b.x1 + 6 && p[1] >= b.y0 - 6 && p[1] <= b.y1 + 6) return i;
+    if (s.t !== "rect" && s.t !== "ellipse" && s.t !== "text") continue;
+    if (!inBox(ownBox(s), p, 6)) continue;
+    if (s.t === "text") {
+      // Words written inside a box: the line sticks to the box, not the words.
+      const tb = ownBox(s);
+      const holder = shapes.findIndex((o) => (o.t === "rect" || o.t === "ellipse") && inBox(ownBox(o), [tb.x0, tb.y0], 2) && inBox(ownBox(o), [tb.x1, tb.y1], 2));
+      if (holder >= 0) return holder;
     }
+    return i;
   }
   return -1;
 }

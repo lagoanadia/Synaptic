@@ -62,7 +62,7 @@ function Board({ id }: { id: string }) {
   const [many, setMany] = useState<number[]>([]);
   const [manyMove, setManyMove] = useState<{ from: [number, number]; dx: number; dy: number } | null>(null);
   const [marquee, setMarquee] = useState<{ a: [number, number]; b: [number, number] } | null>(null);
-  const [moving, setMoving] = useState<{ kind: "move" | "resize" | "endA" | "endB" | "bend"; from: [number, number]; orig: Shape; live: Shape } | null>(null);
+  const [moving, setMoving] = useState<{ kind: "move" | "resize" | "endA" | "endB" | "bend"; from: [number, number]; orig: Shape; live: Shape; riders?: number[] } | null>(null);
   // A line end over a shape it would stick to (highlighted while drawing).
   const [snap, setSnap] = useState<number | null>(null);
   // Typing on the board, Canva-style: a box right where you clicked.
@@ -168,7 +168,14 @@ function Board({ id }: { id: string }) {
 
   if (!shapes) return <div className="h-40 animate-pulse rounded-xl bg-chip" />;
   const visible = typing?.edit != null ? shapes.filter((_, i) => i !== typing.edit) : shapes;
-  const shown = moving && selected !== null ? visible.map((sh, i) => (i === selected ? moving.live : sh)) : manyMove ? visible.map((sh, i) => (many.includes(i) ? moveShape(sh, manyMove.dx, manyMove.dy, true) : sh)) : visible;
+  // How far the dragged box has gone (its riders move the same).
+  const riderShift = (() => {
+    if (moving?.kind !== "move" || !moving.riders?.length) return [0, 0];
+    const a = shapeBox(moving.orig);
+    const b = shapeBox(moving.live);
+    return [b.x0 - a.x0, b.y0 - a.y0];
+  })();
+  const shown = moving && selected !== null ? visible.map((sh, i) => (i === selected ? moving.live : moving.riders?.includes(i) ? moveShape(sh, riderShift[0], riderShift[1], true) : sh)) : manyMove ? visible.map((sh, i) => (many.includes(i) ? moveShape(sh, manyMove.dx, manyMove.dy, true) : sh)) : visible;
   const manyBox = many.length > 1 && many.every((i) => shown[i]) ? many.map((i) => shapeBox(shown[i], shown)).reduce((u, b) => ({ x0: Math.min(u.x0, b.x0), y0: Math.min(u.y0, b.y0), x1: Math.max(u.x1, b.x1), y1: Math.max(u.y1, b.y1) })) : null;
   const grouped = !!manyBox && !!shapes[many[0]]?.g && many.every((i) => shapes[i]?.g === shapes[many[0]].g);
   const all = draft ? [...shown, draft] : shown;
@@ -269,7 +276,17 @@ function Board({ id }: { id: string }) {
               }
               setMany([]);
               setSelected(hit);
-              setMoving({ kind: "move", from: p, orig: shapes[hit], live: shapes[hit] });
+              // What sits inside a box or circle (its text, a doodle…) goes along.
+              const own = shapes[hit];
+              const ob = own.t === "rect" || own.t === "ellipse" ? shapeBox(own) : null;
+              const riders = ob
+                ? shapes.flatMap((sh, j) => {
+                    if (j === hit || sh.t === "line") return [];
+                    const b = shapeBox(sh);
+                    return b.x0 >= ob.x0 - 2 && b.x1 <= ob.x1 + 2 && b.y0 >= ob.y0 - 2 && b.y1 <= ob.y1 + 2 ? [j] : [];
+                  })
+                : [];
+              setMoving({ kind: "move", from: p, orig: own, live: own, riders });
             } else {
               setSelected(null);
               setMany([]);
@@ -353,7 +370,7 @@ function Board({ id }: { id: string }) {
               list = r.list;
               live = r.line;
             }
-            if (live !== moving.orig) commit(list.map((sh, i) => (i === selected ? live : sh)));
+            if (live !== moving.orig) commit(list.map((sh, i) => (i === selected ? live : moving.riders?.includes(i) ? moveShape(sh, riderShift[0], riderShift[1], true) : sh)));
             setMoving(null);
             return;
           }
