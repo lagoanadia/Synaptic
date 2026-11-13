@@ -1,5 +1,6 @@
 // Spanish source text → translation. Missing keys fall back to Spanish.
 export const en: Record<string, string> = {
+  "Fuera de tus apuntes": "Not in your notes",
   "Flecha": "Arrow",
   "Arrastra para curvar": "Drag to curve",
   "Sin flecha": "No arrow",

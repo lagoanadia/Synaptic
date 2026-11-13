@@ -9,6 +9,7 @@ import { DraggableMap } from "@/app/DraggableMap";
 import { looksLikeCode } from "@/lib/internalize";
 import type { MapCluster } from "@/lib/knowledgeMap";
 import { CodeBlock } from "../../CodeBlock";
+import { ScanText } from "./ScanText";
 import { RichContent } from "../../RichContent";
 import { ConceptQuiz } from "./ConceptQuiz";
 import { addConceptByName, askAboutConcept, deleteConcept, editConcept, goDeeper, openConcept } from "../actions";
@@ -193,7 +194,7 @@ export function LearnView({
                 </span>
               </div>
               {concept.summary && <p className="text-[17px] font-medium text-ink-muted">{concept.summary}</p>}
-              {concept.explanation && concept.explanation !== concept.summary && <p className="whitespace-pre-line">{concept.explanation}</p>}
+              {concept.explanation && concept.explanation !== concept.summary && <ScanText text={concept.explanation} />}
             </>
           )}
 
@@ -233,11 +234,11 @@ export function LearnView({
 
           {mode === "explain" && (
             <div className="flex flex-col gap-3 rounded-lg bg-sidebar p-4">
-              {explanation ? <p className="whitespace-pre-line">{explanation}</p> : <span className="h-3 w-40 animate-pulse rounded bg-chip" />}
+              {explanation ? <ScanText text={explanation} /> : <span className="h-3 w-40 animate-pulse rounded bg-chip" />}
               {answers.map((x, i) => (
                 <div key={i} className="flex flex-col gap-1 text-sm">
                   <span className="self-end rounded-xl bg-white px-3 py-1.5">{x.q}</span>
-                  <p className="whitespace-pre-line">{x.a}</p>
+                  <ScanText text={x.a} className="text-sm" />
                 </div>
               ))}
               <form
