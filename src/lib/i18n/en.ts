@@ -1,5 +1,6 @@
 // Spanish source text → translation. Missing keys fall back to Spanish.
 export const en: Record<string, string> = {
+  "Desagrupar": "Ungroup",
   "Guarda primero (Ctrl+S) y vuelve a pulsar ✦": "Save first (Ctrl+S) and press ✦ again",
   "Añadido lo nuevo a la versión organizada": "Added what's new to the organized version",
   "No había nada nuevo que añadir": "There was nothing new to add",

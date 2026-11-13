@@ -18,14 +18,15 @@ export type Arrow = "end" | "both";
 // Lines can curve (`bend`: how far the middle is pulled sideways), carry
 // arrowheads, and stick to a shape at either end (`fa`/`fb` = that shape's
 // id): then that end sits on the shape's edge and follows it around.
-export type LineShape = { t: "line"; c: Color; a: Pt; b: Pt; bend?: number; arrow?: Arrow; fa?: string; fb?: string };
+// g: the group it belongs to (shapes of one group select and move together).
+export type LineShape = { g?: string; t: "line"; c: Color; a: Pt; b: Pt; bend?: number; arrow?: Arrow; fa?: string; fb?: string };
 export type Shape =
-  | { t: "pen"; c: Color; p: Pt[] }
+  | { g?: string; t: "pen"; c: Color; p: Pt[] }
   | LineShape
-  | { t: "rect"; c: Color; a: Pt; b: Pt; id?: string }
-  | { t: "ellipse"; c: Color; a: Pt; b: Pt; id?: string }
+  | { g?: string; t: "rect"; c: Color; a: Pt; b: Pt; id?: string }
+  | { g?: string; t: "ellipse"; c: Color; a: Pt; b: Pt; id?: string }
   // fs: font size (default 20); mid: `a` is the text's centre, not its start.
-  | { t: "text"; c: Color; a: Pt; s: string; id?: string; fs?: number; mid?: boolean };
+  | { g?: string; t: "text"; c: Color; a: Pt; s: string; id?: string; fs?: number; mid?: boolean };
 
 const num = (v: unknown, max: number) => (typeof v === "number" && Number.isFinite(v) ? Math.max(0, Math.min(max, Math.round(v))) : 0);
 const pt = (v: unknown): Pt => (Array.isArray(v) ? [num(v[0], WORLD_W), num(v[1], WORLD_H)] : [0, 0]);
@@ -39,6 +40,11 @@ export const newShapeId = () => Math.random().toString(36).slice(2, 10);
 export function cleanShapes(raw: unknown): Shape[] {
   if (!Array.isArray(raw)) return [];
   const out: Shape[] = [];
+  const withGroup = (o: Record<string, unknown>) => {
+    const g = idOf(o.g);
+    const last = out[out.length - 1];
+    if (g && last) last.g = g;
+  };
   for (const r of raw.slice(0, 500)) {
     if (!r || typeof r !== "object") continue;
     const o = r as Record<string, unknown>;
@@ -63,6 +69,8 @@ export function cleanShapes(raw: unknown): Shape[] {
         ...(typeof o.fs === "number" && o.fs >= 10 && o.fs <= 40 && Math.round(o.fs) !== 20 ? { fs: Math.round(o.fs) } : {}),
         ...(o.mid === true ? { mid: true } : {}),
       });
+    else continue;
+    withGroup(o);
   }
   return out;
 }
@@ -242,10 +250,12 @@ export function attachTarget(shapes: Shape[], p: Pt): number {
   return -1;
 }
 
-export function moveShape(s: Shape, dx: number, dy: number): Shape {
+// keepLinks: moving a whole selection, so a line keeps what it's stuck to.
+export function moveShape(s: Shape, dx: number, dy: number, keepLinks = false): Shape {
   const m = ([x, y]: Pt): Pt => clampPt([x + dx, y + dy]);
   if (s.t === "pen") return { ...s, p: s.p.map(m) };
   if (s.t === "text") return { ...s, a: m(s.a) };
+  if (s.t === "line" && keepLinks) return { ...s, a: m(s.a), b: m(s.b) };
   if (s.t === "line") {
     // Moving a line by hand frees it from what it was stuck to.
     const { fa: _fa, fb: _fb, ...free } = s;

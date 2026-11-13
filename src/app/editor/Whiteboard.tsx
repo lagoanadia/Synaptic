@@ -25,6 +25,19 @@ const TOOLS: { id: Tool; label: string; icon: React.ReactNode }[] = [
   { id: "text", label: "Texto", icon: S("M5 6V4h14v2|M12 4v16|M9 20h6") },
 ];
 
+// Delete these shapes; lines stuck to them stay where they were drawn, loose.
+function removeShapes(shapes: Shape[], gone: number[]): Shape[] {
+  const ids = new Set(gone.map((i) => shapes[i]).flatMap((sh) => (sh && "id" in sh && sh.id ? [sh.id] : [])));
+  return shapes
+    .filter((_, i) => !gone.includes(i))
+    .map((sh) => {
+      if (sh.t !== "line" || (!ids.has(sh.fa ?? "") && !ids.has(sh.fb ?? ""))) return sh;
+      const g = lineGeometry(sh, shapes);
+      const { fa, fb, ...free } = sh;
+      return { ...free, ...(fa && !ids.has(fa) ? { fa } : {}), ...(fb && !ids.has(fb) ? { fb } : {}), a: [Math.round(g.A[0]), Math.round(g.A[1])] as [number, number], b: [Math.round(g.B[0]), Math.round(g.B[1])] as [number, number] };
+    });
+}
+
 // A whiteboard inside a page: draw with pen, line, rectangle, circle or
 // text in four colours; saves itself a moment after each change.
 function Board({ id }: { id: string }) {
@@ -33,25 +46,10 @@ function Board({ id }: { id: string }) {
   const [tool, setTool] = useState<Tool>("pen");
   const [color, setColor] = useState<Color>(0);
   const [palette, setPalette] = useState(false);
-  // Your last 3 picked colours, remembered in this browser.
-  const [saved, setSaved] = useState<string[]>([]);
-  useEffect(() => {
-    try {
-      const v = JSON.parse(localStorage.getItem("synaptic.boardColors") ?? "[]");
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      if (Array.isArray(v)) setSaved(v.filter((x) => typeof x === "string" && /^#[0-9a-f]{6}$/i.test(x)).slice(0, 3));
-    } catch {}
-  }, []);
-  const pick = (c: Color, remember = false) => {
+  const pick = (c: Color) => {
     setColor(c);
-    if (selected !== null && shapes?.[selected]) commit(shapes.map((sh, j) => (j === selected ? { ...sh, c } : sh)));
-    if (remember && typeof c === "string") {
-      const next = [c, ...saved.filter((x) => x !== c)].slice(0, 3);
-      setSaved(next);
-      try {
-        localStorage.setItem("synaptic.boardColors", JSON.stringify(next));
-      } catch {}
-    }
+    if (many.length && shapes) commit(shapes.map((sh, j) => (many.includes(j) ? { ...sh, c } : sh)));
+    else if (selected !== null && shapes?.[selected]) commit(shapes.map((sh, j) => (j === selected ? { ...sh, c } : sh)));
   };
   const [draft, setDraft] = useState<Shape | null>(null);
   const svg = useRef<SVGSVGElement>(null);
@@ -60,6 +58,10 @@ function Board({ id }: { id: string }) {
   const [panning, setPanning] = useState<{ sx: number; sy: number; vx: number; vy: number } | null>(null);
   // Select tool: the chosen shape, and what a drag on it does.
   const [selected, setSelected] = useState<number | null>(null);
+  // Several shapes at once (Shift + click, Shift + drag a box, or a group).
+  const [many, setMany] = useState<number[]>([]);
+  const [manyMove, setManyMove] = useState<{ from: [number, number]; dx: number; dy: number } | null>(null);
+  const [marquee, setMarquee] = useState<{ a: [number, number]; b: [number, number] } | null>(null);
   const [moving, setMoving] = useState<{ kind: "move" | "resize" | "endA" | "endB" | "bend"; from: [number, number]; orig: Shape; live: Shape } | null>(null);
   // A line end over a shape it would stick to (highlighted while drawing).
   const [snap, setSnap] = useState<number | null>(null);
@@ -166,7 +168,9 @@ function Board({ id }: { id: string }) {
 
   if (!shapes) return <div className="h-40 animate-pulse rounded-xl bg-chip" />;
   const visible = typing?.edit != null ? shapes.filter((_, i) => i !== typing.edit) : shapes;
-  const shown = moving && selected !== null ? visible.map((sh, i) => (i === selected ? moving.live : sh)) : visible;
+  const shown = moving && selected !== null ? visible.map((sh, i) => (i === selected ? moving.live : sh)) : manyMove ? visible.map((sh, i) => (many.includes(i) ? moveShape(sh, manyMove.dx, manyMove.dy, true) : sh)) : visible;
+  const manyBox = many.length > 1 && many.every((i) => shown[i]) ? many.map((i) => shapeBox(shown[i], shown)).reduce((u, b) => ({ x0: Math.min(u.x0, b.x0), y0: Math.min(u.y0, b.y0), x1: Math.max(u.x1, b.x1), y1: Math.max(u.y1, b.y1) })) : null;
+  const grouped = !!manyBox && !!shapes[many[0]]?.g && many.every((i) => shapes[i]?.g === shapes[many[0]].g);
   const all = draft ? [...shown, draft] : shown;
   const sel = selected !== null ? shown[selected] : undefined;
   const box = sel ? shapeBox(sel, shown) : null;
@@ -180,7 +184,10 @@ function Board({ id }: { id: string }) {
         {TOOLS.map((item) => (
           <button key={item.id} type="button" title={t(item.label)} aria-label={t(item.label)} aria-pressed={tool === item.id} onClick={() => {
               setTool(item.id);
-              if (item.id !== "select") setSelected(null);
+              if (item.id !== "select") {
+                setSelected(null);
+                setMany([]);
+              }
             }} className={`grid size-8 place-items-center rounded-lg ${tool === item.id ? "bg-chip text-ink" : "text-ink-muted hover:text-ink"}`}>
             {item.icon}
           </button>
@@ -192,7 +199,7 @@ function Board({ id }: { id: string }) {
           </button>
           {palette && (
             <span className="absolute top-full left-0 z-20 mt-1.5 flex items-center gap-1.5 rounded-xl border border-border-subtle bg-white p-2 shadow-lg">
-              {[...BOARD_COLORS.map((_, i) => i as Color), ...saved].map((c) => (
+              {BOARD_COLORS.map((_, i) => i as Color).map((c) => (
                 <button
                   key={String(c)}
                   type="button"
@@ -205,12 +212,6 @@ function Board({ id }: { id: string }) {
                   style={{ background: colorOf(c) }}
                 />
               ))}
-              <span className="mx-0.5 h-5 w-px bg-border-subtle" />
-              {/* Any colour: the system colour wheel; it's saved among your last 3. */}
-              <label title={t("Otro color")} className="relative grid size-6 shrink-0 cursor-pointer place-items-center rounded-full" style={{ background: "conic-gradient(#e16259, #eda100, #4dab9a, #2383e2, #9065b0, #e16259)" }}>
-                <span className="size-2.5 rounded-full bg-white" />
-                <input type="color" value={colorOf(color)} onChange={(e) => pick(e.target.value.toLowerCase(), true)} className="absolute inset-0 cursor-pointer opacity-0" aria-label={t("Otro color")} />
-              </label>
             </span>
           )}
         </span>
@@ -247,11 +248,34 @@ function Board({ id }: { id: string }) {
               }
             }
             const hit = hitShape(shapes, p);
-            setSelected(hit >= 0 ? hit : null);
             (e.target as Element).setPointerCapture?.(e.pointerId);
-            if (hit >= 0) setMoving({ kind: "move", from: p, orig: shapes[hit], live: shapes[hit] });
-            // Empty space: drag to move around the board.
-            else setPanning({ sx: e.clientX, sy: e.clientY, vx: view.x, vy: view.y });
+            const groupOf = (i: number) => (shapes[i].g ? shapes.flatMap((sh, j) => (sh.g === shapes[i].g ? [j] : [])) : [i]);
+            if (e.shiftKey) {
+              // Shift: add to / take out of the selection, or drag a box.
+              if (hit < 0) return setMarquee({ a: p, b: p });
+              const current = many.length ? many : selected !== null ? groupOf(selected) : [];
+              const these = groupOf(hit);
+              const next = these.every((i) => current.includes(i)) ? current.filter((i) => !these.includes(i)) : [...new Set([...current, ...these])];
+              setSelected(next.length === 1 ? next[0] : null);
+              setMany(next.length > 1 ? next : []);
+              return;
+            }
+            if (hit >= 0) {
+              const these = many.includes(hit) ? many : groupOf(hit);
+              if (these.length > 1) {
+                setSelected(null);
+                setMany(these);
+                return setManyMove({ from: p, dx: 0, dy: 0 });
+              }
+              setMany([]);
+              setSelected(hit);
+              setMoving({ kind: "move", from: p, orig: shapes[hit], live: shapes[hit] });
+            } else {
+              setSelected(null);
+              setMany([]);
+              // Empty space: drag to move around the board.
+              setPanning({ sx: e.clientX, sy: e.clientY, vx: view.x, vy: view.y });
+            }
             return;
           }
           if (tool === "text") {
@@ -277,6 +301,11 @@ function Board({ id }: { id: string }) {
             const r = svg.current!.getBoundingClientRect();
             return setView(fitView({ z: view.z, x: panning.vx - ((e.clientX - panning.sx) / r.width) * vbW, y: panning.vy - ((e.clientY - panning.sy) / r.height) * vbH }));
           }
+          if (manyMove) {
+            const p = at(e);
+            return setManyMove({ ...manyMove, dx: p[0] - manyMove.from[0], dy: p[1] - manyMove.from[1] });
+          }
+          if (marquee) return setMarquee({ ...marquee, b: at(e) });
           if (moving) {
             const p = at(e);
             const o = moving.orig;
@@ -299,6 +328,22 @@ function Board({ id }: { id: string }) {
         onPointerUp={() => {
           setSnap(null);
           if (panning) return setPanning(null);
+          if (manyMove) {
+            if (manyMove.dx || manyMove.dy) commit(shapes.map((sh, i) => (many.includes(i) ? moveShape(sh, manyMove.dx, manyMove.dy, true) : sh)));
+            return setManyMove(null);
+          }
+          if (marquee) {
+            const x0 = Math.min(marquee.a[0], marquee.b[0]), x1 = Math.max(marquee.a[0], marquee.b[0]);
+            const y0 = Math.min(marquee.a[1], marquee.b[1]), y1 = Math.max(marquee.a[1], marquee.b[1]);
+            const inside = shapes.flatMap((sh, i) => {
+              const b = shapeBox(sh, shapes);
+              return b.x0 >= x0 && b.x1 <= x1 && b.y0 >= y0 && b.y1 <= y1 ? [i] : [];
+            });
+            const next = [...new Set([...many, ...(selected !== null ? [selected] : []), ...inside])];
+            setSelected(next.length === 1 ? next[0] : null);
+            setMany(next.length > 1 ? next : []);
+            return setMarquee(null);
+          }
           if (moving && selected !== null) {
             let list = shapes;
             let live = moving.live;
@@ -328,6 +373,54 @@ function Board({ id }: { id: string }) {
           className="pointer-events-none absolute rounded-md bg-[#2383e2]/10 ring-2 ring-[#2383e2]"
           style={{ left: px(snapBox.x0 - 6), top: py(snapBox.y0 - 6), width: sw(snapBox.x1 - snapBox.x0 + 12), height: sh(snapBox.y1 - snapBox.y0 + 12) }}
         />
+      )}
+      {marquee && (
+        <span
+          className="pointer-events-none absolute rounded-sm border border-[#2383e2] bg-[#2383e2]/10"
+          style={{ left: px(Math.min(marquee.a[0], marquee.b[0])), top: py(Math.min(marquee.a[1], marquee.b[1])), width: sw(Math.abs(marquee.b[0] - marquee.a[0])), height: sh(Math.abs(marquee.b[1] - marquee.a[1])) }}
+        />
+      )}
+      {manyBox && (
+        <>
+          <span
+            className={`pointer-events-none absolute rounded-md border-[1.5px] border-[#2383e2] ${grouped ? "" : "border-dashed"}`}
+            style={{ left: px(manyBox.x0 - 8), top: py(manyBox.y0 - 8), width: sw(manyBox.x1 - manyBox.x0 + 16), height: sh(manyBox.y1 - manyBox.y0 + 16) }}
+          />
+          {!manyMove && (
+            <span className="absolute flex -translate-x-1/2 items-center gap-0.5 rounded-full border border-border-subtle bg-white p-0.5 text-xs shadow-sm" style={{ left: px((manyBox.x0 + manyBox.x1) / 2), top: `calc(${py(manyBox.y0 - 8)} - 36px)` }}>
+              <button
+                type="button"
+                onClick={() => {
+                  const g = grouped ? undefined : newShapeId();
+                  commit(
+                    shapes.map((sh, i) => {
+                      if (!many.includes(i)) return sh;
+                      const { g: _old, ...rest } = sh;
+                      void _old;
+                      return (g ? { ...rest, g } : rest) as Shape;
+                    }),
+                  );
+                }}
+                className="flex items-center gap-1 rounded-full px-2.5 py-1 font-medium text-ink hover:bg-chip"
+              >
+                {grouped ? S("M4 4h7v7H4z|M13 13h7v7h-7z") : S("M3 3h18v18H3z|M7 7h4v4H7z|M13 13h4v4h-4z")}
+                {grouped ? t("Desagrupar") : t("Agrupar")}
+              </button>
+              <button
+                type="button"
+                title={t("Eliminar")}
+                aria-label={t("Eliminar")}
+                onClick={() => {
+                  commit(removeShapes(shapes, many));
+                  setMany([]);
+                }}
+                className="grid size-7 place-items-center rounded-full text-ink-muted hover:text-red-600"
+              >
+                {S("M4 7h16|M10 11v6|M14 11v6|M6 7l1 13h10l1-13|M9 7V4h6v3")}
+              </button>
+            </span>
+          )}
+        </>
       )}
       {box && !draft && (
         <>
@@ -373,19 +466,7 @@ function Board({ id }: { id: string }) {
               title={t("Eliminar")}
               aria-label={t("Eliminar")}
               onClick={() => {
-                const gone = shapes[selected!];
-                const goneId = gone && "id" in gone ? gone.id : undefined;
-                commit(
-                  shapes
-                    .filter((_, i) => i !== selected)
-                    .map((sh) => {
-                      if (sh.t !== "line" || !goneId || (sh.fa !== goneId && sh.fb !== goneId)) return sh;
-                      // Lines stuck to it stay where they were drawn, loose.
-                      const g = lineGeometry(sh, shapes);
-                      const { fa, fb, ...free } = sh;
-                      return { ...free, ...(fa && fa !== goneId ? { fa } : {}), ...(fb && fb !== goneId ? { fb } : {}), a: [Math.round(g.A[0]), Math.round(g.A[1])] as [number, number], b: [Math.round(g.B[0]), Math.round(g.B[1])] as [number, number] };
-                    }),
-                );
+                commit(removeShapes(shapes, [selected!]));
                 setSelected(null);
               }}
               className="grid size-7 place-items-center rounded-full text-ink-muted hover:text-red-600"
