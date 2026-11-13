@@ -1,5 +1,10 @@
 // Spanish source text → translation. Missing keys fall back to Spanish.
 export const en: Record<string, string> = {
+  "1 persona": "1 person",
+  "{0} personas": "{0} people",
+  "Entra en el total (quítalo si cada uno lo paga aparte)": "Counts toward the total (untick it if everyone pays their own)",
+  "No entra en el total: cada uno lo paga aparte": "Not in the total: everyone pays their own",
+  "Cada uno lo suyo": "Everyone pays their own",
   "Compartido": "Shared",
   "Elige un amigo o escribe un email o @usuario": "Pick a friend or type an email or @username",
   "No hay ninguna cuenta con ese email o @usuario — tiene que entrar en Synaptic una vez primero": "No account with that email or @username — they need to sign in to Synaptic once first",
