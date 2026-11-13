@@ -20,3 +20,25 @@ describe("whiteboard editing", () => {
     expect(tooSmall(rect)).toBe(false);
   });
 });
+
+describe("connectors", () => {
+  const a: Shape = { t: "rect", c: 0, a: [0, 0], b: [100, 100], id: "boxa" };
+  const b: Shape = { t: "rect", c: 0, a: [300, 0], b: [400, 100], id: "boxb" };
+  it("an attached end sits on the shape's edge and follows it", async () => {
+    const { lineGeometry, moveShape: mv } = await import("./whiteboard");
+    const l = { t: "line" as const, c: 0, a: [50, 50] as [number, number], b: [350, 50] as [number, number], fa: "boxa", fb: "boxb" };
+    const g = lineGeometry(l, [a, b, l]);
+    expect(g.A[0]).toBeCloseTo(104);
+    expect(g.B[0]).toBeCloseTo(296);
+    const moved = mv(b, 0, 200);
+    expect(lineGeometry(l, [a, moved, l]).B[1]).toBeGreaterThan(150);
+  });
+  it("draws arrowheads and curves", async () => {
+    const { shapeSvg, bendFor, lineMiddle } = await import("./whiteboard");
+    const l = { t: "line" as const, c: 0, a: [0, 100] as [number, number], b: [200, 100] as [number, number], arrow: "end" as const };
+    expect(shapeSvg(l)).toContain("Z");
+    const bend = bendFor(l, [], [100, 60]);
+    expect(lineMiddle({ ...l, bend }, [])[1]).toBeCloseTo(60, 0);
+    expect(shapeSvg({ ...l, bend })).toContain("Q");
+  });
+});

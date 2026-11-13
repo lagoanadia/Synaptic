@@ -1,5 +1,10 @@
 // Spanish source text → translation. Missing keys fall back to Spanish.
 export const en: Record<string, string> = {
+  "Flecha": "Arrow",
+  "Arrastra para curvar": "Drag to curve",
+  "Sin flecha": "No arrow",
+  "Flecha al final": "Arrow at the end",
+  "Flecha en los dos lados": "Arrows at both ends",
   "Abre el PDF desde tu ordenador para seleccionar texto": "Open the PDF from your computer to select text",
   "Volver a la vista de Google": "Back to Google's view",
   "Escribe…": "Type…",

@@ -4,10 +4,10 @@ import { useT } from "@/app/LangProvider";
 import { useEffect, useRef, useState } from "react";
 import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from "@tiptap/react";
 import Image from "@tiptap/extension-image";
-import { BOARD_COLORS, BOARD_H, BOARD_SRC, BOARD_W, hitShape, moveShape, resizeShape, shapeBox, shapeSvg, tooSmall, type Shape } from "@/lib/whiteboard";
+import { BOARD_COLORS, BOARD_H, BOARD_SRC, BOARD_W, attachTarget, bendFor, hitShape, lineGeometry, lineMiddle, moveShape, newShapeId, resizeShape, shapeBox, shapeSvg, tooSmall, type Arrow, type LineShape, type Shape } from "@/lib/whiteboard";
 import { saveBoard } from "@/app/pursuits/[id]/boards";
 
-type Tool = "select" | "pen" | "line" | "rect" | "ellipse" | "text";
+type Tool = "select" | "pen" | "line" | "arrow" | "rect" | "ellipse" | "text";
 const S = (d: string) => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
     {d.split("|").map((x) => (
@@ -19,6 +19,7 @@ const TOOLS: { id: Tool; label: string; icon: React.ReactNode }[] = [
   { id: "select", label: "Seleccionar", icon: S("M5 3l14 8-6 2-2 6z") },
   { id: "pen", label: "Lápiz", icon: S("M4 20l4-1 11-11-3-3L5 16z|M14 6l3 3") },
   { id: "line", label: "Línea", icon: S("M5 19 19 5") },
+  { id: "arrow", label: "Flecha", icon: S("M5 19 19 5|M11 5h8v8") },
   { id: "rect", label: "Rectángulo", icon: S("M5 6h14v12H5z") },
   { id: "ellipse", label: "Círculo", icon: S("M12 5c4.4 0 8 3.1 8 7s-3.6 7-8 7-8-3.1-8-7 3.6-7 8-7Z") },
   { id: "text", label: "Texto", icon: S("M5 6V4h14v2|M12 4v16|M9 20h6") },
@@ -35,7 +36,9 @@ function Board({ id }: { id: string }) {
   const svg = useRef<SVGSVGElement>(null);
   // Select tool: the chosen shape, and what a drag on it does.
   const [selected, setSelected] = useState<number | null>(null);
-  const [moving, setMoving] = useState<{ kind: "move" | "resize"; from: [number, number]; orig: Shape; live: Shape } | null>(null);
+  const [moving, setMoving] = useState<{ kind: "move" | "resize" | "endA" | "endB" | "bend"; from: [number, number]; orig: Shape; live: Shape } | null>(null);
+  // A line end over a shape it would stick to (highlighted while drawing).
+  const [snap, setSnap] = useState<number | null>(null);
   // Typing on the board, Canva-style: a box right where you clicked.
   // `edit` = index of the text being changed (it's hidden meanwhile).
   const [typing, setTypingState] = useState<{ x: number; y: number; value: string; c: number; edit: number | null; k: number } | null>(null);
@@ -53,6 +56,24 @@ function Board({ id }: { id: string }) {
       .then((s: Shape[]) => setShapes(s))
       .catch(() => setShapes([]));
   }, [id]);
+
+  // A line end dropped on a box/circle/text sticks to it (the shape gets an id).
+  const stick = (list: Shape[], line: LineShape, end: "a" | "b", p: [number, number]): { list: Shape[]; line: LineShape } => {
+    const key = end === "a" ? "fa" : "fb";
+    const other = end === "a" ? line.fb : line.fa;
+    const i = attachTarget(list, p);
+    const target = i >= 0 ? list[i] : null;
+    const { [key]: _old, ...rest } = line;
+    void _old;
+    if (!target || target.t === "line" || target.t === "pen") return { list, line: rest };
+    let id = "id" in target ? target.id : undefined;
+    if (id && id === other) return { list, line: rest };
+    if (!id) {
+      id = newShapeId();
+      list = list.map((sh, j) => (j === i ? ({ ...sh, id } as Shape) : sh));
+    }
+    return { list, line: { ...rest, [key]: id } };
+  };
 
   const commit = (next: Shape[]) => {
     setShapes(next);
@@ -80,7 +101,11 @@ function Board({ id }: { id: string }) {
   const visible = typing?.edit != null ? shapes.filter((_, i) => i !== typing.edit) : shapes;
   const shown = moving && selected !== null ? visible.map((sh, i) => (i === selected ? moving.live : sh)) : visible;
   const all = draft ? [...shown, draft] : shown;
-  const box = selected !== null && shown[selected] ? shapeBox(shown[selected]) : null;
+  const sel = selected !== null ? shown[selected] : undefined;
+  const box = sel ? shapeBox(sel, shown) : null;
+  const geo = sel?.t === "line" ? lineGeometry(sel, shown) : null;
+  const middle = sel?.t === "line" ? lineMiddle(sel, shown) : null;
+  const snapBox = snap !== null && shapes[snap] ? shapeBox(shapes[snap]) : null;
   const pct = (v: number, of: number) => `${(v / of) * 100}%`;
 
   return (
@@ -116,7 +141,17 @@ function Board({ id }: { id: string }) {
           if (tool === "select") {
             // On the corner handle: resize. On a shape: pick it and move it.
             const cur = selected !== null ? shapes[selected] : null;
-            if (cur) {
+            if (cur?.t === "line") {
+              const g = lineGeometry(cur, shapes);
+              const m = lineMiddle(cur, shapes);
+              const near = (q: [number, number]) => Math.hypot(p[0] - q[0], p[1] - q[1]) <= 12;
+              const kind = near(m) ? "bend" : near(g.B) ? "endB" : near(g.A) ? "endA" : null;
+              if (kind) {
+                (e.target as Element).setPointerCapture?.(e.pointerId);
+                return setMoving({ kind, from: p, orig: cur, live: cur });
+              }
+            }
+            if (cur && cur.t !== "line") {
               const b = shapeBox(cur);
               if (cur.t !== "text" && Math.hypot(p[0] - b.x1, p[1] - b.y1) <= 14) {
                 (e.target as Element).setPointerCapture?.(e.pointerId);
@@ -143,49 +178,124 @@ function Board({ id }: { id: string }) {
             return;
           }
           (e.target as Element).setPointerCapture?.(e.pointerId);
-          setDraft(tool === "pen" ? { t: "pen", c: color, p: [p] } : { t: tool, c: color, a: p, b: p });
+          setDraft(tool === "pen" ? { t: "pen", c: color, p: [p] } : tool === "line" || tool === "arrow" ? { t: "line", c: color, a: p, b: p, ...(tool === "arrow" ? { arrow: "end" as const } : {}) } : { t: tool, c: color, a: p, b: p });
         }}
         onPointerMove={(e) => {
           if (moving) {
             const p = at(e);
-            return setMoving({ ...moving, live: moving.kind === "move" ? moveShape(moving.orig, p[0] - moving.from[0], p[1] - moving.from[1]) : resizeShape(moving.orig, p) });
+            const o = moving.orig;
+            let live: Shape = o;
+            if (moving.kind === "move") live = moveShape(o, p[0] - moving.from[0], p[1] - moving.from[1]);
+            else if (moving.kind === "resize") live = resizeShape(o, p);
+            else if (o.t === "line" && moving.kind === "bend") live = { ...o, bend: bendFor(o, shapes, p) };
+            else if (o.t === "line") {
+              const { fa, fb, ...free } = o;
+              live = moving.kind === "endA" ? { ...free, ...(fb ? { fb } : {}), a: p } : { ...free, ...(fa ? { fa } : {}), b: p };
+            }
+            if (moving.kind === "endA" || moving.kind === "endB") setSnap(attachTarget(shapes, p) >= 0 ? attachTarget(shapes, p) : null);
+            return setMoving({ ...moving, live });
           }
           if (!draft) return;
           const p = at(e);
+          if (draft.t === "line") setSnap(attachTarget(shapes, p) >= 0 ? attachTarget(shapes, p) : null);
           setDraft(draft.t === "pen" ? { ...draft, p: [...draft.p, p] } : draft.t === "text" ? draft : { ...draft, b: p });
         }}
         onPointerUp={() => {
+          setSnap(null);
           if (moving && selected !== null) {
-            if (moving.live !== moving.orig) commit(shapes.map((sh, i) => (i === selected ? moving.live : sh)));
+            let list = shapes;
+            let live = moving.live;
+            if (live.t === "line" && (moving.kind === "endA" || moving.kind === "endB")) {
+              const end = moving.kind === "endA" ? "a" : "b";
+              const r = stick(list, live, end, live[end]);
+              list = r.list;
+              live = r.line;
+            }
+            if (live !== moving.orig) commit(list.map((sh, i) => (i === selected ? live : sh)));
             setMoving(null);
             return;
           }
-          if (draft && !tooSmall(draft)) commit([...shapes, draft]);
+          if (draft && !tooSmall(draft)) {
+            if (draft.t === "line") {
+              let r = stick(shapes, draft, "a", draft.a);
+              r = stick(r.list, r.line, "b", draft.b);
+              if (!tooSmall(r.line) || r.line.fa || r.line.fb) commit([...r.list, r.line]);
+            } else commit([...shapes, draft]);
+          }
           setDraft(null);
         }}
-        dangerouslySetInnerHTML={{ __html: all.map(shapeSvg).join("") }}
+        dangerouslySetInnerHTML={{ __html: all.map((sh) => shapeSvg(sh, all)).join("") }}
       />
+      {snapBox && (
+        <span
+          className="pointer-events-none absolute rounded-md bg-[#2383e2]/10 ring-2 ring-[#2383e2]"
+          style={{ left: pct(snapBox.x0 - 6, BOARD_W), top: pct(snapBox.y0 - 6, BOARD_H), width: pct(snapBox.x1 - snapBox.x0 + 12, BOARD_W), height: pct(snapBox.y1 - snapBox.y0 + 12, BOARD_H) }}
+        />
+      )}
       {box && !draft && (
         <>
           <span
-            className="pointer-events-none absolute rounded-sm border-[1.5px] border-dashed border-[#2383e2]"
+            className={`pointer-events-none absolute rounded-sm border-[1.5px] border-dashed border-[#2383e2] ${sel?.t === "line" ? "hidden" : ""}`}
             style={{ left: pct(box.x0 - 6, BOARD_W), top: pct(box.y0 - 6, BOARD_H), width: pct(box.x1 - box.x0 + 12, BOARD_W), height: pct(box.y1 - box.y0 + 12, BOARD_H) }}
           />
-          {shown[selected!]?.t !== "text" && <span className="pointer-events-none absolute size-3 -translate-x-1/2 -translate-y-1/2 rounded-sm border-2 border-[#2383e2] bg-white" style={{ left: pct(box.x1, BOARD_W), top: pct(box.y1, BOARD_H) }} />}
+          {geo && middle && (
+            <>
+              {[geo.A, geo.B].map((q, i) => (
+                <span key={i} className="pointer-events-none absolute size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[#2383e2] bg-white" style={{ left: pct(q[0], BOARD_W), top: pct(q[1], BOARD_H) }} />
+              ))}
+              <span className="pointer-events-none absolute size-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-[#2383e2] shadow" style={{ left: pct(middle[0], BOARD_W), top: pct(middle[1], BOARD_H) }} title={t("Arrastra para curvar")} />
+            </>
+          )}
+          {sel?.t !== "text" && sel?.t !== "line" && <span className="pointer-events-none absolute size-3 -translate-x-1/2 -translate-y-1/2 rounded-sm border-2 border-[#2383e2] bg-white" style={{ left: pct(box.x1, BOARD_W), top: pct(box.y1, BOARD_H) }} />}
           {!moving && (
+            <span className="absolute flex -translate-x-1/2 items-center gap-0.5 rounded-full border border-border-subtle bg-white p-0.5 shadow-sm" style={{ left: pct((box.x0 + box.x1) / 2, BOARD_W), top: `calc(${pct(box.y0 - 6, BOARD_H)} - 36px)` }}>
+              {sel?.t === "line" &&
+                ([
+                  [undefined, t("Sin flecha"), "M4 12h16"],
+                  ["end", t("Flecha al final"), "M4 12h15|M14 7l5 5-5 5"],
+                  ["both", t("Flecha en los dos lados"), "M5 12h14|M10 7l-5 5 5 5|M14 7l5 5-5 5"],
+                ] as [Arrow | undefined, string, string][]).map(([a, label, d]) => (
+                  <button
+                    key={label}
+                    type="button"
+                    title={label}
+                    aria-label={label}
+                    aria-pressed={sel.arrow === a}
+                    onClick={() => {
+                      const { arrow: _x, ...rest } = sel;
+                      void _x;
+                      commit(shapes.map((sh, i) => (i === selected ? { ...rest, ...(a ? { arrow: a } : {}) } : sh)));
+                    }}
+                    className={`grid size-7 place-items-center rounded-full ${sel.arrow === a ? "bg-chip text-ink" : "text-ink-muted hover:text-ink"}`}
+                  >
+                    {S(d)}
+                  </button>
+                ))}
             <button
               type="button"
               title={t("Eliminar")}
               aria-label={t("Eliminar")}
               onClick={() => {
-                commit(shapes.filter((_, i) => i !== selected));
+                const gone = shapes[selected!];
+                const goneId = gone && "id" in gone ? gone.id : undefined;
+                commit(
+                  shapes
+                    .filter((_, i) => i !== selected)
+                    .map((sh) => {
+                      if (sh.t !== "line" || !goneId || (sh.fa !== goneId && sh.fb !== goneId)) return sh;
+                      // Lines stuck to it stay where they were drawn, loose.
+                      const g = lineGeometry(sh, shapes);
+                      const { fa, fb, ...free } = sh;
+                      return { ...free, ...(fa && fa !== goneId ? { fa } : {}), ...(fb && fb !== goneId ? { fb } : {}), a: [Math.round(g.A[0]), Math.round(g.A[1])] as [number, number], b: [Math.round(g.B[0]), Math.round(g.B[1])] as [number, number] };
+                    }),
+                );
                 setSelected(null);
               }}
-              className="absolute grid size-7 -translate-x-1/2 place-items-center rounded-full border border-border-subtle bg-white text-ink-muted shadow-sm hover:text-red-600"
-              style={{ left: pct((box.x0 + box.x1) / 2, BOARD_W), top: `calc(${pct(box.y0 - 6, BOARD_H)} - 34px)` }}
+              className="grid size-7 place-items-center rounded-full text-ink-muted hover:text-red-600"
             >
               {S("M4 7h16|M10 11v6|M14 11v6|M6 7l1 13h10l1-13|M9 7V4h6v3")}
             </button>
+            </span>
           )}
         </>
       )}
