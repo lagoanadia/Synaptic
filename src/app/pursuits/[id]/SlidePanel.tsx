@@ -7,6 +7,7 @@ import { SlidesIcon, XIcon } from "@/app/icons";
 import { isSlideTitle, slideSourceFor, unitCode } from "@/lib/slides";
 import { listClassroomFiles, saveSlideDeck } from "./actions";
 import { PdfSlides } from "./PdfSlides";
+import { deleteLocalPdf, getLocalPdf, saveLocalPdf } from "@/lib/localPdf";
 
 type Deck = { name: string; url: string };
 
@@ -58,8 +59,10 @@ export function SlidePanel({
 }) {
   const t = useT();
   const [showAllUnits, setShowAllUnits] = useState(false);
-  // A Google file Synaptic couldn't read itself (no Drive access yet): Google's viewer.
-  const [failed, setFailed] = useState<string | null>(null);
+  // A copy of a Google file's PDF opened from this device (kept in the
+  // browser, never uploaded), so its text can be selected. Keyed by link.
+  const [local, setLocal] = useState<{ key: string; url: string } | null>(null);
+  const localInput = useRef<HTMLInputElement>(null);
   const key = `synaptic.slides.${pursuitId}`;
   const [deck, setDeck] = useState<Deck | null>(null);
   const [width, setWidth] = useState(WIDTHS.M);
@@ -132,6 +135,22 @@ export function SlidePanel({
   }
 
   const source = deck ? slideSourceFor(deck.url) : null;
+  const deckUrl = deck?.url ?? null;
+  useEffect(() => {
+    if (!deckUrl) return;
+    let made: string | null = null;
+    let live = true;
+    getLocalPdf(deckUrl).then((b) => {
+      if (!live || !b) return;
+      made = URL.createObjectURL(b);
+      setLocal({ key: deckUrl, url: made });
+    });
+    return () => {
+      live = false;
+      if (made) URL.revokeObjectURL(made);
+    };
+  }, [deckUrl]);
+  const localUrl = local && local.key === deckUrl ? local.url : null;
   const open_ = (deck || picking) && !collapsed;
 
   if (!deck && !picking) {
@@ -271,18 +290,47 @@ export function SlidePanel({
 
           {source && (
             <div className="min-h-[50vh] flex-1 bg-[#2a2a2a]">
-              {source.kind === "pdf" && !(source.fallback && failed === source.src) ? (
-                <PdfSlides key={source.src} src={source.src} onTranscribe={onTranscribe} onAddText={onAddText} onFail={source.fallback ? () => setFailed(source.src) : undefined} />
+              {source.kind === "pdf" || localUrl ? (
+                <div className="flex h-full flex-col">
+                  <div className="min-h-0 flex-1">
+                    <PdfSlides key={localUrl ?? source.src} src={localUrl ?? source.src} onTranscribe={onTranscribe} onAddText={onAddText} />
+                  </div>
+                  {localUrl && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (deckUrl) deleteLocalPdf(deckUrl);
+                        setLocal(null);
+                      }}
+                      className="bg-white py-2 text-center text-xs text-ink-muted hover:text-ink"
+                    >
+                      {t("Volver a la vista de Google")}
+                    </button>
+                  )}
+                </div>
               ) : (
                 <div className="flex h-full flex-col">
-                  {source.kind === "pdf" && (
-                    <a href={`/api/classroom/connect?pursuitId=${pursuitId}`} className="bg-[#fdf3c4] px-3 py-1.5 text-center text-xs text-ink">
-                      {t("Para seleccionar texto aquí, vuelve a conectar Google Classroom")}
-                    </a>
-                  )}
+                  {/* Google's viewer can't share its text: open the same PDF
+                      from this device instead (no upload, no permissions). */}
+                  <button type="button" onClick={() => localInput.current?.click()} className="flex items-center justify-center gap-2 bg-[#2383e2] px-3 py-2 text-xs font-semibold text-white hover:bg-[#1f74c9]">
+                    {t("Abre el PDF desde tu ordenador para seleccionar texto")}
+                  </button>
+                  <input
+                    ref={localInput}
+                    type="file"
+                    accept="application/pdf"
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      e.target.value = "";
+                      if (!f || !deckUrl) return;
+                      saveLocalPdf(deckUrl, f);
+                      setLocal({ key: deckUrl, url: URL.createObjectURL(f) });
+                    }}
+                  />
                   <iframe
-                    key={source.kind === "pdf" ? source.fallback : source.src}
-                    src={source.kind === "pdf" ? source.fallback : source.src}
+                    key={source.src}
+                    src={source.src}
                     title={deck?.name ?? t("Diapositivas")}
                     className="min-h-[50vh] w-full flex-1 border-0"
                     allow="fullscreen"

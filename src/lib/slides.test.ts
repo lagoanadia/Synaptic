@@ -2,21 +2,17 @@ import { describe, expect, it } from "vitest";
 import { slideSourceFor } from "./slides";
 
 describe("slideSourceFor", () => {
-  it("opens Google Slides as a PDF, with Google's viewer as fallback", () => {
+  it("embeds Google Slides", () => {
     expect(slideSourceFor("https://docs.google.com/presentation/d/abc-123_X/edit#slide=id.p")).toEqual({
-      kind: "pdf",
-      src: "/api/drive/abc-123_X",
-      fallback: "https://docs.google.com/presentation/d/abc-123_X/embed?rm=minimal",
+      kind: "iframe",
+      src: "https://docs.google.com/presentation/d/abc-123_X/embed?rm=minimal",
     });
   });
-  it("reads Drive files from Classroom links, with Google's preview as fallback", () => {
-    expect(slideSourceFor("https://drive.google.com/file/d/1AbC/view?usp=drive_web")).toEqual({
-      kind: "pdf",
-      src: "/api/drive/1AbC",
-      fallback: "https://drive.google.com/file/d/1AbC/preview",
-    });
-    const open = slideSourceFor("https://drive.google.com/open?id=XyZ");
-    expect(open?.kind === "pdf" && open.fallback).toBe("https://drive.google.com/file/d/XyZ/preview");
+  it("previews Drive files from Classroom links", () => {
+    expect(slideSourceFor("https://drive.google.com/file/d/1AbC/view?usp=drive_web")?.src).toBe(
+      "https://drive.google.com/file/d/1AbC/preview",
+    );
+    expect(slideSourceFor("https://drive.google.com/open?id=XyZ")?.src).toBe("https://drive.google.com/file/d/XyZ/preview");
   });
   it("uses the Office viewer for pptx and pdf.js for pdf", () => {
     const pptx = slideSourceFor("https://x.public.blob.vercel-storage.com/ud1-abc.pptx");
