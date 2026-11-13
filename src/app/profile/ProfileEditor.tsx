@@ -4,7 +4,7 @@ import { useT } from "@/app/LangProvider";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { AvatarFace } from "../AvatarFace";
-import { BG_COLORS, BROWS, CLOTH_COLORS, EYES, EXTRAS, GLASSES, HAIRS, HAIR_COLORS, MOUTHS, OUTFITS, SKINS, randomAvatar, type Avatar } from "@/lib/avatar";
+import { BG_COLORS, BROWS, CLOTH_COLORS, EYES, EXTRAS, GLASSES, HAIRS, HAIR_COLORS, MOUTHS, OUTFITS, SKINS, type Avatar } from "@/lib/avatar";
 import { saveAvatar, setUsername } from "./actions";
 import { UsernameField, type HandleStatus } from "./UsernameField";
 
@@ -14,13 +14,6 @@ const TABS: Tab[] = ["Cara", "Pelo", "Ropa", "Extras", "Fondo"];
 const FACE = "44 42 112 112";
 const HEAD = "14 18 172 172";
 const BODY = "30 90 140 140";
-
-const DiceIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-    <rect x="4" y="4" width="16" height="16" rx="3" />
-    <path d="M8.5 8.5h.01M15.5 8.5h.01M12 12h.01M8.5 15.5h.01M15.5 15.5h.01" />
-  </svg>
-);
 
 export function ProfileEditor({ name, username, suggested, initial, saved: wasSaved }: { name: string; username: string | null; suggested: string; initial: Avatar; saved: boolean }) {
   const t = useT();
@@ -121,9 +114,6 @@ export function ProfileEditor({ name, username, suggested, initial, saved: wasSa
           />
         </form>
         <div className="mt-3 flex gap-2.5">
-          <button type="button" onClick={() => set(randomAvatar())} title={t("Otro al azar")} aria-label={t("Otro al azar")} className="grid h-10 w-11 place-items-center rounded-lg bg-chip text-ink-muted hover:text-ink">
-            <DiceIcon />
-          </button>
           <button
             type="button"
             disabled={pending || !(dirty || (handleDirty && handle.trim()))}

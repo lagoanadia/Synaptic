@@ -119,7 +119,7 @@ export default async function Terms() {
         </section>
 
         <section className="flex flex-col gap-2">
-          <h2 className="text-base font-semibold">Ley aplicable</h2>
+          <h2 className="text-base font-semibold">{t("Ley aplicable")}</h2>
           <p>{t("Estos términos se rigen por la ley española.")}</p>
         </section>
       </div>

@@ -101,6 +101,7 @@ export default async function NotebookPage({ params }: { params: Promise<{ secti
               tasks={projects.flatMap((p) => p.tasks)}
               projects={projects.filter((p) => !p.finished || p.tasks.some((t) => t.status !== "DONE")).map((p) => ({ id: p.id, title: p.title, cover: p.cover }))}
               today={today}
+              sectionId={isVirtual ? undefined : sectionId}
             />
           </section>
           <section className="flex flex-col gap-3">

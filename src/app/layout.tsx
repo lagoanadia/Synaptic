@@ -54,18 +54,21 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   const userId = session?.user?.id;
   const [user, sections] = userId
     ? await Promise.all([
-        prisma.user.findUnique({ where: { id: userId }, select: { plan: true, avatar: true } }),
-        prisma.section.findMany({ where: { userId }, orderBy: { order: "asc" }, select: { id: true, name: true, cover: true } }),
+        prisma.user.findUnique({ where: { id: userId }, select: { plan: true, avatar: true, codes: true, nav: true } }),
+        prisma.section.findMany({ where: { userId }, orderBy: { order: "asc" }, select: { id: true, name: true, cover: true, study: true } }),
       ])
     : [null, []];
   // Sidebar collapsed to icons? Remembered in a cookie so it renders that way.
   const collapsed = (await cookies()).get("sidebar")?.value === "collapsed";
+  // Light, dark or "system" (follows the device; set by the script below).
+  const theme = (await cookies()).get("theme")?.value ?? "light";
   const lang = await getLang();
   const t = makeT(lang);
 
   return (
-    <html lang={lang} data-sidebar={collapsed ? "collapsed" : undefined} className={`${appFont.variable} h-full antialiased`}>
+    <html lang={lang} data-sidebar={collapsed ? "collapsed" : undefined} className={`${appFont.variable} h-full antialiased ${theme === "dark" ? "dark" : ""}`} suppressHydrationWarning>
       <body className="min-h-full flex flex-col">
+        {theme === "system" && <script dangerouslySetInnerHTML={{ __html: "if(matchMedia('(prefers-color-scheme: dark)').matches)document.documentElement.classList.add('dark')" }} />}
         <LangProvider lang={lang}>
         <RegisterServiceWorker />
         <CoverDefs />
@@ -75,6 +78,9 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
             plan={user.plan}
             notebooks={sections.map((s) => ({ id: s.id, name: s.name, cover: notebookCover(s.id, s.cover) }))}
             collapsed={collapsed}
+            codes={user.codes}
+            calendar={(user.nav as { calendar?: boolean } | null)?.calendar ?? true}
+            study={(user.nav as { review?: boolean } | null)?.review ?? sections.some((s) => s.study)}
           />
         )}
         <div className={`flex flex-1 flex-col ${session?.user ? "app-pad pb-16 lg:pb-0" : ""}`}>{children}</div>

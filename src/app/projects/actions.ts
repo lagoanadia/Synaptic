@@ -7,6 +7,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { accessiblePursuits } from "@/lib/reviewData";
 import type { TaskStatus } from "@/lib/projects";
+import { templateBlocks } from "@/lib/blocks";
 
 const STATUSES: TaskStatus[] = ["TODO", "IN_PROGRESS", "DONE"];
 const date = (v: string | null | undefined) => (v && /^\d{4}-\d{2}-\d{2}$/.test(v) ? new Date(`${v}T00:00:00Z`) : null);
@@ -86,4 +87,19 @@ export async function setProjectInfo(pursuitId: string, data: { startDate?: stri
     },
   });
   refresh();
+}
+
+// A task typed straight into a notebook's board: it goes into that
+// notebook's "Tareas" project, made the first time.
+export async function addNotebookTask(sectionId: string, title: string, status: TaskStatus = "TODO") {
+  const tr = await getT();
+  const uid = await userId();
+  const section = await prisma.section.findFirst({ where: { id: sectionId, userId: uid }, select: { id: true } });
+  if (!section) return null;
+  const name = tr("Tareas");
+  const pursuit =
+    (await prisma.pursuit.findFirst({ where: { sectionId, ownerId: uid, title: name }, select: { id: true } })) ??
+    (await prisma.pursuit.create({ data: { title: name, ownerId: uid, sectionId, blocks: templateBlocks("project") }, select: { id: true } }));
+  const id = await addTask(pursuit.id, title, status);
+  return id ? { id, pursuitId: pursuit.id } : null;
 }

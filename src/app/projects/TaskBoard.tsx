@@ -5,7 +5,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { Folder } from "../Covers";
 import { TASK_COLUMNS, dueLabel, type TaskItem, type TaskStatus } from "@/lib/projects";
 import type { FolderCover } from "@/lib/covers";
-import { addTask, deleteTask, setColumn, updateTask } from "./actions";
+import { addNotebookTask, addTask, deleteTask, setColumn, updateTask } from "./actions";
 
 export type BoardProject = { id: string; title: string; cover: string };
 type View = "board" | "list" | "project";
@@ -14,7 +14,8 @@ type View = "board" | "list" | "project";
 // With one project it's that project's board; with several, each card
 // shows which project it's from. Changes show at once and save behind.
 // `view`: set from outside (a folder block's header), which hides the tabs.
-export function TaskBoard({ tasks: initial, projects, today, view: fixed }: { tasks: TaskItem[]; projects: BoardProject[]; today: string; view?: "board" | "list" }) {
+// `sectionId`: on a notebook page, so you can add tasks before any project exists.
+export function TaskBoard({ tasks: initial, projects, today, view: fixed, sectionId }: { tasks: TaskItem[]; projects: BoardProject[]; today: string; view?: "board" | "list"; sectionId?: string }) {
   const t = useT();
   const [tasks, setTasks] = useState(initial);
   const [picked, setView] = useState<View>("board");
@@ -51,8 +52,8 @@ export function TaskBoard({ tasks: initial, projects, today, view: fixed }: { ta
     const order = endOf(status);
     setTasks((ts) => [...ts, { id: temp, title, status, dueDate: null, pursuitId, order }]);
     start(async () => {
-      const id = await addTask(pursuitId, title, status);
-      setTasks((ts) => (id ? ts.map((t) => (t.id === temp ? { ...t, id } : t)) : ts.filter((t) => t.id !== temp)));
+      const r = pursuitId ? { id: await addTask(pursuitId, title, status), pursuitId } : sectionId ? await addNotebookTask(sectionId, title, status) : null;
+      setTasks((ts) => (r?.id ? ts.map((t) => (t.id === temp ? { ...t, id: r.id!, pursuitId: r.pursuitId } : t)) : ts.filter((t) => t.id !== temp)));
     });
   }
   function drop() {
@@ -107,7 +108,7 @@ export function TaskBoard({ tasks: initial, projects, today, view: fixed }: { ta
         <div className="flex gap-5 border-b border-[#ededeb] text-sm text-ink-faint">
           {(
             [
-              ["board", "Tablero"],
+              ["board", t("Tablero")],
               ["list", t("Lista")],
               ...(many ? [["project", t("Por proyecto")]] : []),
             ] as [View, string][]
@@ -144,7 +145,7 @@ export function TaskBoard({ tasks: initial, projects, today, view: fixed }: { ta
                 </h3>
                 {items.map(card)}
                 {over?.status === c.status && over.before === null && dragging && <span className="mx-1 h-0.5 rounded bg-[#337ea9]" />}
-                <AddTask projects={projects} onAdd={(p, title) => add(p, title, c.status)} />
+                <AddTask projects={projects} loose={!!sectionId} onAdd={(p, title) => add(p, title, c.status)} />
               </section>
             );
           })}
@@ -154,7 +155,7 @@ export function TaskBoard({ tasks: initial, projects, today, view: fixed }: { ta
       {view === "list" && (
         <div className="flex flex-col gap-2">
           {[...column("IN_PROGRESS"), ...column("TODO"), ...column("DONE")].map(card)}
-          <AddTask projects={projects} onAdd={(p, title) => add(p, title, "TODO")} />
+          <AddTask projects={projects} loose={!!sectionId} onAdd={(p, title) => add(p, title, "TODO")} />
         </div>
       )}
 
@@ -273,11 +274,11 @@ function Card({
   );
 }
 
-function AddTask({ projects, onAdd }: { projects: BoardProject[]; onAdd: (pursuitId: string, title: string) => void }) {
+function AddTask({ projects, loose, onAdd }: { projects: BoardProject[]; loose?: boolean; onAdd: (pursuitId: string, title: string) => void }) {
   const t = useT();
   const [open, setOpen] = useState(false);
   const [project, setProject] = useState(projects[0]?.id ?? "");
-  if (projects.length === 0) return null;
+  if (projects.length === 0 && !loose) return null;
   return open ? (
     <form
       onSubmit={(e) => {
@@ -288,7 +289,7 @@ function AddTask({ projects, onAdd }: { projects: BoardProject[]; onAdd: (pursui
       }}
       className="flex flex-col gap-1.5 rounded-lg bg-white p-2 shadow-[0_0_0_1px_rgba(15,15,15,.08)]"
     >
-      <input name="title" autoFocus placeholder={t("Nueva tarea")} aria-label={t("Nueva tarea")} onKeyDown={(e) => e.key === "Escape" && setOpen(false)} onBlur={(e) => !e.target.value && projects.length === 1 && setOpen(false)} className="px-1 text-sm outline-none" />
+      <input name="title" autoFocus placeholder={t("Nueva tarea")} aria-label={t("Nueva tarea")} onKeyDown={(e) => e.key === "Escape" && setOpen(false)} onBlur={(e) => !e.target.value && projects.length <= 1 && setOpen(false)} className="px-1 text-sm outline-none" />
       {projects.length > 1 && (
         <select value={project} onChange={(e) => setProject(e.target.value)} aria-label={t("Proyecto")} className="rounded bg-chip px-1.5 py-0.5 text-xs">
           {projects.map((p) => (

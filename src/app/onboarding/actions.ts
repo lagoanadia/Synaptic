@@ -23,7 +23,7 @@ export async function finishOnboarding(
   if (user.onboardedAt) return { error: null, landingId: null };
 
   try {
-    const landingId = await buildStarterSpace(session.user.id, planStarterSpace(answers));
+    const landingId = await buildStarterSpace(session.user.id, planStarterSpace(answers, await getT()));
     revalidatePath("/pursuits", "layout");
     return { error: null, landingId };
   } catch (err) {

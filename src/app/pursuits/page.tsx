@@ -77,7 +77,7 @@ export default async function HomePage() {
   );
 
   return (
-    <div className="mx-auto flex w-full max-w-[1100px] flex-1 flex-col gap-10 px-6 py-10 sm:px-12 lg:py-14">
+    <div className="relative mx-auto flex w-full max-w-[1100px] flex-1 flex-col gap-10 px-6 py-10 sm:px-12 lg:py-14">
       <Greeting name={session.user.name ?? null} />
       {sample && <SampleNote topic={sample.topic} cards={sample.flashcards?.length ?? 0} />}
       <NotebookShelf items={shelf} />

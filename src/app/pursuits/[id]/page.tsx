@@ -194,7 +194,11 @@ export default async function PursuitPage({
   const color = folderColor(pursuit.id, pursuit.cover);
   const groupLabel = pursuit.groupLabel ?? "Unidad";
   const grouped = pursuit.contentSections.length > 0;
-  const blocks = folderBlocks(pursuit.blocks, study, pursuit.projects.length > 0);
+  // No pages yet: one obvious next step, and the tools that need notes
+  // (map, review, ask, challenges) stay out of the way until there are some.
+  const empty = pursuit.brainDumps.length === 0 && pursuit.notes.length === 0;
+  const NEEDS_NOTES = ["map", "review", "ask", "challenges"];
+  const blocks = folderBlocks(pursuit.blocks, study, pursuit.projects.length > 0).filter((b) => !empty || !NEEDS_NOTES.includes(b.type));
   const isOwner = pursuit.owner.id === session.user.id;
   // Your friends who aren't in this folder yet, to share with in one tap.
   const inFolder = new Set([pursuit.owner.id, ...pursuit.members.map((m) => m.user.id)]);
@@ -433,9 +437,32 @@ export default async function PursuitPage({
         <FolderSettings pursuitId={pursuit.id} cover={cover} groupLabel={grouped ? groupLabel : null} title={pursuit.title} canDelete={isOwner}>
           <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]">
             {/* Quick note: a sticky note, so it doesn't get lost among the settings. */}
-            <div className="flex flex-col gap-2 self-start rounded-lg bg-[#fdf3c4] p-4 shadow-[0_1px_2px_rgba(0,0,0,.06),0_6px_14px_-8px_rgba(120,90,10,.35)]">
-              <span className="text-xs font-semibold tracking-wide text-[#8a6d1f] uppercase">{t("Nota rápida")}</span>
-              <StatusNote pursuitId={pursuit.id} initialNote={pursuit.statusNote} />
+            <div className="flex flex-col gap-4 self-start">
+              <div className="flex flex-col gap-2 rounded-lg bg-[#fdf3c4] p-4 shadow-[0_1px_2px_rgba(0,0,0,.06),0_6px_14px_-8px_rgba(120,90,10,.35)]">
+                <span className="text-xs font-semibold tracking-wide text-[#8a6d1f] uppercase">{t("Nota rápida")}</span>
+                <StatusNote pursuitId={pursuit.id} initialNote={pursuit.statusNote} />
+              </div>
+              {pursuit.classroomEnabled ? (
+                <div className="flex flex-col gap-1.5">
+                  <ClassroomImport
+                    pursuitId={pursuit.id}
+                    connected={!!classroomConnection}
+                    linkedCourseId={pursuit.classroomCourseId}
+                    linkedElsewhere={Object.fromEntries(otherLinked.filter((o) => o.classroomCourseId).map((o) => [o.classroomCourseId!, o.title]))}
+                  />
+                  <form action={setClassroomEnabled.bind(null, pursuit.id, false)}>
+                    <button type="submit" className="self-start text-xs text-ink-faint hover:text-red-500">
+                      {t("Desactivar Google Classroom en esta asignatura")}
+                    </button>
+                  </form>
+                </div>
+              ) : (
+                <form action={setClassroomEnabled.bind(null, pursuit.id, true)}>
+                  <button type="submit" className="rounded-md border border-border-subtle px-3 py-1.5 text-sm text-ink-muted hover:border-ink hover:text-ink">
+                    {t("+ Vincular Google Classroom")}
+                  </button>
+                </form>
+              )}
             </div>
             <div className="flex flex-col gap-4">
               <div id="compartir" className="flex flex-col gap-2 rounded-lg border border-border-subtle bg-white p-4">
@@ -480,30 +507,18 @@ export default async function PursuitPage({
               </div>
             </div>
           </div>
-          {pursuit.classroomEnabled ? (
-            <div className="flex flex-col gap-1.5">
-              <ClassroomImport
-                pursuitId={pursuit.id}
-                connected={!!classroomConnection}
-                linkedCourseId={pursuit.classroomCourseId}
-                linkedElsewhere={Object.fromEntries(otherLinked.filter((o) => o.classroomCourseId).map((o) => [o.classroomCourseId!, o.title]))}
-              />
-              <form action={setClassroomEnabled.bind(null, pursuit.id, false)}>
-                <button type="submit" className="self-start text-xs text-ink-faint hover:text-red-500">
-                  {t("Desactivar Google Classroom en esta asignatura")}
-                </button>
-              </form>
-            </div>
-          ) : (
-            <form action={setClassroomEnabled.bind(null, pursuit.id, true)}>
-              <button type="submit" className="rounded-md border border-border-subtle px-3 py-1.5 text-sm text-ink-muted hover:border-ink hover:text-ink">
-                {t("+ Vincular Google Classroom")}
-              </button>
-            </form>
-          )}
         </FolderSettings>
       )}
 
+      {empty && study && !editing && (
+        <div className="flex flex-col items-start gap-3 rounded-xl border border-border-subtle bg-callout p-5">
+          <span className="text-xs font-semibold tracking-wide text-ink-faint uppercase">{t("Empieza aquí")}</span>
+          <Link href={`/pursuits/${pursuit.id}/dump/new`} className="rounded-lg bg-ink px-4 py-2 font-medium text-white">
+            {t("Escribe tu primera página")}
+          </Link>
+          <span className="text-sm text-ink-muted">{t("Cuando tengas apuntes, aquí aparecen el mapa, el repaso y el resto de herramientas.")}</span>
+        </div>
+      )}
       <FolderBlocks key={blocks.map((b) => `${b.id}${b.view ?? ""}`).join()} pursuitId={pursuit.id} blocks={blocks} study={study} grouped={grouped} content={content} summaries={summaries} extras={extras} editing={editing} />
     </div>
   );

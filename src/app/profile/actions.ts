@@ -3,8 +3,9 @@
 import { getT } from "@/lib/i18n/server";
 
 import { revalidatePath } from "next/cache";
-import { auth } from "@/auth";
+import { auth, signIn, signOut } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { wipeUser } from "@/lib/wipe";
 import { HANDLE, cleanHandle, parseAvatar } from "@/lib/avatar";
 import { freeHandle } from "@/lib/username";
 
@@ -75,5 +76,43 @@ export async function acceptFriend(friendshipId: string) {
 export async function removeFriend(friendshipId: string) {
   const id = await me();
   await prisma.friendship.deleteMany({ where: { id: friendshipId, OR: [{ fromId: id }, { toId: id }] } });
+  revalidatePath("/profile");
+}
+
+// "Eliminar cuenta": only after typing the confirm word (any language); deletes everything and signs out.
+export async function deleteAccount(confirm: string): Promise<{ error: string | null }> {
+  const id = await me();
+  if (!["ELIMINAR", "DELETE", "LÖSCHEN"].includes(confirm.trim().toUpperCase())) return { error: "No se ha confirmado" };
+  await wipeUser(id);
+  await signOut({ redirectTo: "/" });
+  return { error: null };
+}
+
+// Settings: "Programo" shows Retos in the menu.
+export async function setCodes(codes: boolean) {
+  const id = await me();
+  await prisma.user.update({ where: { id }, data: { codes } });
+  revalidatePath("/", "layout");
+}
+
+// Settings: add another way to sign in (same email links it to this account).
+export async function linkSignIn(provider: "google" | "github") {
+  await me();
+  await signIn(provider, { redirectTo: "/profile?tab=settings" });
+}
+
+// Settings: remove a way to sign in, never the last one.
+export async function unlinkSignIn(provider: "google" | "github") {
+  const id = await me();
+  const count = await prisma.account.count({ where: { userId: id } });
+  if (count < 2) return;
+  await prisma.account.deleteMany({ where: { userId: id, provider } });
+  revalidatePath("/profile");
+}
+
+// Settings: unlink Google Classroom from the whole account.
+export async function disconnectClassroomAccount() {
+  const id = await me();
+  await prisma.googleClassroomConnection.deleteMany({ where: { userId: id } });
   revalidatePath("/profile");
 }

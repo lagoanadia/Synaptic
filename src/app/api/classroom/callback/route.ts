@@ -7,11 +7,14 @@ import { exchangeCodeForTokens } from "@/lib/googleClassroom";
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const pursuitId = url.searchParams.get("state");
-  // "onboarding": connected from the welcome flow, which picks up at step 2.
+  // "onboarding": connected from the welcome flow, which picks up at step 2;
+  // "profile": from Settings.
   const backToFiles =
     pursuitId === "onboarding"
       ? new URL("/pursuits?welcome=classroom", url.origin)
-      : pursuitId
+      : pursuitId === "profile"
+        ? new URL("/profile?tab=settings", url.origin)
+        : pursuitId
         ? new URL(`/pursuits/${pursuitId}?tab=pages`, url.origin)
         : new URL("/pursuits", url.origin);
 

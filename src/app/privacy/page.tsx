@@ -74,7 +74,7 @@ export default async function Privacy() {
         </section>
 
         <section className="flex flex-col gap-2">
-          <h2 className="text-base font-semibold">Cookies</h2>
+          <h2 className="text-base font-semibold">{t("Cookies")}</h2>
           <p>
             
             {t("Synaptic usa una sola cookie: un token de sesión cifrado que mantiene tu sesión iniciada. Es estrictamente necesaria para que la app funcione y no se usa para seguimiento ni publicidad, así que no se muestra ningún aviso de cookies — no hay nada opcional que aceptar.")}
@@ -108,7 +108,7 @@ export default async function Privacy() {
         </section>
 
         <section className="flex flex-col gap-2">
-          <h2 className="text-base font-semibold">Transferencias internacionales</h2>
+          <h2 className="text-base font-semibold">{t("Transferencias internacionales")}</h2>
           <p>
             
             {t("Groq, GitHub, Google, Stripe y Vercel operan a nivel mundial, así que tus datos pueden tratarse fuera de la UE/EEE (normalmente en EE. UU.) al usar sus servicios. Cada proveedor mantiene sus propias garantías para estas transferencias según sus condiciones.")}
@@ -116,7 +116,7 @@ export default async function Privacy() {
         </section>
 
         <section className="flex flex-col gap-2">
-          <h2 className="text-base font-semibold">Edad</h2>
+          <h2 className="text-base font-semibold">{t("Edad")}</h2>
           <p>
             
             {t("Synaptic está pensada para estudiantes, pero no está dirigida a niños. No la uses si tienes menos de 16 años sin el consentimiento de tu madre, padre o tutor.")}
@@ -124,7 +124,7 @@ export default async function Privacy() {
         </section>
 
         <section className="flex flex-col gap-2">
-          <h2 className="text-base font-semibold">Cambios</h2>
+          <h2 className="text-base font-semibold">{t("Cambios")}</h2>
           <p>
             
             {t("Si esta política cambia de forma importante, cambiará la fecha de «Última actualización» de arriba y, si es algo relevante, lo diremos en la página de inicio.")}

@@ -22,11 +22,6 @@ export async function WeekStrip({ days, today, items }: { days: string[]; today:
                 <span className="text-[11px] text-ink-faint">{t(WEEKDAYS[i])}</span>
                 <span className={`text-lg font-semibold ${isToday ? "text-[#e5484d]" : ""}`}>{fromKey(d).getUTCDate()}</span>
               </span>
-              {isToday && (
-                <span className="hidden size-5 place-items-center rounded bg-accent-soft text-[11px] text-accent sm:grid" title={t("Repaso de hoy")}>
-                  ▤
-                </span>
-              )}
             </span>
             <span className="flex flex-col gap-1">
               {list.slice(0, 3).map((x) => (

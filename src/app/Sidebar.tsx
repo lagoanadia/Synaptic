@@ -6,12 +6,11 @@ import { BILLING } from "@/lib/billingFlag";
 import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { signOutAction } from "./actions";
-import { LangPicker } from "./LangPicker";
+import { setNavItem, signOutAction } from "./actions";
 import { createSection } from "./pursuits/actions";
 import { TemplatePick, type Template } from "./pursuits/TemplatePick";
 import { MiniNotebook } from "./Covers";
-import { SearchIcon, SearchPalette } from "./SearchPalette";
+import { SearchPalette } from "./SearchPalette";
 import { CalendarIcon, CardsIcon, CodeIcon, HomeIcon, XIcon } from "./icons";
 import type { NotebookCover } from "@/lib/covers";
 import type { Avatar as AvatarData } from "@/lib/avatar";
@@ -22,6 +21,12 @@ type Props = {
   plan: string;
   notebooks: { id: string; name: string; cover: NotebookCover }[];
   collapsed?: boolean;
+  // "Programo" in settings: shows Retos.
+  codes?: boolean;
+  // Review shows by default only for students (a School notebook); both
+  // it and Calendar can be switched in "Editar menú".
+  study?: boolean;
+  calendar?: boolean;
 };
 
 // A door with an arrow out: sign out.
@@ -44,11 +49,13 @@ const PLAN_LABEL: Record<string, string> = { FREE: "Gratis", PRO: "Student Pro",
 
 // Notion-style navigation: a fixed sidebar on wide screens (pages, your
 // notebooks, account), a bottom tab bar on phones.
-export function Sidebar({ user, plan, notebooks, collapsed: startCollapsed = false }: Props) {
+export function Sidebar({ user, plan, notebooks, collapsed: startCollapsed = false, codes = false, study = false, calendar = true }: Props) {
   const t = useT();
   const pathname = usePathname();
   const [sheet, setSheet] = useState(false);
   const [searching, setSearching] = useState(false);
+  const [editingMenu, setEditingMenu] = useState(false);
+  const [, startNav] = useTransition();
   const [collapsed, setCollapsed] = useState(startCollapsed);
   function toggleCollapsed() {
     const next = !collapsed;
@@ -100,17 +107,14 @@ export function Sidebar({ user, plan, notebooks, collapsed: startCollapsed = fal
           </button>
           {[
             { href: "/pursuits", label: t("Inicio"), icon: <HomeIcon size={16} className="block" />, on: active("/pursuits", true) },
-            { href: "/calendar", label: "Calendario", icon: <CalendarIcon size={16} className="block" />, on: active("/calendar") },
-            { href: "/review", label: t("Repasar"), icon: <CardsIcon size={16} className="block" />, on: active("/review") },
-            { href: "/challenges", label: t("Retos"), icon: <CodeIcon size={16} className="block" />, on: active("/challenges") },
+            ...(calendar ? [{ href: "/calendar", label: "Calendario", icon: <CalendarIcon size={16} className="block" />, on: active("/calendar") }] : []),
+            ...(study ? [{ href: "/review", label: t("Repasar"), icon: <CardsIcon size={16} className="block" />, on: active("/review") }] : []),
+            ...(codes ? [{ href: "/challenges", label: t("Retos"), icon: <CodeIcon size={16} className="block" />, on: active("/challenges") }] : []),
           ].map((item) => (
             <Link key={item.href} href={item.href} title={t(item.label)} aria-label={t(item.label)} className={`grid size-8 place-items-center rounded-md ${item.on ? "bg-[#ebebea] text-ink" : "text-ink-muted hover:bg-[#ebebea]/70 hover:text-ink"}`}>
               {item.icon}
             </Link>
           ))}
-          <button type="button" onClick={() => setSearching(true)} title={t("Buscar (Ctrl K)")} aria-label={t("Buscar")} className="grid size-8 place-items-center rounded-md text-ink-muted hover:bg-[#ebebea]/70 hover:text-ink">
-            <SearchIcon size={16} />
-          </button>
           <span className="my-2 h-px w-6 bg-border-subtle" />
           {notebooks.map((n) => (
             <Link key={n.id} href={`/pursuits/s/${n.id}`} title={n.name} aria-label={n.name} className={`grid size-8 place-items-center rounded-md ${active(`/pursuits/s/${n.id}`) ? "bg-[#ebebea]" : "hover:bg-[#ebebea]/70"}`}>
@@ -123,39 +127,67 @@ export function Sidebar({ user, plan, notebooks, collapsed: startCollapsed = fal
         </aside>
       )}
       <aside className={`fixed inset-y-0 left-0 z-30 w-60 flex-col gap-5 border-r border-border-subtle bg-sidebar px-2.5 py-3 ${collapsed ? "hidden" : "hidden lg:flex"}`} aria-label={t("Navegación")}>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center gap-0.5">
           <Link href="/pursuits" className="flex items-center gap-2 px-2 py-1 text-sm font-semibold text-ink">
             <LogoMark size={20} />
             {t("Synaptic")}
           </Link>
+          <span className="ml-auto" />
+          <button type="button" onClick={() => setEditingMenu((v) => !v)} title={t("Editar menú")} aria-label={t("Editar menú")} aria-expanded={editingMenu} className={`grid size-7 place-items-center rounded-md hover:bg-[#ebebea] hover:text-ink ${editingMenu ? "bg-[#ebebea] text-ink" : "text-ink-faint"}`}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M4 20h4L19 9l-4-4L4 16z" />
+              <path d="M13.5 6.5l4 4" />
+            </svg>
+          </button>
           <button type="button" onClick={toggleCollapsed} title={t("Ocultar la barra lateral")} aria-label={t("Ocultar la barra lateral")} className="grid size-7 place-items-center rounded-md text-ink-faint hover:bg-[#ebebea] hover:text-ink">
             <PanelIcon />
           </button>
         </div>
+        {/* Edit menu: switch the optional pages on or off. */}
+        {editingMenu && (
+          <div className="flex flex-col gap-1 rounded-lg border border-border-subtle bg-white p-2">
+            {(
+              [
+                ["calendar", t("Calendario"), calendar],
+                ["review", t("Repasar"), study],
+                ["codes", t("Retos"), codes],
+              ] as const
+            ).map(([key, label, on]) => (
+              <button
+                key={key}
+                type="button"
+                role="switch"
+                aria-checked={on}
+                onClick={() => startNav(() => setNavItem(key, !on))}
+                className="flex items-center justify-between rounded-md px-1.5 py-1 text-sm hover:bg-chip"
+              >
+                {label}
+                <span className={`relative h-4 w-7 rounded-full transition-colors ${on ? "bg-ink" : "bg-[#d3d1cb]"}`}>
+                  <span className={`absolute top-0.5 size-3 rounded-full bg-white transition-[left] ${on ? "left-[14px]" : "left-0.5"}`} />
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
         <nav className="flex flex-col gap-0.5">
           <Link href="/pursuits" className={row(active("/pursuits", true))}>
             <HomeIcon size={16} className="block" />{" "}{t("Inicio")}
           </Link>
-          <button type="button" onClick={() => setSearching(true)} className={`${row(false)} w-full`}>
-            <SearchIcon size={16} /> <span className="flex-1 text-left">{t("Buscar")}</span>
-            <kbd className="text-[10px] text-ink-faint">{t("Ctrl K")}</kbd>
-          </button>
-          <Link href="/calendar" className={row(active("/calendar"))}>
+          {calendar && <Link href="/calendar" className={row(active("/calendar"))}>
             <CalendarIcon size={16} className="block" />{" "}{t("Calendario")}
-          </Link>
-          <Link href="/review" className={row(active("/review"))}>
+          </Link>}
+          {study && <Link href="/review" className={row(active("/review"))}>
             <CardsIcon size={16} className="block" />{" "}{t("Repasar")}
-          </Link>
-          <Link href="/challenges" className={row(active("/challenges"))}>
+          </Link>}
+          {codes && <Link href="/challenges" className={row(active("/challenges"))}>
             <CodeIcon size={16} className="block" />{" "}{t("Retos")}
-          </Link>
+          </Link>}
         </nav>
         <div className="flex flex-col gap-1">
           <span className="px-2 text-xs font-medium text-ink-faint">{t("Libretas")}</span>
           {notebookList}
         </div>
-        <LangPicker className="mt-auto self-start" />
-        <div className="flex items-center gap-1 border-t border-border-subtle pt-3">
+        <div className="mt-auto flex items-center gap-1 border-t border-border-subtle pt-3">
           <Account href="/profile" className={`${row(active("/profile"))} min-w-0 flex-1`}>
             <Avatar user={user} size={24} />
             <span className="min-w-0 flex-1 truncate">{user.name ?? user.email}</span>
@@ -173,7 +205,7 @@ export function Sidebar({ user, plan, notebooks, collapsed: startCollapsed = fal
       <nav className="fixed inset-x-0 bottom-0 z-30 flex items-stretch justify-around border-t border-border-subtle bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden" aria-label={t("Navegación")}>
         {[
           { href: "/pursuits", label: t("Inicio"), icon: HomeIcon, on: active("/pursuits", true) },
-          { href: "/review", label: t("Repasar"), icon: CardsIcon, on: active("/review") },
+          ...(study ? [{ href: "/review", label: t("Repasar"), icon: CardsIcon, on: active("/review") }] : []),
         ].map((item) => (
           <Link key={item.href} href={item.href} className={`flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] ${item.on ? "text-ink" : "text-ink-faint"}`}>
             <item.icon size={20} className="block" />
@@ -186,10 +218,6 @@ export function Sidebar({ user, plan, notebooks, collapsed: startCollapsed = fal
           </span>
           {t("Perfil")}
         </Link>
-        <button type="button" onClick={() => setSearching(true)} className="flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] text-ink-faint">
-          <SearchIcon size={20} />
-          {t("Buscar")}
-        </button>
         <button type="button" onClick={() => setSheet(true)} className={`flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] ${active("/pursuits/s") ? "text-ink" : "text-ink-faint"}`}>
           <span className="flex h-5 items-end gap-0.5" aria-hidden>
             {notebooks.slice(0, 3).map((n) => (
@@ -211,11 +239,10 @@ export function Sidebar({ user, plan, notebooks, collapsed: startCollapsed = fal
               </button>
             </div>
             {notebookList}
-            <LangPicker className="self-start" />
             <div className="flex items-center gap-3 border-t border-border-subtle pt-3 text-sm">
-              <Link href="/challenges" onClick={() => setSheet(false)} className={`flex flex-1 items-center gap-2 ${active("/challenges") ? "text-ink" : "text-ink-muted"}`}>
+              {codes && <Link href="/challenges" onClick={() => setSheet(false)} className={`flex flex-1 items-center gap-2 ${active("/challenges") ? "text-ink" : "text-ink-muted"}`}>
                 <CodeIcon size={18} className="block" /> {t("Retos")}
-              </Link>
+              </Link>}
               <form action={signOutAction}>
                 <button type="submit" title={t("Cerrar sesión")} aria-label={t("Cerrar sesión")} className="grid size-8 place-items-center rounded-md text-ink-muted">
                   <LogoutIcon />
