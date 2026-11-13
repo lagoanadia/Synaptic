@@ -1,5 +1,7 @@
 // Spanish source text → translation. Missing keys fall back to Spanish.
 export const en: Record<string, string> = {
+  "Abre el PDF desde tu ordenador para seleccionar texto": "Open the PDF from your computer to select text",
+  "Volver a la vista de Google": "Back to Google's view",
   "Escribe…": "Type…",
   "Preparando…": "Preparing…",
   "Letra": "Font",
