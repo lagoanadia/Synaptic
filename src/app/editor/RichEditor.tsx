@@ -81,13 +81,72 @@ const KeyTerms = Extension.create({
 });
 
 const CODE_LANGUAGES = [
-  { value: "", label: "Texto" },
-  { value: "js", label: "JavaScript" },
-  { value: "ts", label: "TypeScript" },
-  { value: "python", label: "Python" },
-  { value: "java", label: "Java" },
-  { value: "sql", label: "SQL" },
+  { value: "", label: "Texto", short: "Aa", color: "#8a8986" },
+  { value: "js", label: "JavaScript", short: "JS", color: "#c9a300" },
+  { value: "ts", label: "TypeScript", short: "TS", color: "#3178c6" },
+  { value: "python", label: "Python", short: "PY", color: "#3a75a8" },
+  { value: "java", label: "Java", short: "JV", color: "#c4542a" },
+  { value: "sql", label: "SQL", short: "SQL", color: "#2f8f6b" },
 ];
+
+// The code block's language: a chip that opens a small list.
+function CodeLangMenu({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const t = useT();
+  const [open, setOpen] = useState(false);
+  const box = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => !box.current?.contains(e.target as Node) && setOpen(false);
+    window.addEventListener("mousedown", close);
+    return () => window.removeEventListener("mousedown", close);
+  }, [open]);
+  const cur = CODE_LANGUAGES.find((l) => l.value === value) ?? CODE_LANGUAGES[0];
+  const badge = (l: (typeof CODE_LANGUAGES)[number]) => (
+    <span className="grid h-[18px] min-w-[22px] place-items-center rounded px-1 font-mono text-[9px] font-bold text-white" style={{ background: l.color }}>
+      {l.short}
+    </span>
+  );
+  return (
+    <span ref={box} className="relative">
+      <button
+        type="button"
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={() => setOpen((o) => !o)}
+        aria-label={t("Lenguaje del código")}
+        aria-expanded={open}
+        className="flex items-center gap-1.5 rounded-md bg-chip py-1 pr-1.5 pl-1 text-xs font-medium text-ink hover:bg-[#e7e5e0]"
+      >
+        {badge(cur)}
+        {t(cur.label)}
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden className="text-ink-faint">
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </button>
+      {open && (
+        <span role="listbox" className="absolute top-full left-0 z-30 mt-1.5 flex w-44 flex-col rounded-xl border border-border-subtle bg-white p-1 shadow-[0_12px_32px_-8px_rgba(0,0,0,.25)]">
+          {CODE_LANGUAGES.map((l) => (
+            <button
+              key={l.value}
+              type="button"
+              role="option"
+              aria-selected={l.value === value}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => {
+                onChange(l.value);
+                setOpen(false);
+              }}
+              className={`flex items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[13px] ${l.value === value ? "bg-chip font-medium" : "hover:bg-chip"}`}
+            >
+              {badge(l)}
+              <span className="flex-1">{t(l.label)}</span>
+              {l.value === value && <CheckIcon size={13} className="text-ink" />}
+            </button>
+          ))}
+        </span>
+      )}
+    </span>
+  );
+}
 
 // WYSIWYG editor with markdown shortcuts ("# ", "- ", "1. ", "! ", "**b**").
 // Reads and writes the stored text format (lib/richText.ts).
@@ -535,16 +594,7 @@ function Toolbar({
       <Btn on={s.callout} onClick={() => c().toggleBlockquote().run()} title={t("Aviso (! )")}><QuoteIcon /></Btn>
       <Btn on={s.code} onClick={() => c().toggleCodeBlock().run()} title={t("Bloque de código (```)")}>{"</>"}</Btn>
       {s.code && (
-        <select
-          value={s.codeLang}
-          onChange={(e) => c().updateAttributes("codeBlock", { language: e.target.value || null }).run()}
-          aria-label={t("Lenguaje del código")}
-          className="rounded-md border border-border-subtle px-1.5 py-1 text-xs"
-        >
-          {CODE_LANGUAGES.map((l) => (
-            <option key={l.value} value={l.value}>{t(l.label)}</option>
-          ))}
-        </select>
+        <CodeLangMenu value={s.codeLang} onChange={(v) => c().updateAttributes("codeBlock", { language: v || null }).run()} />
       )}
       <Btn on={s.table} onClick={() => c().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()} title={t("Insertar tabla")}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden><rect x="3.5" y="4.5" width="17" height="15" rx="2" /><path d="M3.5 9.5h17M3.5 14.5h17M9.5 9.5v10M14.5 9.5v10" /></svg></Btn>
       {s.table && (
