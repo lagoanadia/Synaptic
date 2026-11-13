@@ -1,5 +1,6 @@
 // Spanish source text → translation. Missing keys fall back to Spanish.
 export const en: Record<string, string> = {
+  "Escribe…": "Type…",
   "Preparando…": "Preparing…",
   "Letra": "Font",
   "Otro color": "Other colour",
