@@ -1,5 +1,9 @@
 // Spanish source text → translation. Missing keys fall back to Spanish.
 export const de: Record<string, string> = {
+  "Guarda primero (Ctrl+S) y vuelve a pulsar ✦": "Speichere zuerst (Strg+S) und drück erneut ✦",
+  "Añadido lo nuevo a la versión organizada": "Das Neue wurde zur geordneten Version hinzugefügt",
+  "No había nada nuevo que añadir": "Es gab nichts Neues hinzuzufügen",
+  "Hay cambios: pulsa para añadir lo nuevo a la versión organizada": "Es gibt Änderungen: Drück, um das Neue zur geordneten Version hinzuzufügen",
   "Ver todo": "Alles zeigen",
   "Acercar": "Vergrößern",
   "Alejar": "Verkleinern",

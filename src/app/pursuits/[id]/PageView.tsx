@@ -22,6 +22,7 @@ import {
   deleteNote,
   generateFlashcards,
   organizeDumps,
+  reorganizeDump,
   updateBrainDump,
   structurePdfSelection, transcribeSlide,
   updateNote,
@@ -33,6 +34,8 @@ type Props = {
   dump: { id: string; content: string; updatedAt: string } | null;
   note: { id: string; content: string; updatedAt: string } | null;
   slides: { decks: { name: string; url: string }[]; classroomCourseId: string | null; classroomUnit: string | null };
+  // The handwritten version changed after it was organized.
+  stale?: boolean;
   terms: TermHint[];
 };
 
@@ -57,7 +60,7 @@ const SaveIcon = () => (
 // A page, editable in place. Top right, icons only: organized ✦ /
 // original ✎, the slides split, save (Ctrl+S; a ✓ shows for a moment),
 // and ⋯ for the rest.
-export function PageView({ pursuit, crumbs, dump, note, slides, terms }: Props) {
+export function PageView({ pursuit, crumbs, dump, note, slides, terms, stale: staleAtLoad = false }: Props) {
   const t = useT();
   const router = useRouter();
   const [view, setView] = useState<"organized" | "original">(note ? "organized" : "original");
@@ -77,6 +80,30 @@ export function PageView({ pursuit, crumbs, dump, note, slides, terms }: Props) 
   const [menu, setMenu] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  // The handwritten version has changes the organized one doesn't have yet.
+  const [stale, setStale] = useState(staleAtLoad);
+  // Bumped to reload the editor after the organized text changes on the server.
+  const [rev, setRev] = useState(0);
+
+  // ✦ while it glows: add what's new in the handwritten version to the
+  // organized one, keeping everything that was already there.
+  function addNew() {
+    if (!dump || !note) return;
+    if (dirty.original || dirty.organized) return setMessage(t("Guarda primero (Ctrl+S) y vuelve a pulsar ✦"));
+    setMessage(null);
+    start(async () => {
+      const r = await reorganizeDump(pursuit.id, dump.id);
+      if (r.error || r.content === undefined) return setMessage(r.error ?? t("Inténtalo de nuevo"));
+      const fresh = splitTitle(r.content);
+      setDrafts((d) => ({ ...d, organized: fresh.body }));
+      setTitles((tt) => ({ ...tt, organized: fresh.title ?? tt.organized }));
+      if (r.updatedAt) versions.current.organized = r.updatedAt;
+      setStale(false);
+      setView("organized");
+      setRev((n) => n + 1);
+      setMessage(r.added ? t("Añadido lo nuevo a la versión organizada") : t("No había nada nuevo que añadir"));
+    });
+  }
   const [pending, start] = useTransition();
   const back = `/pursuits/${pursuit.id}`;
 
@@ -117,6 +144,7 @@ export function PageView({ pursuit, crumbs, dump, note, slides, terms }: Props) 
       if (r.updatedAt) versions.current[v] = r.updatedAt;
       setDirty((d) => ({ ...d, [v]: false }));
       setSaved(true);
+      if (v === "original" && note) setStale(true);
       // Lines typed or pasted as "- item" in a paragraph become a real list
       // (with their indentation) as soon as you save.
       const ed = editorRef.current;
@@ -182,7 +210,7 @@ export function PageView({ pursuit, crumbs, dump, note, slides, terms }: Props) 
         className="w-full bg-transparent text-[2.1rem] leading-tight font-bold tracking-tight outline-none placeholder:text-ink-faint/50"
       />
       <RichEditor
-        key={view}
+        key={`${view}-${rev}`}
         editorRef={editorRef}
         bare
         initialText={content}
@@ -232,10 +260,10 @@ export function PageView({ pursuit, crumbs, dump, note, slides, terms }: Props) 
                   type="button"
                   role="tab"
                   aria-selected={view === v}
-                  title={v === "organized" ? t("Organizada") : "Original"}
+                  title={v === "organized" ? (stale ? t("Hay cambios: pulsa para añadir lo nuevo a la versión organizada") : t("Organizada")) : "Original"}
                   aria-label={v === "organized" ? t("Organizada") : "Original"}
-                  onClick={() => setView(v)}
-                  className={`grid size-7 place-items-center rounded-md ${view === v ? "bg-chip text-ink" : "text-ink-faint hover:text-ink"}`}
+                  onClick={() => (v === "organized" && stale ? addNew() : setView(v))}
+                  className={`relative grid size-7 place-items-center rounded-md ${v === "organized" && stale ? "animate-pulse bg-accent-soft text-accent shadow-[0_0_0_2px_var(--color-accent),0_0_14px_var(--color-accent)]" : view === v ? "bg-chip text-ink" : "text-ink-faint hover:text-ink"}`}
                 >
                   {v === "organized" ? <SparklesIcon /> : <PencilIcon />}
                 </button>
