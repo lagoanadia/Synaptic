@@ -36,7 +36,7 @@ export async function addTask(pursuitId: string, title: string, status: TaskStat
   return task.id;
 }
 
-export async function updateTask(id: string, data: { title?: string; status?: TaskStatus; dueDate?: string | null }) {
+export async function updateTask(id: string, data: { title?: string; status?: TaskStatus; startDate?: string | null; dueDate?: string | null }) {
   const uid = await userId();
   const task = await prisma.task.findFirst({ where: taskWhere(uid, id), select: { status: true } });
   if (!task) return;
@@ -47,6 +47,7 @@ export async function updateTask(id: string, data: { title?: string; status?: Ta
     data: {
       ...(title ? { title } : {}),
       ...(status ? { status, doneAt: status === "DONE" ? (task.status === "DONE" ? undefined : new Date()) : null } : {}),
+      ...(data.startDate !== undefined ? { startDate: date(data.startDate) } : {}),
       ...(data.dueDate !== undefined ? { dueDate: date(data.dueDate) } : {}),
     },
   });

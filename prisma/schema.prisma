@@ -290,6 +290,8 @@ model Task {
   status    ProjectCardStatus @default(TODO)
   // Position within its status column.
   order     Int               @default(0)
+  // Optional: with a start the task spans start → dueDate on the Gantt chart.
+  startDate DateTime?
   dueDate   DateTime?
   doneAt    DateTime?
   createdAt DateTime          @default(now())

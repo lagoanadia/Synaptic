@@ -14,7 +14,7 @@ const select = {
   status: true,
   startDate: true,
   dueDate: true,
-  tasks: { orderBy: [{ order: "asc" }, { createdAt: "asc" }], select: { id: true, title: true, status: true, dueDate: true, order: true, doneAt: true } },
+  tasks: { orderBy: [{ order: "asc" }, { createdAt: "asc" }], select: { id: true, title: true, status: true, startDate: true, dueDate: true, order: true, doneAt: true } },
 } satisfies Prisma.PursuitSelect;
 
 type Row = {
@@ -24,7 +24,7 @@ type Row = {
   status: string;
   startDate: Date | null;
   dueDate: Date | null;
-  tasks: { id: string; title: string; status: "TODO" | "IN_PROGRESS" | "DONE"; dueDate: Date | null; order: number; doneAt: Date | null }[];
+  tasks: { id: string; title: string; status: "TODO" | "IN_PROGRESS" | "DONE"; startDate: Date | null; dueDate: Date | null; order: number; doneAt: Date | null }[];
 };
 
 function toItem(p: Row): ProjectItem & { doneToday: Set<string> } {
@@ -37,7 +37,7 @@ function toItem(p: Row): ProjectItem & { doneToday: Set<string> } {
     startDate: day(p.startDate),
     dueDate: day(p.dueDate),
     finished: p.status === "DONE",
-    tasks: p.tasks.map((t) => ({ id: t.id, title: t.title, status: t.status, dueDate: day(t.dueDate), order: t.order, pursuitId: p.id })),
+    tasks: p.tasks.map((t) => ({ id: t.id, title: t.title, status: t.status, startDate: day(t.startDate), dueDate: day(t.dueDate), order: t.order, pursuitId: p.id })),
     doneToday: new Set(p.tasks.filter((t) => t.doneAt && dayOf(t.doneAt) === today).map((t) => t.id)),
   };
 }

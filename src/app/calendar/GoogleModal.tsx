@@ -1,5 +1,6 @@
 "use client";
 
+import { ask } from "@/app/ui/PopupHost";
 import { useT } from "@/app/LangProvider";
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -118,7 +119,7 @@ export function GoogleModal({ status, justConnected, onClose }: { status: "off" 
             <button
               type="button"
               disabled={pending}
-              onClick={() => window.confirm(t("¿Desconectar Google Calendar?")) && start(async () => { await disconnectGoogle(); onClose(); router.refresh(); })}
+              onClick={async () => (await ask.confirm(t("¿Desconectar Google Calendar?"), { danger: true })) && start(async () => { await disconnectGoogle(); onClose(); router.refresh(); })}
               className="rounded-xl px-3 py-3 text-xs text-ink-faint hover:text-red-600"
             >
               {t("Desconectar")}

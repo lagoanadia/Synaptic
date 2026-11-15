@@ -1,5 +1,7 @@
 "use client";
 
+import { Select } from "@/app/ui/Select";
+import { ask } from "@/app/ui/PopupHost";
 import { useT } from "@/app/LangProvider";
 import Link from "next/link";
 import { useRef, useState, useTransition } from "react";
@@ -198,7 +200,7 @@ export function PagesBoard({
                         }
                       : null
                   }
-                  onDelete={col.id ? () => window.confirm(t("¿Eliminar \"{0}\"? Sus páginas pasan a {1}.", { 0: col.name, 1: none })) && startTransition(() => deleteContentSection(pursuitId, col.id!)) : null}
+                  onDelete={col.id ? () => void ask.confirm(t("¿Eliminar \"{0}\"? Sus páginas pasan a {1}.", { 0: col.name, 1: none }), { danger: true }).then((ok) => ok && startTransition(() => deleteContentSection(pursuitId, col.id!))) : null}
                 />
               </header>
 
@@ -308,19 +310,13 @@ function PagesList({
             {c.title}
           </Link>
           {grouped && (
-            <select
+            <Select
               value={c.sectionId ?? ""}
-              onChange={(e) => onMove(c, e.target.value || null)}
-              aria-label={t("Grupo")}
-              className="rounded bg-[#e7f3f8] px-1.5 py-0.5 text-xs text-[#337ea9]"
-            >
-              <option value="">{none}</option>
-              {units.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.name}
-                </option>
-              ))}
-            </select>
+              onChange={(v) => onMove(c, v || null)}
+              ariaLabel={t("Grupo")}
+              options={[{ value: "", label: none }, ...units.map((u) => ({ value: u.id, label: u.name }))]}
+              className="max-w-40 rounded bg-[#e7f3f8] px-1.5 py-0.5 text-xs text-[#337ea9]"
+            />
           )}
           <span className="w-4">{c.organized && <Sparkles />}</span>
           <span className="w-14 text-right text-xs text-ink-faint">{c.date}</span>
@@ -427,14 +423,14 @@ function ColumnMenu({
             {classroom && (
               <label className="flex items-center justify-between gap-2 rounded-md px-2.5 py-1.5 hover:bg-chip">
                 <span>{t("Diapositivas de")}</span>
-                <select value={classroom.value} onFocus={classroom.load} onChange={(e) => classroom.set(e.target.value)} className="rounded bg-chip px-1.5 py-0.5 text-xs">
-                  <option value="">{t("Classroom…")}</option>
-                  {classroom.options.map((u) => (
-                    <option key={u} value={u}>
-                      {u}
-                    </option>
-                  ))}
-                </select>
+                <Select
+                  value={classroom.value}
+                  onOpen={classroom.load}
+                  onChange={classroom.set}
+                  ariaLabel={t("Diapositivas de")}
+                  options={[{ value: "", label: t("Classroom…") }, ...classroom.options.map((u) => ({ value: u, label: u }))]}
+                  className="max-w-40 rounded bg-chip px-1.5 py-0.5 text-xs"
+                />
               </label>
             )}
             {onDelete && (

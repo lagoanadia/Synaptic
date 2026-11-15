@@ -1,5 +1,6 @@
 "use client";
 
+import { ask } from "@/app/ui/PopupHost";
 import { useT } from "@/app/LangProvider";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -203,7 +204,7 @@ export function ChallengeIDE({ challenge }: { challenge: Challenge }) {
         </button>
         <button
           type="button"
-          onClick={() => window.confirm(t("¿Volver al código inicial?")) && setCode(challenge.starterCode)}
+          onClick={async () => (await ask.confirm(t("¿Volver al código inicial?"))) && setCode(challenge.starterCode)}
           title={t("Volver al código inicial")}
           aria-label={t("Reiniciar")}
           className={`${icon} text-lg`}
@@ -212,8 +213,8 @@ export function ChallengeIDE({ challenge }: { challenge: Challenge }) {
         </button>
         <button
           type="button"
-          onClick={() =>
-            window.confirm(t("¿Eliminar \"{0}\"?", { 0: challenge.title })) &&
+          onClick={async () =>
+            (await ask.confirm(t("¿Eliminar \"{0}\"?", { 0: challenge.title }), { danger: true })) &&
             startDelete(async () => {
               await deleteChallenge(challenge.id);
               router.push("/challenges");

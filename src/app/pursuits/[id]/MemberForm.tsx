@@ -1,5 +1,6 @@
 "use client";
 
+import { Select } from "@/app/ui/Select";
 import { useT } from "@/app/LangProvider";
 import { useActionState, useState } from "react";
 import Link from "next/link";
@@ -53,16 +54,17 @@ export function MemberForm({ pursuitId, friends }: { pursuitId: string; friends:
           disabled={isPending}
           className="w-56 rounded-md border border-dashed border-border-subtle bg-transparent px-2.5 py-1 text-sm focus:outline-none disabled:opacity-50"
         />
-        <select
+        <Select
           value={role}
-          onChange={(e) => setRole(e.target.value as "EDITOR" | "VIEWER")}
+          onChange={(v) => setRole(v as "EDITOR" | "VIEWER")}
           disabled={isPending}
-          aria-label={t("Permiso")}
-          className="rounded-md border border-dashed border-border-subtle bg-transparent px-2 py-1 text-sm disabled:opacity-50"
-        >
-          <option value="EDITOR">{t("Edita")}</option>
-          <option value="VIEWER">{t("Lee")}</option>
-        </select>
+          ariaLabel={t("Permiso")}
+          options={[
+            { value: "EDITOR", label: t("Edita") },
+            { value: "VIEWER", label: t("Lee") },
+          ]}
+          className="rounded-md border border-dashed border-border-subtle bg-transparent px-2 py-1 text-sm hover:bg-chip disabled:opacity-50"
+        />
       </div>
       {friends.length === 0 && (
         <Link href="/profile" className="text-xs text-ink-faint hover:text-ink hover:underline">

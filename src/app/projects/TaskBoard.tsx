@@ -6,7 +6,11 @@ import { Folder } from "../Covers";
 import { TASK_COLUMNS, dueLabel, type TaskItem, type TaskStatus } from "@/lib/projects";
 import type { FolderCover } from "@/lib/covers";
 import { addNotebookTask, addTask, deleteTask, setColumn, updateTask } from "./actions";
+import { RangePicker } from "../ui/DatePicker";
+import { CalendarIcon } from "../icons";
+import { Select } from "../ui/Select";
 
+type TaskChange = { title?: string; status?: TaskStatus; startDate?: string | null; dueDate?: string | null };
 export type BoardProject = { id: string; title: string; cover: string };
 type View = "board" | "list" | "project";
 
@@ -27,7 +31,7 @@ export function TaskBoard({ tasks: initial, projects, today, view: fixed, sectio
   const byId = new Map(projects.map((p) => [p.id, p]));
 
   // New data from the server (another tab, the home page) replaces ours.
-  const key = initial.map((t) => `${t.id}${t.status}${t.title}${t.dueDate}${t.order}`).join();
+  const key = initial.map((t) => `${t.id}${t.status}${t.title}${t.startDate}${t.dueDate}${t.order}`).join();
   const seen = useRef(key);
   useEffect(() => {
     if (seen.current === key) return;
@@ -39,7 +43,7 @@ export function TaskBoard({ tasks: initial, projects, today, view: fixed, sectio
   const endOf = (s: TaskStatus) => Math.max(0, ...tasks.filter((t) => t.status === s).map((t) => t.order)) + 1;
   const column = (s: TaskStatus) => tasks.filter((t) => t.status === s).sort((a, b) => a.order - b.order);
 
-  function change(id: string, data: { title?: string; status?: TaskStatus; dueDate?: string | null }) {
+  function change(id: string, data: TaskChange) {
     setTasks((ts) => ts.map((t) => (t.id === id ? { ...t, ...data, ...(data.status && data.status !== t.status ? { order: endOf(data.status) } : {}) } : t)));
     start(() => updateTask(id, data));
   }
@@ -195,7 +199,7 @@ function Card({
   task: TaskItem;
   project?: BoardProject;
   today: string;
-  onChange: (d: { title?: string; status?: TaskStatus; dueDate?: string | null }) => void;
+  onChange: (d: TaskChange) => void;
   onDelete: () => void;
   dragProps?: React.HTMLAttributes<HTMLDivElement> & { draggable?: boolean };
   faded?: boolean;
@@ -206,6 +210,7 @@ function Card({
   const [editing, setEditing] = useState(false);
   const done = task.status === "DONE";
   const due = task.dueDate ? dueLabel(task.dueDate, today, t, locale) : null;
+  const from = task.startDate && task.dueDate ? new Date(`${task.startDate}T00:00:00Z`).toLocaleDateString(locale, { day: "numeric", month: "short", timeZone: "UTC" }) : null;
   return (
     <>
       {lineAbove && <span className="mx-1 h-0.5 rounded bg-[#337ea9]" />}
@@ -247,24 +252,27 @@ function Card({
                   <span className="truncate">{project.title}</span>
                 </>
               )}
-              {due && !done && <span className={`ml-auto shrink-0 ${due.late || due.text === "hoy" ? "text-[#c4554d]" : ""}`}>{due.text}</span>}
+              {due && !done && (
+                <span className={`ml-auto shrink-0 ${due.late || due.text === t("hoy") ? "text-[#c4554d]" : ""}`}>
+                  {from && <span className="text-ink-faint">{from} → </span>}
+                  {due.text}
+                </span>
+              )}
             </span>
           )}
         </div>
         <span className="flex shrink-0 items-center gap-0.5 opacity-40 group-hover:opacity-100">
-          <label title={t("Fecha")} className="relative grid size-6 cursor-pointer place-items-center rounded text-ink-faint hover:bg-chip hover:text-ink">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-              <rect x="3.5" y="5" width="17" height="15" rx="2" />
-              <path d="M3.5 10h17M8 3v4M16 3v4" />
-            </svg>
-            <input
-              type="date"
-              value={task.dueDate ?? ""}
-              onChange={(e) => onChange({ dueDate: e.target.value || null })}
-              aria-label={t("Fecha límite")}
-              className="absolute inset-0 cursor-pointer opacity-0"
-            />
-          </label>
+          <RangePicker
+            value={{ start: task.startDate ?? null, end: task.dueDate }}
+            onChange={(r) => onChange({ startDate: r.start, dueDate: r.end })}
+            title={t("Fechas")}
+            ariaLabel={t("Fechas de la tarea")}
+            endLabel={t("Fin")}
+            align="end"
+            className={`grid size-6 place-items-center rounded hover:bg-chip hover:text-ink ${task.dueDate ? "text-accent" : "text-ink-faint"}`}
+          >
+            <CalendarIcon size={13} />
+          </RangePicker>
           <button type="button" onClick={onDelete} title={t("Eliminar")} aria-label={t("Eliminar tarea")} className="grid size-6 place-items-center rounded text-ink-faint hover:bg-chip hover:text-red-600">
             ×
           </button>
@@ -291,13 +299,7 @@ function AddTask({ projects, loose, onAdd }: { projects: BoardProject[]; loose?:
     >
       <input name="title" autoFocus placeholder={t("Nueva tarea")} aria-label={t("Nueva tarea")} onKeyDown={(e) => e.key === "Escape" && setOpen(false)} onBlur={(e) => !e.target.value && projects.length <= 1 && setOpen(false)} className="px-1 text-sm outline-none" />
       {projects.length > 1 && (
-        <select value={project} onChange={(e) => setProject(e.target.value)} aria-label={t("Proyecto")} className="rounded bg-chip px-1.5 py-0.5 text-xs">
-          {projects.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.title}
-            </option>
-          ))}
-        </select>
+        <Select value={project} onChange={setProject} ariaLabel={t("Proyecto")} options={projects.map((p) => ({ value: p.id, label: p.title }))} className="self-start rounded bg-chip px-1.5 py-0.5 text-xs" />
       )}
     </form>
   ) : (

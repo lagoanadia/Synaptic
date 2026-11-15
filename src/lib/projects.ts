@@ -8,7 +8,7 @@ export const TASK_COLUMNS: { status: TaskStatus; label: string; dot: string }[] 
   { status: "DONE", label: "Hecho", dot: "#448361" },
 ];
 
-export type TaskItem = { id: string; title: string; status: TaskStatus; dueDate: string | null; pursuitId: string; order: number };
+export type TaskItem = { id: string; title: string; status: TaskStatus; startDate?: string | null; dueDate: string | null; pursuitId: string; order: number };
 export type ProjectItem = {
   id: string;
   title: string;

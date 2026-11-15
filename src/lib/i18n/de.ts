@@ -1049,4 +1049,11 @@ export const de: Record<string, string> = {
   "Claro": "Hell",
   "Oscuro": "Dunkel",
   "Auto": "Auto",
+  "según sus tareas": "aus den Aufgaben",
+  "Fechas de la tarea": "Aufgabendaten",
+  "Fin": "Ende",
+  "Mañana": "Morgen",
+  "Próxima semana": "Nächste Woche",
+  "Vale": "OK",
+  "Confirmar": "Bestätigen",
 };

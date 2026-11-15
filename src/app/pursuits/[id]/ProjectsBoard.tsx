@@ -1,5 +1,6 @@
 "use client";
 
+import { DatePicker } from "@/app/ui/DatePicker";
 import { useLocale, useT } from "@/app/LangProvider";
 import { KanbanIcon } from "@/app/icons";
 import { useRef, useState, useTransition } from "react";
@@ -96,7 +97,7 @@ export function ProjectsBoard({
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const titleRef = useRef<HTMLInputElement>(null);
-  const dateRef = useRef<HTMLInputElement>(null);
+  const [due, setDue] = useState<string | null>(null);
 
   return (
     <div className="flex flex-col gap-4">
@@ -105,7 +106,7 @@ export function ProjectsBoard({
           e.preventDefault();
           const title = titleRef.current?.value.trim();
           if (!title) return;
-          const dueDate = dateRef.current?.value || null;
+          const dueDate = due;
           setError(null);
           startTransition(async () => {
             try {
@@ -126,12 +127,13 @@ export function ProjectsBoard({
           disabled={isPending}
           className="flex-1 rounded-xl border border-border-subtle bg-white px-3.5 py-2.5 text-sm disabled:opacity-50"
         />
-        <input
-          ref={dateRef}
-          type="date"
+        <DatePicker
+          value={due}
+          onChange={setDue}
           title={t("Fecha de entrega (opcional)")}
+          placeholder={t("Fecha de entrega (opcional)")}
           disabled={isPending}
-          className="rounded-xl border border-border-subtle bg-white px-3 py-2.5 text-sm disabled:opacity-50"
+          className="rounded-xl border border-border-subtle bg-white px-3 py-2.5 text-sm hover:bg-[#fbfbfa] disabled:opacity-50"
         />
         <span
           title={t("La única plantilla por ahora")}

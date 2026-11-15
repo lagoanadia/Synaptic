@@ -1,5 +1,6 @@
 "use client";
 
+import { ask } from "@/app/ui/PopupHost";
 import { useT } from "@/app/LangProvider";
 import Link from "next/link";
 import { useState, useTransition } from "react";
@@ -97,8 +98,8 @@ export function NotebookHeader({
             </div>
             <button
               type="button"
-              onClick={() => {
-                if (window.confirm(t("¿Eliminar la libreta \"{0}\"? Sus carpetas pasan a Sin clasificar; no se borra nada de dentro.", { 0: initialName })))
+              onClick={async () => {
+                if (await ask.confirm(t("¿Eliminar la libreta \"{0}\"? Sus carpetas pasan a Sin clasificar; no se borra nada de dentro.", { 0: initialName }), { danger: true }))
                   start(() => deleteSection(id));
               }}
               className="self-start text-xs text-ink-faint hover:text-red-600"

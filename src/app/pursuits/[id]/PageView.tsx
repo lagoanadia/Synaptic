@@ -1,5 +1,6 @@
 "use client";
 
+import { ask } from "@/app/ui/PopupHost";
 import { useT } from "@/app/LangProvider";
 import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
@@ -347,8 +348,8 @@ export function PageView({ pursuit, crumbs, dump, note, slides, terms, stale: st
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  if (!window.confirm(t("¿Eliminar esta página? No se puede deshacer."))) return;
+                onClick={async () => {
+                  if (!(await ask.confirm(t("¿Eliminar esta página? No se puede deshacer."), { danger: true }))) return;
                   start(async () => {
                     if (dump) await deleteBrainDump(pursuit.id, dump.id);
                     else if (note) await deleteNote(pursuit.id, note.id);

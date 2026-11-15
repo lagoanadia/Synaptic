@@ -1,5 +1,6 @@
 "use client";
 
+import { ask } from "@/app/ui/PopupHost";
 import { useLocale, useT } from "@/app/LangProvider";
 import { AvatarFace } from "@/app/AvatarFace";
 import type { Avatar } from "@/lib/avatar";
@@ -291,7 +292,7 @@ export function OptionsBlock({ pursuitId, blockId, items, people, me, columns = 
             })}
             <button
               type="button"
-              onClick={() => window.confirm(t("¿Quitar \"{0}\"?", { 0: c.title })) && start(() => deleteChoice(c.id))}
+              onClick={async () => (await ask.confirm(t("¿Quitar \"{0}\"?", { 0: c.title }), { danger: true })) && start(() => deleteChoice(c.id))}
               title={t("Quitar")}
               aria-label={t("Quitar opción")}
               className="text-ink-faint/40 hover:text-red-600 max-sm:-order-1 max-sm:ml-auto"

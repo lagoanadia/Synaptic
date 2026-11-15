@@ -1,5 +1,6 @@
 "use client";
 
+import { ask } from "@/app/ui/PopupHost";
 import { useState, useTransition } from "react";
 import { useT } from "@/app/LangProvider";
 import { AvatarFace } from "../AvatarFace";
@@ -74,8 +75,8 @@ export function Friends({ friends, hasHandle }: { friends: Friend[]; hasHandle: 
               <button
                 type="button"
                 disabled={pending}
-                onClick={() => {
-                  if (f.state === "sent" || confirm(t("¿Quitar a {0} de tus amigos?", { 0: f.name }))) run(() => removeFriend(f.id));
+                onClick={async () => {
+                  if (f.state === "sent" || (await ask.confirm(t("¿Quitar a {0} de tus amigos?", { 0: f.name }), { danger: true }))) run(() => removeFriend(f.id));
                 }}
                 className="absolute top-2 right-2 rounded-md px-2 py-0.5 text-xs text-ink-faint opacity-0 group-hover:opacity-100 hover:bg-chip hover:text-ink focus:opacity-100"
               >

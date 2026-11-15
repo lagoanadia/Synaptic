@@ -1,5 +1,7 @@
 "use client";
 
+import { Select } from "@/app/ui/Select";
+import { ask } from "@/app/ui/PopupHost";
 import { useT } from "@/app/LangProvider";
 import { useEffect, useState, useTransition } from "react";
 import {
@@ -114,25 +116,19 @@ export function ClassroomImport({
       ) : courses.length === 0 ? (
         <p className="text-xs text-ink-muted">{t("No hay cursos activos en Classroom.")}</p>
       ) : (
-        <select
+        <Select
           value={selectedCourse}
-          onChange={(e) => {
-            const courseId = e.target.value;
+          onChange={async (courseId) => {
             const courseName = courses.find((c) => c.id === courseId)?.name ?? "";
             const other = linkedElsewhere[courseId];
-            if (other && !window.confirm(t("{0} ya está vinculado a {1}. ¿Vincularlo aquí también?", { 0: courseName, 1: other }))) return;
+            if (other && !(await ask.confirm(t("{0} ya está vinculado a {1}. ¿Vincularlo aquí también?", { 0: courseName, 1: other })))) return;
             pickCourse(courseId, courseName);
           }}
-          className="rounded-md border border-border-subtle bg-white px-3 py-2 text-sm"
-        >
-          <option value="">{t("Elige un curso…")}</option>
-          {courses.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-              {linkedElsewhere[c.id] ? t(" — ya en {0}", { 0: linkedElsewhere[c.id] }) : ""}
-            </option>
-          ))}
-        </select>
+          ariaLabel={t("Elige un curso…")}
+          placeholder={t("Elige un curso…")}
+          options={courses.map((c) => ({ value: c.id, label: c.name, hint: linkedElsewhere[c.id] ? t(" — ya en {0}", { 0: linkedElsewhere[c.id] }) : undefined }))}
+          className="rounded-md border border-border-subtle bg-white px-3 py-2 text-sm hover:bg-[#fbfbfa]"
+        />
       )}
 
       {files !== null && (

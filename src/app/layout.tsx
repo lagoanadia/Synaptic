@@ -14,6 +14,7 @@ import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
 import { getLang } from "@/lib/i18n/server";
 import { makeT } from "@/lib/i18n";
 import { LangProvider } from "./LangProvider";
+import { PopupHost } from "./ui/PopupHost";
 
 const appFont = Inter({
   variable: "--font-app",
@@ -71,6 +72,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         {theme === "system" && <script dangerouslySetInnerHTML={{ __html: "if(matchMedia('(prefers-color-scheme: dark)').matches)document.documentElement.classList.add('dark')" }} />}
         <LangProvider lang={lang}>
         <RegisterServiceWorker />
+        <PopupHost />
         <CoverDefs />
         {session?.user && user && (
           <Sidebar

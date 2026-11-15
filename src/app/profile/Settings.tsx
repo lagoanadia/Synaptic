@@ -1,5 +1,6 @@
 "use client";
 
+import { ask } from "@/app/ui/PopupHost";
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -59,7 +60,7 @@ export function Settings({ codes, calendar, classroom, providers, plan, theme }:
       </Row>
       <Row title="Google Calendar" hint={calendar ? t("Conectado") : t("Trae tus eventos y envía exámenes y entregas")}>
         {calendar ? (
-          <button type="button" disabled={pending} onClick={() => confirm(t("¿Desconectar Google Calendar?")) && run(disconnectGoogle)} className={button}>
+          <button type="button" disabled={pending} onClick={async () => (await ask.confirm(t("¿Desconectar Google Calendar?"), { danger: true })) && run(disconnectGoogle)} className={button}>
             {t("Desconectar")}
           </button>
         ) : (
@@ -70,7 +71,7 @@ export function Settings({ codes, calendar, classroom, providers, plan, theme }:
       </Row>
       <Row title="Google Classroom" hint={classroom ? t("Conectado") : t("Trae tus cursos, unidades y entregas")}>
         {classroom ? (
-          <button type="button" disabled={pending} onClick={() => confirm(t("¿Desconectar Google Classroom?")) && run(disconnectClassroomAccount)} className={button}>
+          <button type="button" disabled={pending} onClick={async () => (await ask.confirm(t("¿Desconectar Google Classroom?"), { danger: true })) && run(disconnectClassroomAccount)} className={button}>
             {t("Desconectar")}
           </button>
         ) : (
@@ -87,7 +88,7 @@ export function Settings({ codes, calendar, classroom, providers, plan, theme }:
           <Row key={p} title={t("Iniciar sesión con {0}", { 0: name })} hint={on ? t("Vinculado") : t("No vinculado")}>
             {on ? (
               providers.length > 1 && (
-                <button type="button" disabled={pending} onClick={() => confirm(t("¿Quitar {0} como forma de entrar?", { 0: name })) && run(() => unlinkSignIn(p))} className={button}>
+                <button type="button" disabled={pending} onClick={async () => (await ask.confirm(t("¿Quitar {0} como forma de entrar?", { 0: name }), { danger: true })) && run(() => unlinkSignIn(p))} className={button}>
                   {t("Quitar")}
                 </button>
               )

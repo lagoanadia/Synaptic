@@ -1,5 +1,6 @@
 "use client";
 
+import { ask as dialog } from "@/app/ui/PopupHost";
 import { useT } from "@/app/LangProvider";
 import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
@@ -178,8 +179,8 @@ export function LearnView({
                       </button>
                       <button
                         type="button"
-                        onClick={() => {
-                          if (!window.confirm(t("¿Eliminar \"{0}\" y todo lo que contiene?", { 0: concept.title }))) return;
+                        onClick={async () => {
+                          if (!(await dialog.confirm(t("¿Eliminar \"{0}\" y todo lo que contiene?", { 0: concept.title }), { danger: true }))) return;
                           start(async () => {
                             await deleteConcept(concept.id);
                             router.replace(`/pursuits/${pursuitId}/learn/${mapId}`);

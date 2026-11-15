@@ -1,5 +1,6 @@
 "use client";
 
+import { Select } from "@/app/ui/Select";
 import { useT } from "@/app/LangProvider";
 import Link from "next/link";
 import { useState, useTransition } from "react";
@@ -77,32 +78,22 @@ export function HomeBlocks({
                   <>
                     {t(TITLE[b.type])}
                     {b.type === "project" && (
-                      <select
+                      <Select
                         value={b.pursuitId ?? ""}
-                        onChange={(e) => save(blocks.map((x) => (x.id === b.id ? { ...x, pursuitId: e.target.value || null } : x)))}
-                        aria-label={t("Proyecto")}
+                        onChange={(v) => save(blocks.map((x) => (x.id === b.id ? { ...x, pursuitId: v || null } : x)))}
+                        ariaLabel={t("Proyecto")}
+                        options={projects.map((p) => ({ value: p.id, label: p.title }))}
                         className="rounded-md bg-chip px-2 py-0.5 text-sm font-medium"
-                      >
-                        {projects.map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.title}
-                          </option>
-                        ))}
-                      </select>
+                      />
                     )}
                     {b.type !== "week" && b.type !== "today" && b.type !== "project" && (
-                    <select
+                    <Select
                       value={b.sectionId ?? ""}
-                      onChange={(e) => save(blocks.map((x) => (x.id === b.id ? { ...x, sectionId: e.target.value || null } : x)))}
-                      aria-label={t("Libreta")}
+                      onChange={(v) => save(blocks.map((x) => (x.id === b.id ? { ...x, sectionId: v || null } : x)))}
+                      ariaLabel={t("Libreta")}
+                      options={notebooks.map((n) => ({ value: n.id, label: n.name }))}
                       className="rounded-md bg-chip px-2 py-0.5 text-sm font-medium"
-                    >
-                      {notebooks.map((n) => (
-                        <option key={n.id} value={n.id}>
-                          {n.name}
-                        </option>
-                      ))}
-                    </select>
+                    />
                     )}
                   </>
                 ) : (

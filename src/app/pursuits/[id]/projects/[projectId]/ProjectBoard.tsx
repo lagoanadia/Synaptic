@@ -1,5 +1,6 @@
 "use client";
 
+import { DatePicker } from "@/app/ui/DatePicker";
 import { useT } from "@/app/LangProvider";
 import { useRef, useState, useTransition } from "react";
 import { upload } from "@vercel/blob/client";
@@ -356,17 +357,16 @@ export function ProjectBoard({
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <input
-            type="date"
-            value={dueDate}
-            onChange={(e) => {
-              setDueDate(e.target.value);
-              startTransition(() =>
-                updateProjectDueDate(pursuitId, projectId, e.target.value || null),
-              );
+          <DatePicker
+            value={dueDate || null}
+            onChange={(v) => {
+              setDueDate(v ?? "");
+              startTransition(() => updateProjectDueDate(pursuitId, projectId, v));
             }}
-            title={t("Fecha de entrega")}
-            className="rounded-xl border border-border-subtle bg-white px-3 py-2 text-sm"
+            ariaLabel={t("Fecha de entrega")}
+            placeholder={t("Fecha de entrega")}
+            align="end"
+            className="rounded-xl border border-border-subtle bg-white px-3 py-2 text-sm hover:bg-[#fbfbfa]"
           />
           <input
             ref={fileInputRef}

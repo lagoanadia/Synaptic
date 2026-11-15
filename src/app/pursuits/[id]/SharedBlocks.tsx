@@ -1,5 +1,6 @@
 "use client";
 
+import { Select } from "@/app/ui/Select";
 import { useLocale, useT } from "@/app/LangProvider";
 import { useState, useTransition } from "react";
 import { Faces, type Person } from "./TripBlocks";
@@ -55,13 +56,13 @@ export function ExpensesBlock({ pursuitId, blockId, items, people, me, debts }: 
           <input name="l" placeholder={t("+ Gasto (cena, gasolina…)")} aria-label={t("Gasto")} className="min-w-40 flex-1 outline-none placeholder:text-ink-faint" />
           <input name="a" inputMode="decimal" placeholder="0 €" aria-label={t("Importe")} className="w-20 rounded bg-chip px-2 py-1 text-right" />
           {people.length > 1 && (
-            <select value={payer} onChange={(e) => setPayer(e.target.value)} aria-label={t("Quién pagó")} className="rounded bg-chip px-2 py-1 text-ink-muted">
-              {people.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {t("pagó")}{" "}{p.id === me ? "yo" : p.name}
-                </option>
-              ))}
-            </select>
+            <Select
+              value={payer}
+              onChange={setPayer}
+              ariaLabel={t("Quién pagó")}
+              options={people.map((p) => ({ value: p.id, label: `${t("pagó")} ${p.id === me ? "yo" : p.name}` }))}
+              className="rounded bg-chip px-2 py-1 text-ink-muted"
+            />
           )}
           <button type="submit" className="rounded-md bg-ink px-3 py-1 text-xs font-medium text-white">
             {t("Añadir")}

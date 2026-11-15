@@ -1,5 +1,6 @@
 "use client";
 
+import { ask } from "@/app/ui/PopupHost";
 import { useT } from "@/app/LangProvider";
 import type { T } from "@/lib/i18n";
 import { ArrowDown, CardsIcon, CheckIcon, ImageIcon, LinkIcon, MapIcon, QuoteIcon, SparkIcon, TrashIcon, XIcon } from "@/app/icons";
@@ -588,10 +589,10 @@ function Toolbar({
     if (s.lettered) return c().updateAttributes("orderedList", { kind: "decimal" }).run();
     c().toggleOrderedList().run();
   }
-  function setLink() {
+  async function setLink() {
     if (s.link) return c().unsetLink().run();
-    const url = window.prompt(t("URL del enlace"));
-    if (url) c().extendMarkRange("link").setLink({ href: url }).run();
+    const url = await ask.prompt(t("URL del enlace"), "https://");
+    if (url && url !== "https://") c().extendMarkRange("link").setLink({ href: url }).run();
   }
 
   return (
@@ -734,10 +735,10 @@ function SelectionBar({
         <Btn on={s.italic} onClick={() => c().toggleItalic().run()} title={t("Cursiva")}><i>{t("K")}</i></Btn>
         <Btn
           on={s.link}
-          onClick={() => {
+          onClick={async () => {
             if (s.link) return c().unsetLink().run();
-            const url = window.prompt(t("URL del enlace"));
-            if (url) c().extendMarkRange("link").setLink({ href: url }).run();
+            const url = await ask.prompt(t("URL del enlace"), "https://");
+            if (url && url !== "https://") c().extendMarkRange("link").setLink({ href: url }).run();
           }}
           title={t("Enlace")}
         >

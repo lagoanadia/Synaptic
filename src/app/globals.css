@@ -389,3 +389,17 @@ body:has(#landing, #login) .app-pad {
 .rich-editor pre .tok-class-name, .rich-editor pre .tok-builtin, .rich-editor pre .tok-tag { color: #ffcb6b; }
 .rich-editor pre .tok-operator, .rich-editor pre .tok-punctuation { color: #89ddff; }
 .rich-editor pre .tok-property, .rich-editor pre .tok-attr-name { color: #f07178; }
+
+/* Synaptic's own pop-ups (src/app/ui): calendars, drop-downs, dialogs, tooltips. */
+@keyframes pop-in {
+  from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+}
+@keyframes tip-in {
+  from { opacity: 0; }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  [class*="animate-[pop-in"], [class*="animate-[tip-in"], [class*="animate-[fade-in"] { animation: none; }
+}

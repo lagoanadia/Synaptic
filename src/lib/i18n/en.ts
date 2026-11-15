@@ -1049,4 +1049,11 @@ export const en: Record<string, string> = {
   "Claro": "Light",
   "Oscuro": "Dark",
   "Auto": "Auto",
+  "según sus tareas": "from its tasks",
+  "Fechas de la tarea": "Task dates",
+  "Fin": "End",
+  "Mañana": "Tomorrow",
+  "Próxima semana": "Next week",
+  "Vale": "OK",
+  "Confirmar": "Confirm",
 };

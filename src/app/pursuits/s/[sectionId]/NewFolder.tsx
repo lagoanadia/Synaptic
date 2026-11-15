@@ -1,5 +1,6 @@
 "use client";
 
+import { ask } from "@/app/ui/PopupHost";
 import { useT } from "@/app/LangProvider";
 import { useState, useTransition } from "react";
 import { createPursuit, deleteFolderTemplate } from "../../actions";
@@ -48,8 +49,8 @@ export function NewFolder({ sectionName, label, fill = false, template: initial,
                 title={t("Borrar plantilla")}
                 aria-label={t("Borrar la plantilla {0}", { 0: item.name })}
                 onMouseDown={(e) => e.preventDefault()}
-                onClick={() => {
-                  if (!window.confirm(t("¿Borrar la plantilla \"{0}\"? Las carpetas hechas con ella no cambian.", { 0: item.name }))) return;
+                onClick={async () => {
+                  if (!(await ask.confirm(t("¿Borrar la plantilla \"{0}\"? Las carpetas hechas con ella no cambian.", { 0: item.name }), { danger: true }))) return;
                   if (template === `u:${item.id}`) setTemplate(initial);
                   start(() => deleteFolderTemplate(item.id));
                 }}

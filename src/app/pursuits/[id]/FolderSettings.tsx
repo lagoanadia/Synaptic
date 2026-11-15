@@ -1,5 +1,6 @@
 "use client";
 
+import { ask } from "@/app/ui/PopupHost";
 import { useT } from "@/app/LangProvider";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -76,8 +77,8 @@ export function FolderSettings({
       {canDelete && (
         <button
           type="button"
-          onClick={() => {
-            if (window.confirm(t("¿Eliminar la carpeta \"{0}\"? Se borra todo lo de dentro (notas, tarjetas, tareas, mapas) y no se puede deshacer.", { 0: title })))
+          onClick={async () => {
+            if (await ask.confirm(t("¿Eliminar la carpeta \"{0}\"? Se borra todo lo de dentro (notas, tarjetas, tareas, mapas) y no se puede deshacer.", { 0: title }), { danger: true }))
               start(() => deletePursuit(pursuitId));
           }}
           className="flex items-center gap-1.5 self-start border-t border-border-subtle pt-3 text-xs text-ink-faint hover:text-red-600"

@@ -1,5 +1,8 @@
 "use client";
 
+import { Select } from "@/app/ui/Select";
+import { TimePicker } from "@/app/ui/TimePicker";
+import { ask } from "@/app/ui/PopupHost";
 import { useLocale, useT } from "@/app/LangProvider";
 import Link from "next/link";
 import { useState, useTransition } from "react";
@@ -243,25 +246,23 @@ function AddForm({ day, folders, onDone }: { day: string; folders: Folder[]; onD
         ))}
       </span>
       <span className="flex gap-2">
-        <select value={form.pursuitId ?? ""} onChange={(e) => setForm({ ...form, pursuitId: e.target.value || null, unitId: null })} aria-label={t("Carpeta")} className={field}>
-          <option value="">{t("Sin carpeta")}</option>
-          {folders.map((f) => (
-            <option key={f.id} value={f.id}>
-              {f.title}
-            </option>
-          ))}
-        </select>
-        <input type="time" value={form.time ?? ""} onChange={(e) => setForm({ ...form, time: e.target.value })} aria-label={t("Hora (opcional)")} className={`${field} w-24 shrink-0`} />
+        <Select
+          value={form.pursuitId ?? ""}
+          onChange={(v) => setForm({ ...form, pursuitId: v || null, unitId: null })}
+          ariaLabel={t("Carpeta")}
+          options={[{ value: "", label: t("Sin carpeta") }, ...folders.map((f) => ({ value: f.id, label: f.title }))]}
+          className={`${field} min-w-0 flex-1`}
+        />
+        <TimePicker value={form.time ?? ""} onChange={(v) => setForm({ ...form, time: v })} ariaLabel={t("Hora (opcional)")} className={`${field} w-24 shrink-0`} />
       </span>
       {form.kind === "exam" && units.length > 0 && (
-        <select value={form.unitId ?? ""} onChange={(e) => setForm({ ...form, unitId: e.target.value || null })} aria-label={t("Qué entra")} className={field}>
-          <option value="">{t("Qué entra…")}</option>
-          {units.map((u) => (
-            <option key={u.id} value={u.id}>
-              {u.name}
-            </option>
-          ))}
-        </select>
+        <Select
+          value={form.unitId ?? ""}
+          onChange={(v) => setForm({ ...form, unitId: v || null })}
+          ariaLabel={t("Qué entra")}
+          options={[{ value: "", label: t("Qué entra…") }, ...units.map((u) => ({ value: u.id, label: u.name }))]}
+          className={field}
+        />
       )}
       {error && <span className="text-xs text-red-500">{error}</span>}
       <button type="submit" disabled={pending || !form.title.trim()} className="self-end rounded-md bg-ink px-3 py-1.5 text-sm text-white disabled:opacity-40">
@@ -333,7 +334,7 @@ function Detail({ item, onDone }: { item: CalItem; onDone: () => void }) {
         {item.editable && (
           <button
             type="button"
-            onClick={() => window.confirm(t("¿Quitar \"{0}\"?", { 0: item.title })) && act(() => removeEvent(item.id))}
+            onClick={() => void ask.confirm(t("¿Quitar \"{0}\"?", { 0: item.title }), { danger: true }).then((ok) => ok && act(() => removeEvent(item.id)))}
             title={t("Quitar")}
             aria-label={t("Quitar")}
             className="ml-auto rounded-md p-2 text-ink-faint hover:bg-chip hover:text-red-600"

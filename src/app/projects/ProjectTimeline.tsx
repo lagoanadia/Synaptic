@@ -12,8 +12,10 @@ const short = (t: number, locale: string) => new Date(t).toLocaleDateString(loca
 const LABEL_W = 150;
 
 // A month of the notebook's projects as a Gantt chart: one row per project,
-// a bar in its colour from start to due date, today marked. Projects without
-// dates, or with dates in another month, still get a row saying so.
+// a bar in its colour from start to due date, today marked. Under each
+// project, its tasks with dates get their own thinner bars, and a project
+// without dates of its own spans its tasks. Projects without dates, or with
+// dates in another month, still get a row saying so.
 export function ProjectTimeline({ projects, today }: { projects: ProjectItem[]; today: string }) {
   const locale = useLocale();
   const t = useT();
@@ -36,9 +38,15 @@ export function ProjectTimeline({ projects, today }: { projects: ProjectItem[]; 
   // Dated projects first (by start), then those without dates.
   const rows = projects
     .map((p) => {
-      const from = p.startDate || p.dueDate ? ms(p.startDate ?? p.dueDate!) : null;
-      const to = p.startDate || p.dueDate ? ms(p.dueDate ?? p.startDate!) : null;
-      return { p, from, to };
+      const tasks = p.tasks
+        .filter((x) => x.startDate || x.dueDate)
+        .map((x) => ({ task: x, from: ms(x.startDate ?? x.dueDate!), to: ms(x.dueDate ?? x.startDate!) }))
+        .sort((a, b) => a.from - b.from || a.to - b.to);
+      const own = !!(p.startDate || p.dueDate);
+      // No dates of its own: the project spans its tasks.
+      const from = own ? ms(p.startDate ?? p.dueDate!) : tasks.length ? Math.min(...tasks.map((x) => x.from)) : null;
+      const to = own ? ms(p.dueDate ?? p.startDate!) : tasks.length ? Math.max(...tasks.map((x) => x.to)) : null;
+      return { p, from, to, own, tasks };
     })
     .sort((a, b) => (a.from ?? Infinity) - (b.from ?? Infinity));
   const pct = (t: number) => ((Math.min(Math.max(t, first), last + DAY) - first) / DAY / days) * 100;
@@ -66,7 +74,7 @@ export function ProjectTimeline({ projects, today }: { projects: ProjectItem[]; 
       </div>
 
       <div className="overflow-x-auto rounded-lg border border-border-subtle">
-        <div className="relative min-w-[680px]">
+        <div className="relative -mb-px min-w-[680px]">
           {/* Day columns behind every row: weekends shaded, today a red line. */}
           <div className="pointer-events-none absolute inset-y-0 right-0 grid" style={{ left: LABEL_W, ...cols }} aria-hidden>
             {Array.from({ length: days }, (_, i) => (
@@ -88,11 +96,13 @@ export function ProjectTimeline({ projects, today }: { projects: ProjectItem[]; 
             </div>
           </div>
 
-          {rows.map(({ p, from, to }) => {
+          {rows.map(({ p, from, to, own, tasks }) => {
             const done = p.tasks.filter((t) => t.status === "DONE").length;
             const inMonth = from !== null && to !== null && to >= first && from <= last;
+            const visible = tasks.filter((x) => x.to >= first && x.from <= last);
             return (
-              <div key={p.id} className="relative grid h-11 border-b border-border-subtle/60 last:border-b-0" style={{ gridTemplateColumns: `${LABEL_W}px 1fr` }}>
+              <div key={p.id} className="contents">
+              <div className="relative grid h-11 border-b border-border-subtle/60" style={{ gridTemplateColumns: `${LABEL_W}px 1fr` }}>
                 <Link href={`/pursuits/${p.id}`} className="flex min-w-0 items-center gap-2 border-r border-border-subtle px-3 text-[13px] font-medium hover:underline">
                   <span className="size-2 shrink-0 rounded-full" style={{ background: p.color }} />
                   <span className="truncate">{p.title}</span>
@@ -105,13 +115,13 @@ export function ProjectTimeline({ projects, today }: { projects: ProjectItem[]; 
                   ) : inMonth ? (
                     <Link
                       href={`/pursuits/${p.id}`}
-                      title={`${short(from, locale)} – ${short(to!, locale)}`}
+                      title={`${short(from, locale)} – ${short(to!, locale)}${own ? "" : ` · ${t("según sus tareas")}`}`}
                       className="absolute top-1.5 flex h-8 items-center gap-1.5 overflow-hidden rounded-md px-2.5 text-[12.5px] font-medium whitespace-nowrap hover:brightness-95"
                       style={{
                         left: `${pct(from)}%`,
                         width: `${Math.max(pct(to! + DAY) - pct(from), 100 / days)}%`,
                         background: `${p.color}2e`,
-                        boxShadow: `inset 3px 0 0 ${p.color}`,
+                        boxShadow: own ? `inset 3px 0 0 ${p.color}` : `inset 3px 0 0 ${p.color}, inset 0 0 0 1px ${p.color}55`,
                         opacity: p.finished ? 0.6 : 1,
                       }}
                     >
@@ -132,6 +142,37 @@ export function ProjectTimeline({ projects, today }: { projects: ProjectItem[]; 
                     </button>
                   )}
                 </div>
+              </div>
+              {visible.map(({ task, from: a, to: b }) => {
+                const finished = task.status === "DONE";
+                return (
+                  <div key={task.id} className="relative grid h-9 border-b border-border-subtle/60" style={{ gridTemplateColumns: `${LABEL_W}px 1fr` }}>
+                    <span className="flex min-w-0 items-center gap-2 border-r border-border-subtle pr-3 pl-7 text-xs text-ink-muted">
+                      <span
+                        className="size-2.5 shrink-0 rounded-full border-[1.5px]"
+                        style={{ borderColor: p.color, background: finished ? p.color : task.status === "IN_PROGRESS" ? `${p.color}66` : "transparent" }}
+                        aria-hidden
+                      />
+                      <span className={`truncate ${finished ? "line-through opacity-60" : ""}`}>{task.title}</span>
+                    </span>
+                    <div className="relative">
+                      <Link
+                        href={`/pursuits/${p.id}`}
+                        title={`${task.title} · ${a === b ? short(a, locale) : `${short(a, locale)} – ${short(b, locale)}`}`}
+                        className="absolute top-2 flex h-5 items-center overflow-hidden rounded-md px-2 text-[11px] whitespace-nowrap hover:brightness-95"
+                        style={{
+                          left: `${pct(a)}%`,
+                          width: `${Math.max(pct(b + DAY) - pct(a), 100 / days)}%`,
+                          background: finished ? `${p.color}26` : `${p.color}55`,
+                          opacity: finished ? 0.6 : 1,
+                        }}
+                      >
+                        {b - a >= 2 * DAY && <span className="truncate">{task.title}</span>}
+                      </Link>
+                    </div>
+                  </div>
+                );
+              })}
               </div>
             );
           })}

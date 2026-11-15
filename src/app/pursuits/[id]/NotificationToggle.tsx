@@ -1,5 +1,6 @@
 "use client";
 
+import { ask } from "@/app/ui/PopupHost";
 import { useT } from "@/app/LangProvider";
 import { BellIcon, BellOffIcon } from "@/app/icons";
 import { useEffect, useState } from "react";
@@ -42,7 +43,7 @@ export function NotificationToggle() {
     try {
       const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
       if (!publicKey) {
-        window.alert(t("Las notificaciones aún no están configuradas en esta app."));
+        await ask.alert(t("Las notificaciones aún no están configuradas en esta app."));
         return;
       }
       const permission = await Notification.requestPermission();

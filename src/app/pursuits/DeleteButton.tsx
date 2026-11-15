@@ -1,5 +1,6 @@
 "use client";
 
+import { ask } from "@/app/ui/PopupHost";
 import { useTransition, type ReactNode } from "react";
 
 // Runs a bound server action, after a confirm dialog if confirmMessage is set.
@@ -22,8 +23,8 @@ export function DeleteButton({
     <button
       type="button"
       disabled={isPending}
-      onClick={() => {
-        if (confirmMessage && !window.confirm(confirmMessage)) return;
+      onClick={async () => {
+        if (confirmMessage && !(await ask.confirm(confirmMessage, { danger: true }))) return;
         startTransition(async () => {
           await action();
           onSuccess?.();
