@@ -198,6 +198,9 @@ model Pursuit {
   cover      String?
   groupLabel String?
   blocks     Json?
+  // Study tools (concept map, flashcards, review, challenges) for this
+  // folder alone; null = whatever its notebook has.
+  study      Boolean?
 
   // As a project (folders in notebooks without study tools): its dates,
   // shown on the notebook's calendar.

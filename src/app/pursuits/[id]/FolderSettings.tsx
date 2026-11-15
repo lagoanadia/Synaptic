@@ -6,13 +6,14 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Folder } from "@/app/Covers";
 import { FOLDER_GROUPS, type FolderCover } from "@/lib/covers";
-import { setFolderCover, setGroupLabel } from "./actions";
+import { setFolderCover, setFolderStudy, setGroupLabel } from "./actions";
 import { deletePursuit, saveFolderTemplate } from "../actions";
 
 // Shown in "Editar": the folder's look (cover pattern), what its groups
 // are called, and the rest of its settings (passed in as children).
 export function FolderSettings({
   pursuitId,
+  study,
   cover,
   groupLabel,
   title,
@@ -20,6 +21,7 @@ export function FolderSettings({
   children,
 }: {
   pursuitId: string;
+  study: boolean;
   cover: FolderCover;
   groupLabel: string | null;
   title: string;
@@ -30,6 +32,7 @@ export function FolderSettings({
   const [label, setLabel] = useState(groupLabel ?? "");
   const [, start] = useTransition();
   const router = useRouter();
+  const [studyOn, setStudyOn] = useState(study);
 
   return (
     <section className="flex flex-col gap-4 rounded-lg border border-border-subtle bg-[#fbfbfa] p-4 text-sm" aria-label={t("Ajustes de la carpeta")}>
@@ -72,6 +75,29 @@ export function FolderSettings({
           )}
         </form>
       )}
+      <label className="flex cursor-pointer items-center gap-3">
+        <span className="flex min-w-0 flex-1 flex-col">
+          <span className="font-medium text-ink">{t("Herramientas de estudio")}</span>
+          <span className="text-xs text-ink-faint">{t("Mapa de conceptos, tarjetas, repaso y retos en esta carpeta")}</span>
+        </span>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={studyOn}
+          aria-label={t("Herramientas de estudio")}
+          onClick={() => {
+            const next = !studyOn;
+            setStudyOn(next);
+            start(async () => {
+              await setFolderStudy(pursuitId, next);
+              router.refresh();
+            });
+          }}
+          className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${studyOn ? "bg-accent" : "bg-[#d3d1cb]"}`}
+        >
+          <span className={`absolute top-0.5 left-0.5 size-4 rounded-full bg-white shadow-sm transition-transform ${studyOn ? "translate-x-4" : ""}`} />
+        </button>
+      </label>
       {children}
       <SaveAsTemplate pursuitId={pursuitId} title={title} />
       {canDelete && (

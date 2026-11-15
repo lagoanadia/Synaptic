@@ -189,7 +189,8 @@ export default async function PursuitPage({
       })),
   ];
 
-  const study = pursuit.section?.study ?? true;
+  const notebookStudy = pursuit.section?.study ?? true;
+  const study = pursuit.study ?? notebookStudy;
   const cover = folderCover(pursuit.id, pursuit.cover);
   const color = folderColor(pursuit.id, pursuit.cover);
   const groupLabel = pursuit.groupLabel ?? "Unidad";
@@ -434,7 +435,7 @@ export default async function PursuitPage({
       )}
 
       {editing && (
-        <FolderSettings pursuitId={pursuit.id} cover={cover} groupLabel={grouped ? groupLabel : null} title={pursuit.title} canDelete={isOwner}>
+        <FolderSettings pursuitId={pursuit.id} study={study} cover={cover} groupLabel={grouped ? groupLabel : null} title={pursuit.title} canDelete={isOwner}>
           <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]">
             {/* Quick note: a sticky note, so it doesn't get lost among the settings. */}
             <div className="flex flex-col gap-4 self-start">

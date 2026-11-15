@@ -1056,4 +1056,5 @@ export const en: Record<string, string> = {
   "Próxima semana": "Next week",
   "Vale": "OK",
   "Confirmar": "Confirm",
+  "Mapa de conceptos, tarjetas, repaso y retos en esta carpeta": "Concept map, flashcards, review and challenges in this folder",
 };

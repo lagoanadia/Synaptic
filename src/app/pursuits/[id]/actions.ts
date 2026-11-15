@@ -3,7 +3,7 @@
 import { getT } from "@/lib/i18n/server";
 
 import { revalidatePath } from "next/cache";
-import { cleanFolderBlock, type FolderBlock } from "@/lib/blocks";
+import { cleanFolderBlock, folderBlocks, type FolderBlock } from "@/lib/blocks";
 import { after } from "next/server";
 import { addNamedConcept, refreshUnitMap } from "@/lib/autoMap";
 import { BILLING } from "@/lib/billingFlag";
@@ -1388,6 +1388,20 @@ export async function setGroupLabel(pursuitId: string, label: string): Promise<{
   if (groups === 0) await prisma.pursuitContentSection.create({ data: { pursuitId, name: `${clean} 1`, order: 0 } });
   revalidatePath(`/pursuits/${pursuitId}`);
   return { error: null };
+}
+
+// Study tools (concept map, flashcards, review, challenges) on or off for one
+// folder, e.g. a project you also want to study. Turning them on adds the
+// Mapa and Repaso blocks; turning them off hides them (nothing is deleted).
+export async function setFolderStudy(pursuitId: string, on: boolean) {
+  await requireAccess(pursuitId);
+  const p = await prisma.pursuit.findUnique({ where: { id: pursuitId }, select: { blocks: true, section: { select: { study: true } }, _count: { select: { projects: true } } } });
+  if (!p) return;
+  const current = folderBlocks(p.blocks, p.section?.study ?? true, p._count.projects > 0);
+  const blocks = on ? [...current, ...(["map", "review"] as const).filter((t) => !current.some((b) => b.type === t)).map((t) => ({ id: t, type: t }))] : current;
+  await prisma.pursuit.update({ where: { id: pursuitId }, data: { study: on, blocks } });
+  revalidatePath(`/pursuits/${pursuitId}`);
+  revalidatePath("/pursuits", "layout");
 }
 
 export async function setFolderCover(pursuitId: string, cover: string) {

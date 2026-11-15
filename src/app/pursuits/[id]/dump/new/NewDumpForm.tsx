@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { uploadToBlob } from "@/lib/blobUpload";
 import type { Editor } from "@tiptap/react";
 import { addBrainDump, transcribeAudio, updateBrainDump, type FormState } from "../../actions";
+import { createBoard, generateMindMap } from "../../boards";
 import { pdfToImagePages } from "@/lib/pdfToImages";
 import { textToDoc } from "@/lib/richText";
 import { readPptx, slidesToText } from "@/lib/pptx";
@@ -231,6 +232,8 @@ export function NewDumpForm({
         initialText={initialContent}
         onChange={setContent}
         onUploadImage={(file) => uploadToBlob(pursuitId, file, file.name, "image")}
+        onBoard={() => createBoard(pursuitId)}
+        onMindMap={() => generateMindMap(pursuitId, content)}
         editorRef={editorRef}
         toolbarExtras={extras}
         autofocus={!isEditing}

@@ -29,9 +29,9 @@ async function unitSource(pursuitId: string, unitId: string | null): Promise<str
 export async function refreshUnitMap(userId: string, pursuitId: string, unitId: string | null): Promise<void> {
   const pursuit = await prisma.pursuit.findFirst({
     where: { id: pursuitId, OR: [{ ownerId: userId }, { members: { some: { userId } } }] },
-    select: { id: true, section: { select: { study: true } }, owner: { select: { email: true } } },
+    select: { id: true, study: true, section: { select: { study: true } }, owner: { select: { email: true } } },
   });
-  if (!pursuit || pursuit.section?.study === false) return;
+  if (!pursuit || (pursuit.study ?? pursuit.section?.study) === false) return;
 
   const [source, unit] = await Promise.all([
     unitSource(pursuitId, unitId),
