@@ -7,9 +7,6 @@ import type { LearnItem } from "@/lib/learn";
 import { needsQuizText, withDistractors } from "@/lib/quizDistractors";
 import { aiBudget } from "@/lib/access";
 import { ReviewGames } from "./ReviewGames";
-import { ReviewMenu } from "./ReviewMenu";
-import { accessiblePursuits } from "@/lib/reviewData";
-import { folderCover, type FolderCover } from "@/lib/covers";
 
 // Never more than this many cards a day, whatever the backlog.
 const DAILY_CAP = 12;
@@ -92,19 +89,5 @@ export default async function ReviewPage({
     i.distractors.length >= 3 ? i : { ...i, distractors: [...i.distractors, ...shuffle(answers.filter((a) => a !== i.answer && !i.distractors.includes(a)))].slice(0, 3) },
   );
 
-  // The side menu: every folder, and each one's units.
-  const folders = await prisma.pursuit.findMany({
-    where: accessiblePursuits(userId),
-    orderBy: [{ section: { order: "asc" } }, { createdAt: "asc" }],
-    select: { id: true, title: true, cover: true, contentSections: { orderBy: { order: "asc" }, select: { id: true, name: true } } },
-  });
-  const menu = (
-    <ReviewMenu
-      folders={folders.map((f) => ({ id: f.id, title: f.title, cover: folderCover(f.id, f.cover) as FolderCover, units: f.contentSections }))}
-      pursuitId={scope.kind === "pursuit" ? scope.pursuitId : null}
-      unitId={scope.kind === "pursuit" ? (scope.unitId ?? null) : null}
-    />
-  );
-
-  return <ReviewGames key={`${params.pursuit ?? ""}-${params.unit ?? ""}`} backHref={backHref} items={items} menu={menu} />;
+  return <ReviewGames backHref={backHref} items={items} />;
 }
