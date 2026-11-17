@@ -1154,4 +1154,5 @@ export const en: Record<string, string> = {
   "Crear tests de todos mis apuntes": "Create tests from all my notes",
   "Preguntas de todos tus apuntes": "Questions from all your notes",
   "La IA lee los apuntes que aún no tienen preguntas y las crea, para que los quizzes y el test final los cubran todos.": "The AI reads the notes that don't have questions yet and writes them, so quizzes and the final test cover everything.",
+  "¿Qué concepto es?": "Which concept is it?",
 };
