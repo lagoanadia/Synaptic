@@ -288,7 +288,7 @@ export async function setFolderGroup(pursuitId: string, group: string | null) {
   revalidatePath(`/pursuits/s/${pursuit.section.id}`);
 }
 
-export type NotebookDeadline = { id: string; title: string; dueAt: number; url: string; turnedIn: boolean; folder: string; color: string };
+export type NotebookDeadline = { id: string; title: string; dueAt: number; url: string; turnedIn: boolean; folderId: string; folder: string; color: string };
 
 // Every Classroom assignment of a notebook's linked subjects, for its
 // "Entregas" block. Fetched after the page loads; failures just drop out.
@@ -308,7 +308,7 @@ export async function listNotebookDeadlines(sectionId: string): Promise<Notebook
   const lists = await Promise.all(
     pursuits.map((p) =>
       listCourseDeadlines(token, p.classroomCourseId!, email)
-        .then((ds) => ds.map((d) => ({ id: d.id, title: d.title, dueAt: d.dueAt.getTime(), url: d.url, turnedIn: d.turnedIn, folder: p.title, color: folderColor(p.id, p.cover) })))
+        .then((ds) => ds.map((d) => ({ id: d.id, title: d.title, dueAt: d.dueAt.getTime(), url: d.url, turnedIn: d.turnedIn, folderId: p.id, folder: p.title, color: folderColor(p.id, p.cover) })))
         .catch(() => [] as NotebookDeadline[]),
     ),
   );

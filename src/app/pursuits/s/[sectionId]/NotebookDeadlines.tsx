@@ -10,12 +10,10 @@ const startOfDay = (t: number) => {
   d.setHours(0, 0, 0, 0);
   return d.getTime();
 };
-const initials = (s: string) => s.replace(/[^\p{L}\p{N}]/gu, "").slice(0, 2).toUpperCase();
 
-// A notebook's Classroom assignments at a glance: how many are handed in,
-// the next two weeks as a strip of days, and a card per assignment (late
-// first, then soonest, then the last ones handed in). Hidden when none of
-// its subjects is linked to Classroom.
+// A notebook's Classroom assignments, one row per subject: a ring with how
+// much is handed in and chips for what's left. Hidden when none of its
+// subjects is linked to Classroom.
 export function NotebookDeadlines({ sectionId }: { sectionId: string }) {
   const t = useT();
   const locale = useLocale();
@@ -36,18 +34,20 @@ export function NotebookDeadlines({ sectionId }: { sectionId: string }) {
   const today = startOfDay(now);
   // "This term": what was due in the last four months or is still to come.
   const term = list.filter((d) => d.dueAt >= today - 120 * DAY);
+  // One row per subject: how much of it is handed in, then what's still
+  // to do (late first, then soonest). Subjects with something late go
+  // first, then by their next deadline; all-done ones last.
+  const rows = [...new Set(term.map((d) => d.folderId))]
+    .map((id) => {
+      const mine = term.filter((d) => d.folderId === id);
+      const pending = mine.filter((d) => !d.turnedIn && d.dueAt >= today - 30 * DAY);
+      const late = pending.filter((d) => d.dueAt < now).reverse();
+      const next = pending.filter((d) => d.dueAt >= now);
+      return { id, folder: mine[0].folder, color: mine[0].color, done: mine.filter((d) => d.turnedIn).length, total: mine.length, todo: [...late, ...next], late: late.length };
+    })
+    .sort((a, b) => (b.late > 0 ? 1 : 0) - (a.late > 0 ? 1 : 0) || (a.todo.length ? 0 : 1) - (b.todo.length ? 0 : 1) || (a.todo[0]?.dueAt ?? 0) - (b.todo[0]?.dueAt ?? 0));
   const done = term.filter((d) => d.turnedIn).length;
-  const late = list.filter((d) => !d.turnedIn && d.dueAt < now && d.dueAt >= today - 30 * DAY).reverse();
-  const next = list.filter((d) => !d.turnedIn && d.dueAt >= now);
-  const handed = list.filter((d) => d.turnedIn && d.dueAt >= today - 30 * DAY).reverse();
-  // Trello-style columns: late, this week, later, handed in.
-  const weekEnd = today + 7 * DAY;
-  const columns: { id: string; title: string; dot: string; items: NotebookDeadline[] }[] = [
-    { id: "late", title: t("Atrasadas"), dot: "#c0473d", items: late },
-    { id: "week", title: t("Esta semana"), dot: "#d99a2b", items: next.filter((d) => d.dueAt < weekEnd) },
-    { id: "later", title: t("Más adelante"), dot: "#4a6a9a", items: next.filter((d) => d.dueAt >= weekEnd) },
-    { id: "done", title: t("Entregadas"), dot: "#6f8a5c", items: handed },
-  ];
+  const MAX = 4;
 
   const when = (d: NotebookDeadline): { text: string; tone: string } => {
     if (d.turnedIn) return { text: `✓ ${t("Entregada")}`, tone: "bg-[#e4efdf] text-[#4f7a42]" };
@@ -62,88 +62,59 @@ export function NotebookDeadlines({ sectionId }: { sectionId: string }) {
     return { text: new Date(d.dueAt).toLocaleDateString(locale, { day: "numeric", month: "short" }), tone: "bg-[#eef2f8] text-[#4a6a9a]" };
   };
 
-  const days = Array.from({ length: 14 }, (_, i) => today + i * DAY);
-  const R = 40;
-  const C = 2 * Math.PI * R;
+  const ring = (color: string, value: number, size = 34, width = 4) => {
+    const r = (size - width) / 2;
+    const c = 2 * Math.PI * r;
+    return (
+      <svg width={size} height={size} className="shrink-0" aria-hidden>
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#f3e4cc" strokeWidth={width} />
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={width} strokeLinecap="round" strokeDasharray={`${c * value} ${c}`} transform={`rotate(-90 ${size / 2} ${size / 2})`} />
+      </svg>
+    );
+  };
 
   return (
     <section className="flex flex-col gap-3">
       <h2 className="flex items-center gap-2 border-b border-border-subtle pb-2 text-sm font-semibold">
         {t("Entregas")}
         <span aria-hidden className="size-3 rounded-[3px] bg-[conic-gradient(#ea4335_0_25%,#fbbc04_0_50%,#34a853_0_75%,#4285f4_0)]" title="Google Classroom" />
+        <span className="ml-auto text-xs font-normal text-ink-faint">{t("{0} de {1} entregadas", { 0: done, 1: term.length })}</span>
       </h2>
-      <div className="flex flex-col gap-3 sm:flex-row">
-        <div className="flex items-center justify-center gap-4 rounded-xl bg-white p-4 shadow-[0_1px_3px_rgba(0,0,0,.05)] sm:w-40 sm:flex-col sm:gap-1">
-          <svg width="96" height="96" viewBox="0 0 96 96" role="img" aria-label={t("{0} de {1} entregadas", { 0: done, 1: term.length })}>
-            <circle cx="48" cy="48" r={R} fill="none" stroke="#f3e4cc" strokeWidth="10" />
-            <circle cx="48" cy="48" r={R} fill="none" stroke="#6f8a5c" strokeWidth="10" strokeLinecap="round" strokeDasharray={`${term.length ? (C * done) / term.length : 0} ${C}`} transform="rotate(-90 48 48)" />
-            <text x="48" y="47" textAnchor="middle" fontSize="20" fontWeight="800" fill="currentColor">
-              {done}/{term.length}
-            </text>
-            <text x="48" y="62" textAnchor="middle" fontSize="10" fill="#8a8277">
-              {t("entregadas")}
-            </text>
-          </svg>
-        </div>
-        <div className="min-w-0 flex-1 rounded-xl bg-white p-3 shadow-[0_1px_3px_rgba(0,0,0,.05)] sm:p-4">
-          <div className="mb-2 text-xs text-ink-faint">{t("Próximas 2 semanas")}</div>
-          <div className="grid grid-cols-7 gap-1 sm:grid-cols-14">
-            {days.map((day, i) => {
-              const date = new Date(day);
-              const due = list.filter((d) => startOfDay(d.dueAt) === day);
-              const weekend = date.getDay() === 0 || date.getDay() === 6;
-              return (
-                <div key={day} className={`flex min-h-20 flex-col items-center gap-1 rounded-lg py-1.5 text-[11px] ${i === 0 ? "bg-[#fde8e4] font-bold text-[#c0473d]" : weekend ? "bg-[#f6efe3] text-ink-faint" : "bg-[#faf5ec] text-ink-faint"}`}>
-                  <span>{date.toLocaleDateString(locale, { weekday: "narrow" })}</span>
-                  <span>{date.getDate()}</span>
-                  {due.map((d) => (
+      <div className="overflow-hidden rounded-xl bg-white shadow-[0_1px_3px_rgba(0,0,0,.05)]">
+        {rows.map((r) => (
+          <div key={r.id} className="flex flex-col gap-2.5 border-b border-[#f5ecdc] px-4 py-3 last:border-b-0 sm:flex-row sm:items-center sm:gap-4 sm:px-5">
+            <a href={`/pursuits/${r.id}`} className="flex w-40 shrink-0 items-center gap-2.5" title={t("{0} de {1} entregadas", { 0: r.done, 1: r.total })}>
+              {ring(r.color, r.total ? r.done / r.total : 0)}
+              <span className="truncate text-sm font-extrabold" style={{ color: r.color }}>
+                {r.folder}
+              </span>
+              <span className="text-xs text-ink-faint">
+                {r.done}/{r.total}
+              </span>
+            </a>
+            {r.todo.length === 0 ? (
+              <span className="text-[13px] text-ink-faint">{t("Todo entregado")} ✓</span>
+            ) : (
+              <span className="flex min-w-0 flex-wrap gap-2">
+                {r.todo.slice(0, MAX).map((d) => {
+                  const w = when(d);
+                  return (
                     <a
                       key={d.id}
                       href={d.url}
                       target="_blank"
                       rel="noreferrer"
-                      title={`${d.folder} · ${d.title}`}
-                      className={`grid size-[18px] place-items-center rounded-full text-[8px] font-bold text-white ${d.turnedIn ? "opacity-40" : ""}`}
-                      style={{ background: d.color }}
+                      title={d.title}
+                      className="flex max-w-full items-center gap-2 rounded-lg border border-[#efe4d2] bg-[#fffdf9] py-1.5 pr-1.5 pl-2.5 text-[13px] transition-colors hover:border-[#d9c9ad] hover:bg-white"
                     >
-                      {initials(d.folder)}
+                      <span className="max-w-[260px] truncate">{d.title}</span>
+                      <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold first-letter:uppercase ${w.tone}`}>{w.text}</span>
                     </a>
-                  ))}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-      <div className="-mx-1 flex snap-x gap-3 overflow-x-auto px-1 pb-1 items-start sm:grid sm:grid-cols-4 sm:overflow-visible">
-        {columns.map((col) => (
-          <div key={col.id} className="flex w-[78%] shrink-0 snap-start flex-col gap-2 rounded-xl bg-black/[.035] p-2 sm:w-auto">
-            <div className="flex items-center gap-2 px-1.5 pt-0.5 text-[13px] font-semibold">
-              <i className="size-2 rounded-full" style={{ background: col.dot }} />
-              {col.title}
-              <span className="text-xs font-normal text-ink-faint">{col.items.length}</span>
-            </div>
-            {col.items.length === 0 && <p className="px-1.5 py-3 text-xs text-ink-faint">{t("Nada por aquí.")}</p>}
-            {col.items.slice(0, 6).map((d) => {
-              const w = when(d);
-              return (
-                <a
-                  key={d.id}
-                  href={d.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className={`flex flex-col gap-1 rounded-lg border-l-4 bg-white px-3 py-2.5 shadow-[0_1px_2px_rgba(0,0,0,.06)] transition-transform hover:-translate-y-0.5 ${d.turnedIn ? "opacity-60" : ""}`}
-                  style={{ borderLeftColor: d.color }}
-                >
-                  <span className="truncate text-[10px] font-bold tracking-wide" style={{ color: d.color }}>
-                    {d.folder}
-                  </span>
-                  <span className="line-clamp-2 text-[13px] leading-snug font-semibold">{d.title}</span>
-                  {col.id !== "done" && <span className={`mt-0.5 w-fit rounded-full px-2 py-0.5 text-[11px] font-bold first-letter:uppercase ${w.tone}`}>{w.text}</span>}
-                </a>
-              );
-            })}
-            {col.items.length > 6 && <span className="px-1.5 text-xs text-ink-faint">+{col.items.length - 6}</span>}
+                  );
+                })}
+                {r.todo.length > MAX && <span className="self-center text-xs text-ink-faint">+{r.todo.length - MAX}</span>}
+              </span>
+            )}
           </div>
         ))}
       </div>
