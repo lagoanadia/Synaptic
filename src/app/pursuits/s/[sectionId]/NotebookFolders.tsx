@@ -2,7 +2,7 @@
 
 import { useT } from "@/app/LangProvider";
 import { ask } from "@/app/ui/PopupHost";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
 import type { FolderItem } from "@/lib/blockData";
 import { FolderTiles } from "../../FolderTiles";
@@ -29,12 +29,26 @@ export function NotebookFolders({
 }) {
   const t = useT();
   const router = useRouter();
-  const [tab, setTab] = useState<string | null>(null);
+  // The open tab lives in the URL (?s=Teoría), so the map below follows it.
+  const params = useSearchParams();
+  const tab = params.get("s");
+  const setTab = (g: string | null) => {
+    const q = new URLSearchParams(window.location.search);
+    if (g) q.set("s", g);
+    else q.delete("s");
+    window.history.replaceState(null, "", `${window.location.pathname}${q.size ? `?${q}` : ""}`);
+  };
   const [adding, setAdding] = useState(false);
   const [over, setOver] = useState<string | null | undefined>(undefined);
+  const [dragging, setDragging] = useState<string | null>(null);
+  // Moved here but not yet back from the server: shown in place right away.
+  const [moved, setMoved] = useState<Record<string, string | null>>({});
+  const [toast, setToast] = useState<{ n: number; text: string } | null>(null);
+  const [popped, setPopped] = useState<{ n: number; tab: string | null } | null>(null);
   const [, start] = useTransition();
   const active = tab !== null && groups.includes(tab) ? tab : null;
-  const shown = active === null ? items : items.filter((f) => f.group === active);
+  const all = items.map((f) => (f.id in moved ? { ...f, group: moved[f.id] } : f));
+  const shown = active === null ? all : all.filter((f) => f.group === active);
 
   const add = (name: string) =>
     start(async () => {
@@ -62,19 +76,39 @@ export function NotebookFolders({
   const drop = (g: string | null) => (e: React.DragEvent) => {
     const id = e.dataTransfer.getData("synaptic/folder");
     setOver(undefined);
+    setDragging(null);
     if (!id) return;
     e.preventDefault();
+    const name = items.find((f) => f.id === id)?.title ?? "";
+    const n = Date.now();
+    setMoved((m) => ({ ...m, [id]: g }));
+    setPopped({ n, tab: g });
+    setToast({ n, text: g ? `${name} → ${g}` : t("{0} ya no está en ninguna sección", { 0: name }) });
+    setTimeout(() => setToast((x) => (x?.n === n ? null : x)), 1800);
     start(async () => {
       await setFolderGroup(id, g);
       router.refresh();
+      // The server's copy has it now; drop the stand-in.
+      setMoved((m) => Object.fromEntries(Object.entries(m).filter(([k]) => k !== id)));
     });
   };
 
-  const tabClass = (on: boolean, hot: boolean) =>
-    `flex items-center gap-1.5 rounded-full px-3 py-1 text-[13px] whitespace-nowrap transition-colors ${
-      on ? "bg-white font-semibold text-ink shadow-[0_1px_3px_rgba(0,0,0,.08)]" : "text-ink-muted hover:text-ink"
-    } ${hot ? "ring-2 ring-[#2383e2]" : ""}`;
-  const count = (n: number) => <span className="rounded-full bg-black/[.06] px-1.5 text-[11px] font-normal text-ink-faint">{n}</span>;
+  // While a folder is dragged every tab shows it's a place to drop it; the
+  // one under the pointer turns blue and grows.
+  const tabClass = (on: boolean, g: string | null) => {
+    const hot = dragging !== null && over === g;
+    const base = "flex items-center gap-1.5 rounded-full px-3 py-1 text-[13px] whitespace-nowrap transition-all duration-150";
+    const look = hot
+      ? "scale-110 bg-[#2383e2] font-semibold text-white shadow-[0_6px_16px_rgba(35,131,226,.35)]"
+      : dragging
+        ? "bg-white/70 text-ink outline-dashed outline-[1.5px] -outline-offset-2 outline-[#2383e2]/60"
+        : on
+          ? "bg-white font-semibold text-ink shadow-[0_1px_3px_rgba(0,0,0,.08)]"
+          : "text-ink-muted hover:text-ink";
+    const pop = popped && popped.tab === g ? "animate-[tab-pop_.45s_cubic-bezier(.34,1.56,.64,1)]" : "";
+    return `${base} ${look} ${pop}`;
+  };
+  const count = (n: number) => <span className="rounded-full bg-current/10 px-1.5 text-[11px] font-normal opacity-70">{n}</span>;
   const target = (g: string | null) => ({
     onDragOver: (e: React.DragEvent) => {
       if (!e.dataTransfer.types.includes("synaptic/folder")) return;
@@ -90,12 +124,12 @@ export function NotebookFolders({
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border-subtle pb-2">
         <h2 className="text-sm font-semibold">{title}</h2>
         <div className="flex max-w-full items-center gap-0.5 overflow-x-auto rounded-full bg-chip p-[3px]" role="tablist" aria-label={t("Secciones")}>
-          <button type="button" role="tab" aria-selected={active === null} onClick={() => setTab(null)} className={tabClass(active === null, over === null)} {...target(null)}>
-            {t("Todas")} {count(items.length)}
+          <button type="button" role="tab" aria-selected={active === null} onClick={() => setTab(null)} key={popped?.tab === null ? popped.n : "all"} className={tabClass(active === null, null)} {...target(null)}>
+            {t("Todas")} {count(all.length)}
           </button>
           {groups.map((g) => (
             <button
-              key={g}
+              key={popped?.tab === g ? `${g}-${popped.n}` : g}
               type="button"
               role="tab"
               aria-selected={active === g}
@@ -105,10 +139,10 @@ export function NotebookFolders({
                 e.preventDefault();
                 edit(g);
               }}
-              className={tabClass(active === g, over === g)}
+              className={tabClass(active === g, g)}
               {...target(g)}
             >
-              {g} {count(items.filter((f) => f.group === g).length)}
+              {g} {count(all.filter((f) => f.group === g).length)}
             </button>
           ))}
           {adding ? (
@@ -136,9 +170,14 @@ export function NotebookFolders({
             </button>
           )}
         </div>
+        {toast && (
+          <span key={toast.n} role="status" className="animate-[fade-in_.2s_ease-out] rounded-full bg-ink px-3 py-1 text-xs font-medium text-white">
+            ✓ {toast.text}
+          </span>
+        )}
       </div>
       <div className="grid grid-cols-3 items-start gap-x-4 gap-y-5 pt-2 sm:flex sm:flex-wrap sm:gap-x-6">
-        <FolderTiles items={shown} groups={groups.length ? groups : undefined} />
+        <FolderTiles items={shown} groups={groups.length ? groups : undefined} dragging={dragging} onDrag={(id) => { setDragging(id); if (!id) setOver(undefined); }} />
         {/* The same room above as a folder (sheets + tab), so "+" lines up with the covers. */}
         <div className="flex flex-col sm:w-28">
           <div className="pt-[12%]" />
