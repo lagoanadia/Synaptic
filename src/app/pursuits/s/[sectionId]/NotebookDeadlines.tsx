@@ -39,8 +39,15 @@ export function NotebookDeadlines({ sectionId }: { sectionId: string }) {
   const done = term.filter((d) => d.turnedIn).length;
   const late = list.filter((d) => !d.turnedIn && d.dueAt < now && d.dueAt >= today - 30 * DAY).reverse();
   const next = list.filter((d) => !d.turnedIn && d.dueAt >= now);
-  const handed = list.filter((d) => d.turnedIn && d.dueAt >= today - 30 * DAY).slice(-4).reverse();
-  const cards = [...late, ...next.slice(0, 12), ...handed];
+  const handed = list.filter((d) => d.turnedIn && d.dueAt >= today - 30 * DAY).reverse();
+  // Trello-style columns: late, this week, later, handed in.
+  const weekEnd = today + 7 * DAY;
+  const columns: { id: string; title: string; dot: string; items: NotebookDeadline[] }[] = [
+    { id: "late", title: t("Atrasadas"), dot: "#c0473d", items: late },
+    { id: "week", title: t("Esta semana"), dot: "#d99a2b", items: next.filter((d) => d.dueAt < weekEnd) },
+    { id: "later", title: t("Más adelante"), dot: "#4a6a9a", items: next.filter((d) => d.dueAt >= weekEnd) },
+    { id: "done", title: t("Entregadas"), dot: "#6f8a5c", items: handed },
+  ];
 
   const when = (d: NotebookDeadline): { text: string; tone: string } => {
     if (d.turnedIn) return { text: `✓ ${t("Entregada")}`, tone: "bg-[#e4efdf] text-[#4f7a42]" };
@@ -108,31 +115,38 @@ export function NotebookDeadlines({ sectionId }: { sectionId: string }) {
           </div>
         </div>
       </div>
-      {cards.length > 0 && (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {cards.map((d) => {
-            const w = when(d);
-            return (
-              <a
-                key={d.id}
-                href={d.url}
-                target="_blank"
-                rel="noreferrer"
-                className={`flex flex-col overflow-hidden rounded-xl bg-white shadow-[0_1px_3px_rgba(0,0,0,.06)] transition-transform hover:-translate-y-0.5 ${d.turnedIn ? "opacity-60" : ""}`}
-              >
-                <span className="h-2" style={{ background: d.color }} />
-                <span className="flex flex-1 flex-col gap-1.5 px-3.5 pt-3 pb-3.5">
-                  <span className="truncate text-[11px] font-bold tracking-wide" style={{ color: d.color }}>
+      <div className="-mx-1 flex snap-x gap-3 overflow-x-auto px-1 pb-1 items-start sm:grid sm:grid-cols-4 sm:overflow-visible">
+        {columns.map((col) => (
+          <div key={col.id} className="flex w-[78%] shrink-0 snap-start flex-col gap-2 rounded-xl bg-black/[.035] p-2 sm:w-auto">
+            <div className="flex items-center gap-2 px-1.5 pt-0.5 text-[13px] font-semibold">
+              <i className="size-2 rounded-full" style={{ background: col.dot }} />
+              {col.title}
+              <span className="text-xs font-normal text-ink-faint">{col.items.length}</span>
+            </div>
+            {col.items.length === 0 && <p className="px-1.5 py-3 text-xs text-ink-faint">{t("Nada por aquí.")}</p>}
+            {col.items.slice(0, 6).map((d) => {
+              const w = when(d);
+              return (
+                <a
+                  key={d.id}
+                  href={d.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={`flex flex-col gap-1 rounded-lg border-l-4 bg-white px-3 py-2.5 shadow-[0_1px_2px_rgba(0,0,0,.06)] transition-transform hover:-translate-y-0.5 ${d.turnedIn ? "opacity-60" : ""}`}
+                  style={{ borderLeftColor: d.color }}
+                >
+                  <span className="truncate text-[10px] font-bold tracking-wide" style={{ color: d.color }}>
                     {d.folder}
                   </span>
-                  <span className="line-clamp-2 text-sm leading-snug font-semibold">{d.title}</span>
-                  <span className={`mt-auto w-fit rounded-full px-2.5 py-0.5 text-xs font-bold first-letter:uppercase ${w.tone}`}>{w.text}</span>
-                </span>
-              </a>
-            );
-          })}
-        </div>
-      )}
+                  <span className="line-clamp-2 text-[13px] leading-snug font-semibold">{d.title}</span>
+                  {col.id !== "done" && <span className={`mt-0.5 w-fit rounded-full px-2 py-0.5 text-[11px] font-bold first-letter:uppercase ${w.tone}`}>{w.text}</span>}
+                </a>
+              );
+            })}
+            {col.items.length > 6 && <span className="px-1.5 text-xs text-ink-faint">+{col.items.length - 6}</span>}
+          </div>
+        ))}
+      </div>
     </section>
   );
 }
