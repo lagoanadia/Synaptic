@@ -1095,4 +1095,5 @@ export const de: Record<string, string> = {
   "Ahora": "Jetzt",
   "Aprender {0}": "{0} lernen",
   "Todo aprendido": "Alles gelernt",
+  "Azul corporativo": "Firmenblau",
 };

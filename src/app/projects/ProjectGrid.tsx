@@ -5,12 +5,16 @@ import Link from "next/link";
 import { Folder } from "../Covers";
 import { STATE_LABEL, dueLabel, nextTask, progress, projectState, type ProjectItem } from "@/lib/projects";
 import type { FolderCover } from "@/lib/covers";
+import { useState } from "react";
+import { EditMenu, menuAt, type EditTarget } from "@/app/pursuits/EditMenu";
 
 // A notebook's projects as their folders: pending tasks peek out as sheets,
 // then its state, progress in its own colour and what's next.
 export function ProjectGrid({ projects, today, after }: { projects: ProjectItem[]; today: string; after?: React.ReactNode }) {
   const t = useT();
   const locale = useLocale();
+  // Right-click a project to rename it or change its cover.
+  const [editing, setEditing] = useState<EditTarget | null>(null);
   return (
     <div className="grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-[repeat(auto-fill,150px)]">
       {projects.map((p) => {
@@ -20,7 +24,15 @@ export function ProjectGrid({ projects, today, after }: { projects: ProjectItem[
         const due = next?.dueDate ? dueLabel(next.dueDate, today, t, locale) : p.dueDate && state !== "done" ? dueLabel(p.dueDate, today, t, locale) : null;
         const s = STATE_LABEL[state];
         return (
-          <Link key={p.id} href={`/pursuits/${p.id}`} className="group flex flex-col gap-3">
+          <Link
+            key={p.id}
+            href={`/pursuits/${p.id}`}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              setEditing({ kind: "folder", id: p.id, name: p.title, cover: p.cover as FolderCover, ...menuAt(e) });
+            }}
+            className="group flex flex-col gap-3"
+          >
             <span className="transition-transform group-hover:-translate-y-0.5">
               <Folder cover={p.cover as FolderCover} sheets={Math.min(3, total - done)} reserveSheets />
             </span>
@@ -56,6 +68,7 @@ export function ProjectGrid({ projects, today, after }: { projects: ProjectItem[
           {after}
         </div>
       )}
+      {editing && <EditMenu target={editing} onClose={() => setEditing(null)} />}
     </div>
   );
 }

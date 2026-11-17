@@ -48,13 +48,11 @@ function CollectionPatterns({ c }: { c: Collection }) {
   const lighter = (h: string, t: number) => mix(h, "#ffffff", t);
   return (
     <>
-      <pattern id={`fp-${c.id}Flower`} width="36" height="36" patternUnits="userSpaceOnUse">
-        <rect width="36" height="36" fill={c.dark} />
-        {[[4, 4], [22, 10], [10, 24], [30, 30], [28, 20]].map(([x, y]) => (
-          <circle key={`${x}${y}`} cx={x} cy={y} r="2.2" fill="none" stroke={lighter(c.dark, 0.15)} strokeWidth=".8" />
-        ))}
-        <Flower x={26} y={9} r={7} petal={c.light} heart={darker(c.light, 0.5)} />
-        <Flower x={8} y={27} r={4.5} petal={darker(c.light, 0.12)} heart={darker(c.light, 0.5)} />
+      {/* Rombos (argyle), drawn under the old "Flower" key. */}
+      <pattern id={`fp-${c.id}Flower`} width="24" height="32" patternUnits="userSpaceOnUse">
+        <rect width="24" height="32" fill={c.dark} />
+        <path d="M12 0L24 16L12 32L0 16Z" fill={lighter(c.dark, 0.12)} />
+        <path d="M0 0L24 32M24 0L0 32" stroke={c.light} strokeWidth=".8" opacity=".7" />
       </pattern>
       <pattern id={`fp-${c.id}Stripe`} width="16" height="10" patternUnits="userSpaceOnUse">
         <rect width="16" height="10" fill={darker(c.dark, 0.25)} />
@@ -63,10 +61,12 @@ function CollectionPatterns({ c }: { c: Collection }) {
         <rect x="8" width="4" height="10" fill={c.dark} />
         <rect x="13" width="1" height="10" fill={lighter(c.light, 0.2)} />
       </pattern>
-      <pattern id={`fp-${c.id}Bloom`} width="40" height="40" patternUnits="userSpaceOnUse">
-        <rect width="40" height="40" fill={c.light} />
-        <circle cx="12" cy="30" r="14" fill={darker(c.light, 0.2)} opacity=".6" />
-        <Flower x={30} y={12} r={8} petal={c.dark} heart={c.accent} />
+      {/* Cuadros (windowpane check), drawn under the old "Bloom" key. */}
+      <pattern id={`fp-${c.id}Bloom`} width="22" height="22" patternUnits="userSpaceOnUse">
+        <rect width="22" height="22" fill={c.light} />
+        <rect width="22" height="7" fill={darker(c.light, 0.12)} opacity=".55" />
+        <rect width="7" height="22" fill={darker(c.light, 0.12)} opacity=".55" />
+        <path d="M0 3.5H22M3.5 0V22" stroke={c.dark} strokeWidth="1.1" />
       </pattern>
       <pattern id={`fp-${c.id}Damask`} width="28" height="28" patternUnits="userSpaceOnUse">
         <rect width="28" height="28" fill={c.mid} />
@@ -243,14 +243,11 @@ function FolderPatterns() {
         <rect x="20" width="1" height="24" fill="#6b8fb5" opacity=".6" />
         <rect y="20" width="24" height="1" fill="#c96a75" opacity=".5" />
       </pattern>
-      {/* Gold orchids on plum lace. */}
-      <pattern id="fp-orchid" width="36" height="36" patternUnits="userSpaceOnUse">
-        <rect width="36" height="36" fill="#4a1b37" />
-        {[[4, 4], [22, 10], [10, 24], [30, 30], [28, 20]].map(([x, y]) => (
-          <circle key={`${x}${y}`} cx={x} cy={y} r="2.2" fill="none" stroke="#6a2d52" strokeWidth=".8" />
-        ))}
-        <Flower x={26} y={9} r={7} petal="#b59a3a" heart="#5e4a18" />
-        <Flower x={8} y={27} r={4.5} petal="#9c8432" heart="#5e4a18" />
+      {/* Rombos (argyle) in plum and gold. */}
+      <pattern id="fp-orchid" width="24" height="32" patternUnits="userSpaceOnUse">
+        <rect width="24" height="32" fill="#4a1b37" />
+        <path d="M12 0L24 16L12 32L0 16Z" fill="#5c2848" />
+        <path d="M0 0L24 32M24 0L0 32" stroke="#b59a3a" strokeWidth=".8" opacity=".7" />
       </pattern>
       <pattern id="fp-regency" width="16" height="10" patternUnits="userSpaceOnUse">
         <rect width="16" height="10" fill="#3a1530" />
@@ -259,11 +256,12 @@ function FolderPatterns() {
         <rect x="8" width="4" height="10" fill="#5a2048" />
         <rect x="13" width="1" height="10" fill="#9aa24a" />
       </pattern>
-      {/* A plum orchid on olive. */}
-      <pattern id="fp-olive" width="40" height="40" patternUnits="userSpaceOnUse">
-        <rect width="40" height="40" fill="#76762f" />
-        <circle cx="12" cy="30" r="14" fill="#5e5f22" opacity=".6" />
-        <Flower x={30} y={12} r={8} petal="#4a1b37" heart="#a8923a" />
+      {/* Cuadros (windowpane) in olive and plum. */}
+      <pattern id="fp-olive" width="22" height="22" patternUnits="userSpaceOnUse">
+        <rect width="22" height="22" fill="#76762f" />
+        <rect width="22" height="7" fill="#5e5f22" opacity=".55" />
+        <rect width="7" height="22" fill="#5e5f22" opacity=".55" />
+        <path d="M0 3.5H22M3.5 0V22" stroke="#4a1b37" strokeWidth="1.1" />
       </pattern>
       <pattern id="fp-damask" width="28" height="28" patternUnits="userSpaceOnUse">
         <rect width="28" height="28" fill="#6e2438" />
