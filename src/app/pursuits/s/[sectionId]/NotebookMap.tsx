@@ -9,7 +9,7 @@ const DONE = 0.999;
 
 // One unit on the path: a ring of how much is learned, ✓ when all of it.
 function Node({ pct, color, current }: { pct: number; color: string; current: boolean }) {
-  const s = 44;
+  const s = 48;
   const w = 5;
   const r = (s - w) / 2;
   const c = 2 * Math.PI * r;
@@ -21,7 +21,7 @@ function Node({ pct, color, current }: { pct: number; color: string; current: bo
         {pct > 0 && !full && <circle cx={s / 2} cy={s / 2} r={r} fill="none" stroke={color} strokeWidth={w} strokeLinecap="round" strokeDasharray={`${c * pct} ${c}`} transform={`rotate(-90 ${s / 2} ${s / 2})`} />}
       </svg>
       {full && <span className="absolute inset-0 grid place-items-center text-[15px] font-bold text-white">✓</span>}
-      {current && <span className="absolute -inset-[5px] rounded-full" style={{ boxShadow: `0 0 0 2px ${color}55` }} />}
+      {current && <span className="absolute -inset-[4px] rounded-full" style={{ boxShadow: `0 0 0 2px ${color}55` }} />}
     </span>
   );
 }
@@ -38,11 +38,6 @@ export function NotebookMap({ paths, groupOf, title }: { paths: SubjectPath[]; g
     <section className="flex flex-col gap-3">
       <h2 className="flex items-center gap-3 border-b border-border-subtle pb-2 text-sm font-semibold">
         {title}
-        <span className="ml-auto hidden gap-3 text-xs font-normal text-ink-faint sm:flex">
-          <span>● {t("aprendido")}</span>
-          <span>◐ {t("en curso")}</span>
-          <span>○ {t("sin empezar")}</span>
-        </span>
       </h2>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         {shown.map((p) => {
@@ -50,32 +45,32 @@ export function NotebookMap({ paths, groupOf, title }: { paths: SubjectPath[]; g
           const now = cur === -1 ? null : p.units[cur];
           const done = p.units.filter((u) => u.pct >= DONE).length;
           return (
-            <div key={p.id} className="flex flex-col overflow-hidden rounded-xl border-2 bg-white px-4 pb-3" style={{ borderColor: p.color }}>
-              <div className="-mx-4 mb-3 flex items-center px-4 py-2.5" style={{ background: `${p.color}29` }}>
+            <div key={p.id} className="flex flex-col overflow-hidden rounded-xl border-2 bg-white px-5 pb-4" style={{ borderColor: p.color }}>
+              <div className="-mx-5 mb-5 flex items-center px-5 py-3" style={{ background: `${p.color}29` }}>
                 <Link href={`/pursuits/${p.id}`} className="truncate text-sm font-extrabold hover:underline" style={{ color: p.color }}>
                   {p.title}
                 </Link>
                 <span className="ml-auto shrink-0 text-xs text-ink-faint">{t("{0}/{1} unidades", { 0: done, 1: p.units.length })}</span>
               </div>
-              <div className="-mx-1 flex items-start overflow-x-auto px-1.5 pt-1.5 pb-1 [scrollbar-width:none]">
+              <div className="flex items-start gap-1 pb-2">
                 {p.units.map((u, i) => (
                   <span key={u.id} className="contents">
-                    {i > 0 && <span className="mt-[21px] h-[3px] min-w-4 flex-1 rounded-full" style={{ background: p.units[i - 1].pct >= DONE ? p.color : "#f3e4cc" }} />}
-                    <Link href={u.href} title={u.name} className="flex w-14 shrink-0 flex-col items-center gap-1 text-[11px] font-bold" style={{ color: p.color }}>
+                    {i > 0 && <span className="mt-[23px] h-[3px] min-w-3 flex-1 rounded-full" style={{ background: p.units[i - 1].pct >= DONE ? p.color : "#f3e4cc" }} />}
+                    <Link href={u.href} title={u.name} className="flex w-[76px] shrink-0 flex-col items-center gap-1.5 text-center text-[11px] leading-tight font-bold" style={{ color: p.color }}>
                       <Node pct={u.pct} color={p.color} current={i === cur} />
-                      {u.label}
+                      <span className="line-clamp-2 break-words">{u.label}</span>
                       <span className="text-[10px] font-medium text-ink-faint">{Math.round(u.pct * 100)}%</span>
                     </Link>
                   </span>
                 ))}
               </div>
-              <div className="mt-2 flex items-center justify-between border-t border-[#f5ecdc] pt-2.5 text-[13px]">
+              <div className="mt-3 flex items-center justify-between border-t border-[#f5ecdc] pt-3.5 text-[13px]">
                 {now ? (
                   <>
                     <span className="min-w-0 truncate text-ink-faint">
                       {t("Ahora")}: <b className="text-ink">{now.name}</b>
                     </span>
-                    <Link href={now.href} className="ml-3 shrink-0 rounded-full px-3 py-1 text-xs font-bold text-white hover:opacity-90" style={{ background: p.color }}>
+                    <Link href={now.href} className="ml-3 shrink-0 rounded-full px-3.5 py-1.5 text-xs font-bold text-white hover:opacity-90" style={{ background: p.color }}>
                       {t("Aprender {0}", { 0: now.label })} →
                     </Link>
                   </>

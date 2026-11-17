@@ -131,7 +131,8 @@ export type SubjectPath = { id: string; title: string; color: string; units: Pat
 const unitLabel = (name: string) => {
   const m = /^(?:ud|unidad|tema|t|u)\s*\.?\s*(\d+)/i.exec(name.trim());
   if (m) return `UD${m[1]}`;
-  return name.trim().length <= 5 ? name.trim() : name.trim().slice(0, 4) + "…";
+  // Anything else keeps its name (two lines at most under the circle).
+  return name.trim();
 };
 
 export async function notebookPaths(userId: string, sectionId: string): Promise<SubjectPath[]> {
