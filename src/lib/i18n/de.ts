@@ -1146,4 +1146,12 @@ export const de: Record<string, string> = {
   "✓ Bien": "✓ Richtig",
   "◐ A medias": "◐ Teilweise",
   "✗ Mal": "✗ Falsch",
+  "Algo ha fallado. Vuelve a intentarlo.": "Etwas ist schiefgelaufen. Versuch es noch einmal.",
+  "Todos tus apuntes ya tienen preguntas ✓": "Alle deine Notizen haben schon Fragen ✓",
+  "Listo: {0} preguntas nuevas de {1} apuntes.": "Fertig: {0} neue Fragen aus {1} Notizen.",
+  "Leyendo tus apuntes… {0} de {1}": "Deine Notizen werden gelesen… {0} von {1}",
+  "{0} apuntes todavía no tienen preguntas.": "{0} Notizen haben noch keine Fragen.",
+  "Crear tests de todos mis apuntes": "Tests aus allen meinen Notizen erstellen",
+  "Preguntas de todos tus apuntes": "Fragen aus all deinen Notizen",
+  "La IA lee los apuntes que aún no tienen preguntas y las crea, para que los quizzes y el test final los cubran todos.": "Die KI liest die Notizen, die noch keine Fragen haben, und erstellt sie, damit Quizze und Abschlusstest alles abdecken.",
 };

@@ -1146,4 +1146,12 @@ export const en: Record<string, string> = {
   "✓ Bien": "✓ Right",
   "◐ A medias": "◐ Partly",
   "✗ Mal": "✗ Wrong",
+  "Algo ha fallado. Vuelve a intentarlo.": "Something went wrong. Try again.",
+  "Todos tus apuntes ya tienen preguntas ✓": "All your notes already have questions ✓",
+  "Listo: {0} preguntas nuevas de {1} apuntes.": "Done: {0} new questions from {1} notes.",
+  "Leyendo tus apuntes… {0} de {1}": "Reading your notes… {0} of {1}",
+  "{0} apuntes todavía no tienen preguntas.": "{0} notes don't have questions yet.",
+  "Crear tests de todos mis apuntes": "Create tests from all my notes",
+  "Preguntas de todos tus apuntes": "Questions from all your notes",
+  "La IA lee los apuntes que aún no tienen preguntas y las crea, para que los quizzes y el test final los cubran todos.": "The AI reads the notes that don't have questions yet and writes them, so quizzes and the final test cover everything.",
 };

@@ -7,6 +7,7 @@ import { folderColor } from "@/lib/covers";
 import { getLang, getT } from "@/lib/i18n/server";
 import { LOCALE } from "@/lib/i18n";
 import { TestRowMenu } from "./TestRowMenu";
+import { MakeAllCards } from "./MakeAllCards";
 
 // Your saved tests to take again, and each subject's final test (written
 // answers), which opens up once you've gone over all its cards.
@@ -17,13 +18,14 @@ export default async function TestsPage() {
   const t = await getT();
   const locale = LOCALE[await getLang()];
 
-  const [tests, folders] = await Promise.all([
+  const [tests, folders, withoutCards] = await Promise.all([
     prisma.savedTest.findMany({ where: { userId }, orderBy: { updatedAt: "desc" }, take: 100 }),
     prisma.pursuit.findMany({
       where: { AND: [accessiblePursuits(userId), { loose: false }, { section: { study: true, OR: [{ kind: "study" }, { kind: null }] } }] },
       orderBy: [{ section: { order: "asc" } }, { createdAt: "asc" }],
       select: { id: true, title: true, cover: true },
     }),
+    prisma.note.count({ where: { flashcards: { none: {} }, content: { not: "" }, pursuit: { ownerId: userId, loose: false, section: { study: true } } } }),
   ]);
   const ids = folders.map((f) => f.id);
   const [all, seen] = await Promise.all([
@@ -55,6 +57,14 @@ export default async function TestsPage() {
         </nav>
         <h1 className="text-[2rem] font-bold tracking-tight">{t("Mis tests")}</h1>
       </div>
+
+      <section className="flex flex-col gap-3">
+        <div className="border-b border-border-subtle pb-2">
+          <h2 className="text-sm font-semibold">{t("Preguntas de todos tus apuntes")}</h2>
+          <p className="text-[13px] text-ink-faint">{t("La IA lee los apuntes que aún no tienen preguntas y las crea, para que los quizzes y el test final los cubran todos.")}</p>
+        </div>
+        <MakeAllCards pending={withoutCards} />
+      </section>
 
       <section className="flex flex-col gap-3">
         <div className="border-b border-border-subtle pb-2">
