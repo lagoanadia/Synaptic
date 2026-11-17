@@ -74,6 +74,9 @@ export function Stage({
         <Link href={backHref} aria-label={t("Cerrar")} title={t("Cerrar")} className="rounded-md p-1 text-white/50 hover:text-white">
           <XIcon size={20} className="block" />
         </Link>
+        <Link href="/review/tests" className="rounded-md px-2 py-1 text-xs font-semibold text-white/50 hover:bg-white/10 hover:text-white">
+          {t("Mis tests")}
+        </Link>
         <div className="mx-auto flex max-w-[520px] flex-1 gap-1.5" aria-hidden>
           {[...Array(Math.max(total, 1))].map((_, i) => (
             <i key={i} className={`h-1.5 flex-1 rounded-full transition-colors ${i < done ? "bg-white" : "bg-white/12"}`} />
@@ -448,9 +451,14 @@ function Done({ shell }: { shell: Shell }) {
       ) : (
         <>
           <p className="max-w-sm text-center text-white/60">{t("Escribe tus apuntes en una asignatura y te haremos un quiz con ellos.")}</p>
-          <Link href="/pursuits" className="mt-2 rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-[#1a1a1d]">
-            {t("Ir a mis libretas")}
-          </Link>
+          <span className="mt-2 flex flex-wrap justify-center gap-2">
+            <Link href="/review/tests" className="rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-[#1a1a1d]">
+              {t("Mis tests y test final")}
+            </Link>
+            <Link href="/pursuits" className="rounded-xl bg-white/10 px-5 py-2.5 text-sm font-semibold text-white hover:bg-white/15">
+              {t("Ir a mis libretas")}
+            </Link>
+          </span>
         </>
       )}
     </Stage>
