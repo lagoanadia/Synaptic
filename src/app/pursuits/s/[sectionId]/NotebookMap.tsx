@@ -47,7 +47,7 @@ export function NotebookMap({ paths, groupOf, title }: { paths: SubjectPath[]; g
           return (
             <div key={p.id} className="flex flex-col overflow-hidden rounded-xl border-2 bg-white px-5 pb-4" style={{ borderColor: p.color }}>
               <div className="-mx-5 mb-5 flex items-center px-5 py-3" style={{ background: `${p.color}29` }}>
-                <Link href={`/pursuits/${p.id}`} className="truncate text-sm font-extrabold hover:underline" style={{ color: p.color }}>
+                <Link href={`/pursuits/${p.id}`} className="truncate text-sm font-extrabold text-ink hover:underline">
                   {p.title}
                 </Link>
                 <span className="ml-auto shrink-0 text-xs text-ink-faint">{t("{0}/{1} unidades", { 0: done, 1: p.units.length })}</span>
@@ -56,7 +56,7 @@ export function NotebookMap({ paths, groupOf, title }: { paths: SubjectPath[]; g
                 {p.units.map((u, i) => (
                   <span key={u.id} className="contents">
                     {i > 0 && <span className="mt-[23px] h-[3px] min-w-3 flex-1 rounded-full" style={{ background: p.units[i - 1].pct >= DONE ? p.color : "#f3e4cc" }} />}
-                    <Link href={u.href} title={u.name} className="flex w-[76px] shrink-0 flex-col items-center gap-1.5 text-center text-[11px] leading-tight font-bold" style={{ color: p.color }}>
+                    <Link href={u.href} title={u.name} className="flex w-[76px] shrink-0 flex-col items-center gap-1.5 text-center text-[11px] leading-tight font-bold text-ink">
                       <Node pct={u.pct} color={p.color} current={i === cur} />
                       <span className="line-clamp-2 break-words">{u.label}</span>
                       <span className="text-[10px] font-medium text-ink-faint">{Math.round(u.pct * 100)}%</span>
@@ -70,7 +70,7 @@ export function NotebookMap({ paths, groupOf, title }: { paths: SubjectPath[]; g
                     <span className="min-w-0 truncate text-ink-faint">
                       {t("Ahora")}: <b className="text-ink">{now.name}</b>
                     </span>
-                    <Link href={now.href} className="ml-3 shrink-0 rounded-full px-3.5 py-1.5 text-xs font-bold text-white hover:opacity-90" style={{ background: p.color }}>
+                    <Link href={now.href} className="ml-3 shrink-0 rounded-full bg-ink px-3.5 py-1.5 text-xs font-bold text-white hover:opacity-90">
                       {t("Aprender {0}", { 0: now.label })} →
                     </Link>
                   </>
