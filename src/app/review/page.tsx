@@ -21,7 +21,7 @@ const DAILY_CAP = 12;
 export default async function ReviewPage({
   searchParams,
 }: {
-  searchParams: Promise<{ section?: string; pursuit?: string; unit?: string }>;
+  searchParams: Promise<{ section?: string; pursuit?: string; unit?: string; practice?: string }>;
 }) {
   const session = await auth();
   if (!session?.user?.id) redirect("/");
@@ -50,7 +50,9 @@ export default async function ReviewPage({
 
   // Today: due cards up to what's left of the cap, plus a couple of concepts
   // you flagged to reread. Practice: a mix of everything.
-  const practice = scope.kind === "pursuit" && dueCards.slice(0, left).length === 0;
+  // ?practice=1: a quiz on everything in scope, whether due or not, to
+  // brush up on notes you already know.
+  const practice = params.practice === "1" || (scope.kind === "pursuit" && dueCards.slice(0, left).length === 0);
   let pool = practice ? shuffle(allCards).slice(0, DAILY_CAP) : dueCards.slice(0, left);
   if (pool.some(needsQuizText)) {
     const budget = await aiBudget(userId, session.user.email);
@@ -107,5 +109,7 @@ export default async function ReviewPage({
     />
   );
 
-  return <ReviewGames key={`${params.pursuit ?? ""}-${params.unit ?? ""}`} backHref={backHref} items={items} menu={menu} />;
+  const q = new URLSearchParams({ ...(params.pursuit ? { pursuit: params.pursuit } : {}), ...(params.unit ? { unit: params.unit } : {}), ...(params.section ? { section: params.section } : {}), practice: "1" });
+  const practiceHref = !practice && allCards.length > 0 ? `/review?${q}` : null;
+  return <ReviewGames key={`${params.pursuit ?? ""}-${params.unit ?? ""}-${practice ? "p" : ""}`} backHref={backHref} items={items} menu={menu} practiceHref={practiceHref} />;
 }

@@ -17,16 +17,17 @@ const useMounted = () => useSyncExternalStore(noop, () => true, () => false);
 const VIB = ["#ff6b57", "#8b5cf6", "#14b8a6", "#f5b82e"];
 const SECONDS = 20;
 
-export function ReviewGames({ backHref, items, menu }: { backHref: string; items: LearnItem[]; menu?: React.ReactNode }) {
+export function ReviewGames({ backHref, items, menu, practiceHref = null }: { backHref: string; items: LearnItem[]; menu?: React.ReactNode; practiceHref?: string | null }) {
   const mounted = useMounted();
-  const shell = { backHref, menu };
+  const shell = { backHref, menu, practiceHref };
   // "Repetir los fallos" starts a new round with just those.
   const [round, setRound] = useState({ n: 0, items });
   if (!mounted) return <Stage {...shell} total={0} done={0} />;
   return <Game key={round.n} items={round.items} shell={shell} onAgain={(missed) => setRound((r) => ({ n: r.n + 1, items: missed }))} />;
 }
 
-type Shell = { backHref: string; menu?: React.ReactNode };
+// practiceHref: a quiz on everything in scope even if nothing is due.
+type Shell = { backHref: string; menu?: React.ReactNode; practiceHref?: string | null };
 
 // The dark board the game plays on: ✕, progress, streak.
 function Stage({
@@ -375,10 +376,26 @@ function Done({ shell }: { shell: Shell }) {
         <CheckIcon size={26} className="block" />
       </span>
       <p className="text-xl font-semibold text-white">{t("Nada que repasar hoy")}</p>
-      <p className="max-w-sm text-center text-white/60">{t("Escribe tus apuntes en una asignatura y te haremos un quiz con ellos.")}</p>
-      <Link href="/pursuits" className="mt-2 rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-[#1a1a1d]">
-        {t("Ir a mis libretas")}
-      </Link>
+      {shell.practiceHref ? (
+        <>
+          <p className="max-w-sm text-center text-white/60">{t("Lo tienes al día. Si quieres refrescarlo, haz un quiz con todo lo que has apuntado.")}</p>
+          <span className="mt-2 flex flex-wrap justify-center gap-2">
+            <a href={shell.practiceHref} className="rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-[#1a1a1d]">
+              {t("Practicar igualmente")}
+            </a>
+            <Link href="/pursuits" className="rounded-xl bg-white/10 px-5 py-2.5 text-sm font-semibold text-white hover:bg-white/15">
+              {t("Ir a mis libretas")}
+            </Link>
+          </span>
+        </>
+      ) : (
+        <>
+          <p className="max-w-sm text-center text-white/60">{t("Escribe tus apuntes en una asignatura y te haremos un quiz con ellos.")}</p>
+          <Link href="/pursuits" className="mt-2 rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-[#1a1a1d]">
+            {t("Ir a mis libretas")}
+          </Link>
+        </>
+      )}
     </Stage>
   );
 }

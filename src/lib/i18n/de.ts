@@ -1109,4 +1109,6 @@ export const de: Record<string, string> = {
   "Subir archivo": "Hochladen",
   "Ver todas las unidades": "Alle Einheiten zeigen",
   "Cargando Classroom…": "Classroom wird geladen…",
+  "Lo tienes al día. Si quieres refrescarlo, haz un quiz con todo lo que has apuntado.": "Du bist auf dem Laufenden. Zum Auffrischen mach ein Quiz über alles, was du notiert hast.",
+  "Practicar igualmente": "Trotzdem üben",
 };
