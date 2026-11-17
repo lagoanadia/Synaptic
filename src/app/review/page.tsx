@@ -84,6 +84,7 @@ export default async function ReviewPage({
     hint: c.hint ?? null,
     tf: c.tfStatement && typeof c.tfTrue === "boolean" ? { statement: c.tfStatement, isTrue: c.tfTrue } : null,
   }));
+  const tq = await getT();
   const conceptItems: LearnItem[] = (practice ? shuffle(concepts) : concepts)
     // Practice: concepts too, even ones you know (more of them when there
     // are few cards).
@@ -94,16 +95,21 @@ export default async function ReviewPage({
       kind: "concept",
       pursuitId: c.pursuitId,
       pursuitTitle: c.pursuitTitle,
-      context: null,
+      // The prompt is a definition: say what's being asked.
+      context: tq("¿Qué concepto es?"),
       prompt: c.summary,
       answer: c.title,
       distractors: shuffle(concepts.filter((o) => o.pursuitId === c.pursuitId && o.id !== c.id).map((o) => o.title)).slice(0, 3),
     }));
-  // Anything still short of wrong answers borrows other answers in scope.
-  const answers = [...new Set([...allCards.map((c) => c.answer), ...concepts.map((c) => c.title)])];
-  const items = [...cardItems, ...conceptItems].map((i) =>
-    i.distractors.length >= 3 ? i : { ...i, distractors: [...i.distractors, ...shuffle(answers.filter((a) => a !== i.answer && !i.distractors.includes(a)))].slice(0, 3) },
-  );
+  // Anything still short of wrong answers borrows others of the same kind:
+  // a concept other concepts' names, a card other cards' answers.
+  const cardAnswers = [...new Set(allCards.map((c) => c.answer))];
+  const conceptNames = [...new Set(concepts.map((c) => c.title))];
+  const items = [...cardItems, ...conceptItems].map((i) => {
+    if (i.distractors.length >= 3) return i;
+    const pool = i.kind === "concept" ? [...shuffle(conceptNames), ...shuffle(cardAnswers)] : [...shuffle(cardAnswers), ...shuffle(conceptNames)];
+    return { ...i, distractors: [...i.distractors, ...pool.filter((a) => a !== i.answer && !i.distractors.includes(a))].slice(0, 3) };
+  });
 
   // The side menu: every folder, and each one's units.
   const folders = await prisma.pursuit.findMany({
