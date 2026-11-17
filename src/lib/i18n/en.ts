@@ -1,5 +1,8 @@
 // Spanish source text → translation. Missing keys fall back to Spanish.
 export const en: Record<string, string> = {
+  "Esta carpeta no tiene unidades": "This folder has no units",
+  "Toda la asignatura": "The whole subject",
+  "Qué repasar": "What to review",
   "Desagrupar": "Ungroup",
   "Guarda primero (Ctrl+S) y vuelve a pulsar ✦": "Save first (Ctrl+S) and press ✦ again",
   "Añadido lo nuevo a la versión organizada": "Added what's new to the organized version",

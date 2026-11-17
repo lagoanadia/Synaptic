@@ -16,19 +16,10 @@ const ProjectsIcon = () => (
   </svg>
 );
 
-const GeneralIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round" aria-hidden>
-    <rect x="4" y="4" width="7" height="7" rx="1.5" />
-    <rect x="13" y="4" width="7" height="7" rx="1.5" />
-    <rect x="4" y="13" width="7" height="7" rx="1.5" />
-    <path d="M16.5 13.5v6M13.5 16.5h6" />
-  </svg>
-);
 
 export const TEMPLATES: { id: Template; icon: () => React.ReactElement; label: string; hint: string }[] = [
   { id: "study", icon: StudyIcon, label: "Estudios", hint: "Asignaturas, mapa, tarjetas y repaso" },
   { id: "projects", icon: ProjectsIcon, label: "Proyectos", hint: "Proyectos, tareas y calendario" },
-  { id: "general", icon: GeneralIcon, label: "General", hint: "Libre: tú eliges los bloques" },
 ];
 
 // The notebook templates: icon over name, three in a row; the chosen
