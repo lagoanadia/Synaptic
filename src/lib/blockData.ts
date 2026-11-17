@@ -121,3 +121,45 @@ export async function pageTerms(pursuitId: string, unitId: string | null): Promi
       where: shortMapTitle(r.map.unit?.name ?? r.map.title, 28),
     }));
 }
+
+// A subject's units as a path (UD1 → UD2 → …): how much of each is learned
+// (known = 1, fading = ½) and where to learn it. Units in their order;
+// maps without a unit go last.
+export type PathUnit = { id: string; label: string; name: string; pct: number; href: string };
+export type SubjectPath = { id: string; title: string; color: string; units: PathUnit[] };
+
+const unitLabel = (name: string) => {
+  const m = /^(?:ud|unidad|tema|t|u)\s*\.?\s*(\d+)/i.exec(name.trim());
+  if (m) return `UD${m[1]}`;
+  return name.trim().length <= 5 ? name.trim() : name.trim().slice(0, 4) + "…";
+};
+
+export async function notebookPaths(userId: string, sectionId: string): Promise<SubjectPath[]> {
+  const pursuits = await prisma.pursuit.findMany({
+    where: { ownerId: userId, sectionId },
+    orderBy: { lastTouchedAt: "desc" },
+    select: { id: true, title: true, cover: true, conceptMaps: { orderBy: { createdAt: "asc" }, select: mapSelect } },
+  });
+  const now = Date.now();
+  return pursuits
+    .map((p) => {
+      const units = new Map<string, PathUnit & { order: number; known: number; total: number }>();
+      for (const m of p.conceptMaps) {
+        const key = m.unit?.id ?? `map-${m.id}`;
+        const name = m.unit?.name ?? m.title;
+        const u = units.get(key) ?? { id: key, label: unitLabel(name), name, pct: 0, href: `/pursuits/${p.id}/learn/${m.id}`, order: m.unit?.order ?? 999, known: 0, total: 0 };
+        for (const c of m.concepts) {
+          const s = dotState(c, now);
+          u.known += s === "known" ? 1 : s === "fading" ? 0.5 : 0;
+          u.total += 1;
+        }
+        units.set(key, u);
+      }
+      const list = [...units.values()]
+        .filter((u) => u.total > 0)
+        .sort((a, b) => a.order - b.order)
+        .map(({ id, label, name, href, known, total }) => ({ id, label, name, href, pct: Math.round((known / total) * 100) / 100 }));
+      return { id: p.id, title: p.title, color: folderColor(p.id, p.cover), units: list };
+    })
+    .filter((s) => s.units.length > 0);
+}

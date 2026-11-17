@@ -6,7 +6,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { SHARED, UNSORTED, pursuitWhere } from "@/lib/reviewData";
 import { folderColor, folderCover, notebookCover, sheetsFor } from "@/lib/covers";
-import { notebookMap, recentPages, type FolderItem } from "@/lib/blockData";
+import { notebookPaths, recentPages, type FolderItem } from "@/lib/blockData";
 import { dotState } from "@/lib/knowledgeMap";
 import { FolderRow, RecentList } from "../../BlockViews";
 import { NotebookHeader } from "./NotebookHeader";
@@ -60,7 +60,7 @@ export default async function NotebookPage({ params }: { params: Promise<{ secti
 
   const mine = await prisma.userTemplate.findMany({ where: { userId }, orderBy: { createdAt: "asc" }, select: { id: true, name: true } });
   const [map, recent, projects] = await Promise.all([
-    study && section ? notebookMap(userId, section.id) : Promise.resolve([]),
+    study && section ? notebookPaths(userId, section.id) : Promise.resolve([]),
     section && !study ? recentPages(userId, section.id, 8) : Promise.resolve([]),
     !study && section ? notebookProjects(userId, section.id) : Promise.resolve([]),
   ]);
@@ -125,7 +125,7 @@ export default async function NotebookPage({ params }: { params: Promise<{ secti
 
       {study && section && <NotebookDeadlines sectionId={section.id} />}
 
-      {study && map.length > 0 && <NotebookMap clusters={map} groupOf={Object.fromEntries(folders.map((f) => [f.id, f.group ?? null]))} title={t("Mapa")} />}
+      {study && map.length > 0 && <NotebookMap paths={map} groupOf={Object.fromEntries(folders.map((f) => [f.id, f.group ?? null]))} title={t("Mapa")} />}
 
       {openTasks.length > 0 && (
         <section className="flex flex-col gap-1">
