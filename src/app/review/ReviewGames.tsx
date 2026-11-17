@@ -17,35 +17,48 @@ const useMounted = () => useSyncExternalStore(noop, () => true, () => false);
 const VIB = ["#ff6b57", "#8b5cf6", "#14b8a6", "#f5b82e"];
 const SECONDS = 20;
 
-export function ReviewGames({ backHref, items }: { backHref: string; items: LearnItem[] }) {
+export function ReviewGames({ backHref, items, menu }: { backHref: string; items: LearnItem[]; menu?: React.ReactNode }) {
   const mounted = useMounted();
-  const shell = { backHref };
+  const shell = { backHref, menu };
   // "Repetir los fallos" starts a new round with just those.
   const [round, setRound] = useState({ n: 0, items });
   if (!mounted) return <Stage {...shell} total={0} done={0} />;
   return <Game key={round.n} items={round.items} shell={shell} onAgain={(missed) => setRound((r) => ({ n: r.n + 1, items: missed }))} />;
 }
 
-type Shell = { backHref: string };
+type Shell = { backHref: string; menu?: React.ReactNode };
 
 // The dark board the game plays on: ✕, progress, streak.
 function Stage({
   backHref,
+  menu,
   total,
   done,
   streak,
   children,
 }: Shell & { total: number; done: number; streak?: number; children?: React.ReactNode }) {
   const t = useT();
+  const [menuOpen, setMenuOpen] = useState(false);
   return (
     <div
-      className="fixed inset-x-0 top-0 bottom-16 z-40 flex flex-col overflow-y-auto bg-[#18181b] text-white lg:bottom-0 lg:z-50"
+      className="fixed inset-x-0 top-0 bottom-16 z-40 flex bg-[#18181b] text-white lg:bottom-0 lg:z-50"
       style={{ backgroundImage: "radial-gradient(rgba(255,255,255,.07) 1px, transparent 1.3px)", backgroundSize: "22px 22px" }}
     >
+      {menu && (
+        <aside className={`${menuOpen ? "absolute inset-y-0 left-0 z-10 flex shadow-2xl" : "hidden"} w-64 shrink-0 flex-col overflow-y-auto border-r border-white/8 bg-[#141416] px-3 py-5 lg:static lg:flex lg:shadow-none`}>
+          {menu}
+        </aside>
+      )}
+      <div className="flex min-w-0 flex-1 flex-col overflow-y-auto" onClick={() => menuOpen && setMenuOpen(false)}>
       <header className="flex items-center gap-4 px-4 py-4 sm:gap-7 sm:px-10 sm:py-5">
         <Link href={backHref} aria-label={t("Cerrar")} title={t("Cerrar")} className="rounded-md p-1 text-white/50 hover:text-white">
           <XIcon size={20} className="block" />
         </Link>
+        {menu && (
+          <button type="button" onClick={(e) => { e.stopPropagation(); setMenuOpen((o) => !o); }} aria-label={t("Qué repasar")} title={t("Qué repasar")} className="rounded-md p-1 text-white/50 hover:text-white lg:hidden">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden><path d="M4 7h16M4 12h16M4 17h16" /></svg>
+          </button>
+        )}
         <div className="mx-auto flex max-w-[520px] flex-1 gap-1.5" aria-hidden>
           {[...Array(Math.max(total, 1))].map((_, i) => (
             <i key={i} className={`h-1.5 flex-1 rounded-full transition-colors ${i < done ? "bg-white" : "bg-white/12"}`} />
@@ -54,6 +67,7 @@ function Stage({
         {streak !== undefined && <Streak n={streak} className="hidden sm:flex" />}
       </header>
       <main className="flex flex-1 flex-col items-center justify-center gap-4 px-4 pb-10 sm:gap-7">{children}</main>
+      </div>
     </div>
   );
 }

@@ -1,5 +1,8 @@
 // Spanish source text → translation. Missing keys fall back to Spanish.
 export const de: Record<string, string> = {
+  "Esta carpeta no tiene unidades": "Dieser Ordner hat keine Einheiten",
+  "Toda la asignatura": "Das ganze Fach",
+  "Qué repasar": "Was wiederholen",
   "Desagrupar": "Gruppierung aufheben",
   "Guarda primero (Ctrl+S) y vuelve a pulsar ✦": "Speichere zuerst (Strg+S) und drück erneut ✦",
   "Añadido lo nuevo a la versión organizada": "Das Neue wurde zur geordneten Version hinzugefügt",
