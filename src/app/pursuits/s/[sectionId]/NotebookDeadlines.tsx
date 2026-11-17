@@ -60,11 +60,12 @@ export function NotebookDeadlines({ list, groupOf, side = false }: { list: Noteb
   };
 
   // The subject's colour lives only here: a ring of how much is handed in.
-  const ring = (color: string, value: number, size = 26, width = 3.5) => {
-    const r = (size - width) / 2;
+  const ring = (color: string, value: number, size = 28, width = 3.5) => {
+    // A pixel of room so the stroke never touches the edge (it got clipped).
+    const r = (size - width) / 2 - 1;
     const c = 2 * Math.PI * r;
     return (
-      <svg width={size} height={size} className="shrink-0" aria-hidden>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="shrink-0 overflow-visible" aria-hidden>
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#ebebea" strokeWidth={width} />
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={width} strokeLinecap="round" strokeDasharray={`${c * value} ${c}`} transform={`rotate(-90 ${size / 2} ${size / 2})`} />
       </svg>

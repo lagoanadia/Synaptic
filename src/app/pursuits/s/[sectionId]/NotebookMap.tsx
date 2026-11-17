@@ -11,12 +11,12 @@ const DONE = 0.999;
 function Node({ pct, color, current }: { pct: number; color: string; current: boolean }) {
   const s = 48;
   const w = 5;
-  const r = (s - w) / 2;
+  const r = (s - w) / 2 - 1;
   const c = 2 * Math.PI * r;
   const full = pct >= DONE;
   return (
     <span className="relative block">
-      <svg width={s} height={s} aria-hidden>
+      <svg width={s} height={s} viewBox={`0 0 ${s} ${s}`} className="overflow-visible" aria-hidden>
         <circle cx={s / 2} cy={s / 2} r={r} fill={full ? color : "#fff"} stroke={full ? color : "#ebebea"} strokeWidth={w} />
         {pct > 0 && !full && <circle cx={s / 2} cy={s / 2} r={r} fill="none" stroke={color} strokeWidth={w} strokeLinecap="round" strokeDasharray={`${c * pct} ${c}`} transform={`rotate(-90 ${s / 2} ${s / 2})`} />}
       </svg>
