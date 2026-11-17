@@ -33,7 +33,10 @@ export function NotebookFolders({
   const router = useRouter();
   // Dragged into a new order but not yet back from the server.
   const [localOrder, setLocalOrder] = useState<string[] | null>(null);
-  const order = localOrder ?? tabOrder(stored);
+  // Kept until the page comes back from the server (dropping it earlier made
+  // the tab jump back for a moment); ignored once the tabs themselves change.
+  const saved = tabOrder(stored);
+  const order = localOrder && localOrder.length === saved.length && saved.every((g) => localOrder.includes(g)) ? localOrder : saved;
   const groups = realGroups(order);
   // The open tab lives in the URL (?s=Teoría), so the map below follows it.
   const active = useOpenTab(order);
@@ -115,17 +118,22 @@ export function NotebookFolders({
     return `${base} ${look} ${pop}`;
   };
   const count = (n: number) => <span className="rounded-full bg-current/10 px-1.5 text-[11px] font-normal opacity-70">{n}</span>;
-  // Drop a tab on another: it goes in that one's place.
-  const dropTab = (onto: string) => {
-    if (!dragTab || dragTab === onto) return setDragTab(null);
-    const next = order.filter((x) => x !== dragTab);
-    next.splice(next.indexOf(onto), 0, dragTab);
-    setLocalOrder(next);
+  // Drop a tab on another: it takes that one's place (before it when moving
+  // left, after it when moving right).
+  const dropTab = (onto: string, moving = dragTab) => {
     setDragTab(null);
+    if (!moving || moving === onto || !order.includes(moving)) return;
+    const right = order.indexOf(moving) < order.indexOf(onto);
+    const next = order.filter((x) => x !== moving);
+    next.splice(next.indexOf(onto) + (right ? 1 : 0), 0, moving);
+    setLocalOrder(next);
     start(async () => {
-      await reorderNotebookTabs(sectionId, next);
+      const ok = await reorderNotebookTabs(sectionId, next);
+      if (!ok) {
+        setLocalOrder(null);
+        return void ask.alert(t("No se ha podido guardar el orden. Recarga la página e inténtalo otra vez."));
+      }
       router.refresh();
-      setLocalOrder(null);
     });
   };
   const target = (g: string | null) => ({
@@ -146,7 +154,7 @@ export function NotebookFolders({
     onDrop: (e: React.DragEvent) => {
       if (e.dataTransfer.types.includes("synaptic/tab")) {
         e.preventDefault();
-        return dropTab(g ?? ALL);
+        return dropTab(g ?? ALL, dragTab ?? e.dataTransfer.getData("synaptic/tab"));
       }
       drop(g)(e);
     },

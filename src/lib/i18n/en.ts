@@ -1101,4 +1101,12 @@ export const en: Record<string, string> = {
   "Arrastra para ordenar · clic derecho para renombrar": "Drag to reorder · right-click to rename",
   "Arrastra para ordenar": "Drag to reorder",
   "Creando…": "Creating…",
+  "Documentos": "Documents",
+  "Cerrar {0}": "Close {0}",
+  "Añadir PDF o slides": "Add a PDF or slides",
+  "No se ha podido guardar el orden. Recarga la página e inténtalo otra vez.": "Couldn't save the order. Reload the page and try again.",
+  "Nueva página": "New page",
+  "Subir archivo": "Upload",
+  "Ver todas las unidades": "Show all units",
+  "Cargando Classroom…": "Loading Classroom…",
 };

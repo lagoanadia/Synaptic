@@ -165,13 +165,15 @@ export async function notebookPaths(userId: string, sectionId: string): Promise<
     .filter((s) => s.units.length > 0);
 }
 
-// A notebook's loose pages (made without a folder), newest first.
-export async function loosePages(userId: string, sectionId: string): Promise<RecentPage[]> {
+// A notebook's loose pages (made without a folder), newest first, with the
+// section tab they were made on.
+export type LoosePage = RecentPage & { group: string | null };
+export async function loosePages(userId: string, sectionId: string): Promise<LoosePage[]> {
   const dumps = await prisma.brainDump.findMany({
     where: { pursuit: { ownerId: userId, sectionId, loose: true } },
     orderBy: { updatedAt: "desc" },
     take: 50,
-    select: { id: true, content: true, updatedAt: true, pursuitId: true, notes: { select: { content: true }, take: 1 } },
+    select: { id: true, content: true, updatedAt: true, pursuitId: true, pursuit: { select: { group: true } }, notes: { select: { content: true }, take: 1 } },
   });
-  return dumps.map((d) => ({ id: d.id, title: autoTitle(d.notes[0]?.content ?? d.content, 8) || "Sin título", href: `/pursuits/${d.pursuitId}/dump/${d.id}`, where: "", at: d.updatedAt }));
+  return dumps.map((d) => ({ id: d.id, title: autoTitle(d.notes[0]?.content ?? d.content, 8) || "Sin título", href: `/pursuits/${d.pursuitId}/dump/${d.id}`, where: "", at: d.updatedAt, group: d.pursuit.group }));
 }

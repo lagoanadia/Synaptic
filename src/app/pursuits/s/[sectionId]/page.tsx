@@ -7,7 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { SHARED, UNSORTED, pursuitWhere } from "@/lib/reviewData";
 import { folderColor, folderCover, notebookCover, sheetsFor } from "@/lib/covers";
 import { loosePages, notebookPaths, recentPages, type FolderItem } from "@/lib/blockData";
-import { NewLoosePage } from "./NewLoosePage";
+import { LoosePages } from "./NewLoosePage";
 import { dotState } from "@/lib/knowledgeMap";
 import { FolderRow, RecentList } from "../../BlockViews";
 import { NotebookHeader } from "./NotebookHeader";
@@ -130,17 +130,7 @@ export default async function NotebookPage({ params }: { params: Promise<{ secti
 
 
       {/* Pages made right in the notebook, without a folder. */}
-      {section && (
-        <section className="flex flex-col gap-1">
-          <div className="flex items-center border-b border-border-subtle pb-1">
-            <h2 className="text-sm font-semibold">{t("Páginas")}</h2>
-            <span className="ml-auto">
-              <NewLoosePage sectionId={section.id} />
-            </span>
-          </div>
-          {loose.length > 0 ? <RecentList pages={loose} /> : <p className="py-2 text-[13px] text-ink-faint">{t("Escribe una página aquí sin meterla en ninguna carpeta.")}</p>}
-        </section>
-      )}
+      {section && <LoosePages sectionId={section.id} groups={section.groups} pages={loose} />}
 
       {/* Study notebooks: the map on the left, assignments in a panel on the right that stays in view. */}
       {study && section && (

@@ -289,23 +289,26 @@ export async function setFolderGroup(pursuitId: string, group: string | null) {
 }
 
 // The tabs in a new order ("*" = Todas); the first one opens by default.
-export async function reorderNotebookTabs(sectionId: string, order: string[]) {
+export async function reorderNotebookTabs(sectionId: string, order: string[]): Promise<boolean> {
   const section = await ownSection(sectionId);
-  if (!section) return;
+  if (!section) return false;
   const current = section.groups.includes("*") ? section.groups : ["*", ...section.groups];
-  if (order.length !== current.length || !current.every((g) => order.includes(g))) return;
+  if (order.length !== current.length || !current.every((g) => order.includes(g))) return false;
   await prisma.section.update({ where: { id: sectionId }, data: { groups: order } });
   revalidatePath(`/pursuits/s/${sectionId}`);
+  return true;
 }
 
 // "+ Página" right in a notebook, without a folder: the page lives in the
 // notebook's hidden loose-pages folder (made on first use). Returns where
 // to write it.
-export async function newLoosePage(sectionId: string): Promise<string | null> {
+// One hidden folder per section tab, so a page made on "Actividades" stays there.
+export async function newLoosePage(sectionId: string, group: string | null = null): Promise<string | null> {
   const section = await ownSection(sectionId);
   const session = await auth();
   if (!section || !session?.user?.id) return null;
-  const existing = await prisma.pursuit.findFirst({ where: { sectionId, ownerId: session.user.id, loose: true }, select: { id: true } });
-  const pursuit = existing ?? (await prisma.pursuit.create({ data: { title: "Páginas", ownerId: session.user.id, sectionId, loose: true }, select: { id: true } }));
+  const tab = group && group !== "*" && section.groups.includes(group) ? group : null;
+  const existing = await prisma.pursuit.findFirst({ where: { sectionId, ownerId: session.user.id, loose: true, group: tab }, select: { id: true } });
+  const pursuit = existing ?? (await prisma.pursuit.create({ data: { title: "Páginas", ownerId: session.user.id, sectionId, loose: true, group: tab }, select: { id: true } }));
   return `/pursuits/${pursuit.id}/dump/new`;
 }
