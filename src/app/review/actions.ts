@@ -98,3 +98,36 @@ Responde en el idioma de la pregunta, en JSON: {"score": 0|1|2, "feedback": "una
   const score = out.score === 2 || out.score === "2" ? 2 : out.score === 1 || out.score === "1" ? 1 : 0;
   return { error: null, grade: { score, feedback: String(out.feedback ?? "").slice(0, 600), missing: String(out.missing ?? "").slice(0, 600) } };
 }
+
+// Notes in your study subjects that don't have any cards yet.
+const noCardsWhere = (userId: string) => ({
+  flashcards: { none: {} },
+  content: { not: "" },
+  pursuit: { ownerId: userId, loose: false, section: { study: true } },
+});
+
+export async function countNotesWithoutCards(): Promise<number> {
+  const user = await me();
+  return prisma.note.count({ where: noCardsWhere(user.id) });
+}
+
+// "Crear tests de todos mis apuntes": the AI reads the next few notes without
+// cards and writes cards for them. Called again and again by the page until
+// none are left (a few per call, so no single request runs too long).
+export async function cardsForNextNotes(skip: string[] = []): Promise<{ error: string | null; made: number; done: string[]; left: number }> {
+  const user = await me();
+  const { generateFlashcards } = await import("../pursuits/[id]/actions");
+  const notes = await prisma.note.findMany({ where: { ...noCardsWhere(user.id), id: { notIn: skip.slice(0, 500) } }, orderBy: { createdAt: "asc" }, take: 3, select: { id: true, pursuitId: true } });
+  let made = 0;
+  const done: string[] = [];
+  for (const n of notes) {
+    const r = await generateFlashcards(n.pursuitId, n.id);
+    done.push(n.id);
+    // Out of quota: stop and say so. A note the AI couldn't use: skip it.
+    if (r.error && /límite|limit/i.test(r.error)) return { error: r.error, made, done, left: await prisma.note.count({ where: { ...noCardsWhere(user.id), id: { notIn: [...skip, ...done] } } }) };
+    made += r.count ?? 0;
+  }
+  const left = await prisma.note.count({ where: { ...noCardsWhere(user.id), id: { notIn: [...skip, ...done] } } });
+  revalidatePath("/review/tests");
+  return { error: null, made, done, left };
+}
