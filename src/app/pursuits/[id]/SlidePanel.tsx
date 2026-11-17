@@ -28,9 +28,11 @@ const store = {
   },
 };
 
-// Slides beside whatever you're writing (wraps the editor as children).
-// Drag the divider to resize, collapse to a tab, or close. Remembers the
-// deck and width per subject.
+// Slides and PDFs beside whatever you're writing (wraps the editor as
+// children), as many as you like, in tabs: "+" adds one (yours, Classroom,
+// a link or an upload; or drop a file on the panel), × closes it. Drag the
+// divider to resize, collapse to a tab, or close. Remembers the open tabs
+// and width per page.
 export function SlidePanel({
   pursuitId,
   decks,
@@ -63,8 +65,10 @@ export function SlidePanel({
   // browser, never uploaded), so its text can be selected. Keyed by link.
   const [local, setLocal] = useState<{ key: string; url: string } | null>(null);
   const localInput = useRef<HTMLInputElement>(null);
-  const key = `synaptic.slides.${pursuitId}`;
+  const key = `synaptic.slides.${pursuitId}${dumpId ? `.${dumpId}` : ""}`;
+  const [tabs, setTabs] = useState<Deck[]>([]);
   const [deck, setDeck] = useState<Deck | null>(null);
+  const [dropping, setDropping] = useState(false);
   const [width, setWidth] = useState(WIDTHS.M);
   const [collapsed, setCollapsed] = useState(false);
   const [picking, setPicking] = useState(false);
@@ -74,24 +78,36 @@ export function SlidePanel({
   const fileInput = useRef<HTMLInputElement>(null);
   const row = useRef<HTMLDivElement>(null);
 
-  // Browser storage, so only after mount.
+  // Browser storage, so only after mount. Nothing is saved until this has
+  // read what was there (saving first would wipe the tabs).
+  const loaded = useRef<string | null>(null);
   useEffect(() => {
     try {
-      const saved = JSON.parse(store.get(key) ?? "null");
+      // This page's own tabs, else what the subject had open last (older
+      // saves kept a single deck).
+      const saved = JSON.parse(store.get(key) ?? "null") ?? JSON.parse(store.get(`synaptic.slides.${pursuitId}`) ?? "null");
+      const list: Deck[] = Array.isArray(saved?.tabs) ? saved.tabs : saved?.deck ? [saved.deck] : [];
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      if (saved?.deck) setDeck(saved.deck);
+      setTabs(list);
+      if (list.length) setDeck(list.find((d) => d.url === saved?.active) ?? list[0]);
       if (saved?.width) setWidth(saved.width);
       if (saved?.collapsed && !onClose) setCollapsed(true);
-      if (!saved?.deck && onClose) startPicking();
+      if (!list.length && onClose) startPicking();
     } catch {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
   useEffect(() => {
-    store.set(key, JSON.stringify({ deck, width, collapsed }));
-  }, [key, deck, width, collapsed]);
+    // The first run for a page comes before its saved tabs are in state.
+    if (loaded.current !== key) {
+      loaded.current = key;
+      return;
+    }
+    store.set(key, JSON.stringify({ tabs, active: deck?.url ?? null, width, collapsed }));
+  }, [key, tabs, deck, width, collapsed]);
 
   function open(d: Deck) {
     if (!slideSourceFor(d.url)) return setStatus(t("Usa un enlace de Google Slides / Drive, un .pptx o un .pdf"));
+    setTabs((ts) => (ts.some((x) => x.url === d.url) ? ts : [...ts, d]));
     setDeck(d);
     setPicking(false);
     setCollapsed(false);
@@ -124,6 +140,13 @@ export function SlidePanel({
     } catch {
       setStatus(t("No se ha podido subir (.pptx o .pdf)"));
     }
+  }
+
+  function closeTab(d: Deck) {
+    const rest = tabs.filter((x) => x.url !== d.url);
+    setTabs(rest);
+    if (deck?.url === d.url) setDeck(rest[rest.length - 1] ?? null);
+    if (!rest.length && onClose) onClose();
   }
 
   // Drag the divider to resize.
@@ -177,11 +200,40 @@ export function SlidePanel({
     >
       {open_ ? (
         <section
-          className="flex flex-col overflow-hidden rounded-2xl border border-border-subtle bg-white lg:sticky lg:top-4 lg:h-[calc(100vh-2rem)]"
+          className={`flex flex-col overflow-hidden rounded-2xl border bg-white lg:sticky lg:top-4 lg:h-[calc(100vh-2rem)] ${dropping ? "border-[#2383e2] ring-2 ring-[#2383e2]/40" : "border-border-subtle"}`}
           aria-label={t("Diapositivas")}
+          // Drop a PDF or .pptx anywhere on the panel to add it as a tab.
+          onDragOver={(e) => {
+            if (!e.dataTransfer.types.includes("Files")) return;
+            e.preventDefault();
+            setDropping(true);
+          }}
+          onDragLeave={() => setDropping(false)}
+          onDrop={(e) => {
+            setDropping(false);
+            const files = [...e.dataTransfer.files].filter((f) => /\.(pdf|pptx)$/i.test(f.name));
+            if (!files.length) return;
+            e.preventDefault();
+            files.forEach((f) => uploadDeck(f));
+          }}
         >
           <div className="flex flex-wrap items-center gap-2 border-b border-border-subtle px-3 py-2 text-sm">
-            <span className="min-w-0 flex-1 truncate font-semibold">{deck?.name ?? t("Diapositivas")}</span>
+            <span className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto" role="tablist" aria-label={t("Documentos")}>
+              {tabs.map((d) => (
+                <span key={d.url} className={`group flex shrink-0 items-center rounded-md text-xs ${deck?.url === d.url ? "bg-chip font-semibold text-ink" : "text-ink-muted hover:bg-chip/60"}`}>
+                  <button type="button" role="tab" aria-selected={deck?.url === d.url} onClick={() => open(d)} title={d.name} className="max-w-40 truncate py-1 pl-2">
+                    {d.name}
+                  </button>
+                  <button type="button" onClick={() => closeTab(d)} aria-label={t("Cerrar {0}", { 0: d.name })} className="px-1.5 py-1 opacity-40 group-hover:opacity-100 hover:text-ink">
+                    ×
+                  </button>
+                </span>
+              ))}
+              {!tabs.length && <span className="truncate font-semibold">{t("Diapositivas")}</span>}
+              <button type="button" onClick={() => (picking ? setPicking(false) : startPicking())} aria-label={t("Añadir PDF o slides")} title={t("Añadir PDF o slides")} className={`shrink-0 rounded-md px-2 py-1 text-xs ${picking ? "bg-ink text-white" : "text-ink-muted hover:bg-chip"}`}>
+                +
+              </button>
+            </span>
             <span className="hidden rounded-full bg-chip p-0.5 text-xs lg:flex">
               {(Object.keys(WIDTHS) as (keyof typeof WIDTHS)[]).map((k) => (
                 <button
@@ -195,9 +247,6 @@ export function SlidePanel({
                 </button>
               ))}
             </span>
-            <button type="button" onClick={() => (picking ? setPicking(false) : startPicking())} className="rounded-full px-3 py-1 text-xs text-ink-muted hover:bg-chip">
-              {picking ? t("Hecho") : t("Cambiar")}
-            </button>
             {deck && !onClose && (
               <button type="button" onClick={() => setCollapsed(true)} className="rounded-full px-3 py-1 text-xs text-ink-muted hover:bg-chip">
                 {t("Ocultar")}
@@ -209,6 +258,7 @@ export function SlidePanel({
                 setPicking(false);
                 if (onClose) return onClose();
                 setDeck(null);
+                setTabs([]);
               }}
               aria-label={t("Cerrar diapositivas")}
               className="rounded-full px-2 py-1 text-ink-muted hover:bg-chip"
@@ -219,54 +269,68 @@ export function SlidePanel({
 
           {picking && (
             <div className="flex flex-col gap-3 border-b border-border-subtle p-3 text-sm">
-              {decks.length > 0 && (
-                <div className="flex flex-wrap gap-1.5">
-                  {decks.map((d) => (
-                    <button key={d.url} type="button" onClick={() => open(d)} className="max-w-64 truncate rounded-full bg-chip px-3 py-1 hover:text-tile-sky">
-                      {d.name}
-                    </button>
-                  ))}
-                </div>
-              )}
-              {classroomCourseId && (
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <span className="text-xs font-semibold text-ink-muted">{t("Classroom")}</span>
-                  {classroomUnit && (
-                    <button
-                      type="button"
-                      onClick={() => setShowAllUnits((v) => !v)}
-                      className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${showAllUnits ? "bg-chip text-ink-muted" : "bg-tile-sky text-white"}`}
-                    >
-                      {showAllUnits ? t("Todas") : classroomUnit}
-                    </button>
-                  )}
-                  {classroom === null ? (
-                    <span className="text-xs text-ink-faint">…</span>
-                  ) : (
-                    classroom
-                      .filter((d) => !classroomUnit || showAllUnits || unitCode(d.name) === classroomUnit)
-                      .map((d) => (
-                      <button key={d.url} type="button" onClick={() => open(d)} className="max-w-64 truncate rounded-full bg-chip px-3 py-1 hover:text-tile-sky">
-                        {d.name}
+              {/* Yours and Classroom's together, one row per unit (UD1, UD2…),
+                  without repeats, each chip a short name plus its type. */}
+              {(() => {
+                const seen = new Set<string>();
+                const all = [...decks, ...(classroom ?? [])].filter((d) => {
+                  const k = d.name.trim().toLowerCase();
+                  if (seen.has(d.url) || seen.has(k)) return false;
+                  seen.add(d.url);
+                  seen.add(k);
+                  return true;
+                });
+                const groups = new Map<string, Deck[]>();
+                for (const d of all) {
+                  const u = unitCode(d.name) ?? "";
+                  if (classroomUnit && !showAllUnits && u !== classroomUnit) continue;
+                  groups.set(u, [...(groups.get(u) ?? []), d]);
+                }
+                const units = [...groups.keys()].sort((x, y) => (x ? Number(x.slice(2)) : 999) - (y ? Number(y.slice(2)) : 999));
+                return (
+                  <div className="flex max-h-[45vh] flex-col gap-2.5 overflow-y-auto">
+                    {classroomUnit && (
+                      <button type="button" onClick={() => setShowAllUnits((v) => !v)} className="self-start rounded-full bg-chip px-2.5 py-0.5 text-xs text-ink-muted hover:text-ink">
+                        {showAllUnits ? t("Solo {0}", { 0: classroomUnit }) : t("Ver todas las unidades")}
                       </button>
-                    ))
-                  )}
-                </div>
-              )}
+                    )}
+                    {units.map((u) => (
+                      <div key={u || "other"} className="flex gap-2">
+                        <span className="w-12 shrink-0 pt-1 text-xs font-semibold text-ink-muted">{u || t("Otros")}</span>
+                        <div className="flex min-w-0 flex-wrap gap-1.5">
+                          {groups.get(u)!.map((d) => {
+                            const ext = d.name.match(/\.(pdf|pptx?|key|odp)$/i)?.[1]?.toLowerCase();
+                            const label = d.name.replace(/\.[a-z0-9]{2,5}$/i, "").replace(/^[A-Z]{2,5}[-_ ]?(?:UD|U|T)?\d{1,2}[-_ ]?/i, "").replace(/[-_]+/g, " ").trim() || d.name;
+                            const on = tabs.some((x) => x.url === d.url);
+                            return (
+                              <button key={d.url} type="button" onClick={() => open(d)} title={d.name} className={`flex max-w-64 items-center gap-1.5 rounded-full px-3 py-1 text-xs ${on ? "bg-ink text-white" : "bg-chip hover:text-ink"}`}>
+                                <span className="truncate">{label}</span>
+                                {ext && <span className={`shrink-0 text-[10px] uppercase ${on ? "text-white/70" : "text-ink-faint"}`}>{ext}</span>}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                    {classroomCourseId && classroom === null && <span className="text-xs text-ink-faint">{t("Cargando Classroom…")}</span>}
+                  </div>
+                );
+              })()}
               <div className="flex flex-wrap items-center gap-2">
                 <input
                   ref={fileInput}
                   type="file"
                   accept=".pptx,.pdf"
+                  multiple
                   className="hidden"
                   onChange={(e) => {
-                    const f = e.target.files?.[0];
+                    const files = [...(e.target.files ?? [])];
                     e.target.value = "";
-                    if (f) uploadDeck(f);
+                    files.forEach((f) => uploadDeck(f));
                   }}
                 />
                 <button type="button" onClick={() => fileInput.current?.click()} className="rounded-full bg-ink px-3 py-1.5 text-xs font-semibold text-white">
-                  {t("Subir")}
+                  {t("Subir archivo")}
                 </button>
                 <form
                   onSubmit={(e) => {

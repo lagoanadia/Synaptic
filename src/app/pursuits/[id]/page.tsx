@@ -133,6 +133,9 @@ export default async function PursuitPage({
   if (!pursuit) {
     notFound();
   }
+  // A notebook's hidden loose-pages folder is never shown as a folder:
+  // back to the notebook, on the tab its pages belong to.
+  if (pursuit.loose && pursuit.sectionId) redirect(`/pursuits/s/${pursuit.sectionId}${pursuit.group ? `?s=${encodeURIComponent(pursuit.group)}` : ""}`);
 
 
 

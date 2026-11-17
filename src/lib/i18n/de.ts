@@ -1101,4 +1101,12 @@ export const de: Record<string, string> = {
   "Arrastra para ordenar · clic derecho para renombrar": "Zum Sortieren ziehen · Rechtsklick zum Umbenennen",
   "Arrastra para ordenar": "Zum Sortieren ziehen",
   "Creando…": "Wird erstellt…",
+  "Documentos": "Dokumente",
+  "Cerrar {0}": "{0} schließen",
+  "Añadir PDF o slides": "PDF oder Folien hinzufügen",
+  "No se ha podido guardar el orden. Recarga la página e inténtalo otra vez.": "Die Reihenfolge konnte nicht gespeichert werden. Lade die Seite neu und versuch es noch einmal.",
+  "Nueva página": "Neue Seite",
+  "Subir archivo": "Hochladen",
+  "Ver todas las unidades": "Alle Einheiten zeigen",
+  "Cargando Classroom…": "Classroom wird geladen…",
 };
