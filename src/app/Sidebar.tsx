@@ -11,6 +11,7 @@ import { createSection } from "./pursuits/actions";
 import { TemplatePick, type Template } from "./pursuits/TemplatePick";
 import { MiniNotebook } from "./Covers";
 import { SearchPalette } from "./SearchPalette";
+import { EditMenu, menuAt, type EditTarget } from "./pursuits/EditMenu";
 import { CalendarIcon, CardsIcon, CodeIcon, HomeIcon, XIcon } from "./icons";
 import type { NotebookCover } from "@/lib/covers";
 import type { Avatar as AvatarData } from "@/lib/avatar";
@@ -55,6 +56,7 @@ export function Sidebar({ user, plan, notebooks, collapsed: startCollapsed = fal
   const [sheet, setSheet] = useState(false);
   const [searching, setSearching] = useState(false);
   const [editingMenu, setEditingMenu] = useState(false);
+  const [editing, setEditing] = useState<EditTarget | null>(null);
   const [, startNav] = useTransition();
   const [collapsed, setCollapsed] = useState(startCollapsed);
   function toggleCollapsed() {
@@ -83,10 +85,15 @@ export function Sidebar({ user, plan, notebooks, collapsed: startCollapsed = fal
   const row = (on: boolean) =>
     `flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm transition-colors ${on ? "bg-[#ebebea] font-medium text-ink" : "text-ink-muted hover:bg-[#ebebea]/70 hover:text-ink"}`;
 
+  // Right-click a notebook to rename it or change its cover.
+  const editNotebook = (n: Props["notebooks"][number]) => (e: React.MouseEvent) => {
+    e.preventDefault();
+    setEditing({ kind: "notebook", id: n.id, name: n.name, cover: n.cover, ...menuAt(e) });
+  };
   const notebookList = (
     <div className="flex flex-col gap-0.5">
       {notebooks.map((n) => (
-        <Link key={n.id} href={`/pursuits/s/${n.id}`} className={row(active(`/pursuits/s/${n.id}`))}>
+        <Link key={n.id} href={`/pursuits/s/${n.id}`} onContextMenu={editNotebook(n)} className={row(active(`/pursuits/s/${n.id}`))}>
           <MiniNotebook cover={n.cover} size={16} />
           <span className="truncate">{n.name}</span>
         </Link>
@@ -100,6 +107,7 @@ export function Sidebar({ user, plan, notebooks, collapsed: startCollapsed = fal
 
   return (
     <>
+      {editing && <EditMenu target={editing} onClose={() => setEditing(null)} />}
       {collapsed && (
         <aside className="fixed inset-y-0 left-0 z-30 hidden w-[52px] flex-col items-center gap-1 border-r border-border-subtle bg-sidebar py-3 lg:flex" aria-label={t("Navegación")}>
           <button type="button" onClick={toggleCollapsed} title={t("Mostrar la barra lateral")} aria-label={t("Mostrar la barra lateral")} className="mb-3 grid size-8 place-items-center rounded-md text-ink-muted hover:bg-[#ebebea] hover:text-ink">
@@ -117,7 +125,7 @@ export function Sidebar({ user, plan, notebooks, collapsed: startCollapsed = fal
           ))}
           <span className="my-2 h-px w-6 bg-border-subtle" />
           {notebooks.map((n) => (
-            <Link key={n.id} href={`/pursuits/s/${n.id}`} title={n.name} aria-label={n.name} className={`grid size-8 place-items-center rounded-md ${active(`/pursuits/s/${n.id}`) ? "bg-[#ebebea]" : "hover:bg-[#ebebea]/70"}`}>
+            <Link key={n.id} href={`/pursuits/s/${n.id}`} onContextMenu={editNotebook(n)} title={n.name} aria-label={n.name} className={`grid size-8 place-items-center rounded-md ${active(`/pursuits/s/${n.id}`) ? "bg-[#ebebea]" : "hover:bg-[#ebebea]/70"}`}>
               <MiniNotebook cover={n.cover} size={18} />
             </Link>
           ))}

@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { MiniNotebook, Notebook } from "@/app/Covers";
 import { NOTEBOOK_COVERS, type NotebookCover } from "@/lib/covers";
 import { deleteSection, setNotebook } from "../../actions";
+import { EditMenu, menuAt, type EditTarget } from "../../EditMenu";
 import { TemplatePick } from "../../TemplatePick";
 
 // A notebook's header: its cover, name (click to rename), "Repasar" for
@@ -31,6 +32,7 @@ export function NotebookHeader({
   const [name, setName] = useState(initialName);
   const [renaming, setRenaming] = useState(false);
   const [menu, setMenu] = useState(false);
+  const [editing, setEditing] = useState<EditTarget | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [, start] = useTransition();
   const router = useRouter();
@@ -44,7 +46,17 @@ export function NotebookHeader({
 
   return (
     <header className="flex flex-wrap items-center gap-4">
-      <Notebook cover={cover} width={52} label={false} />
+      {/* Right-click the cover to change it (or rename). */}
+      <span
+        onContextMenu={(e) => {
+          if (!editable) return;
+          e.preventDefault();
+          setEditing({ kind: "notebook", id, name, cover, ...menuAt(e) });
+        }}
+      >
+        <Notebook cover={cover} width={52} label={false} />
+      </span>
+      {editing && <EditMenu target={editing} onClose={() => setEditing(null)} />}
       {renaming ? (
         <input
           autoFocus

@@ -55,6 +55,7 @@ export const COLLECTIONS = [
   { id: "rose", name: "Rojo y rosa", dark: "#7a1c28", light: "#d98a95", accent: "#f4d6d9", mid: "#a8323f" },
   { id: "pine", name: "Bosque y crema", dark: "#24402c", light: "#cbbd97", accent: "#f1e8d2", mid: "#355a3e" },
   { id: "clay", name: "Terracota y arena", dark: "#7c3420", light: "#d2ad7c", accent: "#f0dcc0", mid: "#a14a2b" },
+  { id: "corp", name: "Azul corporativo", dark: "#1c2e4a", light: "#8aa9cc", accent: "#dbe6f2", mid: "#2d4a73" },
 ] as const;
 export const COLLECTION_KINDS = ["Flower", "Stripe", "Bloom", "Croc", "LightCroc", "Damask"] as const;
 export type Collection = (typeof COLLECTIONS)[number];
@@ -70,10 +71,16 @@ export const FOLDER_COVERS = {
 
 // How the cover picker lists them, one collection per row. The older
 // single covers still draw for folders that chose one, but aren't offered.
-export const FOLDER_GROUPS: { name: string; covers: FolderCover[] }[] = [
+// "Flower" draws as rombos (argyle) and "Bloom" as cuadros (windowpane);
+// the keys stay so folders keep the look they picked. "Azul corporativo"
+// comes first in the picker but last in COLLECTIONS, so unset folders keep
+// the cover they had (see FOLDER_KEYS).
+const collectionGroup = (c: Collection) => ({ name: c.name, covers: COLLECTION_KINDS.map((k) => `${c.id}${k}` as FolderCover) });
+const ORIGINAL_GROUPS: { name: string; covers: FolderCover[] }[] = [
   { name: "Burdeos y oliva", covers: ["orchid", "regency", "olive", "oxblood", "olivecroc", "damask"] },
-  ...COLLECTIONS.map((c) => ({ name: c.name, covers: COLLECTION_KINDS.map((k) => `${c.id}${k}` as FolderCover) })),
+  ...COLLECTIONS.filter((c) => c.id !== "corp").map(collectionGroup),
 ];
+export const FOLDER_GROUPS: { name: string; covers: FolderCover[] }[] = [...COLLECTIONS.filter((c) => c.id === "corp").map(collectionGroup), ...ORIGINAL_GROUPS];
 
 // Mixes a colour toward another (0 = a, 1 = b).
 export function mix(a: string, b: string, t: number): string {
@@ -83,7 +90,7 @@ export function mix(a: string, b: string, t: number): string {
 }
 
 // Unset folders get one of the collections' covers, picked from their id.
-const FOLDER_KEYS: FolderCover[] = FOLDER_GROUPS.flatMap((g) => g.covers);
+const FOLDER_KEYS: FolderCover[] = ORIGINAL_GROUPS.flatMap((g) => g.covers);
 // Drawn with a noise filter rather than a repeating pattern.
 export const FILTER_FOLDERS: readonly FolderCover[] = ["oxblood", "olivecroc", ...COLLECTIONS.flatMap((c) => [`${c.id}Croc`, `${c.id}LightCroc`] as FolderCover[])];
 
