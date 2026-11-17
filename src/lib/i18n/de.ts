@@ -1087,4 +1087,5 @@ export const de: Record<string, string> = {
   "Atrasadas": "Überfällig",
   "Más adelante": "Später",
   "Entregadas": "Abgegeben",
+  "Todo entregado": "Alles abgegeben",
 };
