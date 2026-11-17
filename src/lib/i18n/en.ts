@@ -1088,4 +1088,11 @@ export const en: Record<string, string> = {
   "Más adelante": "Later",
   "Entregadas": "Handed in",
   "Todo entregado": "All handed in",
+  "aprendido": "learned",
+  "en curso": "in progress",
+  "sin empezar": "not started",
+  "{0}/{1} unidades": "{0}/{1} units",
+  "Ahora": "Now",
+  "Aprender {0}": "Learn {0}",
+  "Todo aprendido": "All learned",
 };
