@@ -403,3 +403,21 @@ body:has(#landing, #login) .app-pad {
 @media (prefers-reduced-motion: reduce) {
   [class*="animate-[pop-in"], [class*="animate-[tip-in"], [class*="animate-[fade-in"] { animation: none; }
 }
+
+/* Review menu: each circle drops into place on its own. */
+@keyframes dot-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-14px) scale(0.6);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  @keyframes dot-drop {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+}

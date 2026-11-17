@@ -11,7 +11,7 @@ import { ArrowUpRight, CheckIcon, TrashIcon } from "@/app/icons";
 import { WEEKDAYS, fromKey, sortItems, type CalItem, type CalKind } from "@/lib/calendar";
 import { Pill } from "./Pill";
 import { GoogleModal, GoogleLogo } from "./GoogleModal";
-import { addEvent, removeEvent, toggleEventDone, type NewEvent } from "./actions";
+import { addEvent, removeEvent, removeGoogleEvent, toggleEventDone, updateGoogleEvent, type NewEvent } from "./actions";
 
 type Folder = { id: string; title: string; color: string; units: { id: string; name: string }[] };
 type Pop = { kind: "add"; day: string; x: number; y: number } | { kind: "item"; item: CalItem; x: number; y: number };
@@ -55,6 +55,7 @@ export function CalendarView({
   const [hiddenKinds, setHiddenKinds] = useState<Set<CalKind>>(new Set());
   const [pop, setPop] = useState<Pop | null>(null);
   const [selected, setSelected] = useState(today);
+  const [filters, setFilters] = useState(false);
   const [modal, setModal] = useState(justConnected === "connected" || justConnected === "failed");
 
   const shown = items.filter((i) => !hiddenKinds.has(i.kind) && !(i.folderId && hiddenFolders.has(i.folderId)) && !(i.calendarId && hiddenFolders.has(`g:${i.calendarId}`)));
@@ -75,7 +76,15 @@ export function CalendarView({
     return { x: Math.max(12, Math.min(r.left, window.innerWidth - 312)), y: Math.min(r.bottom + 6, window.innerHeight - 330) };
   }
 
-  const chip = (on: boolean) => `flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs ${on ? "bg-chip text-ink-muted" : "bg-chip/40 text-ink-faint line-through"}`;
+  const hiddenCount = hiddenKinds.size + [...hiddenFolders].filter((id) => present.some((f) => f.id === id) || calendars.some((c) => `g:${c.id}` === id)).length;
+  // One row in the filter menu: a tick, a colour dot and a name.
+  const row = (key: string, on: boolean, flip: () => void, label: React.ReactNode, color?: string) => (
+    <button key={key} type="button" role="menuitemcheckbox" aria-checked={on} onClick={flip} className="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-sm hover:bg-chip">
+      <span className={`grid size-4 shrink-0 place-items-center rounded-[4px] border ${on ? "border-ink bg-ink text-white" : "border-[#c7c5c0]"}`}>{on && <CheckIcon size={11} className="block" />}</span>
+      {color && <i className="size-2 shrink-0 rounded-full" style={{ background: color }} />}
+      <span className="min-w-0 flex-1 truncate">{label}</span>
+    </button>
+  );
 
   return (
     <div className="mx-auto flex w-full max-w-[1200px] flex-1 flex-col gap-5 px-4 py-8 sm:px-10 lg:py-10">
@@ -100,33 +109,33 @@ export function CalendarView({
               </Link>
             ))}
           </span>
+          <span className="relative">
+            <button type="button" onClick={() => setFilters((v) => !v)} aria-expanded={filters} className={`flex items-center gap-1.5 rounded-lg border border-border-subtle px-2.5 py-1.5 text-sm hover:bg-chip ${hiddenCount ? "text-ink" : "text-ink-muted"}`}>
+              <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+                <path d="M2 4h12M4.5 8h7M7 12h2" />
+              </svg>
+              <span className="hidden sm:inline">{t("Filtrar")}</span>
+              {hiddenCount > 0 && <span className="rounded-full bg-ink px-1.5 text-[11px] text-white">{hiddenCount}</span>}
+            </button>
+            {filters && (
+              <>
+                <button type="button" aria-label={t("Cerrar")} className="fixed inset-0 z-40 cursor-default" onClick={() => setFilters(false)} />
+                <div role="menu" className="absolute top-full right-0 z-50 mt-1.5 flex max-h-[70vh] w-64 flex-col overflow-y-auto rounded-xl bg-white p-1.5 shadow-[0_0_0_1px_rgba(15,15,15,.05),0_14px_36px_rgba(15,15,15,.18)]">
+                  {KIND_FILTERS.map((k) => row(k.kind, !hiddenKinds.has(k.kind), () => toggle(hiddenKinds, k.kind, setHiddenKinds), t(k.label)))}
+                  {present.length > 0 && <span className="mt-1.5 border-t border-border-subtle px-2 pt-2 pb-1 text-[11px] font-semibold tracking-wide text-ink-faint uppercase">{t("Carpetas")}</span>}
+                  {present.map((f) => row(f.id, !hiddenFolders.has(f.id), () => toggle(hiddenFolders, f.id, setHiddenFolders), f.title, f.color))}
+                  {calendars.length > 0 && <span className="mt-1.5 border-t border-border-subtle px-2 pt-2 pb-1 text-[11px] font-semibold tracking-wide text-ink-faint uppercase">Google Calendar</span>}
+                  {calendars.map((c) => row(`g:${c.id}`, !hiddenFolders.has(`g:${c.id}`), () => toggle(hiddenFolders, `g:${c.id}`, setHiddenFolders), c.name, c.color))}
+                </div>
+              </>
+            )}
+          </span>
           <button type="button" onClick={() => setModal(true)} className="flex items-center gap-1.5 rounded-lg border border-border-subtle px-2.5 py-1.5 text-sm text-ink-muted hover:bg-chip">
             <GoogleLogo size={16} />
             <span className="hidden sm:inline">{google === "on" ? t("Sincronizado") : google === "error" ? t("Reconectar") : t("Google Calendar")}</span>
           </button>
         </span>
       </header>
-
-      <div className="flex gap-1.5 overflow-x-auto pb-1">
-        {present.map((f) => (
-          <button key={f.id} type="button" onClick={() => toggle(hiddenFolders, f.id, setHiddenFolders)} className={chip(!hiddenFolders.has(f.id))}>
-            <i className="size-2 rounded-full" style={{ background: f.color }} />
-            {f.title}
-          </button>
-        ))}
-        {calendars.map((c) => (
-          <button key={c.id} type="button" onClick={() => toggle(hiddenFolders, `g:${c.id}`, setHiddenFolders)} className={chip(!hiddenFolders.has(`g:${c.id}`))}>
-            <i className="size-2 rounded-full" style={{ background: c.color }} />
-            {c.name}
-          </button>
-        ))}
-        {present.length + calendars.length > 0 && <span className="mx-1 w-px shrink-0 bg-border-subtle" />}
-        {KIND_FILTERS.map((k) => (
-          <button key={k.kind} type="button" onClick={() => toggle(hiddenKinds, k.kind, setHiddenKinds)} className={chip(!hiddenKinds.has(k.kind))}>
-            {t(k.label)}
-          </button>
-        ))}
-      </div>
 
       <div className="overflow-hidden rounded-lg border border-border-subtle">
         <div className="grid grid-cols-7 border-b border-border-subtle text-xs text-ink-faint">
@@ -200,7 +209,7 @@ export function CalendarView({
         <>
           <button type="button" aria-label={t("Cerrar")} className="fixed inset-0 z-40 cursor-default" onClick={() => setPop(null)} />
           <div className="fixed z-50 w-[300px] rounded-xl bg-white p-4 text-sm shadow-[0_0_0_1px_rgba(15,15,15,.05),0_14px_36px_rgba(15,15,15,.18)]" style={{ left: pop.x, top: pop.y }}>
-            {pop.kind === "add" ? <AddForm day={pop.day} folders={folders} onDone={() => setPop(null)} /> : <Detail item={pop.item} onDone={() => setPop(null)} />}
+            {pop.kind === "add" ? <AddForm day={pop.day} folders={folders} onDone={() => setPop(null)} /> : pop.item.kind === "google" && pop.item.calendarId ? <GoogleDetail item={pop.item} onDone={() => setPop(null)} /> : <Detail item={pop.item} onDone={() => setPop(null)} />}
           </div>
         </>
       )}
@@ -347,3 +356,57 @@ function Detail({ item, onDone }: { item: CalItem; onDone: () => void }) {
   );
 }
 
+
+// A Google event: change its name, day or time, or delete it — saved in Google.
+function GoogleDetail({ item, onDone }: { item: CalItem; onDone: () => void }) {
+  const t = useT();
+  const router = useRouter();
+  const [form, setForm] = useState({ title: item.title, day: item.day, time: item.time ?? "" });
+  const [error, setError] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+  const field = "w-full rounded-md border border-border-subtle bg-white px-2 py-1.5 text-sm";
+  const run = (fn: () => Promise<{ error: string | null }>) =>
+    start(async () => {
+      const r = await fn();
+      if (r.error) return setError(r.error);
+      onDone();
+      router.refresh();
+    });
+  const changed = form.title.trim() !== item.title || form.day !== item.day || (form.time || null) !== item.time;
+  return (
+    <form
+      className="flex flex-col gap-2.5"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (changed) run(() => updateGoogleEvent(item.calendarId!, item.id, { title: form.title, day: form.day, time: form.time || null }));
+        else onDone();
+      }}
+    >
+      <span className="flex items-center gap-1.5 text-xs text-ink-faint">
+        <i className="size-2 rounded-full" style={{ background: item.color }} />
+        {item.calendarName}
+      </span>
+      <input autoFocus value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} aria-label={t("Qué")} className={`${field} font-semibold`} />
+      <span className="flex gap-2">
+        <input type="date" value={form.day} onChange={(e) => e.target.value && setForm({ ...form, day: e.target.value })} aria-label={t("Día")} className={`${field} min-w-0 flex-1`} />
+        <TimePicker value={form.time} onChange={(v) => setForm({ ...form, time: v })} ariaLabel={t("Hora (opcional)")} className={`${field} w-24 shrink-0`} />
+      </span>
+      {error && <span className="text-xs text-red-500">{error}</span>}
+      <span className="flex items-center gap-2">
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() => void ask.confirm(t("¿Borrar \"{0}\" de Google Calendar?", { 0: item.title }), { danger: true }).then((ok) => ok && run(() => removeGoogleEvent(item.calendarId!, item.id)))}
+          title={t("Borrar")}
+          aria-label={t("Borrar")}
+          className="rounded-md p-2 text-ink-faint hover:bg-chip hover:text-red-600"
+        >
+          <TrashIcon size={15} />
+        </button>
+        <button type="submit" disabled={pending || !form.title.trim()} className="ml-auto rounded-md bg-ink px-3 py-1.5 text-sm text-white disabled:opacity-40">
+          {changed ? t("Guardar") : t("Cerrar")}
+        </button>
+      </span>
+    </form>
+  );
+}
