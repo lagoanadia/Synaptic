@@ -86,10 +86,10 @@ export function NotebookDeadlines({ sectionId, groupOf }: { sectionId: string; g
       </h2>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         {rows.map((r) => (
-          <div key={r.id} className={`flex flex-col overflow-hidden rounded-xl border-2 bg-white px-4 pb-2 ${r.todo.length ? "" : "opacity-70"}`} style={{ borderColor: r.color }}>
+          <div key={r.id} className={`flex flex-col overflow-hidden rounded-xl border-2 bg-white px-4 pb-2 `} style={{ borderColor: r.color }}>
             <a href={`/pursuits/${r.id}`} className="-mx-4 mb-1 flex items-center gap-2.5 px-4 py-2.5" style={{ background: `${r.color}29` }} title={t("{0} de {1} entregadas", { 0: r.done, 1: r.total })}>
               {ring(r.color, r.total ? r.done / r.total : 0)}
-              <span className="truncate text-sm font-extrabold" style={{ color: r.color }}>
+              <span className="truncate text-sm font-extrabold text-ink">
                 {r.folder}
               </span>
               <span className="ml-auto shrink-0 text-xs text-ink-faint">
