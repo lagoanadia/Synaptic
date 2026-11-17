@@ -428,3 +428,11 @@ body:has(#landing, #login) .app-pad {
   45% { transform: scale(0.94); }
   100% { transform: scale(1); }
 }
+
+/* No visible scrollbars anywhere; everything still scrolls. */
+* {
+  scrollbar-width: none;
+}
+*::-webkit-scrollbar {
+  display: none;
+}

@@ -2,6 +2,7 @@
 
 import { useLocale, useT } from "@/app/LangProvider";
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { listNotebookDeadlines, type NotebookDeadline } from "../../actions";
 
 const DAY = 86400000;
@@ -14,9 +15,11 @@ const startOfDay = (t: number) => {
 // A notebook's Classroom assignments, one row per subject: a ring with how
 // much is handed in and chips for what's left. Hidden when none of its
 // subjects is linked to Classroom.
-export function NotebookDeadlines({ sectionId }: { sectionId: string }) {
+export function NotebookDeadlines({ sectionId, groupOf }: { sectionId: string; groupOf: Record<string, string | null> }) {
   const t = useT();
   const locale = useLocale();
+  // Only the open section tab's subjects (?s=Teoría), like the folders.
+  const tab = useSearchParams().get("s");
   const [data, setData] = useState<{ list: NotebookDeadline[]; now: number } | null>(null);
 
   useEffect(() => {
@@ -33,7 +36,8 @@ export function NotebookDeadlines({ sectionId }: { sectionId: string }) {
   const { list, now } = data;
   const today = startOfDay(now);
   // "This term": what was due in the last four months or is still to come.
-  const term = list.filter((d) => d.dueAt >= today - 120 * DAY);
+  const term = list.filter((d) => d.dueAt >= today - 120 * DAY && (!tab || groupOf[d.folderId] === tab));
+  if (term.length === 0) return null;
   // One row per subject: how much of it is handed in, then what's still
   // to do (late first, then soonest). Subjects with something late go
   // first, then by their next deadline; all-done ones last.

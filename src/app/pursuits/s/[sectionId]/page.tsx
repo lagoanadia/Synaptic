@@ -123,7 +123,7 @@ export default async function NotebookPage({ params }: { params: Promise<{ secti
         </>
       )}
 
-      {study && section && <NotebookDeadlines sectionId={section.id} />}
+      {study && section && <NotebookDeadlines sectionId={section.id} groupOf={Object.fromEntries(folders.map((f) => [f.id, f.group ?? null]))} />}
 
       {study && map.length > 0 && <NotebookMap paths={map} groupOf={Object.fromEntries(folders.map((f) => [f.id, f.group ?? null]))} title={t("Mapa")} />}
 
