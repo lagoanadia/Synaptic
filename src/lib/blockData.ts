@@ -15,7 +15,7 @@ export type FolderItem = { id: string; title: string; cover: FolderCover; sheets
 export async function folderItems(userId: string, sectionId: string, study: boolean): Promise<FolderItem[]> {
   const now = new Date();
   const pursuits = await prisma.pursuit.findMany({
-    where: { ownerId: userId, sectionId },
+    where: { ownerId: userId, sectionId, loose: false },
     orderBy: { lastTouchedAt: "desc" },
     select: {
       id: true,
@@ -39,7 +39,7 @@ const conceptSelect = { id: true, title: true, status: true, statusAt: true, dep
 // One cluster per subject in a notebook.
 export async function notebookMap(userId: string, sectionId: string): Promise<MapCluster[]> {
   const pursuits = await prisma.pursuit.findMany({
-    where: { ownerId: userId, sectionId },
+    where: { ownerId: userId, sectionId, loose: false },
     orderBy: { lastTouchedAt: "desc" },
     select: { id: true, title: true, cover: true, conceptMaps: { orderBy: { createdAt: "asc" }, select: mapSelect } },
   });
@@ -137,7 +137,7 @@ const unitLabel = (name: string) => {
 
 export async function notebookPaths(userId: string, sectionId: string): Promise<SubjectPath[]> {
   const pursuits = await prisma.pursuit.findMany({
-    where: { ownerId: userId, sectionId },
+    where: { ownerId: userId, sectionId, loose: false },
     orderBy: { lastTouchedAt: "desc" },
     select: { id: true, title: true, cover: true, conceptMaps: { orderBy: { createdAt: "asc" }, select: mapSelect } },
   });
@@ -163,4 +163,15 @@ export async function notebookPaths(userId: string, sectionId: string): Promise<
       return { id: p.id, title: p.title, color: folderColor(p.id, p.cover), units: list };
     })
     .filter((s) => s.units.length > 0);
+}
+
+// A notebook's loose pages (made without a folder), newest first.
+export async function loosePages(userId: string, sectionId: string): Promise<RecentPage[]> {
+  const dumps = await prisma.brainDump.findMany({
+    where: { pursuit: { ownerId: userId, sectionId, loose: true } },
+    orderBy: { updatedAt: "desc" },
+    take: 50,
+    select: { id: true, content: true, updatedAt: true, pursuitId: true, notes: { select: { content: true }, take: 1 } },
+  });
+  return dumps.map((d) => ({ id: d.id, title: autoTitle(d.notes[0]?.content ?? d.content, 8) || "Sin título", href: `/pursuits/${d.pursuitId}/dump/${d.id}`, where: "", at: d.updatedAt }));
 }

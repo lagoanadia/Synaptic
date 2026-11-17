@@ -2,7 +2,7 @@
 
 import { useLocale, useT } from "@/app/LangProvider";
 import { useSyncExternalStore } from "react";
-import { useSearchParams } from "next/navigation";
+import { useOpenTab } from "./tabs";
 import type { NotebookDeadline } from "@/lib/notebookDeadlines";
 
 const subscribe = () => () => {};
@@ -18,11 +18,11 @@ const startOfDay = (t: number) => {
 // much is handed in and chips for what's left. Hidden when none of its
 // subjects is linked to Classroom.
 // side: shown in a narrow panel, one card per row.
-export function NotebookDeadlines({ list, groupOf, side = false }: { list: NotebookDeadline[]; groupOf: Record<string, string | null>; side?: boolean }) {
+export function NotebookDeadlines({ list, groupOf, groups, side = false }: { list: NotebookDeadline[]; groupOf: Record<string, string | null>; groups: string[]; side?: boolean }) {
   const t = useT();
   const locale = useLocale();
   // Only the open section tab's subjects (?s=Teoría), like the folders.
-  const tab = useSearchParams().get("s");
+  const tab = useOpenTab(groups);
   // Dates depend on the viewer's own clock and time zone, so this draws in
   // the browser (right away: the list came with the page).
   const now = useSyncExternalStore(subscribe, () => Math.floor(Date.now() / 60000) * 60000, () => 0);

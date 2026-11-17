@@ -44,7 +44,7 @@ function toItem(p: Row): ProjectItem & { doneToday: Set<string> } {
 
 // The projects (folders) of one notebook.
 export async function notebookProjects(userId: string, sectionId: string) {
-  const rows = await prisma.pursuit.findMany({ where: { AND: [accessiblePursuits(userId), { sectionId }] }, orderBy: { createdAt: "asc" }, select });
+  const rows = await prisma.pursuit.findMany({ where: { AND: [accessiblePursuits(userId), { sectionId, loose: false }] }, orderBy: { createdAt: "asc" }, select });
   return rows.map(toItem);
 }
 
@@ -57,7 +57,7 @@ export async function oneProject(userId: string, pursuitId: string) {
 // folder that already has tasks).
 export async function allProjects(userId: string) {
   const rows = await prisma.pursuit.findMany({
-    where: { AND: [accessiblePursuits(userId), { OR: [{ section: { study: false } }, { tasks: { some: {} } }] }] },
+    where: { AND: [accessiblePursuits(userId), { loose: false }, { OR: [{ section: { study: false } }, { tasks: { some: {} } }] }] },
     orderBy: { createdAt: "asc" },
     select,
   });

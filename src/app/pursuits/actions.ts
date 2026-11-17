@@ -36,7 +36,7 @@ export async function createPursuit(formData: FormData) {
     const section = await upsertSection(session.user.id, sectionName);
     sectionId = section.id;
     // Made from a group's tab: it goes in that group.
-    if (typeof group === "string" && section.groups.includes(group)) inGroup = group;
+    if (typeof group === "string" && group !== "*" && section.groups.includes(group)) inGroup = group;
   }
 
   // A template you saved: "u:<id>", only your own.
@@ -255,9 +255,9 @@ export async function addNotebookGroup(sectionId: string, name: string): Promise
   const section = await ownSection(sectionId);
   if (!section) return { error: t("Libreta no encontrada") };
   const clean = name.trim().slice(0, 30);
-  if (!clean) return { error: t("Ponle un nombre") };
+  if (!clean || clean === "*") return { error: t("Ponle un nombre") };
   if (section.groups.some((g) => g.toLowerCase() === clean.toLowerCase())) return { error: t("Ya hay una sección con ese nombre") };
-  if (section.groups.length >= 12) return { error: t("Como mucho 12 secciones") };
+  if (section.groups.filter((g) => g !== "*").length >= 12) return { error: t("Como mucho 12 secciones") };
   await prisma.section.update({ where: { id: sectionId }, data: { groups: [...section.groups, clean] } });
   revalidatePath(`/pursuits/s/${sectionId}`);
   return { error: null };
@@ -267,9 +267,9 @@ export async function addNotebookGroup(sectionId: string, name: string): Promise
 export async function renameNotebookGroup(sectionId: string, from: string, name: string | null): Promise<{ error: string | null }> {
   const t = await getT();
   const section = await ownSection(sectionId);
-  if (!section || !section.groups.includes(from)) return { error: t("Libreta no encontrada") };
+  if (!section || from === "*" || !section.groups.includes(from)) return { error: t("Libreta no encontrada") };
   const clean = name?.trim().slice(0, 30) ?? null;
-  if (name !== null && !clean) return { error: t("Ponle un nombre") };
+  if (name !== null && (!clean || clean === "*")) return { error: t("Ponle un nombre") };
   if (clean && clean !== from && section.groups.some((g) => g.toLowerCase() === clean.toLowerCase())) return { error: t("Ya hay una sección con ese nombre") };
   await prisma.$transaction([
     prisma.section.update({ where: { id: sectionId }, data: { groups: clean ? section.groups.map((g) => (g === from ? clean : g)) : section.groups.filter((g) => g !== from) } }),
@@ -283,7 +283,29 @@ export async function setFolderGroup(pursuitId: string, group: string | null) {
   const session = await auth();
   if (!session?.user?.id) return;
   const pursuit = await prisma.pursuit.findFirst({ where: { id: pursuitId, ownerId: session.user.id }, select: { section: { select: { id: true, groups: true } } } });
-  if (!pursuit?.section || (group !== null && !pursuit.section.groups.includes(group))) return;
+  if (!pursuit?.section || group === "*" || (group !== null && !pursuit.section.groups.includes(group))) return;
   await prisma.pursuit.update({ where: { id: pursuitId }, data: { group } });
   revalidatePath(`/pursuits/s/${pursuit.section.id}`);
+}
+
+// The tabs in a new order ("*" = Todas); the first one opens by default.
+export async function reorderNotebookTabs(sectionId: string, order: string[]) {
+  const section = await ownSection(sectionId);
+  if (!section) return;
+  const current = section.groups.includes("*") ? section.groups : ["*", ...section.groups];
+  if (order.length !== current.length || !current.every((g) => order.includes(g))) return;
+  await prisma.section.update({ where: { id: sectionId }, data: { groups: order } });
+  revalidatePath(`/pursuits/s/${sectionId}`);
+}
+
+// "+ Página" right in a notebook, without a folder: the page lives in the
+// notebook's hidden loose-pages folder (made on first use). Returns where
+// to write it.
+export async function newLoosePage(sectionId: string): Promise<string | null> {
+  const section = await ownSection(sectionId);
+  const session = await auth();
+  if (!section || !session?.user?.id) return null;
+  const existing = await prisma.pursuit.findFirst({ where: { sectionId, ownerId: session.user.id, loose: true }, select: { id: true } });
+  const pursuit = existing ?? (await prisma.pursuit.create({ data: { title: "Páginas", ownerId: session.user.id, sectionId, loose: true }, select: { id: true } }));
+  return `/pursuits/${pursuit.id}/dump/new`;
 }

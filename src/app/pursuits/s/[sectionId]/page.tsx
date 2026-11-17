@@ -6,7 +6,8 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { SHARED, UNSORTED, pursuitWhere } from "@/lib/reviewData";
 import { folderColor, folderCover, notebookCover, sheetsFor } from "@/lib/covers";
-import { notebookPaths, recentPages, type FolderItem } from "@/lib/blockData";
+import { loosePages, notebookPaths, recentPages, type FolderItem } from "@/lib/blockData";
+import { NewLoosePage } from "./NewLoosePage";
 import { dotState } from "@/lib/knowledgeMap";
 import { FolderRow, RecentList } from "../../BlockViews";
 import { NotebookHeader } from "./NotebookHeader";
@@ -42,7 +43,7 @@ export default async function NotebookPage({ params }: { params: Promise<{ secti
   const now = new Date();
 
   const pursuits = await prisma.pursuit.findMany({
-    where: pursuitWhere(userId, { kind: "section", sectionId }),
+    where: { AND: [pursuitWhere(userId, { kind: "section", sectionId }), { loose: false }] },
     orderBy: { lastTouchedAt: "desc" },
     select: {
       id: true,
@@ -61,10 +62,11 @@ export default async function NotebookPage({ params }: { params: Promise<{ secti
   });
 
   const mine = await prisma.userTemplate.findMany({ where: { userId }, orderBy: { createdAt: "asc" }, select: { id: true, name: true } });
-  const [map, recent, projects] = await Promise.all([
+  const [map, recent, projects, loose] = await Promise.all([
     study && section ? notebookPaths(userId, section.id) : Promise.resolve([]),
     section && !study ? recentPages(userId, section.id, 8) : Promise.resolve([]),
     !study && section ? notebookProjects(userId, section.id) : Promise.resolve([]),
+    section ? loosePages(userId, section.id) : Promise.resolve([]),
   ]);
   const today = dayOf(now);
   const openTasks = study
@@ -127,13 +129,26 @@ export default async function NotebookPage({ params }: { params: Promise<{ secti
       )}
 
 
+      {/* Pages made right in the notebook, without a folder. */}
+      {section && (
+        <section className="flex flex-col gap-1">
+          <div className="flex items-center border-b border-border-subtle pb-1">
+            <h2 className="text-sm font-semibold">{t("Páginas")}</h2>
+            <span className="ml-auto">
+              <NewLoosePage sectionId={section.id} />
+            </span>
+          </div>
+          {loose.length > 0 ? <RecentList pages={loose} /> : <p className="py-2 text-[13px] text-ink-faint">{t("Escribe una página aquí sin meterla en ninguna carpeta.")}</p>}
+        </section>
+      )}
+
       {/* Study notebooks: the map on the left, assignments in a panel on the right that stays in view. */}
       {study && section && (
         <div className="flex flex-col gap-10 lg:flex-row lg:items-start lg:gap-8">
-          <div className="min-w-0 flex-1">{map.length > 0 && <NotebookMap paths={map} groupOf={groupOf} title={t("Mapa")} />}</div>
+          <div className="min-w-0 flex-1">{map.length > 0 && <NotebookMap paths={map} groupOf={groupOf} groups={section.groups} title={t("Mapa")} />}</div>
           <aside className="lg:sticky lg:top-6 lg:w-[380px] lg:shrink-0 empty:hidden">
             <Suspense fallback={null}>
-              <DeadlinesPanel userId={userId} sectionId={section.id} groupOf={groupOf} />
+              <DeadlinesPanel userId={userId} sectionId={section.id} groupOf={groupOf} groups={section.groups} />
             </Suspense>
           </aside>
         </div>
@@ -169,7 +184,7 @@ export default async function NotebookPage({ params }: { params: Promise<{ secti
 }
 
 // Streams in after the rest of the page: Classroom can take a few seconds.
-async function DeadlinesPanel({ userId, sectionId, groupOf }: { userId: string; sectionId: string; groupOf: Record<string, string | null> }) {
+async function DeadlinesPanel({ userId, sectionId, groupOf, groups }: { userId: string; sectionId: string; groupOf: Record<string, string | null>; groups: string[] }) {
   const list = await notebookDeadlines(userId, sectionId).catch(() => []);
-  return <NotebookDeadlines list={list} groupOf={groupOf} side />;
+  return <NotebookDeadlines list={list} groupOf={groupOf} groups={groups} side />;
 }

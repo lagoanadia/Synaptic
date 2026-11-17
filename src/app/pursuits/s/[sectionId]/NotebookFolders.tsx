@@ -2,21 +2,23 @@
 
 import { useT } from "@/app/LangProvider";
 import { ask } from "@/app/ui/PopupHost";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import type { FolderItem } from "@/lib/blockData";
 import { FolderTiles } from "../../FolderTiles";
-import { addNotebookGroup, renameNotebookGroup, setFolderGroup } from "../../actions";
+import { addNotebookGroup, renameNotebookGroup, reorderNotebookTabs, setFolderGroup } from "../../actions";
+import { ALL, realGroups, tabOrder, useOpenTab } from "./tabs";
 import { NewFolder } from "./NewFolder";
 
 // A study notebook's subjects with tabs to sort them: Todas · Teoría ·
 // Prácticas · +. Drag a folder onto a tab (or right-click it) to move it;
-// right-click a tab to rename or delete it. A new folder goes in the open tab.
+// right-click a tab to rename or delete it; drag tabs to reorder them (the
+// first opens by default). A new folder goes in the open tab.
 export function NotebookFolders({
   sectionId,
   sectionName,
   title,
-  groups,
+  groups: stored,
   items,
   newLabel,
 }: {
@@ -29,15 +31,20 @@ export function NotebookFolders({
 }) {
   const t = useT();
   const router = useRouter();
+  // Dragged into a new order but not yet back from the server.
+  const [localOrder, setLocalOrder] = useState<string[] | null>(null);
+  const order = localOrder ?? tabOrder(stored);
+  const groups = realGroups(order);
   // The open tab lives in the URL (?s=Teoría), so the map below follows it.
-  const params = useSearchParams();
-  const tab = params.get("s");
+  const active = useOpenTab(order);
   const setTab = (g: string | null) => {
     const q = new URLSearchParams(window.location.search);
-    if (g) q.set("s", g);
-    else q.delete("s");
+    const v = g ?? ALL;
+    if (v === order[0]) q.delete("s");
+    else q.set("s", v);
     window.history.replaceState(null, "", `${window.location.pathname}${q.size ? `?${q}` : ""}`);
   };
+  const [dragTab, setDragTab] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [over, setOver] = useState<string | null | undefined>(undefined);
   const [dragging, setDragging] = useState<string | null>(null);
@@ -46,7 +53,6 @@ export function NotebookFolders({
   const [toast, setToast] = useState<{ n: number; text: string } | null>(null);
   const [popped, setPopped] = useState<{ n: number; tab: string | null } | null>(null);
   const [, start] = useTransition();
-  const active = tab !== null && groups.includes(tab) ? tab : null;
   const all = items.map((f) => (f.id in moved ? { ...f, group: moved[f.id] } : f));
   const shown = active === null ? all : all.filter((f) => f.group === active);
 
@@ -109,14 +115,41 @@ export function NotebookFolders({
     return `${base} ${look} ${pop}`;
   };
   const count = (n: number) => <span className="rounded-full bg-current/10 px-1.5 text-[11px] font-normal opacity-70">{n}</span>;
+  // Drop a tab on another: it goes in that one's place.
+  const dropTab = (onto: string) => {
+    if (!dragTab || dragTab === onto) return setDragTab(null);
+    const next = order.filter((x) => x !== dragTab);
+    next.splice(next.indexOf(onto), 0, dragTab);
+    setLocalOrder(next);
+    setDragTab(null);
+    start(async () => {
+      await reorderNotebookTabs(sectionId, next);
+      router.refresh();
+      setLocalOrder(null);
+    });
+  };
   const target = (g: string | null) => ({
+    draggable: true,
+    onDragStart: (e: React.DragEvent) => {
+      e.dataTransfer.setData("synaptic/tab", g ?? ALL);
+      e.dataTransfer.effectAllowed = "move";
+      setDragTab(g ?? ALL);
+    },
+    onDragEnd: () => setDragTab(null),
     onDragOver: (e: React.DragEvent) => {
+      if (e.dataTransfer.types.includes("synaptic/tab")) return e.preventDefault();
       if (!e.dataTransfer.types.includes("synaptic/folder")) return;
       e.preventDefault();
       setOver(g);
     },
     onDragLeave: () => setOver(undefined),
-    onDrop: drop(g),
+    onDrop: (e: React.DragEvent) => {
+      if (e.dataTransfer.types.includes("synaptic/tab")) {
+        e.preventDefault();
+        return dropTab(g ?? ALL);
+      }
+      drop(g)(e);
+    },
   });
 
   return (
@@ -124,27 +157,28 @@ export function NotebookFolders({
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border-subtle pb-2">
         <h2 className="text-sm font-semibold">{title}</h2>
         <div className="flex max-w-full items-center gap-0.5 overflow-x-auto rounded-full bg-chip p-[3px]" role="tablist" aria-label={t("Secciones")}>
-          <button type="button" role="tab" aria-selected={active === null} onClick={() => setTab(null)} key={popped?.tab === null ? popped.n : "all"} className={tabClass(active === null, null)} {...target(null)}>
-            {t("Todas")} {count(all.length)}
-          </button>
-          {groups.map((g) => (
-            <button
-              key={popped?.tab === g ? `${g}-${popped.n}` : g}
-              type="button"
-              role="tab"
-              aria-selected={active === g}
-              title={t("Clic derecho para renombrar")}
-              onClick={() => setTab(g)}
-              onContextMenu={(e) => {
-                e.preventDefault();
-                edit(g);
-              }}
-              className={tabClass(active === g, g)}
-              {...target(g)}
-            >
-              {g} {count(all.filter((f) => f.group === g).length)}
-            </button>
-          ))}
+          {order.map((key) => {
+            const g = key === ALL ? null : key;
+            return (
+              <button
+                key={popped?.tab === g ? `${key}-${popped.n}` : key}
+                type="button"
+                role="tab"
+                aria-selected={active === g}
+                title={g ? t("Arrastra para ordenar · clic derecho para renombrar") : t("Arrastra para ordenar")}
+                onClick={() => setTab(g)}
+                onContextMenu={(e) => {
+                  if (!g) return;
+                  e.preventDefault();
+                  edit(g);
+                }}
+                className={`${tabClass(active === g, g)} ${dragTab === key ? "opacity-40" : ""}`}
+                {...target(g)}
+              >
+                {g ?? t("Todas")} {count(g ? all.filter((f) => f.group === g).length : all.length)}
+              </button>
+            );
+          })}
           {adding ? (
             <form
               onSubmit={(e) => {

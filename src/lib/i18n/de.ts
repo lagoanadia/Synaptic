@@ -1096,4 +1096,9 @@ export const de: Record<string, string> = {
   "Aprender {0}": "{0} lernen",
   "Todo aprendido": "Alles gelernt",
   "Azul corporativo": "Firmenblau",
+  "Ajustar al ancho": "An Breite anpassen",
+  "Escribe una página aquí sin meterla en ninguna carpeta.": "Schreib hier eine Seite, ohne sie in einen Ordner zu legen.",
+  "Arrastra para ordenar · clic derecho para renombrar": "Zum Sortieren ziehen · Rechtsklick zum Umbenennen",
+  "Arrastra para ordenar": "Zum Sortieren ziehen",
+  "Creando…": "Wird erstellt…",
 };

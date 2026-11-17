@@ -1096,4 +1096,9 @@ export const en: Record<string, string> = {
   "Aprender {0}": "Learn {0}",
   "Todo aprendido": "All learned",
   "Azul corporativo": "Corporate blue",
+  "Ajustar al ancho": "Fit width",
+  "Escribe una página aquí sin meterla en ninguna carpeta.": "Write a page here without putting it in a folder.",
+  "Arrastra para ordenar · clic derecho para renombrar": "Drag to reorder · right-click to rename",
+  "Arrastra para ordenar": "Drag to reorder",
+  "Creando…": "Creating…",
 };

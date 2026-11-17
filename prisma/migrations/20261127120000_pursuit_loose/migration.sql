@@ -1,0 +1,1 @@
+ALTER TABLE "Pursuit" ADD COLUMN "loose" BOOLEAN NOT NULL DEFAULT false;

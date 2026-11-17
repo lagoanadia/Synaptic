@@ -95,7 +95,7 @@ export default async function ReviewPage({
   // The side menu: every folder, and each one's units.
   const folders = await prisma.pursuit.findMany({
     // Only subjects from School-type (study) notebooks.
-    where: { AND: [accessiblePursuits(userId), { section: { study: true, OR: [{ kind: "study" }, { kind: null }] } }] },
+    where: { AND: [accessiblePursuits(userId), { loose: false }, { section: { study: true, OR: [{ kind: "study" }, { kind: null }] } }] },
     orderBy: [{ section: { order: "asc" } }, { createdAt: "asc" }],
     select: { id: true, title: true, cover: true, contentSections: { orderBy: { order: "asc" }, select: { id: true, name: true } } },
   });
