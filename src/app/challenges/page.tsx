@@ -22,7 +22,7 @@ export default async function ChallengesPage({ searchParams }: { searchParams: P
     }),
     // Folders in notebooks with study tools (challenges are a study tool).
     prisma.pursuit.findMany({
-      where: { AND: [accessiblePursuits(session.user.id), { OR: [{ section: null }, { section: { study: true } }] }] },
+      where: { AND: [accessiblePursuits(session.user.id), { loose: false }, { OR: [{ section: null }, { section: { study: true } }] }] },
       orderBy: { lastTouchedAt: "desc" },
       select: { id: true, title: true },
     }),

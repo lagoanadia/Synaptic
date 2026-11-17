@@ -27,7 +27,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
   const [{ items, google }, pursuits] = await Promise.all([
     calendarItems(userId, from, to),
     prisma.pursuit.findMany({
-      where: { OR: [{ ownerId: userId }, { members: { some: { userId } } }], status: { not: "DONE" } },
+      where: { OR: [{ ownerId: userId }, { members: { some: { userId } } }], status: { not: "DONE" }, loose: false },
       orderBy: { lastTouchedAt: "desc" },
       select: { id: true, title: true, cover: true, contentSections: { orderBy: { order: "asc" }, select: { id: true, name: true } } },
     }),

@@ -7,7 +7,9 @@ import type { PDFDocumentProxy } from "pdfjs-dist";
 
 type Box = { x0: number; y0: number; x1: number; y1: number };
 
-// One PDF page at a time, scaled to fit the panel. ← / → flip pages
+// One PDF page at a time, fitted to the panel's width (zoom with − / +
+// or Ctrl + wheel; scroll around when zoomed in), drawn sharp at the
+// screen's pixel density. ← / → flip pages
 // while the pointer is over it. With onTranscribe: "Seleccionar", drag a
 // box over part of the slide (or take it whole) and send that image off
 // to be written into the note.
@@ -33,6 +35,8 @@ export function PdfSlides({
   const [cssH, setCssH] = useState(0);
   const [doc, setDoc] = useState<PDFDocumentProxy | null>(null);
   const [page, setPage] = useState(1);
+  // 1 = fit the width; up to 4×.
+  const [zoom, setZoom] = useState(1);
   const [error, setError] = useState(false);
   const canvas = useRef<HTMLCanvasElement>(null);
   const box = useRef<HTMLDivElement>(null);
@@ -76,29 +80,33 @@ export function PdfSlides({
     (async () => {
       const p = await doc.getPage(page);
       const base = p.getViewport({ scale: 1 });
-      const scale = Math.min(size.w / base.width, (size.h - 8) / base.height) * (window.devicePixelRatio || 1);
+      const dpr = Math.max(window.devicePixelRatio || 1, 2);
+      // Fit the width (less a margin), times the zoom; keep the canvas under
+      // ~24M pixels so big zooms don't run out of memory.
+      const css = ((size.w - 24) / base.width) * zoom;
+      const scale = Math.min(css * dpr, Math.sqrt(24e6 / (base.width * base.height)));
       const viewport = p.getViewport({ scale });
       const c = canvas.current!;
       c.width = viewport.width;
       c.height = viewport.height;
-      c.style.width = `${viewport.width / (window.devicePixelRatio || 1)}px`;
-      c.style.height = `${viewport.height / (window.devicePixelRatio || 1)}px`;
-      setCssH(viewport.height / (window.devicePixelRatio || 1));
+      c.style.width = `${base.width * css}px`;
+      c.style.height = `${base.height * css}px`;
+      setCssH(base.height * css);
       const r = p.render({ canvasContext: c.getContext("2d")!, viewport });
       task = r;
       // Invisible text on top, so it can be selected.
       const layer = textLayer.current;
       if (layer) {
         layer.replaceChildren();
-        const css = p.getViewport({ scale: scale / (window.devicePixelRatio || 1) });
-        layer.style.setProperty("--scale-factor", String(css.scale));
+        const view = p.getViewport({ scale: css });
+        layer.style.setProperty("--scale-factor", String(view.scale));
         const pdfjs = await import("pdfjs-dist");
-        new pdfjs.TextLayer({ textContentSource: p.streamTextContent(), container: layer, viewport: css }).render().catch(() => {});
+        new pdfjs.TextLayer({ textContentSource: p.streamTextContent(), container: layer, viewport: view }).render().catch(() => {});
       }
       await r.promise.catch(() => {});
     })();
     return () => task?.cancel();
-  }, [doc, page, size]);
+  }, [doc, page, size, zoom]);
 
   // A text selection inside the page → the button, and the lines it covers.
   useEffect(() => {
@@ -137,6 +145,20 @@ export function PdfSlides({
     window.getSelection()?.removeAllRanges();
     setTimeout(() => setPick(null), 900);
   }
+
+  // Ctrl/⌘ + wheel zooms (also a trackpad pinch, which arrives the same way).
+  useEffect(() => {
+    const el = box.current;
+    if (!el) return;
+    const wheel = (e: WheelEvent) => {
+      if (!e.ctrlKey && !e.metaKey) return;
+      e.preventDefault();
+      setZoom((z) => Math.min(4, Math.max(0.5, z * (e.deltaY < 0 ? 1.1 : 1 / 1.1))));
+    };
+    el.addEventListener("wheel", wheel, { passive: false });
+    return () => el.removeEventListener("wheel", wheel);
+  }, []);
+  const zoomBy = (f: number) => setZoom((z) => Math.min(4, Math.max(0.5, Math.round(z * f * 100) / 100)));
 
   const total = doc?.numPages ?? 0;
   const go = (d: number) => {
@@ -190,9 +212,9 @@ export function PdfSlides({
       }}
       aria-label={t("Diapositivas")}
     >
-      <div ref={box} className="flex min-h-0 flex-1 items-center justify-center overflow-hidden bg-[#2a2a2a]">
+      <div ref={box} className="flex min-h-0 flex-1 overflow-auto bg-[#2a2a2a] p-3">
         {doc ? (
-          <div ref={holder} className="relative">
+          <div ref={holder} className="relative m-auto">
             <canvas ref={canvas} className="block shadow-lg" />
             <div ref={textLayer} className="textLayer" />
             {pick && !selecting && (
@@ -254,6 +276,11 @@ export function PdfSlides({
           <button type="button" onClick={() => go(-1)} disabled={page === 1} className="rounded px-3 py-1 hover:bg-white/10 disabled:opacity-30" aria-label={t("Diapositiva anterior")}><ChevronLeft size={18} /></button>
           <span className="tabular-nums">{page} / {total}</span>
           <button type="button" onClick={() => go(1)} disabled={page === total} className="rounded px-3 py-1 hover:bg-white/10 disabled:opacity-30" aria-label={t("Diapositiva siguiente")}><ChevronRight size={18} /></button>
+          <span className="ml-2 flex items-center gap-0.5 rounded-full bg-white/10 text-xs">
+            <button type="button" onClick={() => zoomBy(1 / 1.25)} className="rounded-full px-2.5 py-1 hover:bg-white/15" aria-label={t("Alejar")}>−</button>
+            <button type="button" onClick={() => setZoom(1)} className="min-w-12 tabular-nums hover:underline" title={t("Ajustar al ancho")}>{Math.round(zoom * 100)}%</button>
+            <button type="button" onClick={() => zoomBy(1.25)} className="rounded-full px-2.5 py-1 hover:bg-white/15" aria-label={t("Acercar")}>+</button>
+          </span>
           {onTranscribe && (
             <span className="ml-3 flex items-center gap-1 text-xs">
               <button

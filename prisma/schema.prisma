@@ -190,6 +190,9 @@ model Pursuit {
   section   Section? @relation(fields: [sectionId], references: [id])
   // Which of its notebook's groups (Section.groups) it sits in; null = none.
   group     String?
+  // The hidden folder that holds a notebook's loose pages (pages made right
+  // in the notebook, without a folder). Never listed as a folder.
+  loose     Boolean @default(false)
 
   // The linked Classroom course; the name is cached for display.
   classroomCourseId   String?

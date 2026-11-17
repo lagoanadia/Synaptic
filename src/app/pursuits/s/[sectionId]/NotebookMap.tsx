@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useOpenTab } from "./tabs";
 import { useT } from "@/app/LangProvider";
 import type { SubjectPath } from "@/lib/blockData";
 
@@ -29,9 +29,9 @@ function Node({ pct, color, current }: { pct: number; color: string; current: bo
 // The notebook's map as a path of units per subject (only the open
 // section tab's subjects): what's learned, where you are, and a button to
 // carry on with the unit you're on.
-export function NotebookMap({ paths, groupOf, title }: { paths: SubjectPath[]; groupOf: Record<string, string | null>; title: string }) {
+export function NotebookMap({ paths, groupOf, groups, title }: { paths: SubjectPath[]; groupOf: Record<string, string | null>; groups: string[]; title: string }) {
   const t = useT();
-  const tab = useSearchParams().get("s");
+  const tab = useOpenTab(groups);
   const shown = tab ? paths.filter((p) => groupOf[p.id] === tab) : paths;
   if (shown.length === 0) return null;
   return (
