@@ -55,24 +55,25 @@ export function NotebookDeadlines({ sectionId, groupOf, side = false }: { sectio
   const MAX = 4;
 
   const when = (d: NotebookDeadline): { text: string; tone: string } => {
-    if (d.turnedIn) return { text: `✓ ${t("Entregada")}`, tone: "bg-[#e4efdf] text-[#4f7a42]" };
+    if (d.turnedIn) return { text: `✓ ${t("Entregada")}`, tone: "bg-chip text-ink-muted" };
     const days = Math.round((startOfDay(d.dueAt) - today) / DAY);
-    const red = "bg-[#fde2df] text-[#c0473d]";
-    const amber = "bg-[#fff1d6] text-[#a26f22]";
+    const red = "bg-chip text-ink font-semibold";
+    const amber = "bg-chip text-ink-muted";
     if (days < -1) return { text: t("Hace {0} días", { 0: -days }), tone: red };
     if (days === -1) return { text: t("Ayer"), tone: red };
     if (days === 0) return { text: `${t("Hoy")} ${new Date(d.dueAt).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" })}`, tone: d.dueAt < now ? red : amber };
     if (days === 1) return { text: t("Mañana"), tone: amber };
-    if (days < 7) return { text: new Date(d.dueAt).toLocaleDateString(locale, { weekday: "long" }), tone: days <= 3 ? amber : "bg-[#eef2f8] text-[#4a6a9a]" };
-    return { text: new Date(d.dueAt).toLocaleDateString(locale, { day: "numeric", month: "short" }), tone: "bg-[#eef2f8] text-[#4a6a9a]" };
+    if (days < 7) return { text: new Date(d.dueAt).toLocaleDateString(locale, { weekday: "long" }), tone: days <= 3 ? amber : "bg-chip text-ink-muted" };
+    return { text: new Date(d.dueAt).toLocaleDateString(locale, { day: "numeric", month: "short" }), tone: "bg-chip text-ink-muted" };
   };
 
-  const ring = (color: string, value: number, size = 34, width = 4) => {
+  // The subject's colour lives only here: a ring of how much is handed in.
+  const ring = (color: string, value: number, size = 26, width = 3.5) => {
     const r = (size - width) / 2;
     const c = 2 * Math.PI * r;
     return (
       <svg width={size} height={size} className="shrink-0" aria-hidden>
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#f3e4cc" strokeWidth={width} />
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#ebebea" strokeWidth={width} />
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={width} strokeLinecap="round" strokeDasharray={`${c * value} ${c}`} transform={`rotate(-90 ${size / 2} ${size / 2})`} />
       </svg>
     );
@@ -87,10 +88,10 @@ export function NotebookDeadlines({ sectionId, groupOf, side = false }: { sectio
       </h2>
       <div className={`grid grid-cols-1 gap-3 ${side ? "" : "md:grid-cols-2"}`}>
         {rows.map((r) => (
-          <div key={r.id} className={`flex flex-col overflow-hidden rounded-xl border-2 bg-white px-4 pb-2 `} style={{ borderColor: r.color }}>
-            <a href={`/pursuits/${r.id}`} className="-mx-4 mb-1 flex items-center gap-2.5 px-4 py-2.5" style={{ background: `${r.color}29` }} title={t("{0} de {1} entregadas", { 0: r.done, 1: r.total })}>
+          <div key={r.id} className="flex flex-col rounded-lg border border-border-subtle bg-white px-4 pt-1 pb-1.5">
+            <a href={`/pursuits/${r.id}`} className="flex items-center gap-2 py-2.5" title={t("{0} de {1} entregadas", { 0: r.done, 1: r.total })}>
               {ring(r.color, r.total ? r.done / r.total : 0)}
-              <span className="truncate text-sm font-extrabold text-ink">
+              <span className="truncate text-sm font-semibold text-ink">
                 {r.folder}
               </span>
               <span className="ml-auto shrink-0 text-xs text-ink-faint">
@@ -98,19 +99,19 @@ export function NotebookDeadlines({ sectionId, groupOf, side = false }: { sectio
               </span>
             </a>
             {r.todo.length === 0 ? (
-              <span className="border-t border-[#f5ecdc] py-2 text-[13px] text-ink-faint">{t("Todo entregado")} ✓</span>
+              <span className="border-t border-border-subtle py-2 text-[13px] text-ink-faint">{t("Todo entregado")} ✓</span>
             ) : (
               <>
                 {r.todo.slice(0, MAX).map((d) => {
                   const w = when(d);
                   return (
-                    <a key={d.id} href={d.url} target="_blank" rel="noreferrer" title={d.title} className="-mx-2 flex items-center gap-3 rounded-md border-t border-[#f5ecdc] px-2 py-2 text-[13px] hover:bg-[#fbf6ee]">
+                    <a key={d.id} href={d.url} target="_blank" rel="noreferrer" title={d.title} className="-mx-2 flex items-center gap-3 rounded-md border-t border-border-subtle px-2 py-2 text-[13px] hover:bg-chip/60">
                       <span className="min-w-0 flex-1 truncate">{d.title}</span>
                       <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold first-letter:uppercase ${w.tone}`}>{w.text}</span>
                     </a>
                   );
                 })}
-                {r.todo.length > MAX && <span className="border-t border-[#f5ecdc] py-1.5 text-xs text-ink-faint">+{r.todo.length - MAX}</span>}
+                {r.todo.length > MAX && <span className="border-t border-border-subtle py-1.5 text-xs text-ink-faint">+{r.todo.length - MAX}</span>}
               </>
             )}
           </div>
