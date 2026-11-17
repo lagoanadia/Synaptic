@@ -157,6 +157,9 @@ export default async function PursuitPage({
   }
   const filesFor = (dumpId: string) => pursuit.attachments.filter((a) => a.dumpId === dumpId).length;
   const shortDate = (d: Date) => d.toLocaleDateString(locale, { day: "numeric", month: "short" });
+  // In each unit, the order you dragged them into (newest first among
+  // pages never moved).
+  const orderOf = new Map<string, number>();
   const pageCards: PageCard[] = [
     ...pursuit.brainDumps.map((d) => {
       const note = noteForDump.get(d.id);
@@ -173,6 +176,7 @@ export default async function PursuitPage({
         flashcards: note?._count.flashcards ?? 0,
         sectionId: note?.sectionId ?? d.sectionId,
         date: shortDate(d.createdAt),
+        ...(orderOf.set(d.id, d.sectionOrder) && {}),
       };
     }),
     ...pursuit.notes
@@ -189,8 +193,9 @@ export default async function PursuitPage({
         flashcards: n._count.flashcards,
         sectionId: n.sectionId,
         date: shortDate(n.createdAt),
+        ...(orderOf.set(n.id, n.sectionOrder) && {}),
       })),
-  ];
+  ].sort((a, b) => (orderOf.get(a.key) ?? 0) - (orderOf.get(b.key) ?? 0));
 
   const notebookStudy = pursuit.section?.study ?? true;
   const study = pursuit.study ?? notebookStudy;
@@ -523,7 +528,7 @@ export default async function PursuitPage({
           <span className="text-sm text-ink-muted">{t("Cuando tengas apuntes, aquí aparecen el mapa, el repaso y el resto de herramientas.")}</span>
         </div>
       )}
-      <FolderBlocks key={blocks.map((b) => `${b.id}${b.view ?? ""}`).join()} pursuitId={pursuit.id} blocks={blocks} study={study} grouped={grouped} content={content} summaries={summaries} extras={extras} editing={editing} />
+      <FolderBlocks key={blocks.map((b) => `${b.id}${b.view ?? ""}`).join()} pursuitId={pursuit.id} blocks={blocks} study={study} grouped={grouped} content={content} summaries={summaries} extras={extras} editing={editing} groupLabel={groupLabel} />
     </div>
   );
 }

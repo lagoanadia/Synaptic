@@ -7,6 +7,7 @@ import { ArrowDown, CheckIcon, KanbanIcon, MenuIcon, XIcon } from "@/app/icons";
 import { BLOCK_ICONS, FOLDER_BLOCK_TYPES, newBlock, optionColumns, type FolderBlock } from "@/lib/blocks";
 import { BlockIconSvg, ColumnsMenu } from "./TripBlocks";
 import { saveFolderBlocks, setGroupLabel } from "./actions";
+import { NewUnitButton } from "./PagesBoard";
 
 const icon = (d: string) => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -34,6 +35,7 @@ export function FolderBlocks({
   summaries = {},
   extras = {},
   editing,
+  groupLabel = "Unidad",
 }: {
   pursuitId: string;
   blocks: FolderBlock[];
@@ -46,6 +48,8 @@ export function FolderBlocks({
   // Something on the right of a block's header ("4 personas").
   extras?: Record<string, React.ReactNode>;
   editing: boolean;
+  // What its groups are called ("Unidad", "Tema"…), for "+".
+  groupLabel?: string;
 }) {
   const t = useT();
   const [blocks, setBlocks] = useState(initial);
@@ -149,6 +153,7 @@ export function FolderBlocks({
                       {t("⊞ Agrupar…")}
                     </button>
                   )}
+                  {grouped && <NewUnitButton pursuitId={pursuitId} label={groupLabel} />}
                   {grouped && (
                     <span className="flex rounded-md bg-chip p-0.5 text-xs" role="group" aria-label={t("Vista")}>
                       {(["list", "board"] as const).map((v) => (
