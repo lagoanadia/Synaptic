@@ -10,7 +10,7 @@ import { FOLDER_TEMPLATES, type FolderTemplate } from "@/lib/blocks";
 // study notebooks you also pick a template (En blanco / Proyecto / Planificador).
 // `fill`: take the full width of its slot instead of a small tile at the bottom.
 // mine: the templates you saved; picked as "u:<id>".
-export function NewFolder({ sectionName, label, fill = false, template: initial, mine = [] }: { sectionName: string; label: string; fill?: boolean; template?: FolderTemplate; mine?: { id: string; name: string }[] }) {
+export function NewFolder({ sectionName, label, fill = false, template: initial, mine = [], group }: { sectionName: string; label: string; fill?: boolean; template?: FolderTemplate; mine?: { id: string; name: string }[]; group?: string | null }) {
   const t = useT();
   const size = fill ? "w-full" : "w-full sm:w-44";
   const [open, setOpen] = useState(false);
@@ -22,6 +22,7 @@ export function NewFolder({ sectionName, label, fill = false, template: initial,
       className={`flex ${initial ? "" : "aspect-[3/2]"} ${size} flex-col justify-center gap-2 rounded-md border-[1.5px] border-dashed border-[#d3d1cb] p-2`}
     >
       <input type="hidden" name="section" value={sectionName} />
+      {group && <input type="hidden" name="group" value={group} />}
       {template && <input type="hidden" name="template" value={template} />}
       <input autoFocus name="title" required disabled={pending} placeholder={label} aria-label={label} className="w-full rounded border border-border-subtle bg-white px-1.5 py-1 text-xs" />
       {initial && (

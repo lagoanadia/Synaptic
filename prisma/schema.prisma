@@ -185,6 +185,8 @@ model Pursuit {
 
   sectionId String?
   section   Section? @relation(fields: [sectionId], references: [id])
+  // Which of its notebook's groups (Section.groups) it sits in; null = none.
+  group     String?
 
   // The linked Classroom course; the name is cached for display.
   classroomCourseId   String?
@@ -332,6 +334,8 @@ model Section {
   study Boolean @default(true)
   // Template it was made with: "study" | "projects" | "general" (null: from study).
   kind  String?
+  // Tabs to sort its folders into ("Teoría", "Prácticas"…), in order.
+  groups String[] @default([])
 
   userId String
   user   User   @relation(fields: [userId], references: [id])

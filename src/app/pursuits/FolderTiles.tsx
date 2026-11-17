@@ -7,7 +7,9 @@ import type { FolderItem } from "@/lib/blockData";
 import { EditMenu, menuAt, type EditTarget } from "./EditMenu";
 
 // The folders in a row; right-click one to rename it or change its cover.
-export function FolderTiles({ items }: { items: FolderItem[] }) {
+// groups: its notebook's tabs — then a folder can be dragged onto one,
+// or moved from the right-click menu.
+export function FolderTiles({ items, groups }: { items: FolderItem[]; groups?: string[] }) {
   const [editing, setEditing] = useState<EditTarget | null>(null);
   return (
     <>
@@ -15,9 +17,14 @@ export function FolderTiles({ items }: { items: FolderItem[] }) {
         <Link
           key={f.id}
           href={f.href}
+          draggable={!!groups}
+          onDragStart={(e) => {
+            e.dataTransfer.setData("synaptic/folder", f.id);
+            e.dataTransfer.effectAllowed = "move";
+          }}
           onContextMenu={(e) => {
             e.preventDefault();
-            setEditing({ kind: "folder", id: f.id, name: f.title, cover: f.cover, ...menuAt(e) });
+            setEditing({ kind: "folder", id: f.id, name: f.title, cover: f.cover, groups, group: f.group ?? null, ...menuAt(e) });
           }}
           className="group flex min-w-0 flex-col gap-2 sm:w-28"
         >

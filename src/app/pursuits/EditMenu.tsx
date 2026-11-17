@@ -5,12 +5,12 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Folder, MiniNotebook } from "../Covers";
 import { FOLDER_GROUPS, NOTEBOOK_COVERS, type FolderCover, type NotebookCover } from "@/lib/covers";
-import { setNotebook } from "./actions";
+import { setFolderGroup, setNotebook } from "./actions";
 import { renamePursuit, setFolderCover } from "./[id]/actions";
 
 export type EditTarget =
   | { kind: "notebook"; id: string; name: string; cover: NotebookCover; x: number; y: number }
-  | { kind: "folder"; id: string; name: string; cover: FolderCover; x: number; y: number };
+  | { kind: "folder"; id: string; name: string; cover: FolderCover; groups?: string[]; group?: string | null; x: number; y: number };
 
 // Where a right-click (or long press) should open the menu.
 export const menuAt = (e: React.MouseEvent) => ({ x: Math.max(8, Math.min(e.clientX, window.innerWidth - 288)), y: Math.max(8, Math.min(e.clientY, window.innerHeight - 300)) });
@@ -22,6 +22,7 @@ export function EditMenu({ target, onClose }: { target: EditTarget; onClose: () 
   const router = useRouter();
   const [name, setName] = useState(target.name);
   const [cover, setCover] = useState<string>(target.cover);
+  const [group, setGroup] = useState<string | null>(target.kind === "folder" ? (target.group ?? null) : null);
   const [error, setError] = useState<string | null>(null);
   const [, start] = useTransition();
   const input = useRef<HTMLInputElement>(null);
@@ -78,6 +79,28 @@ export function EditMenu({ target, onClose }: { target: EditTarget; onClose: () 
           aria-label={t("Nombre")}
           className="rounded-md border border-border-subtle px-2 py-1.5 text-sm font-medium outline-none focus:border-ink-faint"
         />
+        {target.kind === "folder" && !!target.groups?.length && (
+          <div className="flex flex-wrap gap-1" role="radiogroup" aria-label={t("Sección")}>
+            {[null, ...target.groups].map((g) => (
+              <button
+                key={g ?? ""}
+                type="button"
+                role="radio"
+                aria-checked={group === g}
+                onClick={() => {
+                  setGroup(g);
+                  start(async () => {
+                    await setFolderGroup(target.id, g);
+                    router.refresh();
+                  });
+                }}
+                className={`rounded-full px-2.5 py-0.5 text-xs ${group === g ? "bg-ink text-white" : "bg-chip text-ink-muted hover:text-ink"}`}
+              >
+                {g ?? t("Ninguna")}
+              </button>
+            ))}
+          </div>
+        )}
         <div className="flex max-h-[60vh] flex-col gap-2.5 overflow-y-auto">
           {groups.map((g) => (
             <div key={g.name ?? "all"}>

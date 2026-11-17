@@ -12,6 +12,8 @@ import { KnowledgeMap } from "@/app/KnowledgeMap";
 import { FolderRow, RecentList } from "../../BlockViews";
 import { NotebookHeader } from "./NotebookHeader";
 import { NewFolder } from "./NewFolder";
+import { NotebookFolders } from "./NotebookFolders";
+import { NotebookDeadlines } from "./NotebookDeadlines";
 import { notebookProjects } from "@/lib/projectData";
 import { dayOf } from "@/lib/projects";
 import { ProjectGrid } from "@/app/projects/ProjectGrid";
@@ -44,6 +46,7 @@ export default async function NotebookPage({ params }: { params: Promise<{ secti
       id: true,
       title: true,
       cover: true,
+      group: true,
       _count: { select: { flashcards: { where: { dueDate: { lte: now } } } } },
       conceptMaps: { select: { concepts: { select: { status: true, statusAt: true } } } },
       projects: { select: { id: true, cards: { where: { status: { not: "DONE" } }, select: { id: true, title: true, status: true } }, dueDate: true } },
@@ -52,7 +55,7 @@ export default async function NotebookPage({ params }: { params: Promise<{ secti
   const folders: FolderItem[] = pursuits.map((p) => {
     const left = p.conceptMaps.flatMap((m) => m.concepts).filter((c) => dotState(c) !== "known").length;
     const tasks = p.projects.reduce((n, pr) => n + pr.cards.length, 0);
-    return { id: p.id, title: p.title, cover: folderCover(p.id, p.cover), sheets: sheetsFor(study ? p._count.flashcards + left : tasks), href: `/pursuits/${p.id}` };
+    return { id: p.id, title: p.title, cover: folderCover(p.id, p.cover), sheets: sheetsFor(study ? p._count.flashcards + left : tasks), href: `/pursuits/${p.id}`, group: p.group };
   });
 
   const mine = await prisma.userTemplate.findMany({ where: { userId }, orderBy: { createdAt: "asc" }, select: { id: true, name: true } });
@@ -84,7 +87,16 @@ export default async function NotebookPage({ params }: { params: Promise<{ secti
         <NotebookHeader id={sectionId} name={name} cover={notebookCover(sectionId, section?.cover)} study={study} kind={(section?.kind as "study" | "projects" | "general" | null) ?? null} editable={!isVirtual} />
       </div>
 
-      {study || !section || general ? (
+      {section && study ? (
+        <NotebookFolders
+          sectionId={section.id}
+          sectionName={name}
+          title={t("Asignaturas")}
+          groups={section.groups}
+          items={folders}
+          newLabel={t("Nueva asignatura")}
+        />
+      ) : study || !section || general ? (
         <section className="flex flex-col gap-3">
           {sectionHeader(study ? t("Asignaturas") : t("Carpetas"))}
           <FolderRow items={folders} after={!isVirtual && <NewFolder sectionName={name} label={study ? t("Nueva asignatura") : t("Nueva carpeta")} template={study ? undefined : "blank"} mine={study ? [] : mine} />} />
@@ -110,6 +122,8 @@ export default async function NotebookPage({ params }: { params: Promise<{ secti
           </section>
         </>
       )}
+
+      {study && section && <NotebookDeadlines sectionId={section.id} />}
 
       {study && map.length > 0 && (
         <section className="flex flex-col gap-3">

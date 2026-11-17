@@ -22,6 +22,7 @@ export async function createPursuit(formData: FormData) {
   const type = formData.get("type");
   const sectionName = formData.get("section");
   const template = formData.get("template");
+  const group = formData.get("group");
 
   if (typeof title !== "string" || title.trim() === "") {
     throw new Error(t("Falta el título"));
@@ -30,9 +31,12 @@ export async function createPursuit(formData: FormData) {
   // Sections are free-typed and stored per user, same as PursuitTag — no
   // fixed preset list, reuse an existing one by name or create it here.
   let sectionId: string | null = null;
+  let inGroup: string | null = null;
   if (typeof sectionName === "string" && sectionName.trim() !== "") {
     const section = await upsertSection(session.user.id, sectionName);
     sectionId = section.id;
+    // Made from a group's tab: it goes in that group.
+    if (typeof group === "string" && section.groups.includes(group)) inGroup = group;
   }
 
   // A template you saved: "u:<id>", only your own.
@@ -46,6 +50,7 @@ export async function createPursuit(formData: FormData) {
       type: typeof type === "string" && type.trim() !== "" ? type.trim() : null,
       ownerId: session.user.id,
       sectionId,
+      group: inGroup,
       // A folder template (En blanco / Proyecto / Planificador) sets its blocks.
       ...(template === "blank" || template === "project" || template === "plan" ? { blocks: templateBlocks(template) } : {}),
       ...(mine ? { blocks: blocksFromTemplate(mine.blocks) } : {}),
@@ -235,4 +240,77 @@ export async function deleteFolderTemplate(id: string) {
   if (!session?.user?.id) return;
   await prisma.userTemplate.deleteMany({ where: { id, userId: session.user.id } });
   revalidatePath("/pursuits", "layout");
+}
+
+// Groups inside a notebook ("Teoría", "Prácticas"…): tabs its folders are
+// sorted into. A folder is in at most one; deleting a group frees its folders.
+async function ownSection(sectionId: string) {
+  const session = await auth();
+  if (!session?.user?.id) return null;
+  return prisma.section.findFirst({ where: { id: sectionId, userId: session.user.id }, select: { id: true, groups: true } });
+}
+
+export async function addNotebookGroup(sectionId: string, name: string): Promise<{ error: string | null }> {
+  const t = await getT();
+  const section = await ownSection(sectionId);
+  if (!section) return { error: t("Libreta no encontrada") };
+  const clean = name.trim().slice(0, 30);
+  if (!clean) return { error: t("Ponle un nombre") };
+  if (section.groups.some((g) => g.toLowerCase() === clean.toLowerCase())) return { error: t("Ya hay una sección con ese nombre") };
+  if (section.groups.length >= 12) return { error: t("Como mucho 12 secciones") };
+  await prisma.section.update({ where: { id: sectionId }, data: { groups: [...section.groups, clean] } });
+  revalidatePath(`/pursuits/s/${sectionId}`);
+  return { error: null };
+}
+
+// name null = delete the group.
+export async function renameNotebookGroup(sectionId: string, from: string, name: string | null): Promise<{ error: string | null }> {
+  const t = await getT();
+  const section = await ownSection(sectionId);
+  if (!section || !section.groups.includes(from)) return { error: t("Libreta no encontrada") };
+  const clean = name?.trim().slice(0, 30) ?? null;
+  if (name !== null && !clean) return { error: t("Ponle un nombre") };
+  if (clean && clean !== from && section.groups.some((g) => g.toLowerCase() === clean.toLowerCase())) return { error: t("Ya hay una sección con ese nombre") };
+  await prisma.$transaction([
+    prisma.section.update({ where: { id: sectionId }, data: { groups: clean ? section.groups.map((g) => (g === from ? clean : g)) : section.groups.filter((g) => g !== from) } }),
+    prisma.pursuit.updateMany({ where: { sectionId, group: from }, data: { group: clean } }),
+  ]);
+  revalidatePath(`/pursuits/s/${sectionId}`);
+  return { error: null };
+}
+
+export async function setFolderGroup(pursuitId: string, group: string | null) {
+  const session = await auth();
+  if (!session?.user?.id) return;
+  const pursuit = await prisma.pursuit.findFirst({ where: { id: pursuitId, ownerId: session.user.id }, select: { section: { select: { id: true, groups: true } } } });
+  if (!pursuit?.section || (group !== null && !pursuit.section.groups.includes(group))) return;
+  await prisma.pursuit.update({ where: { id: pursuitId }, data: { group } });
+  revalidatePath(`/pursuits/s/${pursuit.section.id}`);
+}
+
+export type NotebookDeadline = { id: string; title: string; dueAt: number; url: string; turnedIn: boolean; folder: string; color: string };
+
+// Every Classroom assignment of a notebook's linked subjects, for its
+// "Entregas" block. Fetched after the page loads; failures just drop out.
+export async function listNotebookDeadlines(sectionId: string): Promise<NotebookDeadline[]> {
+  const session = await auth();
+  if (!session?.user?.id) return [];
+  const userId = session.user.id;
+  const pursuits = await prisma.pursuit.findMany({
+    where: { sectionId, ownerId: userId, classroomCourseId: { not: null } },
+    select: { id: true, title: true, cover: true, classroomCourseId: true },
+  });
+  if (pursuits.length === 0) return [];
+  const { getValidAccessToken, listCourseDeadlines } = await import("@/lib/googleClassroom");
+  const { folderColor } = await import("@/lib/covers");
+  const token = await getValidAccessToken(userId);
+  if (!token) return [];
+  const lists = await Promise.all(
+    pursuits.map((p) =>
+      listCourseDeadlines(token, p.classroomCourseId!)
+        .then((ds) => ds.map((d) => ({ id: d.id, title: d.title, dueAt: d.dueAt.getTime(), url: d.url, turnedIn: d.turnedIn, folder: p.title, color: folderColor(p.id, p.cover) })))
+        .catch(() => [] as NotebookDeadline[]),
+    ),
+  );
+  return lists.flat().sort((a, b) => a.dueAt - b.dueAt);
 }

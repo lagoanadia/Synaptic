@@ -8,7 +8,7 @@ import type { TermHint } from "@/lib/terms";
 // Data behind the page blocks (home, notebooks, folders). Every query is
 // scoped to the signed-in user's own notebook/pursuits by the caller.
 
-export type FolderItem = { id: string; title: string; cover: FolderCover; sheets: number; href: string };
+export type FolderItem = { id: string; title: string; cover: FolderCover; sheets: number; href: string; group?: string | null };
 
 // The subjects in a notebook as folders. "Sheets" = what's left: due
 // flashcards + concepts still to learn (study notebooks), or open tasks.
