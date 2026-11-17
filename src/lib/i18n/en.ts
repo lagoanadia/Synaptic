@@ -1,5 +1,6 @@
 // Spanish source text → translation. Missing keys fall back to Spanish.
 export const en: Record<string, string> = {
+  "Volver a las carpetas": "Back to folders",
   "Esta carpeta no tiene unidades": "This folder has no units",
   "Toda la asignatura": "The whole subject",
   "Qué repasar": "What to review",
