@@ -1577,3 +1577,18 @@ ${(dump.content ?? "").slice(0, 20000)}`,
   revalidatePath(`/pursuits/${pursuitId}`);
   return { error: null, content, updatedAt: saved.updatedAt.toISOString(), added: additions.length };
 }
+
+// A unit's pages in a new order (also when one was dragged in from another
+// unit): each gets that unit and its position.
+export async function reorderPages(pursuitId: string, sectionId: string | null, pages: { dumpId: string | null; noteId: string | null }[]) {
+  await requireAccess(pursuitId);
+  const section = sectionId ? await prisma.pursuitContentSection.findFirst({ where: { id: sectionId, pursuitId }, select: { id: true } }) : null;
+  const target = section?.id ?? null;
+  await prisma.$transaction(
+    pages.slice(0, 500).flatMap((p, i) => [
+      ...(p.dumpId ? [prisma.brainDump.updateMany({ where: { id: p.dumpId, pursuitId }, data: { sectionId: target, sectionOrder: i } })] : []),
+      ...(p.noteId ? [prisma.note.updateMany({ where: { id: p.noteId, pursuitId }, data: { sectionId: target, sectionOrder: i } })] : []),
+    ]),
+  );
+  revalidatePath(`/pursuits/${pursuitId}`);
+}

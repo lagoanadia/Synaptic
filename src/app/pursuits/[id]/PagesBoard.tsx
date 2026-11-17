@@ -4,8 +4,8 @@ import { Select } from "@/app/ui/Select";
 import { ask } from "@/app/ui/PopupHost";
 import { useT } from "@/app/LangProvider";
 import Link from "next/link";
-import { useRef, useState, useTransition } from "react";
-import { createContentSection, deleteContentSection, listClassroomFiles, movePage, renamePage, renameUnit, setUnitClassroom } from "./actions";
+import { useLayoutEffect, useRef, useState, useTransition } from "react";
+import { createContentSection, deleteContentSection, listClassroomFiles, movePage, renamePage, renameUnit, reorderPages, setUnitClassroom } from "./actions";
 import { useRouter } from "next/navigation";
 import { ImportSlides } from "./ImportSlides";
 import { unitCode } from "@/lib/slides";
@@ -82,14 +82,50 @@ export function PagesBoard({
     { id: null, name: none, classroomUnit: null },
   ];
 
+  // While dragging, the card moves into place live (before or after the one
+  // under the pointer, or to the end of a unit) and the others slide aside;
+  // letting go saves that unit's order.
+  function place(key: string, sectionId: string | null, target: string | null, after: boolean) {
+    setCards((cs) => {
+      const moving = cs.find((c) => c.key === key);
+      if (!moving || target === key) return cs;
+      const rest = cs.filter((c) => c.key !== key);
+      let i = target ? rest.findIndex((c) => c.key === target) + (after ? 1 : 0) : -1;
+      if (i < 0) {
+        // End of the unit: just after its last card (or at the end).
+        const last = rest.map((c) => c.sectionId).lastIndexOf(sectionId);
+        i = last < 0 ? rest.length : last + 1;
+      }
+      const next = [...rest.slice(0, i), { ...moving, sectionId }, ...rest.slice(i)];
+      const same = next.every((c, j) => c.key === cs[j].key && c.sectionId === cs[j].sectionId);
+      return same ? cs : next;
+    });
+  }
   function drop(sectionId: string | null) {
-    const card = cards.find((c) => c.key === dragging);
     setDragging(null);
     setOver(null);
-    if (!card || card.sectionId === sectionId) return;
-    setCards((cs) => [...cs.filter((c) => c.key !== card.key), { ...card, sectionId }]);
-    startTransition(() => movePage(pursuitId, { dumpId: card.dumpId, noteId: card.noteId }, sectionId));
+    const items = cards.filter((c) => c.sectionId === sectionId);
+    startTransition(() => reorderPages(pursuitId, sectionId, items.map((c) => ({ dumpId: c.dumpId, noteId: c.noteId }))));
   }
+
+  // Smooth moves: each card glides from where it was to where it is now.
+  const nodes = useRef(new Map<string, HTMLElement>());
+  const prevBoxes = useRef(new Map<string, DOMRect>());
+  useLayoutEffect(() => {
+    const next = new Map<string, DOMRect>();
+    nodes.current.forEach((el, key) => {
+      const r = el.getBoundingClientRect();
+      next.set(key, r);
+      const p = prevBoxes.current.get(key);
+      if (!p) return;
+      const dx = p.left - r.left;
+      const dy = p.top - r.top;
+      if (Math.abs(dx) + Math.abs(dy) > 1 && Math.abs(dy) < 2000) {
+        el.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: "none" }], { duration: 220, easing: "cubic-bezier(.2,.8,.2,1)" });
+      }
+    });
+    prevBoxes.current = next;
+  }, [cards]);
 
   async function loadClassroomUnits() {
     if (!classroomCourseId || classroomUnits) return;
@@ -158,7 +194,7 @@ export function PagesBoard({
         setCards((cs) => cs.map((c) => (c.key === card.key ? { ...c, sectionId } : c)));
         startTransition(() => movePage(pursuitId, { dumpId: card.dumpId, noteId: card.noteId }, sectionId));
       }} />}
-      {asBoard && <div className="grid auto-cols-[minmax(260px,1fr)] grid-flow-col gap-3 overflow-x-auto pb-2">
+      {asBoard && <div className="flex gap-3 overflow-x-auto pb-2 [&>section]:min-w-[200px] [&>section]:flex-1 [&>section]:basis-0">
         {columns.map((col) => {
           const colKey = col.id ?? "none";
           const items = cards.filter((c) => c.sectionId === col.id);
@@ -171,6 +207,8 @@ export function PagesBoard({
                 if (!dragging) return;
                 e.preventDefault();
                 setOver(colKey);
+                // Over the unit but not a card: to its end, if it came from elsewhere.
+                if (cards.find((c) => c.key === dragging)?.sectionId !== col.id) place(dragging, col.id, null, true);
               }}
               onDragLeave={() => setOver((o) => (o === colKey ? null : o))}
               onDrop={(e) => {
@@ -207,6 +245,10 @@ export function PagesBoard({
               {items.map((c) => (
                 <Link
                   key={c.key}
+                  ref={(el) => {
+                    if (el) nodes.current.set(c.key, el);
+                    else nodes.current.delete(c.key);
+                  }}
                   href={c.href}
                   draggable
                   onDragStart={(e) => {
@@ -214,13 +256,16 @@ export function PagesBoard({
                     setDragging(c.key);
                   }}
                   onDragEnd={() => {
-                    setDragging(null);
-                    setOver(null);
+                    // Let go outside a unit: keep where it was placed.
+                    if (dragging) drop(cards.find((x) => x.key === dragging)?.sectionId ?? null);
                   }}
                   onDragOver={(e) => {
                     if (!dragging) return;
                     e.preventDefault();
+                    e.stopPropagation();
                     setOver(colKey);
+                    const r = e.currentTarget.getBoundingClientRect();
+                    place(dragging, col.id, c.key, e.clientY > r.top + r.height / 2);
                   }}
                   onDrop={(e) => {
                     e.preventDefault();
@@ -232,11 +277,15 @@ export function PagesBoard({
                     renameDone.current = false;
                     setRenaming({ card: c, x: Math.min(e.clientX, window.innerWidth - 300), y: Math.min(e.clientY, window.innerHeight - 80) });
                   }}
-                  className={`flex flex-col gap-2 rounded-md bg-white px-3 py-2.5 shadow-[0_0_0_1px_rgba(15,15,15,.06),0_1px_2px_rgba(15,15,15,.06)] transition-shadow hover:shadow-[0_0_0_1px_rgba(15,15,15,.08),0_4px_10px_rgba(15,15,15,.08)] ${
+                  className={`group/card flex flex-col gap-2 rounded-md bg-white py-2.5 pr-3 pl-1.5 shadow-[0_0_0_1px_rgba(15,15,15,.06),0_1px_2px_rgba(15,15,15,.06)] transition-shadow hover:shadow-[0_0_0_1px_rgba(15,15,15,.08),0_4px_10px_rgba(15,15,15,.08)] ${
                     dragging === c.key ? "opacity-40" : ""
                   }`}
                 >
-                  <span className="flex items-start gap-2">
+                  <span className="flex items-start gap-1">
+                    {/* ⋮⋮ grab here (or anywhere on the card) to move it. */}
+                    <svg width="14" height="18" viewBox="0 0 14 18" aria-hidden className="mt-px shrink-0 cursor-grab text-ink-faint opacity-0 transition-opacity group-hover/card:opacity-100">
+                      {[4, 9, 14].map((y) => [4, 10].map((x) => <circle key={`${x}${y}`} cx={x} cy={y} r="1.4" fill="currentColor" />))}
+                    </svg>
                     <span className="min-w-0 flex-1 text-sm leading-snug font-medium">{c.title}</span>
                     {c.organized && <Sparkles />}
                   </span>
@@ -252,33 +301,6 @@ export function PagesBoard({
             </section>
           );
         })}
-        <div className="flex min-h-56 flex-col items-center justify-center gap-2 rounded-lg border-[1.5px] border-dashed border-[#e3e2de] p-3 text-sm text-ink-faint">
-          {newUnit === null ? (
-            <button type="button" onClick={() => setNewUnit("")} className="rounded-md px-2 py-1 hover:bg-chip hover:text-ink">
-              + {label}
-            </button>
-          ) : (
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                const name = newUnit.trim();
-                setNewUnit(null);
-                if (name) startTransition(() => createContentSection(pursuitId, name));
-              }}
-            >
-              <input
-                autoFocus
-                value={newUnit}
-                onChange={(e) => setNewUnit(e.target.value)}
-                onBlur={() => !newUnit.trim() && setNewUnit(null)}
-                placeholder={t("Nombre ({0})", { 0: label })}
-                aria-label={t("Nombre ({0})", { 0: label })}
-                className="w-40 rounded-md border border-border-subtle bg-white px-2 py-1 text-sm"
-              />
-            </form>
-          )}
-          <ImportSlides pursuitId={pursuitId} sectionId={null} />
-        </div>
       </div>}
     </div>
   );
@@ -442,5 +464,37 @@ function ColumnMenu({
         </>
       )}
     </span>
+  );
+}
+
+// "+" next to List / Board: a new unit (or theme…), named in place.
+export function NewUnitButton({ pursuitId, label }: { pursuitId: string; label: string }) {
+  const t = useT();
+  const [name, setName] = useState<string | null>(null);
+  const [, start] = useTransition();
+  return name === null ? (
+    <button type="button" onClick={() => setName("")} title={`+ ${t(label)}`} aria-label={`+ ${t(label)}`} className="grid size-6 place-items-center rounded-md text-ink-faint hover:bg-chip hover:text-ink">
+      +
+    </button>
+  ) : (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        const n = name.trim();
+        setName(null);
+        if (n) start(() => createContentSection(pursuitId, n));
+      }}
+    >
+      <input
+        autoFocus
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        onBlur={() => !name.trim() && setName(null)}
+        onKeyDown={(e) => e.key === "Escape" && setName(null)}
+        placeholder={t("Nombre ({0})", { 0: t(label) })}
+        aria-label={t("Nombre ({0})", { 0: t(label) })}
+        className="w-40 rounded-md border border-border-subtle bg-white px-2 py-0.5 text-xs"
+      />
+    </form>
   );
 }
