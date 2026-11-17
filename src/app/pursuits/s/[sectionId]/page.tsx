@@ -13,6 +13,8 @@ import { NotebookHeader } from "./NotebookHeader";
 import { NewFolder } from "./NewFolder";
 import { NotebookFolders } from "./NotebookFolders";
 import { NotebookDeadlines } from "./NotebookDeadlines";
+import { notebookDeadlines } from "@/lib/notebookDeadlines";
+import { Suspense } from "react";
 import { NotebookMap } from "./NotebookMap";
 import { notebookProjects } from "@/lib/projectData";
 import { dayOf } from "@/lib/projects";
@@ -130,7 +132,9 @@ export default async function NotebookPage({ params }: { params: Promise<{ secti
         <div className="flex flex-col gap-10 lg:flex-row lg:items-start lg:gap-8">
           <div className="min-w-0 flex-1">{map.length > 0 && <NotebookMap paths={map} groupOf={groupOf} title={t("Mapa")} />}</div>
           <aside className="lg:sticky lg:top-6 lg:w-[380px] lg:shrink-0 empty:hidden">
-            <NotebookDeadlines sectionId={section.id} groupOf={groupOf} side />
+            <Suspense fallback={null}>
+              <DeadlinesPanel userId={userId} sectionId={section.id} groupOf={groupOf} />
+            </Suspense>
           </aside>
         </div>
       )}
@@ -162,4 +166,10 @@ export default async function NotebookPage({ params }: { params: Promise<{ secti
       )}
     </div>
   );
+}
+
+// Streams in after the rest of the page: Classroom can take a few seconds.
+async function DeadlinesPanel({ userId, sectionId, groupOf }: { userId: string; sectionId: string; groupOf: Record<string, string | null> }) {
+  const list = await notebookDeadlines(userId, sectionId).catch(() => []);
+  return <NotebookDeadlines list={list} groupOf={groupOf} side />;
 }

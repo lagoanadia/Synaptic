@@ -17,7 +17,7 @@ function Node({ pct, color, current }: { pct: number; color: string; current: bo
   return (
     <span className="relative block">
       <svg width={s} height={s} aria-hidden>
-        <circle cx={s / 2} cy={s / 2} r={r} fill={full ? color : "#fff"} stroke={full ? color : "#f3e4cc"} strokeWidth={w} />
+        <circle cx={s / 2} cy={s / 2} r={r} fill={full ? color : "#fff"} stroke={full ? color : "#ebebea"} strokeWidth={w} />
         {pct > 0 && !full && <circle cx={s / 2} cy={s / 2} r={r} fill="none" stroke={color} strokeWidth={w} strokeLinecap="round" strokeDasharray={`${c * pct} ${c}`} transform={`rotate(-90 ${s / 2} ${s / 2})`} />}
       </svg>
       {full && <span className="absolute inset-0 grid place-items-center text-[15px] font-bold text-white">✓</span>}
@@ -45,9 +45,9 @@ export function NotebookMap({ paths, groupOf, title }: { paths: SubjectPath[]; g
           const now = cur === -1 ? null : p.units[cur];
           const done = p.units.filter((u) => u.pct >= DONE).length;
           return (
-            <div key={p.id} className="flex flex-col overflow-hidden rounded-xl border-2 bg-white px-5 pb-4" style={{ borderColor: p.color }}>
-              <div className="-mx-5 mb-5 flex items-center px-5 py-3" style={{ background: `${p.color}29` }}>
-                <Link href={`/pursuits/${p.id}`} className="truncate text-sm font-extrabold text-ink hover:underline">
+            <div key={p.id} className="flex flex-col rounded-lg border border-border-subtle bg-white px-5 pt-4 pb-4">
+              <div className="mb-4 flex items-center gap-2">
+                <Link href={`/pursuits/${p.id}`} className="truncate text-sm font-semibold text-ink hover:underline">
                   {p.title}
                 </Link>
                 <span className="ml-auto shrink-0 text-xs text-ink-faint">{t("{0}/{1} unidades", { 0: done, 1: p.units.length })}</span>
@@ -55,8 +55,8 @@ export function NotebookMap({ paths, groupOf, title }: { paths: SubjectPath[]; g
               <div className="flex items-start gap-1 pb-2">
                 {p.units.map((u, i) => (
                   <span key={u.id} className="contents">
-                    {i > 0 && <span className="mt-[23px] h-[3px] min-w-3 flex-1 rounded-full" style={{ background: p.units[i - 1].pct >= DONE ? p.color : "#f3e4cc" }} />}
-                    <Link href={u.href} title={u.name} className="flex w-[76px] shrink-0 flex-col items-center gap-1.5 text-center text-[11px] leading-tight font-bold text-ink">
+                    {i > 0 && <span className="mt-[23px] h-[3px] min-w-3 flex-1 rounded-full" style={{ background: p.units[i - 1].pct >= DONE ? "#c7c5c0" : "#ebebea" }} />}
+                    <Link href={u.href} title={u.name} className="flex w-[76px] shrink-0 flex-col items-center gap-1.5 text-center text-[11px] leading-tight font-medium text-ink">
                       <Node pct={u.pct} color={p.color} current={i === cur} />
                       <span className="line-clamp-2 break-words">{u.label}</span>
                       <span className="text-[10px] font-medium text-ink-faint">{Math.round(u.pct * 100)}%</span>
@@ -64,13 +64,13 @@ export function NotebookMap({ paths, groupOf, title }: { paths: SubjectPath[]; g
                   </span>
                 ))}
               </div>
-              <div className="mt-3 flex items-center justify-between border-t border-[#f5ecdc] pt-3.5 text-[13px]">
+              <div className="mt-3 flex items-center justify-between border-t border-border-subtle pt-3.5 text-[13px]">
                 {now ? (
                   <>
                     <span className="min-w-0 truncate text-ink-faint">
                       {t("Ahora")}: <b className="text-ink">{now.name}</b>
                     </span>
-                    <Link href={now.href} className="ml-3 shrink-0 rounded-full bg-ink px-3.5 py-1.5 text-xs font-bold text-white hover:opacity-90">
+                    <Link href={now.href} className="ml-3 shrink-0 rounded-md border border-border-subtle px-2.5 py-1 text-xs font-medium text-ink hover:bg-chip">
                       {t("Aprender {0}", { 0: now.label })} →
                     </Link>
                   </>
