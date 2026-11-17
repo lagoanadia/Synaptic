@@ -15,7 +15,8 @@ const startOfDay = (t: number) => {
 // A notebook's Classroom assignments, one row per subject: a ring with how
 // much is handed in and chips for what's left. Hidden when none of its
 // subjects is linked to Classroom.
-export function NotebookDeadlines({ sectionId, groupOf }: { sectionId: string; groupOf: Record<string, string | null> }) {
+// side: shown in a narrow panel, one card per row.
+export function NotebookDeadlines({ sectionId, groupOf, side = false }: { sectionId: string; groupOf: Record<string, string | null>; side?: boolean }) {
   const t = useT();
   const locale = useLocale();
   // Only the open section tab's subjects (?s=Teoría), like the folders.
@@ -84,7 +85,7 @@ export function NotebookDeadlines({ sectionId, groupOf }: { sectionId: string; g
         <span aria-hidden className="size-3 rounded-[3px] bg-[conic-gradient(#ea4335_0_25%,#fbbc04_0_50%,#34a853_0_75%,#4285f4_0)]" title="Google Classroom" />
         <span className="ml-auto text-xs font-normal text-ink-faint">{t("{0} de {1} entregadas", { 0: done, 1: term.length })}</span>
       </h2>
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+      <div className={`grid grid-cols-1 gap-3 ${side ? "" : "md:grid-cols-2"}`}>
         {rows.map((r) => (
           <div key={r.id} className={`flex flex-col overflow-hidden rounded-xl border-2 bg-white px-4 pb-2 `} style={{ borderColor: r.color }}>
             <a href={`/pursuits/${r.id}`} className="-mx-4 mb-1 flex items-center gap-2.5 px-4 py-2.5" style={{ background: `${r.color}29` }} title={t("{0} de {1} entregadas", { 0: r.done, 1: r.total })}>

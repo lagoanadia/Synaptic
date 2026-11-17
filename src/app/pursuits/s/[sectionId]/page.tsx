@@ -73,10 +73,11 @@ export default async function NotebookPage({ params }: { params: Promise<{ secti
         ),
       );
 
+  const groupOf = Object.fromEntries(folders.map((f) => [f.id, f.group ?? null]));
   const sectionHeader = (title: string) => <h2 className="border-b border-border-subtle pb-2 text-sm font-semibold">{t(title)}</h2>;
 
   return (
-    <div className="mx-auto flex w-full max-w-[1100px] flex-1 flex-col gap-10 px-6 py-8 sm:px-12 lg:py-12">
+    <div className={`mx-auto flex w-full ${study && section ? "max-w-[1560px]" : "max-w-[1100px]"} flex-1 flex-col gap-10 px-6 py-8 sm:px-12 lg:py-12`}>
       <div className="flex flex-col gap-6">
         <nav className="text-sm text-ink-faint">
           <Link href="/pursuits" className="hover:text-ink hover:underline">
@@ -123,9 +124,16 @@ export default async function NotebookPage({ params }: { params: Promise<{ secti
         </>
       )}
 
-      {study && section && <NotebookDeadlines sectionId={section.id} groupOf={Object.fromEntries(folders.map((f) => [f.id, f.group ?? null]))} />}
 
-      {study && map.length > 0 && <NotebookMap paths={map} groupOf={Object.fromEntries(folders.map((f) => [f.id, f.group ?? null]))} title={t("Mapa")} />}
+      {/* Study notebooks: the map on the left, assignments in a panel on the right that stays in view. */}
+      {study && section && (
+        <div className="flex flex-col gap-10 lg:flex-row lg:items-start lg:gap-8">
+          <div className="min-w-0 flex-1">{map.length > 0 && <NotebookMap paths={map} groupOf={groupOf} title={t("Mapa")} />}</div>
+          <aside className="lg:sticky lg:top-6 lg:w-[380px] lg:shrink-0 empty:hidden">
+            <NotebookDeadlines sectionId={section.id} groupOf={groupOf} side />
+          </aside>
+        </div>
+      )}
 
       {openTasks.length > 0 && (
         <section className="flex flex-col gap-1">
