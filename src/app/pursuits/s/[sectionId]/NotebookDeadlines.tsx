@@ -80,40 +80,33 @@ export function NotebookDeadlines({ sectionId }: { sectionId: string }) {
         <span aria-hidden className="size-3 rounded-[3px] bg-[conic-gradient(#ea4335_0_25%,#fbbc04_0_50%,#34a853_0_75%,#4285f4_0)]" title="Google Classroom" />
         <span className="ml-auto text-xs font-normal text-ink-faint">{t("{0} de {1} entregadas", { 0: done, 1: term.length })}</span>
       </h2>
-      <div className="overflow-hidden rounded-xl bg-white shadow-[0_1px_3px_rgba(0,0,0,.05)]">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         {rows.map((r) => (
-          <div key={r.id} className="flex flex-col gap-2.5 border-b border-[#f5ecdc] px-4 py-3 last:border-b-0 sm:flex-row sm:items-center sm:gap-4 sm:px-5">
-            <a href={`/pursuits/${r.id}`} className="flex w-40 shrink-0 items-center gap-2.5" title={t("{0} de {1} entregadas", { 0: r.done, 1: r.total })}>
+          <div key={r.id} className={`flex flex-col rounded-xl bg-white px-4 pt-3 pb-2 shadow-[0_1px_3px_rgba(0,0,0,.05)] ${r.todo.length ? "" : "opacity-70"}`}>
+            <a href={`/pursuits/${r.id}`} className="flex items-center gap-2.5 pb-2" title={t("{0} de {1} entregadas", { 0: r.done, 1: r.total })}>
               {ring(r.color, r.total ? r.done / r.total : 0)}
               <span className="truncate text-sm font-extrabold" style={{ color: r.color }}>
                 {r.folder}
               </span>
-              <span className="text-xs text-ink-faint">
+              <span className="ml-auto shrink-0 text-xs text-ink-faint">
                 {r.done}/{r.total}
               </span>
             </a>
             {r.todo.length === 0 ? (
-              <span className="text-[13px] text-ink-faint">{t("Todo entregado")} ✓</span>
+              <span className="border-t border-[#f5ecdc] py-2 text-[13px] text-ink-faint">{t("Todo entregado")} ✓</span>
             ) : (
-              <span className="flex min-w-0 flex-wrap gap-2">
+              <>
                 {r.todo.slice(0, MAX).map((d) => {
                   const w = when(d);
                   return (
-                    <a
-                      key={d.id}
-                      href={d.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      title={d.title}
-                      className="flex max-w-full items-center gap-2 rounded-lg border border-[#efe4d2] bg-[#fffdf9] py-1.5 pr-1.5 pl-2.5 text-[13px] transition-colors hover:border-[#d9c9ad] hover:bg-white"
-                    >
-                      <span className="max-w-[260px] truncate">{d.title}</span>
+                    <a key={d.id} href={d.url} target="_blank" rel="noreferrer" title={d.title} className="-mx-2 flex items-center gap-3 rounded-md border-t border-[#f5ecdc] px-2 py-2 text-[13px] hover:bg-[#fbf6ee]">
+                      <span className="min-w-0 flex-1 truncate">{d.title}</span>
                       <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold first-letter:uppercase ${w.tone}`}>{w.text}</span>
                     </a>
                   );
                 })}
-                {r.todo.length > MAX && <span className="self-center text-xs text-ink-faint">+{r.todo.length - MAX}</span>}
-              </span>
+                {r.todo.length > MAX && <span className="border-t border-[#f5ecdc] py-1.5 text-xs text-ink-faint">+{r.todo.length - MAX}</span>}
+              </>
             )}
           </div>
         ))}
