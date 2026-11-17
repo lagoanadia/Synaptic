@@ -53,6 +53,7 @@ model User {
   sessions Session[]
 
   ownedPursuits Pursuit[]
+  savedTests    SavedTest[]
   memberships   PursuitMember[]
   pursuitTags   PursuitTag[]
   sections      Section[]
@@ -824,4 +825,27 @@ model Friendship {
 enum FriendStatus {
   PENDING
   ACCEPTED
+}
+
+// A test kept to take again: a quiz (multiple choice, the questions as they
+// were) or a final test (written answers the AI marks). Scoped to a folder
+// (and unit) or everything.
+model SavedTest {
+  id        String   @id @default(cuid())
+  title     String
+  kind      String   @default("quiz") // "quiz" | "final"
+  pursuitId String?
+  unitId    String?
+  items     Json
+  total     Int
+  attempts  Int      @default(0)
+  lastScore Int?
+  bestScore Int?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
 }

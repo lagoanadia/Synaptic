@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { reviewFlashcard } from "../pursuits/[id]/actions";
 import { reviewConcept } from "../pursuits/[id]/learn/actions";
+import { recordTestScore, saveTest } from "./actions";
+import { ask } from "@/app/ui/PopupHost";
 import { CheckIcon, XIcon } from "@/app/icons";
 import { qualityFor, type LearnItem } from "@/lib/learn";
 
@@ -17,9 +19,25 @@ const useMounted = () => useSyncExternalStore(noop, () => true, () => false);
 const VIB = ["#ff6b57", "#8b5cf6", "#14b8a6", "#f5b82e"];
 const SECONDS = 20;
 
-export function ReviewGames({ backHref, items, menu, practiceHref = null }: { backHref: string; items: LearnItem[]; menu?: React.ReactNode; practiceHref?: string | null }) {
+// testId: taking a saved test again (its score is recorded). saveAs: what a
+// new test would be saved as (name and folder/unit) from the summary.
+export function ReviewGames({
+  backHref,
+  items,
+  menu,
+  practiceHref = null,
+  testId = null,
+  saveAs = null,
+}: {
+  backHref: string;
+  items: LearnItem[];
+  menu?: React.ReactNode;
+  practiceHref?: string | null;
+  testId?: string | null;
+  saveAs?: { title: string; pursuitId: string | null; unitId: string | null } | null;
+}) {
   const mounted = useMounted();
-  const shell = { backHref, menu, practiceHref };
+  const shell = { backHref, menu, practiceHref, testId, saveAs };
   // "Repetir los fallos" starts a new round with just those.
   const [round, setRound] = useState({ n: 0, items });
   if (!mounted) return <Stage {...shell} total={0} done={0} />;
@@ -27,10 +45,16 @@ export function ReviewGames({ backHref, items, menu, practiceHref = null }: { ba
 }
 
 // practiceHref: a quiz on everything in scope even if nothing is due.
-type Shell = { backHref: string; menu?: React.ReactNode; practiceHref?: string | null };
+export type Shell = {
+  backHref: string;
+  menu?: React.ReactNode;
+  practiceHref?: string | null;
+  testId?: string | null;
+  saveAs?: { title: string; pursuitId: string | null; unitId: string | null } | null;
+};
 
 // The dark board the game plays on: ✕, progress, streak.
-function Stage({
+export function Stage({
   backHref,
   menu,
   total,
@@ -261,6 +285,7 @@ function Game({ items, shell, onAgain }: { items: LearnItem[]; shell: Shell; onA
     return (
       <Summary
         shell={shell}
+        items={items}
         total={items.length}
         missed={missed.map((i) => ({ item: i, wrong: firstWrong[i.id] ?? null }))}
         best={best}
@@ -302,6 +327,7 @@ function Game({ items, shell, onAgain }: { items: LearnItem[]; shell: Shell; onA
 
 function Summary({
   shell,
+  items,
   total,
   missed,
   best,
@@ -309,6 +335,7 @@ function Summary({
   onAgain,
 }: {
   shell: Shell;
+  items: LearnItem[];
   total: number;
   missed: { item: LearnItem; wrong: string | null }[];
   best: number;
@@ -318,6 +345,21 @@ function Summary({
   const t = useT();
   const right = total - missed.length;
   const pct = total ? (right / total) * 100 : 0;
+  // A saved test taken again: record the score once. A new one: offer to keep it.
+  const [saved, setSaved] = useState<"no" | "busy" | "yes">(shell.testId ? "yes" : "no");
+  const recorded = useRef(false);
+  useEffect(() => {
+    if (!shell.testId || recorded.current) return;
+    recorded.current = true;
+    void recordTestScore(shell.testId, right);
+  }, [shell.testId, right]);
+  async function save() {
+    const title = await ask.prompt(t("Nombre del test"), shell.saveAs?.title ?? t("Test"));
+    if (title === null) return;
+    setSaved("busy");
+    const id = await saveTest({ title, kind: "quiz", pursuitId: shell.saveAs?.pursuitId ?? null, unitId: shell.saveAs?.unitId ?? null, items, score: right });
+    setSaved(id ? "yes" : "no");
+  }
   return (
     <Stage {...shell} total={total} done={total}>
       <div className="grid size-44 place-items-center rounded-full sm:size-52" style={{ background: `conic-gradient(#22c55e 0 ${pct}%, rgba(255,255,255,.1) ${pct}% 100%)` }} aria-label={t("{0} de {1} a la primera", { 0: right, 1: total })}>
@@ -358,10 +400,25 @@ function Summary({
             ↻
           </button>
         )}
+        {!shell.testId && (
+          <button
+            type="button"
+            onClick={save}
+            disabled={saved !== "no"}
+            title={saved === "yes" ? t("Guardado") : t("Guardar este test")}
+            aria-label={saved === "yes" ? t("Guardado") : t("Guardar este test")}
+            className="flex h-12 items-center gap-2 rounded-xl bg-[#2383e2] px-4 text-sm font-semibold shadow-[inset_0_-4px_0_rgba(0,0,0,.2)] disabled:opacity-80"
+          >
+            {saved === "yes" ? `✓ ${t("Guardado")}` : saved === "busy" ? "…" : t("Guardar test")}
+          </button>
+        )}
         <Link href={shell.backHref} title={t("Terminar")} aria-label={t("Terminar")} className="grid size-12 place-items-center rounded-xl bg-[#22c55e] shadow-[inset_0_-4px_0_rgba(0,0,0,.2)]">
           <CheckIcon size={22} className="block" />
         </Link>
       </div>
+      <Link href="/review/tests" className="text-sm text-white/60 hover:text-white">
+        {t("Mis tests y test final")} →
+      </Link>
     </Stage>
   );
 }
@@ -383,8 +440,8 @@ function Done({ shell }: { shell: Shell }) {
             <a href={shell.practiceHref} className="rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-[#1a1a1d]">
               {t("Practicar igualmente")}
             </a>
-            <Link href="/pursuits" className="rounded-xl bg-white/10 px-5 py-2.5 text-sm font-semibold text-white hover:bg-white/15">
-              {t("Ir a mis libretas")}
+            <Link href="/review/tests" className="rounded-xl bg-white/10 px-5 py-2.5 text-sm font-semibold text-white hover:bg-white/15">
+              {t("Mis tests y test final")}
             </Link>
           </span>
         </>

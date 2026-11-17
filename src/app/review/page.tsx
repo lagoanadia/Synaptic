@@ -10,6 +10,8 @@ import { ReviewGames } from "./ReviewGames";
 import { ReviewMenu } from "./ReviewMenu";
 import { accessiblePursuits } from "@/lib/reviewData";
 import { folderCover, type FolderCover } from "@/lib/covers";
+import { getLang, getT } from "@/lib/i18n/server";
+import { LOCALE } from "@/lib/i18n";
 
 // Never more than this many cards a day, whatever the backlog.
 const DAILY_CAP = 12;
@@ -21,12 +23,19 @@ const DAILY_CAP = 12;
 export default async function ReviewPage({
   searchParams,
 }: {
-  searchParams: Promise<{ section?: string; pursuit?: string; unit?: string; practice?: string }>;
+  searchParams: Promise<{ section?: string; pursuit?: string; unit?: string; practice?: string; test?: string }>;
 }) {
   const session = await auth();
   if (!session?.user?.id) redirect("/");
   const userId = session.user.id;
   const params = await searchParams;
+
+  // A saved test, taken again with the same questions.
+  if (params.test) {
+    const test = await prisma.savedTest.findFirst({ where: { id: params.test, userId, kind: "quiz" }, select: { id: true, items: true } });
+    if (!test) redirect("/review/tests");
+    return <ReviewGames key={test.id} backHref="/review/tests" items={test.items as unknown as LearnItem[]} testId={test.id} />;
+  }
 
   const scope: ReviewScope = params.pursuit
     ? { kind: "pursuit", pursuitId: params.pursuit, unitId: params.unit }
@@ -111,5 +120,11 @@ export default async function ReviewPage({
 
   const q = new URLSearchParams({ ...(params.pursuit ? { pursuit: params.pursuit } : {}), ...(params.unit ? { unit: params.unit } : {}), ...(params.section ? { section: params.section } : {}), practice: "1" });
   const practiceHref = !practice && allCards.length > 0 ? `/review?${q}` : null;
-  return <ReviewGames key={`${params.pursuit ?? ""}-${params.unit ?? ""}-${practice ? "p" : ""}`} backHref={backHref} items={items} menu={menu} practiceHref={practiceHref} />;
+  // What a test from here would be called: "PMDM · UD2 · 17 nov".
+  const folder = scope.kind === "pursuit" ? folders.find((f) => f.id === scope.pursuitId) : null;
+  const unit = folder?.contentSections.find((u) => u.id === (scope.kind === "pursuit" ? scope.unitId : null));
+  const t = await getT();
+  const when = new Date().toLocaleDateString(LOCALE[await getLang()], { day: "numeric", month: "short" });
+  const saveAs = { title: [folder?.title ?? t("Todo"), unit?.name, when].filter(Boolean).join(" · "), pursuitId: folder?.id ?? null, unitId: unit?.id ?? null };
+  return <ReviewGames key={`${params.pursuit ?? ""}-${params.unit ?? ""}-${practice ? "p" : ""}`} backHref={backHref} items={items} menu={menu} practiceHref={practiceHref} saveAs={saveAs} />;
 }
