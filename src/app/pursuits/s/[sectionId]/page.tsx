@@ -8,12 +8,12 @@ import { SHARED, UNSORTED, pursuitWhere } from "@/lib/reviewData";
 import { folderColor, folderCover, notebookCover, sheetsFor } from "@/lib/covers";
 import { notebookMap, recentPages, type FolderItem } from "@/lib/blockData";
 import { dotState } from "@/lib/knowledgeMap";
-import { KnowledgeMap } from "@/app/KnowledgeMap";
 import { FolderRow, RecentList } from "../../BlockViews";
 import { NotebookHeader } from "./NotebookHeader";
 import { NewFolder } from "./NewFolder";
 import { NotebookFolders } from "./NotebookFolders";
 import { NotebookDeadlines } from "./NotebookDeadlines";
+import { NotebookMap } from "./NotebookMap";
 import { notebookProjects } from "@/lib/projectData";
 import { dayOf } from "@/lib/projects";
 import { ProjectGrid } from "@/app/projects/ProjectGrid";
@@ -125,12 +125,7 @@ export default async function NotebookPage({ params }: { params: Promise<{ secti
 
       {study && section && <NotebookDeadlines sectionId={section.id} />}
 
-      {study && map.length > 0 && (
-        <section className="flex flex-col gap-3">
-          {sectionHeader("Mapa")}
-          <KnowledgeMap clusters={map} />
-        </section>
-      )}
+      {study && map.length > 0 && <NotebookMap clusters={map} groupOf={Object.fromEntries(folders.map((f) => [f.id, f.group ?? null]))} title={t("Mapa")} />}
 
       {openTasks.length > 0 && (
         <section className="flex flex-col gap-1">

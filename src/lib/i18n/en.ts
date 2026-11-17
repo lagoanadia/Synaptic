@@ -1083,4 +1083,5 @@ export const en: Record<string, string> = {
   "Borrar": "Delete",
   "Reconecta Google Calendar": "Reconnect Google Calendar",
   "Este calendario no se puede editar desde aquí": "This calendar can't be edited from here",
+  "{0} ya no está en ninguna sección": "{0} is no longer in a section",
 };
