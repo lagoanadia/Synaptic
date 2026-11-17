@@ -61,7 +61,7 @@ export default async function NotebookPage({ params }: { params: Promise<{ secti
   const mine = await prisma.userTemplate.findMany({ where: { userId }, orderBy: { createdAt: "asc" }, select: { id: true, name: true } });
   const [map, recent, projects] = await Promise.all([
     study && section ? notebookMap(userId, section.id) : Promise.resolve([]),
-    section ? recentPages(userId, section.id, 8) : Promise.resolve([]),
+    section && !study ? recentPages(userId, section.id, 8) : Promise.resolve([]),
     !study && section ? notebookProjects(userId, section.id) : Promise.resolve([]),
   ]);
   const today = dayOf(now);
@@ -151,9 +151,9 @@ export default async function NotebookPage({ params }: { params: Promise<{ secti
         </section>
       )}
 
-      {section && (
+      {section && !study && (
         <section className="flex flex-col gap-1">
-          {sectionHeader(study ? t("Esta semana") : t("Páginas recientes"))}
+          {sectionHeader(t("Páginas recientes"))}
           <RecentList pages={recent} />
         </section>
       )}
