@@ -88,6 +88,9 @@ model GoogleClassroomConnection {
   accessToken  String
   refreshToken String
   expiresAt    DateTime
+  // The Google account it was connected with, so links to Classroom open
+  // in that account (?authuser=) rather than whichever one is the default.
+  email        String?
   createdAt    DateTime @default(now())
 
   userId String @unique

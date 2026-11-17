@@ -1077,4 +1077,5 @@ export const de: Record<string, string> = {
   "Clic derecho para renombrar": "Rechtsklick zum Umbenennen",
   "Teoría, Prácticas…": "Theorie, Praxis…",
   "Nueva sección": "Neuer Abschnitt",
+  "Reconecta para abrir las entregas con la cuenta correcta": "Neu verbinden, damit Abgaben im richtigen Konto öffnen",
 };

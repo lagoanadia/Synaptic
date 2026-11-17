@@ -25,6 +25,7 @@ import { aiBudget, requirePursuitAccess } from "@/lib/access";
 import { mergeAdditions } from "@/lib/mergeNote";
 import { FREE_MONTHLY_FLASHCARD_LIMIT, getFlashcardsThisMonth } from "@/lib/flashcardLimit";
 import {
+  classroomEmail,
   getValidAccessToken,
   listCourses,
   listCourseFiles,
@@ -646,7 +647,7 @@ export async function listClassroomFiles(
   if (!accessToken) return { error: t("No estás conectada a Google Classroom") };
 
   try {
-    return { error: null, files: await listCourseFiles(accessToken, courseId) };
+    return { error: null, files: await listCourseFiles(accessToken, courseId, await classroomEmail(session.user.id)) };
   } catch {
     return { error: t("No se han podido cargar los archivos de ese curso.") };
   }
@@ -681,7 +682,7 @@ export async function listPursuitDeadlines(
 
     return {
       error: null,
-      deadlines: await listCourseDeadlines(accessToken, pursuit.classroomCourseId),
+      deadlines: await listCourseDeadlines(accessToken, pursuit.classroomCourseId, await classroomEmail(session.user.id)),
     };
   } catch {
     return { error: t("No se han podido cargar las entregas de ese curso.") };

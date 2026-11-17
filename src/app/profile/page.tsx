@@ -23,7 +23,7 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
   const theme = (await cookies()).get("theme")?.value;
   const session = await auth();
   if (!session?.user?.id) redirect("/");
-  const user = await prisma.user.findUnique({ where: { id: session.user.id }, select: { name: true, email: true, username: true, avatar: true, codes: true, plan: true, accounts: { select: { provider: true } }, calendarConnection: { select: { userId: true } }, classroomConnection: { select: { userId: true } } } });
+  const user = await prisma.user.findUnique({ where: { id: session.user.id }, select: { name: true, email: true, username: true, avatar: true, codes: true, plan: true, accounts: { select: { provider: true } }, calendarConnection: { select: { userId: true } }, classroomConnection: { select: { userId: true, email: true } } } });
   if (!user) redirect("/");
   // No avatar yet: start from a random one, so nobody looks the same.
   const avatar = user.avatar ? parseAvatar(user.avatar) : randomAvatar();
@@ -71,6 +71,7 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
           codes={user.codes}
           calendar={!!user.calendarConnection}
           classroom={!!user.classroomConnection}
+          classroomEmail={user.classroomConnection?.email ?? null}
           providers={[...new Set(user.accounts.map((a) => a.provider))]}
           plan={BILLING ? user.plan : null}
           theme={theme === "dark" || theme === "system" ? theme : "light"}

@@ -8,7 +8,37 @@ const CLASSROOM_SCOPES = [
   "https://www.googleapis.com/auth/classroom.coursework.me.readonly",
   // Posted materials (not assignments) need their own scope.
   "https://www.googleapis.com/auth/classroom.courseworkmaterials.readonly",
+  // Which Google account it is, to open links in that account.
+  "email",
 ];
+
+// The connected account's email (needs the "email" scope; older
+// connections don't have it until reconnected).
+export async function fetchAccountEmail(accessToken: string): Promise<string | null> {
+  const res = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", { headers: { Authorization: `Bearer ${accessToken}` } }).catch(() => null);
+  if (!res?.ok) return null;
+  const data = await res.json().catch(() => null);
+  return typeof data?.email === "string" ? data.email : null;
+}
+
+export async function classroomEmail(userId: string): Promise<string | null> {
+  const c = await prisma.googleClassroomConnection.findUnique({ where: { userId }, select: { email: true } });
+  return c?.email ?? null;
+}
+
+// A Google link opened in a given account: with several signed in, Google
+// otherwise uses the default one and says "Class not found".
+export function withAccount(url: string, email: string | null | undefined): string {
+  if (!email) return url;
+  try {
+    const u = new URL(url);
+    if (!/(^|\.)google\.com$/.test(u.hostname)) return url;
+    u.searchParams.set("authuser", email);
+    return u.toString();
+  } catch {
+    return url;
+  }
+}
 
 function redirectUri(baseUrl: string) {
   return `${baseUrl}/api/classroom/callback`;
@@ -156,6 +186,7 @@ async function listMaterials(
 export async function listCourseFiles(
   accessToken: string,
   courseId: string,
+  email?: string | null,
 ): Promise<ClassroomFile[]> {
   // allSettled, not all — courseWork and courseWorkMaterials are scoped
   // separately, so one missing/expired scope shouldn't blank out results
@@ -190,7 +221,7 @@ export async function listCourseFiles(
       }
     }
   }
-  return files;
+  return files.map((f) => ({ ...f, url: withAccount(f.url, email) }));
 }
 
 export type ClassroomDeadline = {
@@ -242,6 +273,7 @@ async function listOwnSubmissionStates(
 export async function listCourseDeadlines(
   accessToken: string,
   courseId: string,
+  email?: string | null,
 ): Promise<ClassroomDeadline[]> {
   const [res, submissions] = await Promise.all([
     fetch(
@@ -266,7 +298,7 @@ export async function listCourseDeadlines(
       id: item.id,
       title: item.title,
       dueAt: new Date(year, month - 1, day, hours, minutes),
-      url: item.alternateLink,
+      url: withAccount(item.alternateLink, email),
       turnedIn: submission?.state === "TURNED_IN" || submission?.state === "RETURNED",
       late: submission?.late ?? false,
     });

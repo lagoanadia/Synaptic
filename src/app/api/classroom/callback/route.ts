@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { exchangeCodeForTokens } from "@/lib/googleClassroom";
+import { exchangeCodeForTokens, fetchAccountEmail } from "@/lib/googleClassroom";
 
 // Google's redirect after the Classroom consent; `state` is the pursuitId.
 export async function GET(request: Request) {
@@ -45,6 +45,7 @@ export async function GET(request: Request) {
     return NextResponse.redirect(backToFiles);
   }
 
+  const email = await fetchAccountEmail(tokens.access_token);
   await prisma.googleClassroomConnection.upsert({
     where: { userId: session.user.id },
     create: {
@@ -52,8 +53,10 @@ export async function GET(request: Request) {
       accessToken: tokens.access_token,
       refreshToken: tokens.refresh_token,
       expiresAt: new Date(Date.now() + tokens.expires_in * 1000),
+      email,
     },
     update: {
+      email,
       accessToken: tokens.access_token,
       refreshToken: tokens.refresh_token,
       expiresAt: new Date(Date.now() + tokens.expires_in * 1000),

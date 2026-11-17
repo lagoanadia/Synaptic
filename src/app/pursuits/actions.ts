@@ -301,13 +301,13 @@ export async function listNotebookDeadlines(sectionId: string): Promise<Notebook
     select: { id: true, title: true, cover: true, classroomCourseId: true },
   });
   if (pursuits.length === 0) return [];
-  const { getValidAccessToken, listCourseDeadlines } = await import("@/lib/googleClassroom");
+  const { classroomEmail, getValidAccessToken, listCourseDeadlines } = await import("@/lib/googleClassroom");
   const { folderColor } = await import("@/lib/covers");
-  const token = await getValidAccessToken(userId);
+  const [token, email] = await Promise.all([getValidAccessToken(userId), classroomEmail(userId)]);
   if (!token) return [];
   const lists = await Promise.all(
     pursuits.map((p) =>
-      listCourseDeadlines(token, p.classroomCourseId!)
+      listCourseDeadlines(token, p.classroomCourseId!, email)
         .then((ds) => ds.map((d) => ({ id: d.id, title: d.title, dueAt: d.dueAt.getTime(), url: d.url, turnedIn: d.turnedIn, folder: p.title, color: folderColor(p.id, p.cover) })))
         .catch(() => [] as NotebookDeadline[]),
     ),

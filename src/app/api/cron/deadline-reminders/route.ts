@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getValidAccessToken, listCourseDeadlines } from "@/lib/googleClassroom";
+import { classroomEmail, getValidAccessToken, listCourseDeadlines } from "@/lib/googleClassroom";
 import { isPushConfigured, sendPush } from "@/lib/webPush";
 
 // Daily (vercel.json): push reminders for Classroom deadlines in the next 48h.
@@ -42,7 +42,7 @@ export async function GET(request: Request) {
 
     let deadlines;
     try {
-      deadlines = await listCourseDeadlines(accessToken, pursuit.classroomCourseId);
+      deadlines = await listCourseDeadlines(accessToken, pursuit.classroomCourseId, await classroomEmail(pursuit.ownerId));
     } catch {
       continue;
     }
