@@ -84,9 +84,11 @@ export default async function ReviewPage({
     hint: c.hint ?? null,
     tf: c.tfStatement && typeof c.tfTrue === "boolean" ? { statement: c.tfStatement, isTrue: c.tfTrue } : null,
   }));
-  const conceptItems: LearnItem[] = concepts
-    .filter((c) => c.summary && (practice ? c.status !== "MASTERED" : c.status === "REREAD"))
-    .slice(0, practice ? 4 : 2)
+  const conceptItems: LearnItem[] = (practice ? shuffle(concepts) : concepts)
+    // Practice: concepts too, even ones you know (more of them when there
+    // are few cards).
+    .filter((c) => c.summary && (practice ? true : c.status === "REREAD"))
+    .slice(0, practice ? Math.max(4, DAILY_CAP - pool.length) : 2)
     .map((c) => ({
       id: c.id,
       kind: "concept",
@@ -119,7 +121,7 @@ export default async function ReviewPage({
   );
 
   const q = new URLSearchParams({ ...(params.pursuit ? { pursuit: params.pursuit } : {}), ...(params.unit ? { unit: params.unit } : {}), ...(params.section ? { section: params.section } : {}), practice: "1" });
-  const practiceHref = !practice && allCards.length > 0 ? `/review?${q}` : null;
+  const practiceHref = !practice && (allCards.length > 0 || concepts.some((c) => c.summary)) ? `/review?${q}` : null;
   // What a test from here would be called: "PMDM · UD2 · 17 nov".
   const folder = scope.kind === "pursuit" ? folders.find((f) => f.id === scope.pursuitId) : null;
   const unit = folder?.contentSections.find((u) => u.id === (scope.kind === "pursuit" ? scope.unitId : null));

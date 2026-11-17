@@ -128,11 +128,11 @@ export async function pageTerms(pursuitId: string, unitId: string | null): Promi
 export type PathUnit = { id: string; label: string; name: string; pct: number; href: string };
 export type SubjectPath = { id: string; title: string; color: string; units: PathUnit[] };
 
-const unitLabel = (name: string) => {
+// "UD2", "U2", "Unidad 2", "Tema 2" → "UD2"; anything else (Entregas, a
+// map's own title…) is not a unit and goes under "General".
+const unitLabel = (name: string): string | null => {
   const m = /^(?:ud|unidad|tema|t|u)\s*\.?\s*(\d+)/i.exec(name.trim());
-  if (m) return `UD${m[1]}`;
-  // Anything else keeps its name (two lines at most under the circle).
-  return name.trim();
+  return m ? `UD${Number(m[1])}` : null;
 };
 
 export async function notebookPaths(userId: string, sectionId: string): Promise<SubjectPath[]> {
@@ -145,10 +145,13 @@ export async function notebookPaths(userId: string, sectionId: string): Promise<
   return pursuits
     .map((p) => {
       const units = new Map<string, PathUnit & { order: number; known: number; total: number }>();
+      // Only real units on the path (merged by number: "U1" and "UD1" are
+      // one), then a single "General" with everything else.
       for (const m of p.conceptMaps) {
-        const key = m.unit?.id ?? `map-${m.id}`;
-        const name = m.unit?.name ?? m.title;
-        const u = units.get(key) ?? { id: key, label: unitLabel(name), name, pct: 0, href: `/pursuits/${p.id}/learn/${m.id}`, order: m.unit?.order ?? 999, known: 0, total: 0 };
+        const label = unitLabel(m.unit?.name ?? "") ?? unitLabel(m.title);
+        const key = label ?? "general";
+        const name = label ? (m.unit?.name ?? label) : "General";
+        const u = units.get(key) ?? { id: key, label: label ?? "General", name, pct: 0, href: `/pursuits/${p.id}/learn/${m.id}`, order: label ? Number(label.slice(2)) : 1e6, known: 0, total: 0 };
         for (const c of m.concepts) {
           const s = dotState(c, now);
           u.known += s === "known" ? 1 : s === "fading" ? 0.5 : 0;
