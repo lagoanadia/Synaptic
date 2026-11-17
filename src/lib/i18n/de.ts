@@ -1078,4 +1078,9 @@ export const de: Record<string, string> = {
   "Teoría, Prácticas…": "Theorie, Praxis…",
   "Nueva sección": "Neuer Abschnitt",
   "Reconecta para abrir las entregas con la cuenta correcta": "Neu verbinden, damit Abgaben im richtigen Konto öffnen",
+  "Filtrar": "Filtern",
+  "¿Borrar \"{0}\" de Google Calendar?": "„{0}\" aus Google Calendar löschen?",
+  "Borrar": "Löschen",
+  "Reconecta Google Calendar": "Google Calendar neu verbinden",
+  "Este calendario no se puede editar desde aquí": "Dieser Kalender kann hier nicht bearbeitet werden",
 };

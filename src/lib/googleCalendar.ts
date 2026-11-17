@@ -131,3 +131,36 @@ export async function putEvent(token: string, e: OutgoingEvent): Promise<boolean
 export async function deleteEvent(token: string, id: string): Promise<void> {
   await fetch(`${API}/calendars/primary/events/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
 }
+
+// Edit one of your own Google events from here: title, day and start time
+// (null = all day). Keeps its length; a timed event made all-day lasts the day.
+export async function editGoogleEvent(token: string, calendarId: string, eventId: string, e: { title: string; day: string; time: string | null }): Promise<boolean> {
+  const url = `${API}/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}`;
+  const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+  const cur = await fetch(url, { headers });
+  if (!cur.ok) return false;
+  const old = (await cur.json()) as { start?: { date?: string; dateTime?: string }; end?: { date?: string; dateTime?: string } };
+  let minutes = 60;
+  if (old.start?.dateTime && old.end?.dateTime) minutes = Math.max(15, Math.round((Date.parse(old.end.dateTime) - Date.parse(old.start.dateTime)) / 60000));
+  let when;
+  if (e.time) {
+    const [h, m] = e.time.split(":").map(Number);
+    const end = new Date(Date.UTC(2000, 0, 1, h, m + minutes));
+    const endDay = addDays(e.day, Math.floor((h * 60 + m + minutes) / 1440));
+    when = {
+      start: { dateTime: `${e.day}T${e.time}:00`, timeZone: APP_TZ, date: null },
+      end: { dateTime: `${endDay}T${String(end.getUTCHours()).padStart(2, "0")}:${String(end.getUTCMinutes()).padStart(2, "0")}:00`, timeZone: APP_TZ, date: null },
+    };
+  } else {
+    // All-day: keep how many days it spanned.
+    const span = old.start?.date && old.end?.date ? Math.max(1, Math.round((Date.parse(old.end.date) - Date.parse(old.start.date)) / 86400000)) : 1;
+    when = { start: { date: e.day, dateTime: null }, end: { date: addDays(e.day, span), dateTime: null } };
+  }
+  const res = await fetch(url, { method: "PATCH", headers, body: JSON.stringify({ summary: e.title, ...when }) });
+  return res.ok;
+}
+
+export async function deleteGoogleEvent(token: string, calendarId: string, eventId: string): Promise<boolean> {
+  const res = await fetch(`${API}/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }).catch(() => null);
+  return !!res && (res.ok || res.status === 410);
+}

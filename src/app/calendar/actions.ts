@@ -101,3 +101,31 @@ export async function disconnectGoogle(): Promise<void> {
   await prisma.googleCalendarConnection.deleteMany({ where: { userId } });
   done();
 }
+
+// Your Google events, edited here and written straight to Google. Calendars
+// you can only read (holidays, shared ones) refuse it.
+export async function updateGoogleEvent(calendarId: string, itemId: string, data: { title: string; day: string; time: string | null }): Promise<{ error: string | null }> {
+  const t = await getT();
+  const userId = await me();
+  const title = data.title.trim().slice(0, 200);
+  if (!title) return { error: t("Ponle un nombre") };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(data.day) || (data.time && !/^\d{2}:\d{2}$/.test(data.time))) return { error: t("Fecha no válida") };
+  const token = await calendarToken(userId);
+  if (!token) return { error: t("Reconecta Google Calendar") };
+  const { editGoogleEvent } = await import("@/lib/googleCalendar");
+  const ok = await editGoogleEvent(token, calendarId, itemId.replace(/^g-/, ""), { title, day: data.day, time: data.time });
+  if (!ok) return { error: t("Este calendario no se puede editar desde aquí") };
+  done();
+  return { error: null };
+}
+
+export async function removeGoogleEvent(calendarId: string, itemId: string): Promise<{ error: string | null }> {
+  const t = await getT();
+  const userId = await me();
+  const token = await calendarToken(userId);
+  if (!token) return { error: t("Reconecta Google Calendar") };
+  const { deleteGoogleEvent } = await import("@/lib/googleCalendar");
+  if (!(await deleteGoogleEvent(token, calendarId, itemId.replace(/^g-/, "")))) return { error: t("Este calendario no se puede editar desde aquí") };
+  done();
+  return { error: null };
+}
