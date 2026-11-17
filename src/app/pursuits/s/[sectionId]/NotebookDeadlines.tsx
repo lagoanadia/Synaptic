@@ -1,9 +1,11 @@
 "use client";
 
 import { useLocale, useT } from "@/app/LangProvider";
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { useSearchParams } from "next/navigation";
-import { listNotebookDeadlines, type NotebookDeadline } from "../../actions";
+import type { NotebookDeadline } from "@/lib/notebookDeadlines";
+
+const subscribe = () => () => {};
 
 const DAY = 86400000;
 const startOfDay = (t: number) => {
@@ -16,25 +18,15 @@ const startOfDay = (t: number) => {
 // much is handed in and chips for what's left. Hidden when none of its
 // subjects is linked to Classroom.
 // side: shown in a narrow panel, one card per row.
-export function NotebookDeadlines({ sectionId, groupOf, side = false }: { sectionId: string; groupOf: Record<string, string | null>; side?: boolean }) {
+export function NotebookDeadlines({ list, groupOf, side = false }: { list: NotebookDeadline[]; groupOf: Record<string, string | null>; side?: boolean }) {
   const t = useT();
   const locale = useLocale();
   // Only the open section tab's subjects (?s=Teoría), like the folders.
   const tab = useSearchParams().get("s");
-  const [data, setData] = useState<{ list: NotebookDeadline[]; now: number } | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    listNotebookDeadlines(sectionId)
-      .catch(() => [])
-      .then((list) => !cancelled && setData({ list, now: Date.now() }));
-    return () => {
-      cancelled = true;
-    };
-  }, [sectionId]);
-
-  if (!data || data.list.length === 0) return null;
-  const { list, now } = data;
+  // Dates depend on the viewer's own clock and time zone, so this draws in
+  // the browser (right away: the list came with the page).
+  const now = useSyncExternalStore(subscribe, () => Math.floor(Date.now() / 60000) * 60000, () => 0);
+  if (!now || list.length === 0) return null;
   const today = startOfDay(now);
   // "This term": what was due in the last four months or is still to come.
   const term = list.filter((d) => d.dueAt >= today - 120 * DAY && (!tab || groupOf[d.folderId] === tab));

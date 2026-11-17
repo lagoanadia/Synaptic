@@ -287,30 +287,3 @@ export async function setFolderGroup(pursuitId: string, group: string | null) {
   await prisma.pursuit.update({ where: { id: pursuitId }, data: { group } });
   revalidatePath(`/pursuits/s/${pursuit.section.id}`);
 }
-
-export type NotebookDeadline = { id: string; title: string; dueAt: number; url: string; turnedIn: boolean; folderId: string; folder: string; color: string };
-
-// Every Classroom assignment of a notebook's linked subjects, for its
-// "Entregas" block. Fetched after the page loads; failures just drop out.
-export async function listNotebookDeadlines(sectionId: string): Promise<NotebookDeadline[]> {
-  const session = await auth();
-  if (!session?.user?.id) return [];
-  const userId = session.user.id;
-  const pursuits = await prisma.pursuit.findMany({
-    where: { sectionId, ownerId: userId, classroomCourseId: { not: null } },
-    select: { id: true, title: true, cover: true, classroomCourseId: true },
-  });
-  if (pursuits.length === 0) return [];
-  const { classroomEmail, getValidAccessToken, listCourseDeadlines } = await import("@/lib/googleClassroom");
-  const { folderColor } = await import("@/lib/covers");
-  const [token, email] = await Promise.all([getValidAccessToken(userId), classroomEmail(userId)]);
-  if (!token) return [];
-  const lists = await Promise.all(
-    pursuits.map((p) =>
-      listCourseDeadlines(token, p.classroomCourseId!, email)
-        .then((ds) => ds.map((d) => ({ id: d.id, title: d.title, dueAt: d.dueAt.getTime(), url: d.url, turnedIn: d.turnedIn, folderId: p.id, folder: p.title, color: folderColor(p.id, p.cover) })))
-        .catch(() => [] as NotebookDeadline[]),
-    ),
-  );
-  return lists.flat().sort((a, b) => a.dueAt - b.dueAt);
-}
