@@ -173,7 +173,7 @@ export function HomeBlocks({
           }}
           aria-label={editing ? t("Listo") : t("Editar inicio")}
           title={editing ? t("Listo") : t("Editar inicio")}
-          className={`absolute top-10 right-6 grid size-9 place-items-center rounded-lg sm:right-12 lg:top-14 ${editing ? "bg-ink text-white" : "text-ink-faint hover:bg-chip hover:text-ink"}`}
+          className={`absolute top-4 right-6 grid size-9 place-items-center rounded-lg sm:right-12 lg:top-6 ${editing ? "bg-ink text-white" : "text-ink-faint hover:bg-chip hover:text-ink"}`}
         >
           {editing ? (
             <CheckIcon size={16} className="block" />
