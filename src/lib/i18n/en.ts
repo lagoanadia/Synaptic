@@ -1077,4 +1077,5 @@ export const en: Record<string, string> = {
   "Clic derecho para renombrar": "Right-click to rename",
   "Teoría, Prácticas…": "Theory, Labs…",
   "Nueva sección": "New section",
+  "Reconecta para abrir las entregas con la cuenta correcta": "Reconnect so assignments open in the right account",
 };

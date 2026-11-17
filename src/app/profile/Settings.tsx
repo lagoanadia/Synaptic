@@ -8,19 +8,34 @@ import { useT } from "@/app/LangProvider";
 import { LangPicker } from "@/app/LangPicker";
 import { ThemePicker } from "@/app/ThemePicker";
 import { disconnectGoogle } from "@/app/calendar/actions";
-import { disconnectClassroomAccount, linkSignIn, setCodes, unlinkSignIn } from "./actions";
+import {
+  disconnectClassroomAccount,
+  linkSignIn,
+  setCodes,
+  unlinkSignIn,
+} from "./actions";
 import { DeleteAccount } from "./DeleteAccount";
 
 type Props = {
   codes: boolean;
   calendar: boolean;
   classroom: boolean;
+  // The account it was connected with; null on older connections.
+  classroomEmail?: string | null;
   providers: string[];
   theme: "light" | "dark" | "system";
   plan: string | null;
 };
 
-const Row = ({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) => (
+const Row = ({
+  title,
+  hint,
+  children,
+}: {
+  title: string;
+  hint?: string;
+  children: React.ReactNode;
+}) => (
   <div className="flex items-center gap-4 border-b border-border-subtle py-4 last:border-b-0">
     <span className="flex min-w-0 flex-1 flex-col">
       <span className="font-medium">{title}</span>
@@ -31,18 +46,34 @@ const Row = ({ title, hint, children }: { title: string; hint?: string; children
 );
 
 // Ajustes: language, coding tools, linked accounts, plan and deleting the account.
-export function Settings({ codes, calendar, classroom, providers, plan, theme }: Props) {
+export function Settings({
+  codes,
+  calendar,
+  classroom,
+  classroomEmail,
+  providers,
+  plan,
+  theme,
+}: Props) {
   const t = useT();
   const router = useRouter();
   const [pending, start] = useTransition();
-  const run = (fn: () => Promise<unknown>) => start(async () => { await fn(); router.refresh(); });
-  const button = "rounded-md border border-border-subtle px-3 py-1.5 text-sm hover:bg-chip disabled:opacity-50";
+  const run = (fn: () => Promise<unknown>) =>
+    start(async () => {
+      await fn();
+      router.refresh();
+    });
+  const button =
+    "rounded-md border border-border-subtle px-3 py-1.5 text-sm hover:bg-chip disabled:opacity-50";
   return (
     <div className="flex max-w-2xl flex-col">
       <Row title={t("Idioma")} hint={t("La app y lo que escribe la IA")}>
         <LangPicker />
       </Row>
-      <Row title={t("Apariencia")} hint={t("Claro, oscuro o como tu dispositivo")}>
+      <Row
+        title={t("Apariencia")}
+        hint={t("Claro, oscuro o como tu dispositivo")}
+      >
         <ThemePicker initial={theme} />
       </Row>
       <Row title={t("Programo")} hint={t("Muestra Retos de código en el menú")}>
@@ -55,12 +86,30 @@ export function Settings({ codes, calendar, classroom, providers, plan, theme }:
           onClick={() => run(() => setCodes(!codes))}
           className={`relative h-6 w-11 rounded-full transition-colors ${codes ? "bg-ink" : "bg-[#d3d1cb]"}`}
         >
-          <span className={`absolute top-0.5 size-5 rounded-full bg-white shadow transition-[left] ${codes ? "left-[22px]" : "left-0.5"}`} />
+          <span
+            className={`absolute top-0.5 size-5 rounded-full bg-white shadow transition-[left] ${codes ? "left-[22px]" : "left-0.5"}`}
+          />
         </button>
       </Row>
-      <Row title="Google Calendar" hint={calendar ? t("Conectado") : t("Trae tus eventos y envía exámenes y entregas")}>
+      <Row
+        title="Google Calendar"
+        hint={
+          calendar
+            ? t("Conectado")
+            : t("Trae tus eventos y envía exámenes y entregas")
+        }
+      >
         {calendar ? (
-          <button type="button" disabled={pending} onClick={async () => (await ask.confirm(t("¿Desconectar Google Calendar?"), { danger: true })) && run(disconnectGoogle)} className={button}>
+          <button
+            type="button"
+            disabled={pending}
+            onClick={async () =>
+              (await ask.confirm(t("¿Desconectar Google Calendar?"), {
+                danger: true,
+              })) && run(disconnectGoogle)
+            }
+            className={button}
+          >
             {t("Desconectar")}
           </button>
         ) : (
@@ -69,11 +118,36 @@ export function Settings({ codes, calendar, classroom, providers, plan, theme }:
           </a>
         )}
       </Row>
-      <Row title="Google Classroom" hint={classroom ? t("Conectado") : t("Trae tus cursos, unidades y entregas")}>
+      <Row
+        title="Google Classroom"
+        hint={
+          classroom
+            ? (classroomEmail ??
+              t("Reconecta para abrir las entregas con la cuenta correcta"))
+            : t("Trae tus cursos, unidades y entregas")
+        }
+      >
         {classroom ? (
-          <button type="button" disabled={pending} onClick={async () => (await ask.confirm(t("¿Desconectar Google Classroom?"), { danger: true })) && run(disconnectClassroomAccount)} className={button}>
-            {t("Desconectar")}
-          </button>
+          <span className="flex gap-2">
+            <a
+              href="/api/classroom/connect?pursuitId=profile"
+              className={button}
+            >
+              {t("Reconectar")}
+            </a>
+            <button
+              type="button"
+              disabled={pending}
+              onClick={async () =>
+                (await ask.confirm(t("¿Desconectar Google Classroom?"), {
+                  danger: true,
+                })) && run(disconnectClassroomAccount)
+              }
+              className={button}
+            >
+              {t("Desconectar")}
+            </button>
+          </span>
         ) : (
           <a href="/api/classroom/connect?pursuitId=profile" className={button}>
             {t("Conectar")}
@@ -85,15 +159,34 @@ export function Settings({ codes, calendar, classroom, providers, plan, theme }:
         const on = providers.includes(p);
         const name = p === "google" ? "Google" : "GitHub";
         return (
-          <Row key={p} title={t("Iniciar sesión con {0}", { 0: name })} hint={on ? t("Vinculado") : t("No vinculado")}>
+          <Row
+            key={p}
+            title={t("Iniciar sesión con {0}", { 0: name })}
+            hint={on ? t("Vinculado") : t("No vinculado")}
+          >
             {on ? (
               providers.length > 1 && (
-                <button type="button" disabled={pending} onClick={async () => (await ask.confirm(t("¿Quitar {0} como forma de entrar?", { 0: name }), { danger: true })) && run(() => unlinkSignIn(p))} className={button}>
+                <button
+                  type="button"
+                  disabled={pending}
+                  onClick={async () =>
+                    (await ask.confirm(
+                      t("¿Quitar {0} como forma de entrar?", { 0: name }),
+                      { danger: true },
+                    )) && run(() => unlinkSignIn(p))
+                  }
+                  className={button}
+                >
                   {t("Quitar")}
                 </button>
               )
             ) : (
-              <button type="button" disabled={pending} onClick={() => run(() => linkSignIn(p))} className={button}>
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() => run(() => linkSignIn(p))}
+                className={button}
+              >
                 {t("Vincular")}
               </button>
             )}
