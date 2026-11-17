@@ -20,7 +20,7 @@ export async function withDistractors(cards: ReviewCard[], limit = 12): Promise<
 - "q": the question in at most 16 words, same meaning (rephrase it so a short answer works).
 - "a": the correct answer in 4-10 words: a short phrase that fully answers, with the key detail ("El de hilos: comparten la memoria del proceso"). Not a long sentence, not a bare word.
 - "wrong": exactly 3 WRONG answers, each 4-10 words, same shape and length as "a" (±2 words), plausible to someone who half-remembers. Never correct or partially correct; no "all/none of the above".
-- "tf": a true/false version: "s" = one statement of at most 16 words about the same idea, "t" = whether it's true. Make it FALSE about half the time, by changing one key detail (never by adding "no").
+- "tf": a true/false version: "s" = one statement of at most 16 words about the same idea, "t" = whether it's true. Make it FALSE about half the time, by changing one key idea (never by adding "no"). It must test understanding (what something does, why, how things relate), never a specific number, version, name or value: if the card is about such a detail, state the concept behind it instead.
 - "hint": one short sentence that nudges toward the answer WITHOUT giving it away.
 All in the card's language.
 
