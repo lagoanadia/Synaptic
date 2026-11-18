@@ -13,6 +13,7 @@ import { docToText, textToDoc } from "@/lib/richText";
 import type { Editor } from "@tiptap/core";
 import { uploadToBlob } from "@/lib/blobUpload";
 import { SlidePanel } from "./SlidePanel";
+import { VoiceNote } from "./VoiceNote";
 import { ExportPdfDialog } from "./ExportPdfDialog";
 import type { TermHint } from "@/lib/terms";
 import {
@@ -256,6 +257,7 @@ export function PageView({ pursuit, crumbs, dump, note, slides, terms, stale: st
         terms={terms}
         onBoard={() => createBoard(pursuit.id)}
         onMindMap={() => generateMindMap(pursuit.id, `${titles[view]}\n${drafts[view]}`)}
+        toolbarExtras={<VoiceNote pursuitId={pursuit.id} editorRef={editorRef} />}
         placeholder={t("Escribe, o pulsa / para añadir un bloque")}
       />
     </article>
