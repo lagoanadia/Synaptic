@@ -189,6 +189,19 @@ export async function deleteContentSection(pursuitId: string, sectionId: string)
   revalidatePath(`/pursuits/${pursuitId}`);
 }
 
+// "Nueva página": an empty page, opened straight in the page editor (the
+// same one as every saved page). Empty pages left from earlier visits that
+// were never written in are cleared away first.
+export async function createEmptyPage(pursuitId: string, sectionId: string | null): Promise<string> {
+  const { session } = await requireAccess(pursuitId);
+  await prisma.brainDump.deleteMany({
+    where: { pursuitId, authorId: session.user.id, content: "", notes: { none: {} }, attachments: { none: {} }, createdAt: { lt: new Date(Date.now() - 10 * 60_000) } },
+  });
+  const section = sectionId ? await prisma.pursuitContentSection.findFirst({ where: { id: sectionId, pursuitId }, select: { id: true } }) : null;
+  const dump = await prisma.brainDump.create({ data: { pursuitId, authorId: session.user.id, content: "", sectionId: section?.id ?? null }, select: { id: true } });
+  return dump.id;
+}
+
 export async function addBrainDump(
   pursuitId: string,
   _prevState: FormState,
