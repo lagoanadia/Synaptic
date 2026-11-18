@@ -1158,4 +1158,8 @@ export const en: Record<string, string> = {
   "Estos conceptos no tienen unidad. Elige a cuál pertenecen:": "These concepts have no unit. Choose where they belong:",
   "Unidad de {0}": "Unit of {0}",
   "Elegir unidad…": "Choose a unit…",
+  "Google Classroom no está conectado (o la conexión ha caducado).": "Google Classroom isn't connected (or the connection expired).",
+  "No se han podido cargar las entregas de Classroom.": "Couldn't load the Classroom assignments.",
+  "Conectar Classroom": "Connect Classroom",
+  "Unidades": "Units",
 };

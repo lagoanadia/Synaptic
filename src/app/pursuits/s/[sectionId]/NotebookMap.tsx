@@ -26,63 +26,77 @@ function Node({ pct, color, current, size = 48 }: { pct: number; color: string; 
   );
 }
 
-// The notebook's map as a path of units per subject (only the open
-// section tab's subjects): what's learned, where you are, and a button to
-// carry on with the unit you're on.
-export function NotebookMap({ paths, groupOf, groups, title }: { paths: SubjectPath[]; groupOf: Record<string, string | null>; groups: string[]; title: string }) {
+// One subject's path of units: equal columns (up to 6 per row), each
+// unit centred in its own; the line to the previous unit is drawn inside the
+// cell, from ring to ring, so it can never leave the card. A new row starts
+// without a line.
+export function PathCard({ path: p, link = false }: { path: SubjectPath; link?: boolean }) {
   const t = useT();
+  const cur = p.units.findIndex((u) => u.pct < DONE);
+  const now = cur === -1 ? null : p.units[cur];
+  const done = p.units.filter((u) => u.pct >= DONE).length;
+  const cols = Math.min(p.units.length, 6);
+  const size = cols > 4 ? 40 : 48;
+  return (
+    <div className="flex min-w-0 flex-col rounded-lg border border-border-subtle bg-white px-4 pt-4 pb-4">
+      <div className="mb-4 flex items-center gap-2">
+        {link ? (
+          <Link href={`/pursuits/${p.id}`} className="truncate text-sm font-semibold text-ink hover:underline">
+            {p.title}
+          </Link>
+        ) : (
+          <span className="truncate text-sm font-semibold text-ink">{t("Unidades")}</span>
+        )}
+        <span className="ml-auto shrink-0 text-xs text-ink-faint">{t("{0}/{1} unidades", { 0: done, 1: p.units.length })}</span>
+      </div>
+      <div className="grid gap-y-4 pb-1" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
+        {p.units.map((u, i) => (
+          <div key={u.id} className="relative min-w-0">
+            {i % cols !== 0 && (
+              <span
+                aria-hidden
+                className="absolute h-[3px] rounded-full"
+                style={{ top: size / 2 - 1.5, left: `calc(-50% + ${size / 2 + 5}px)`, right: `calc(50% + ${size / 2 + 5}px)`, background: p.units[i - 1].pct >= DONE ? "#c7c5c0" : "#ebebea" }}
+              />
+            )}
+            <Link href={u.href} title={u.name} className="flex flex-col items-center gap-1.5 px-0.5 text-center text-[11px] leading-tight font-medium text-ink">
+              <Node pct={u.pct} color={p.color} current={i === cur} size={size} />
+              <span className="line-clamp-2 max-w-full break-words">{u.label}</span>
+              <span className="text-[10px] font-medium text-ink-faint">{Math.round(u.pct * 100)}%</span>
+            </Link>
+          </div>
+        ))}
+      </div>
+      <div className="mt-3 flex items-center justify-between border-t border-border-subtle pt-3.5 text-[13px]">
+        {now ? (
+          <>
+            <span className="min-w-0 truncate text-ink-faint">
+              {t("Ahora")}: <b className="text-ink">{now.name}</b>
+            </span>
+            <Link href={now.href} className="ml-3 shrink-0 rounded-md border border-border-subtle px-2.5 py-1 text-xs font-medium text-ink hover:bg-chip">
+              {t("Aprender {0}", { 0: now.label })} →
+            </Link>
+          </>
+        ) : (
+          <span className="text-ink-faint">{t("Todo aprendido")} ✓</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// The notebook's map: a path per subject (only the open section tab's).
+export function NotebookMap({ paths, groupOf, groups, title }: { paths: SubjectPath[]; groupOf: Record<string, string | null>; groups: string[]; title: string }) {
   const tab = useOpenTab(groups);
   const shown = tab ? paths.filter((p) => groupOf[p.id] === tab) : paths;
   if (shown.length === 0) return null;
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="flex items-center gap-3 border-b border-border-subtle pb-2 text-sm font-semibold">
-        {title}
-      </h2>
+      <h2 className="flex items-center gap-3 border-b border-border-subtle pb-2 text-sm font-semibold">{title}</h2>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-        {shown.map((p) => {
-          const cur = p.units.findIndex((u) => u.pct < DONE);
-          const now = cur === -1 ? null : p.units[cur];
-          const done = p.units.filter((u) => u.pct >= DONE).length;
-          return (
-            <div key={p.id} className="flex flex-col rounded-lg border border-border-subtle bg-white px-5 pt-4 pb-4">
-              <div className="mb-4 flex items-center gap-2">
-                <Link href={`/pursuits/${p.id}`} className="truncate text-sm font-semibold text-ink hover:underline">
-                  {p.title}
-                </Link>
-                <span className="ml-auto shrink-0 text-xs text-ink-faint">{t("{0}/{1} unidades", { 0: done, 1: p.units.length })}</span>
-              </div>
-              {/* Up to 6 units: a path with lines. More: smaller rings in rows, so
-                  every unit fits without cutting any off. */}
-              <div className={p.units.length > 6 ? "grid grid-cols-[repeat(auto-fill,minmax(64px,1fr))] gap-y-3 pb-2" : "flex items-start gap-1 pb-2"}>
-                {p.units.map((u, i) => (
-                  <span key={u.id} className="contents">
-                    {i > 0 && p.units.length <= 6 && <span className="mt-[23px] h-[3px] min-w-3 flex-1 rounded-full" style={{ background: p.units[i - 1].pct >= DONE ? "#c7c5c0" : "#ebebea" }} />}
-                    <Link href={u.href} title={u.name} className={`flex shrink-0 flex-col items-center gap-1.5 text-center text-[11px] leading-tight font-medium text-ink ${p.units.length > 6 ? "w-full" : "w-[76px]"}`}>
-                      <Node pct={u.pct} color={p.color} current={i === cur} size={p.units.length > 6 ? 38 : 48} />
-                      <span className="line-clamp-2 break-words">{u.label}</span>
-                      <span className="text-[10px] font-medium text-ink-faint">{Math.round(u.pct * 100)}%</span>
-                    </Link>
-                  </span>
-                ))}
-              </div>
-              <div className="mt-3 flex items-center justify-between border-t border-border-subtle pt-3.5 text-[13px]">
-                {now ? (
-                  <>
-                    <span className="min-w-0 truncate text-ink-faint">
-                      {t("Ahora")}: <b className="text-ink">{now.name}</b>
-                    </span>
-                    <Link href={now.href} className="ml-3 shrink-0 rounded-md border border-border-subtle px-2.5 py-1 text-xs font-medium text-ink hover:bg-chip">
-                      {t("Aprender {0}", { 0: now.label })} →
-                    </Link>
-                  </>
-                ) : (
-                  <span className="text-ink-faint">{t("Todo aprendido")} ✓</span>
-                )}
-              </div>
-            </div>
-          );
-        })}
+        {shown.map((p) => (
+          <PathCard key={p.id} path={p} link />
+        ))}
       </div>
     </section>
   );

@@ -1600,12 +1600,3 @@ export async function reorderPages(pursuitId: string, sectionId: string | null, 
   mapLater(session.user.id, pursuitId, [target]);
   revalidatePath(`/pursuits/${pursuitId}`);
 }
-
-// A concept map without a unit, put in one (or a page's map moved along).
-export async function setMapUnit(pursuitId: string, mapId: string, unitId: string) {
-  await requireAccess(pursuitId);
-  const unit = await prisma.pursuitContentSection.findFirst({ where: { id: unitId, pursuitId }, select: { id: true } });
-  if (!unit) return;
-  await prisma.conceptMap.updateMany({ where: { id: mapId, pursuitId }, data: { unitId: unit.id } });
-  revalidatePath(`/pursuits/${pursuitId}`);
-}

@@ -24,7 +24,7 @@ export const TEMPLATES: { id: Template; icon: () => React.ReactElement; label: s
 
 // The notebook templates: icon over name, three in a row; the chosen
 // one's hint goes underneath on one line (not in compact spots).
-export function TemplatePick({ value, onChange, compact = false }: { value: Template; onChange: (t: Template) => void; compact?: boolean }) {
+export function TemplatePick({ value, onChange, compact = false, hint: showHint = true }: { value: Template; onChange: (t: Template) => void; compact?: boolean; hint?: boolean }) {
   const t = useT();
   const hint = TEMPLATES.find((t) => t.id === value)?.hint;
   return (
@@ -46,7 +46,7 @@ export function TemplatePick({ value, onChange, compact = false }: { value: Temp
           </button>
         ))}
       </div>
-      {!compact && hint && <span className="text-xs text-ink-faint">{t(hint)}</span>}
+      {!compact && showHint && hint && <span className="text-xs text-ink-faint">{t(hint)}</span>}
     </div>
   );
 }

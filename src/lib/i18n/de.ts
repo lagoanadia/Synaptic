@@ -1158,4 +1158,8 @@ export const de: Record<string, string> = {
   "Estos conceptos no tienen unidad. Elige a cuál pertenecen:": "Diese Begriffe haben keine Einheit. Wähle, wohin sie gehören:",
   "Unidad de {0}": "Einheit von {0}",
   "Elegir unidad…": "Einheit wählen…",
+  "Google Classroom no está conectado (o la conexión ha caducado).": "Google Classroom ist nicht verbunden (oder die Verbindung ist abgelaufen).",
+  "No se han podido cargar las entregas de Classroom.": "Die Classroom-Abgaben konnten nicht geladen werden.",
+  "Conectar Classroom": "Classroom verbinden",
+  "Unidades": "Einheiten",
 };
