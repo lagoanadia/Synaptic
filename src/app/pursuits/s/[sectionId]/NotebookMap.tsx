@@ -8,8 +8,8 @@ import type { SubjectPath } from "@/lib/blockData";
 const DONE = 0.999;
 
 // One unit on the path: a ring of how much is learned, ✓ when all of it.
-function Node({ pct, color, current }: { pct: number; color: string; current: boolean }) {
-  const s = 48;
+function Node({ pct, color, current, size = 48 }: { pct: number; color: string; current: boolean; size?: number }) {
+  const s = size;
   const w = 5;
   const r = (s - w) / 2 - 1;
   const c = 2 * Math.PI * r;
@@ -52,12 +52,14 @@ export function NotebookMap({ paths, groupOf, groups, title }: { paths: SubjectP
                 </Link>
                 <span className="ml-auto shrink-0 text-xs text-ink-faint">{t("{0}/{1} unidades", { 0: done, 1: p.units.length })}</span>
               </div>
-              <div className="flex items-start gap-1 pb-2">
+              {/* Up to 6 units: a path with lines. More: smaller rings in rows, so
+                  every unit fits without cutting any off. */}
+              <div className={p.units.length > 6 ? "grid grid-cols-[repeat(auto-fill,minmax(64px,1fr))] gap-y-3 pb-2" : "flex items-start gap-1 pb-2"}>
                 {p.units.map((u, i) => (
                   <span key={u.id} className="contents">
-                    {i > 0 && <span className="mt-[23px] h-[3px] min-w-3 flex-1 rounded-full" style={{ background: p.units[i - 1].pct >= DONE ? "#c7c5c0" : "#ebebea" }} />}
-                    <Link href={u.href} title={u.name} className="flex w-[76px] shrink-0 flex-col items-center gap-1.5 text-center text-[11px] leading-tight font-medium text-ink">
-                      <Node pct={u.pct} color={p.color} current={i === cur} />
+                    {i > 0 && p.units.length <= 6 && <span className="mt-[23px] h-[3px] min-w-3 flex-1 rounded-full" style={{ background: p.units[i - 1].pct >= DONE ? "#c7c5c0" : "#ebebea" }} />}
+                    <Link href={u.href} title={u.name} className={`flex shrink-0 flex-col items-center gap-1.5 text-center text-[11px] leading-tight font-medium text-ink ${p.units.length > 6 ? "w-full" : "w-[76px]"}`}>
+                      <Node pct={u.pct} color={p.color} current={i === cur} size={p.units.length > 6 ? 38 : 48} />
                       <span className="line-clamp-2 break-words">{u.label}</span>
                       <span className="text-[10px] font-medium text-ink-faint">{Math.round(u.pct * 100)}%</span>
                     </Link>

@@ -1155,4 +1155,7 @@ export const de: Record<string, string> = {
   "Preguntas de todos tus apuntes": "Fragen aus all deinen Notizen",
   "La IA lee los apuntes que aún no tienen preguntas y las crea, para que los quizzes y el test final los cubran todos.": "Die KI liest die Notizen, die noch keine Fragen haben, und erstellt sie, damit Quizze und Abschlusstest alles abdecken.",
   "¿Qué concepto es?": "Welcher Begriff ist das?",
+  "Estos conceptos no tienen unidad. Elige a cuál pertenecen:": "Diese Begriffe haben keine Einheit. Wähle, wohin sie gehören:",
+  "Unidad de {0}": "Einheit von {0}",
+  "Elegir unidad…": "Einheit wählen…",
 };
