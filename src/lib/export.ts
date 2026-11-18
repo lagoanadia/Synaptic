@@ -8,6 +8,8 @@ function inlineToMarkdown(nodes: InlineNode[]): string {
           return `**${n.value}**`;
         case "italic":
           return `*${n.value}*`;
+        case "code":
+          return `\`${n.value}\``;
         // Markdown reads __text__ as bold, so underline exports as <u>.
         case "underline":
           return `<u>${n.value}</u>`;

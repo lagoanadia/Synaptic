@@ -46,7 +46,9 @@ export type InlineNode =
   | { type: "bold"; value: string }
   | { type: "italic"; value: string }
   | { type: "underline"; value: string }
-  | { type: "link"; text: string; url: string };
+  | { type: "link"; text: string; url: string }
+  // `onCreate`: a short bit of code inside a sentence.
+  | { type: "code"; value: string };
 
 // Only lists nest inside a list item (lettered under numbered, ○ under -).
 export type ListItem = { inline: InlineNode[]; children: ListBlock[] };
@@ -70,7 +72,7 @@ export type NoteBlock =
 // as two *italics*. Image markers were already removed by parseContent.
 function parseInline(line: string): InlineNode[] {
   const nodes: InlineNode[] = [];
-  const pattern = /\*\*(.+?)\*\*|__(.+?)__|\[(.+?)\]\((.+?)\)|\*(.+?)\*/g;
+  const pattern = /`([^`\n]+)`|\*\*(.+?)\*\*|__(.+?)__|\[(.+?)\]\((.+?)\)|\*(.+?)\*/g;
   let lastIndex = 0;
   let match: RegExpExecArray | null;
   while ((match = pattern.exec(line)) !== null) {
@@ -78,13 +80,15 @@ function parseInline(line: string): InlineNode[] {
       nodes.push({ type: "text", value: line.slice(lastIndex, match.index) });
     }
     if (match[1] !== undefined) {
-      nodes.push({ type: "bold", value: match[1] });
+      nodes.push({ type: "code", value: match[1] });
     } else if (match[2] !== undefined) {
-      nodes.push({ type: "underline", value: match[2] });
+      nodes.push({ type: "bold", value: match[2].trim() });
     } else if (match[3] !== undefined) {
-      nodes.push({ type: "link", text: match[3], url: match[4] });
+      nodes.push({ type: "underline", value: match[3] });
+    } else if (match[4] !== undefined) {
+      nodes.push({ type: "link", text: match[4], url: match[5] });
     } else {
-      nodes.push({ type: "italic", value: match[5] });
+      nodes.push({ type: "italic", value: match[6] });
     }
     lastIndex = pattern.lastIndex;
   }
@@ -96,7 +100,8 @@ function parseInline(line: string): InlineNode[] {
 
 // Any number of #s (level clamped to 3), space optional: "#02 Licencias" counts.
 const HEADING = /^(#+)\s*(.*)$/;
-const CALLOUT = /^!\s+(.*)$/;
+// "! texto" or "!texto" — but not an image, "![…](…)".
+const CALLOUT = /^!(?!\[)\s*(\S.*)$/;
 // Indentation (spaces) sets nesting. ○ and ▪ are nested bullet markers.
 const LIST_LINE = /^( *)(-|○|▪|\d+\.|[a-zA-Z]\.)\s+(.*)$/;
 // A table row is typed as `| cell | cell | cell |` — leading and trailing

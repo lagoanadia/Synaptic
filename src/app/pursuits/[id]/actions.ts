@@ -370,7 +370,12 @@ here, like #### or standard \`\`\` code fences, would show up as literal
 stray characters instead of formatting):
 - "# " at the start of a line for a heading (also "## " and "### " for
   smaller headings — never more than three #s)
-- "! " at the start of a line for a callout / key takeaway
+- "! " at the start of a line for a callout / key takeaway (always "!",
+  a space, then the text)
+- "**bold**" for key terms: two asterisks on each side, nothing else (no
+  single quotes or other marks around terms)
+- \`code\` (one backtick on each side) only for a short bit of code
+  inside a sentence, like \`onCreate\` or \`null\`; never three backticks
 - "- " at the start of a line for a bullet list
 - "1. " (etc.) at the start of a line for a numbered list — a numbered
   list is ONE list: number its items 1, 2, 3, 4... in order and keep
