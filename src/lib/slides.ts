@@ -33,6 +33,12 @@ export function slideSourceFor(raw: string): SlideSource | null {
 export const isSlideFile = (url: string) => slideSourceFor(url) !== null;
 
 // "PSP-UD2_cuaderno.pdf" → "UD2", "Tema 3 - Hilos" → "UD3", "U1 intro" → "UD1".
+// Only an explicit unit in the name ("UD1", "U1", "Unidad 1"), not a topic ("T2").
+export function explicitUnit(name: string): string | null {
+  const m = name.match(/(?:^|[^a-z])(?:ud|u|unidad)\s*[-_ ]?\s*0*(\d{1,2})(?![\d])/i);
+  return m ? `UD${Number(m[1])}` : null;
+}
+
 export function unitCode(name: string): string | null {
   const m = name.match(/(?:^|[^a-z])(?:ud|u|unidad|tema|t)\s*[-_ ]?\s*0*(\d{1,2})(?![\d])/i);
   return m ? `UD${Number(m[1])}` : null;
