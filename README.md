@@ -1,4 +1,4 @@
-# Synaptic
+# 🧠 Synaptic
 
 Most tracking apps ask you to organize as you capture — pick a category, add a tag, file it away — before you've even finished the thought. Synaptic splits that in two: **dump first, organize later.**
 
@@ -10,23 +10,26 @@ Pick one **Pursuit** (a project, a book, a language, a skill — anything you're
 
 Pursuits can be shared: invite a collaborator by email and you both dump into and organize the same pursuit together.
 
-## Why it's built this way
+## 📁 Project Structure
 
-A flat, unlimited tag list (like a Notion database's free-text multi-select) tends to degrade into noise over time — nothing stops it from growing into an incoherent pile. Synaptic's schema is designed around that lesson specifically:
+```
+├── prisma/
+│   ├── schema.prisma     → Full data model
+│   └── migrations/       → Prisma migrations
+├── src/
+│   ├── app/              → Next.js App Router: pursuits, editor, review, calendar, challenges, projects,
+│   │                       search, profile, onboarding, billing, landing, legal pages + server actions
+│   │   └── api/          → Route handlers: auth, blob uploads, boards, Google Classroom / Calendar, cron, webhooks
+│   ├── lib/              → Domain logic with unit tests: organize (AI), flashcards + SM-2 spaced repetition,
+│   │                       quizzes, knowledge map, whiteboards, slides / PPTX / PDF import, export, search, i18n…
+│   ├── auth.ts           → NextAuth v5 config
+│   └── test/, types/     → Test helpers and shared types
+├── public/               → Static assets and service worker
+├── CLAUDE.md, AGENTS.md  → Project rules for AI coding agents
+└── vercel.json           → Deployment config
+```
 
-- **Note tags** are scoped *per pursuit* — the tag list you see while tagging is always small and relevant to what you're looking at, so unrelated topics can never mix into the same dropdown.
-- **Pursuit tags** (`#portfolio`, `#web-dev`) are a separate, smaller, global vocabulary for categorizing the pursuits themselves — a different scale of problem, so it gets a different (looser) rule.
-- **`type` is a closed 5-value enum** (Project / Book / Language / Skill / Other), not a free-form field — with an escape hatch: picking "Other" reveals a custom label field, so you get flexibility without an unbounded, ever-growing list.
-
-## Stack
-
-- **Next.js 16** (App Router, TypeScript, Server Components + Server Actions — no separate API layer for most mutations)
-- **Prisma 7** + PostgreSQL
-- **NextAuth v5** (Auth.js) with the Prisma adapter — GitHub OAuth, database-backed sessions
-- **Groq API** (`groq-sdk`, `llama-3.3-70b-versatile`) for the Organize step — Groq's free tier keeps this at no cost for personal use. (Text-only for now: an attached brain-dump image is referenced by URL in the prompt, not actually seen by the model.)
-- **Tailwind CSS**
-
-## Data model
+### Data model
 
 ```
 User ─┬─< Pursuit (owned)
@@ -40,7 +43,38 @@ Pursuit ─┬─< BrainDump ─┬─< Note >─┬─< Tag
 
 Full schema: [`prisma/schema.prisma`](./prisma/schema.prisma).
 
-## Running locally
+Full schema: [`prisma/schema.prisma`](./prisma/schema.prisma).
+
+## 🚀 How It Works
+
+### Why it's built this way
+
+A flat, unlimited tag list (like a Notion database's free-text multi-select) tends to degrade into noise over time — nothing stops it from growing into an incoherent pile. Synaptic's schema is designed around that lesson specifically:
+
+- **Note tags** are scoped *per pursuit* — the tag list you see while tagging is always small and relevant to what you're looking at, so unrelated topics can never mix into the same dropdown.
+- **Pursuit tags** (`#portfolio`, `#web-dev`) are a separate, smaller, global vocabulary for categorizing the pursuits themselves — a different scale of problem, so it gets a different (looser) rule.
+- **`type` is a closed 5-value enum** (Project / Book / Language / Skill / Other), not a free-form field — with an escape hatch: picking "Other" reveals a custom label field, so you get flexibility without an unbounded, ever-growing list.
+
+### Stack
+
+- **Next.js 16** (App Router, TypeScript, Server Components + Server Actions — no separate API layer for most mutations)
+- **Prisma 7** + PostgreSQL
+- **NextAuth v5** (Auth.js) with the Prisma adapter — GitHub OAuth, database-backed sessions
+- **Groq API** (`groq-sdk`, `llama-3.3-70b-versatile`) for the Organize step — Groq's free tier keeps this at no cost for personal use. (Text-only for now: an attached brain-dump image is referenced by URL in the prompt, not actually seen by the model.)
+- **Tailwind CSS**
+
+## 🧠 Key Concepts
+
+- **Capture vs organize** — separating zero-friction input from structured output
+- **LLM summarisation** — turning raw dumps into tagged notes, with the user in control of tags
+- **Schema design** — per-pursuit tag scopes, closed enums with an escape hatch
+- **Next.js Server Components + Server Actions** — no separate API layer for most writes
+- **Prisma + PostgreSQL** — relational modelling and migrations
+- **Auth.js** — GitHub OAuth with database sessions
+- **Collaboration** — shared pursuits with invited members
+- **Testing** — Vitest unit tests alongside the domain logic
+
+## 🛠️ How To Run
 
 ```bash
 git clone https://github.com/lagoanadia/Synaptic.git
