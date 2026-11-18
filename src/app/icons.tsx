@@ -128,7 +128,8 @@ export const StopIcon = icon(["M7 7h10v10H7Z"]);
 export const AlertIcon = icon(["M12 4 2.8 19.5h18.4L12 4Z", "M12 10v4.5M12 17.2h.01"]);
 export const BellOffIcon = icon(["M9 5.3A6 6 0 0 1 18 11v4M6 11v5l-1.5 2h12M10 20.5a2 2 0 0 0 4 0M3 3l18 18"]);
 export const SlidesIcon = icon(["M3.5 5h17v11h-17Z", "M12 16v4M8.5 20h7"]);
-export const QuoteIcon = icon(["M5 7h14M5 12h14M5 17h9", "M2.5 5v14"]);
+// Aviso (callout): a box with "!".
+export const QuoteIcon = icon(["M5 4h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z", "M12 8v5", "M12 16.5v.01"]);
 export const GlobeIcon = icon(["M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Z", "M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3Z"]);
 export const MenuIcon = icon(["M4 7h16M4 12h16M4 17h16"], 2.2);
 export const HomeIcon = icon(["M4 11 12 4l8 7v8.5a.5.5 0 0 1-.5.5H15v-6H9v6H4.5a.5.5 0 0 1-.5-.5Z"]);
