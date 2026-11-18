@@ -15,14 +15,23 @@ export type NotebookDeadline = { id: string; title: string; dueAt: number; url: 
 // so they're never cached and the next visit tries again.
 export type DeadlinesResult = { status: "ok" | "none" | "disconnected"; list: NotebookDeadline[] };
 
-async function load(userId: string, sectionId: string): Promise<DeadlinesResult> {
+// Whether it's linked and connected is checked on every visit (a reconnect
+// shows right away); only Classroom's answer is kept for five minutes.
+export async function notebookDeadlines(userId: string, sectionId: string): Promise<DeadlinesResult> {
+  const linked = await prisma.pursuit.count({ where: { sectionId, ownerId: userId, classroomCourseId: { not: null } } });
+  if (linked === 0) return { status: "none", list: [] };
+  const token = await getValidAccessToken(userId);
+  if (!token) return { status: "disconnected", list: [] };
+  return { status: "ok", list: await cachedList(userId, sectionId) };
+}
+
+async function load(userId: string, sectionId: string): Promise<NotebookDeadline[]> {
   const pursuits = await prisma.pursuit.findMany({
     where: { sectionId, ownerId: userId, classroomCourseId: { not: null } },
     select: { id: true, title: true, cover: true, classroomCourseId: true },
   });
-  if (pursuits.length === 0) return { status: "none", list: [] };
   const [token, email] = await Promise.all([getValidAccessToken(userId), classroomEmail(userId)]);
-  if (!token) return { status: "disconnected", list: [] };
+  if (!token) throw new Error("Classroom disconnected");
   let failed = 0;
   const lists = await Promise.all(
     pursuits.map((p) =>
@@ -35,7 +44,7 @@ async function load(userId: string, sectionId: string): Promise<DeadlinesResult>
     ),
   );
   if (failed === pursuits.length) throw new Error("Classroom unavailable");
-  return { status: "ok", list: lists.flat().sort((a, b) => a.dueAt - b.dueAt) };
+  return lists.flat().sort((a, b) => a.dueAt - b.dueAt);
 }
 
-export const notebookDeadlines = unstable_cache(load, ["notebook-deadlines-v2"], { revalidate: 300 });
+const cachedList = unstable_cache(load, ["notebook-deadlines-v3"], { revalidate: 300 });

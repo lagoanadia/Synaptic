@@ -148,7 +148,8 @@ export async function listCourses(accessToken: string): Promise<ClassroomCourse[
   }));
 }
 
-export type ClassroomFile = { title: string; url: string };
+// post: the title of the Classroom post it was attached to ("UD2 · Material").
+export type ClassroomFile = { title: string; url: string; post?: string };
 
 // A Material is a oneOf on Classroom's side (driveFile, link, youtubeVideo,
 // form) — only driveFile and link carry anything we can point an
@@ -162,6 +163,7 @@ type Material = {
 // the actual attachments (Drive files, links, etc.) live nested one level
 // down, in its own `materials` array.
 type CourseWorkItem = {
+  title?: string;
   materials?: Material[];
 };
 
@@ -171,15 +173,23 @@ async function listMaterials(
   courseId: string,
   kind: "courseWork" | "courseWorkMaterials",
 ): Promise<CourseWorkItem[]> {
-  const res = await fetch(
-    `https://classroom.googleapis.com/v1/courses/${courseId}/${kind}?pageSize=100`,
-    { headers: { Authorization: `Bearer ${accessToken}` } },
-  );
-  if (!res.ok) throw new Error(`Classroom ${kind}.list failed: ${await res.text()}`);
-  const data = await res.json();
   // The response field is singular ("courseWorkMaterial"), not the path name.
   const responseKey = kind === "courseWorkMaterials" ? "courseWorkMaterial" : "courseWork";
-  return data[responseKey] ?? [];
+  // Every page, not just the first 100 posts (older units were cut off).
+  const all: CourseWorkItem[] = [];
+  let page = "";
+  for (let i = 0; i < 10; i++) {
+    const res = await fetch(
+      `https://classroom.googleapis.com/v1/courses/${courseId}/${kind}?pageSize=100${page ? `&pageToken=${encodeURIComponent(page)}` : ""}`,
+      { headers: { Authorization: `Bearer ${accessToken}` } },
+    );
+    if (!res.ok) throw new Error(`Classroom ${kind}.list failed: ${await res.text()}`);
+    const data = await res.json();
+    all.push(...(data[responseKey] ?? []));
+    page = data.nextPageToken ?? "";
+    if (!page) break;
+  }
+  return all;
 }
 
 // Any Drive file or link; YouTube videos and Forms are skipped.
@@ -212,12 +222,12 @@ export async function listCourseFiles(
         // Classroom doesn't always back-fill the title for a file it
         // didn't create itself (e.g. a teacher's own upload attached from
         // Drive) — fall back rather than silently dropping the file.
-        files.push({ title: drive.title || "Archivo sin título", url: drive.alternateLink });
+        files.push({ title: drive.title || "Archivo sin título", url: drive.alternateLink, post: item.title });
         continue;
       }
       const link = material.link;
       if (link?.url) {
-        files.push({ title: link.title || link.url, url: link.url });
+        files.push({ title: link.title || link.url, url: link.url, post: item.title });
       }
     }
   }

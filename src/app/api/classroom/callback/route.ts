@@ -12,6 +12,8 @@ export async function GET(request: Request) {
   const backToFiles =
     pursuitId === "onboarding"
       ? new URL("/pursuits?welcome=classroom", url.origin)
+      : pursuitId?.startsWith("s:")
+        ? new URL(`/pursuits/s/${encodeURIComponent(pursuitId.slice(2))}`, url.origin)
       : pursuitId === "profile"
         ? new URL("/profile?tab=settings", url.origin)
         : pursuitId
