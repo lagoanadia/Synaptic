@@ -1162,4 +1162,6 @@ export const en: Record<string, string> = {
   "No se han podido cargar las entregas de Classroom.": "Couldn't load the Classroom assignments.",
   "Conectar Classroom": "Connect Classroom",
   "Unidades": "Units",
+  "Relleno": "Fill",
+  "Clic para editar": "Click to edit",
 };

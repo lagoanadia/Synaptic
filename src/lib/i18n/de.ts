@@ -1162,4 +1162,6 @@ export const de: Record<string, string> = {
   "No se han podido cargar las entregas de Classroom.": "Die Classroom-Abgaben konnten nicht geladen werden.",
   "Conectar Classroom": "Classroom verbinden",
   "Unidades": "Einheiten",
+  "Relleno": "Füllung",
+  "Clic para editar": "Zum Bearbeiten klicken",
 };
