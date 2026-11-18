@@ -1164,4 +1164,5 @@ export const en: Record<string, string> = {
   "Unidades": "Units",
   "Relleno": "Fill",
   "Clic para editar": "Click to edit",
+  "Código en línea (Ctrl+E)": "Inline code (Ctrl+E)",
 };

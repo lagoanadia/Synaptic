@@ -568,6 +568,7 @@ function Toolbar({
       bold: e.isActive("bold"),
       italic: e.isActive("italic"),
       underline: e.isActive("underline"),
+      inlineCode: e.isActive("code"),
       bullet: e.isActive("bulletList"),
       numbered: e.isActive("orderedList", { kind: "decimal" }),
       lettered: e.isActive("orderedList", { kind: "alpha" }),
@@ -604,6 +605,7 @@ function Toolbar({
       <Btn on={s.bold} onClick={() => c().toggleBold().run()} title={t("Negrita (Ctrl+B)")}><b>{t("N")}</b></Btn>
       <Btn on={s.italic} onClick={() => c().toggleItalic().run()} title={t("Cursiva (Ctrl+I)")}><i>{t("K")}</i></Btn>
       <Btn on={s.underline} onClick={() => c().toggleUnderline().run()} title={t("Subrayado (Ctrl+U)")}><u>{t("S")}</u></Btn>
+      <Btn on={s.inlineCode} onClick={() => c().toggleCode().run()} title={t("Código en línea (Ctrl+E)")}><span className="font-mono text-[12px]">{"`c`"}</span></Btn>
       <Btn on={s.link} onClick={setLink} title={t("Enlace")}><LinkIcon /></Btn>
       <Sep />
       <Btn on={s.bullet} onClick={() => c().toggleBulletList().run()} title={t("Lista (- )")}>•</Btn>
