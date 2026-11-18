@@ -4,7 +4,7 @@ import { useT } from "@/app/LangProvider";
 import { useEffect, useRef, useState } from "react";
 import { upload } from "@vercel/blob/client";
 import { SlidesIcon, XIcon } from "@/app/icons";
-import { explicitUnit, isSlideTitle, slideSourceFor, unitCode } from "@/lib/slides";
+import { explicitUnit, isSlideTitle, slideSourceFor } from "@/lib/slides";
 import { listClassroomFiles, saveSlideDeck } from "./actions";
 import { PdfSlides } from "./PdfSlides";
 import { deleteLocalPdf, getLocalPdf, saveLocalPdf } from "@/lib/localPdf";
@@ -123,7 +123,7 @@ export function SlidePanel({
       setClassroom(
         (r.files ?? [])
           .filter((f) => isSlideTitle(f.title) && slideSourceFor(f.url))
-          .map((f) => ({ name: f.title, url: f.url, unit: f.post ? unitCode(f.post) : null })),
+          .map((f) => ({ name: f.title, url: f.url, unit: f.post ? explicitUnit(f.post) : null })),
       );
     }
   }
@@ -284,8 +284,9 @@ export function SlidePanel({
                 const groups = new Map<string, Deck[]>();
                 for (const d of all) {
                   // "UD1" in the file name wins; then the Classroom post's unit (a
-                  // file can be posted again later); then a topic number ("T2").
-                  const u = explicitUnit(d.name) ?? d.unit ?? unitCode(d.name) ?? "";
+                  // file can be posted again later). A topic ("T6") is not a
+                  // unit, so it never makes one up: no unit → "Otros".
+                  const u = explicitUnit(d.name) ?? d.unit ?? "";
                   if (classroomUnit && !showAllUnits && u !== classroomUnit) continue;
                   groups.set(u, [...(groups.get(u) ?? []), d]);
                 }
