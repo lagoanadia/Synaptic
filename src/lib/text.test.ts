@@ -332,3 +332,11 @@ describe("splitTitle / withTitle", () => {
     expect(withTitle("  ", "El color")).toBe("El color");
   });
 });
+
+describe("inline code and loose callouts", () => {
+  it("reads `code` as inline code and !text as a callout", () => {
+    const [p, c] = parseNoteBlocks("`onCreate` recibe `null` la **primera** vez\n!Ojo con el Bundle");
+    expect(p).toEqual({ type: "paragraph", inline: [{ type: "code", value: "onCreate" }, { type: "text", value: " recibe " }, { type: "code", value: "null" }, { type: "text", value: " la " }, { type: "bold", value: "primera" }, { type: "text", value: " vez" }] });
+    expect(c).toEqual({ type: "callout", inline: [{ type: "text", value: "Ojo con el Bundle" }] });
+  });
+});

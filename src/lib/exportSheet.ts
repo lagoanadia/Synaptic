@@ -18,7 +18,7 @@ function inline(nodes: InlineNode[]): string {
     .map((n) => {
       if (n.type === "link") return `<a href="${esc(n.url)}">${esc(n.text)}</a>`;
       const v = esc(n.value);
-      return n.type === "bold" ? `<b>${v}</b>` : n.type === "italic" ? `<i>${v}</i>` : n.type === "underline" ? `<u>${v}</u>` : v;
+      return n.type === "bold" ? `<b>${v}</b>` : n.type === "italic" ? `<i>${v}</i>` : n.type === "underline" ? `<u>${v}</u>` : n.type === "code" ? `<code>${v}</code>` : v;
     })
     .join("");
 }

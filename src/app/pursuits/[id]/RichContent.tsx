@@ -10,6 +10,12 @@ function Inline({ nodes }: { nodes: InlineNode[] }) {
             return <strong key={i}>{n.value}</strong>;
           case "italic":
             return <em key={i}>{n.value}</em>;
+          case "code":
+            return (
+              <code key={i} className="rounded bg-chip px-1 py-px font-mono text-[0.88em]">
+                {n.value}
+              </code>
+            );
           case "underline":
             return (
               <span key={i} className="underline">
