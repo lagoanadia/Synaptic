@@ -1,4 +1,4 @@
-import { parseNoteBlocks, type InlineNode, type ListBlock, type ListItem } from "@/lib/text";
+import { parseNoteBlocks, type InlineNode, type ListBlock, type ListItem, type NoteBlock } from "@/lib/text";
 import { CodeBlock } from "./CodeBlock";
 
 function Inline({ nodes }: { nodes: InlineNode[] }) {
@@ -106,8 +106,10 @@ export function RichContent({
   content: string;
   paragraphClassName?: string;
 }) {
-  const blocks = parseNoteBlocks(content);
+  return <Blocks blocks={parseNoteBlocks(content)} paragraphClassName={paragraphClassName} />;
+}
 
+function Blocks({ blocks, paragraphClassName }: { blocks: NoteBlock[]; paragraphClassName: string }) {
   return (
     <div className="flex flex-col gap-3">
       {blocks.map((block, i) => {
@@ -185,6 +187,14 @@ export function RichContent({
             );
           case "codeBlock":
             return <CodeBlock key={i} code={block.code} language={block.language} />;
+          case "columns":
+            return (
+              <div key={i} className="grid grid-cols-1 gap-4 md:grid-cols-[repeat(var(--n),minmax(0,1fr))]" style={{ "--n": block.cols.length } as React.CSSProperties}>
+                {block.cols.map((col, j) => (
+                  <Blocks key={j} blocks={col} paragraphClassName={paragraphClassName} />
+                ))}
+              </div>
+            );
         }
       })}
     </div>

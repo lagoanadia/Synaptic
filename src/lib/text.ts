@@ -66,7 +66,10 @@ export type NoteBlock =
   | { type: "image"; url: string }
   // No header row: `header` is empty and every row is in `rows`.
   | { type: "table"; header: InlineNode[][]; rows: InlineNode[][][] }
-  | { type: "codeBlock"; code: string; language: string };
+  | { type: "codeBlock"; code: string; language: string }
+  // Side-by-side columns, each its own blocks (stored as ":::columns", ":::|"
+  // between columns, ":::" at the end).
+  | { type: "columns"; cols: NoteBlock[][] };
 
 // Two-character markers and links are tried before `*`, so **bold** isn't read
 // as two *italics*. Image markers were already removed by parseContent.
@@ -297,7 +300,32 @@ export function normalizeNoteText(text: string): string {
     .join("\n");
 }
 
+export const COLS_OPEN = ":::columns";
+export const COLS_NEXT = ":::|";
+export const COLS_CLOSE = ":::";
+
 export function parseNoteBlocks(content: string): NoteBlock[] {
+  // Columns first: the text around them and inside each one is parsed alone.
+  const lines = (content ?? "").split("\n");
+  const open = lines.findIndex((l) => l.trim() === COLS_OPEN);
+  if (open >= 0) {
+    const close = lines.findIndex((l, i) => i > open && l.trim() === COLS_CLOSE);
+    const end = close < 0 ? lines.length : close;
+    const cols: string[][] = [[]];
+    for (const l of lines.slice(open + 1, end)) {
+      if (l.trim() === COLS_NEXT) cols.push([]);
+      else cols[cols.length - 1].push(l);
+    }
+    return [
+      ...plainBlocks(lines.slice(0, open).join("\n")),
+      { type: "columns", cols: cols.map((c) => parseNoteBlocks(c.join("\n"))) },
+      ...parseNoteBlocks(lines.slice(end + 1).join("\n")),
+    ];
+  }
+  return plainBlocks(content);
+}
+
+function plainBlocks(content: string): NoteBlock[] {
   const blocks: NoteBlock[] = [];
   content = normalizeNoteText(content);
   for (const segment of parseContent(content)) {

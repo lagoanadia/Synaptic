@@ -376,11 +376,10 @@ export function SlidePanel({
                 </div>
               ) : (
                 <div className="flex h-full flex-col">
-                  {/* Google's viewer can't share its text: open the same PDF
-                      from this device instead (no upload, no permissions). */}
-                  <button type="button" onClick={() => localInput.current?.click()} className="flex items-center justify-center gap-2 bg-[#2383e2] px-3 py-2 text-xs font-semibold text-white hover:bg-[#1f74c9]">
-                    {t("Abre el PDF desde tu ordenador para seleccionar texto")}
-                  </button>
+                  {/* Google's viewer can't share its text: a screenshot pasted
+                      here becomes text (the AI reads it), or open the same
+                      PDF from this device. */}
+                  {onTranscribe && <SnipBar onTranscribe={onTranscribe} onLocal={() => localInput.current?.click()} />}
                   <input
                     ref={localInput}
                     type="file"
@@ -443,6 +442,106 @@ export function SlidePanel({
       </div>
 
       <div className="min-w-0">{children}</div>
+    </div>
+  );
+}
+
+// Over Google's viewer: paste a screenshot (Win+Shift+S / Cmd+Shift+4) and
+// it goes into the page as text. Closable; remembered on this device.
+const HIDE_KEY = "slides-snip-hidden";
+function SnipBar({ onTranscribe, onLocal }: { onTranscribe: (image: string, page: number) => Promise<string | null>; onLocal: () => void }) {
+  const t = useT();
+  const [hidden, setHidden] = useState(() => {
+    try {
+      return typeof window !== "undefined" && localStorage.getItem(HIDE_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
+  const [state, setState] = useState<"idle" | "wait" | "busy" | string>("idle");
+
+  // A pasted (or clipboard) image → a JPEG small enough to send.
+  const send = async (blob: Blob) => {
+    setState("busy");
+    try {
+      const bmp = await createImageBitmap(blob);
+      const k = Math.min(1, 1800 / Math.max(bmp.width, bmp.height));
+      const c = document.createElement("canvas");
+      c.width = Math.round(bmp.width * k);
+      c.height = Math.round(bmp.height * k);
+      c.getContext("2d")!.drawImage(bmp, 0, 0, c.width, c.height);
+      const err = await onTranscribe(c.toDataURL("image/jpeg", 0.9), 0);
+      setState(err ?? "done");
+    } catch {
+      setState(t("No he podido leer esa imagen"));
+    }
+  };
+
+  // While waiting, Ctrl+V anywhere takes the image.
+  useEffect(() => {
+    if (state !== "wait") return;
+    const onPaste = (e: ClipboardEvent) => {
+      const file = [...(e.clipboardData?.files ?? [])].find((f) => f.type.startsWith("image/"));
+      if (!file) return;
+      e.preventDefault();
+      e.stopPropagation();
+      send(file);
+    };
+    window.addEventListener("paste", onPaste, true);
+    return () => window.removeEventListener("paste", onPaste, true);
+  });
+
+  async function start() {
+    // The screenshot is probably already on the clipboard: read it straight away.
+    try {
+      for (const item of await navigator.clipboard.read()) {
+        const type = item.types.find((x) => x.startsWith("image/"));
+        if (type) return send(await item.getType(type));
+      }
+    } catch {
+      // No permission or no image: ask for Ctrl+V instead.
+    }
+    setState("wait");
+  }
+
+  if (hidden && state === "idle") {
+    return (
+      <button type="button" onClick={() => setHidden(false)} className="self-end bg-transparent px-2 py-0.5 text-[11px] text-white/60 hover:text-white">
+        {t("Copiar texto")}
+      </button>
+    );
+  }
+  return (
+    <div className="flex items-center gap-2 bg-white px-3 py-1.5 text-xs text-ink-muted">
+      {state === "busy" ? (
+        <span>{t("Leyendo la captura…")}</span>
+      ) : state === "wait" ? (
+        <span className="font-medium text-ink">{t("Ahora pega la captura (Ctrl+V)")}</span>
+      ) : (
+        <>
+          <button type="button" onClick={start} className="rounded-md bg-ink px-2.5 py-1 font-semibold text-white hover:opacity-90" title={t("Haz una captura (Win+Mayús+S) y pulsa aquí: la paso a texto en tu página")}>
+            {t("Pegar captura como texto")}
+          </button>
+          <span className="hidden truncate sm:inline">{state === "done" ? t("Añadido a tu página ✓") : state !== "idle" ? state : t("Win+Mayús+S para recortar")}</span>
+          <button type="button" onClick={onLocal} className="ml-auto shrink-0 hover:text-ink">
+            {t("Abrir PDF del ordenador")}
+          </button>
+        </>
+      )}
+      <button
+        type="button"
+        aria-label={t("Cerrar")}
+        onClick={() => {
+          setState("idle");
+          setHidden(true);
+          try {
+            localStorage.setItem(HIDE_KEY, "1");
+          } catch {}
+        }}
+        className={`grid size-6 shrink-0 place-items-center rounded hover:bg-chip ${state === "busy" || state === "wait" ? "ml-auto" : ""}`}
+      >
+        ×
+      </button>
     </div>
   );
 }
