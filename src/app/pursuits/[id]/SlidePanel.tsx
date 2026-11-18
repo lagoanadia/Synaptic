@@ -9,7 +9,8 @@ import { listClassroomFiles, saveSlideDeck } from "./actions";
 import { PdfSlides } from "./PdfSlides";
 import { deleteLocalPdf, getLocalPdf, saveLocalPdf } from "@/lib/localPdf";
 
-type Deck = { name: string; url: string };
+// unit: from the Classroom post it came in ("UD2 · …"), when it says.
+type Deck = { name: string; url: string; unit?: string | null };
 
 // Width of the slides column, in % of the row.
 const WIDTHS = { S: 32, M: 45, L: 60 };
@@ -122,7 +123,7 @@ export function SlidePanel({
       setClassroom(
         (r.files ?? [])
           .filter((f) => isSlideTitle(f.title) && slideSourceFor(f.url))
-          .map((f) => ({ name: f.title, url: f.url })),
+          .map((f) => ({ name: f.title, url: f.url, unit: f.post ? unitCode(f.post) : null })),
       );
     }
   }
@@ -282,7 +283,8 @@ export function SlidePanel({
                 });
                 const groups = new Map<string, Deck[]>();
                 for (const d of all) {
-                  const u = unitCode(d.name) ?? "";
+                  // The post's unit wins over the file name ("T2 …" is a topic, not UD2).
+                  const u = d.unit ?? unitCode(d.name) ?? "";
                   if (classroomUnit && !showAllUnits && u !== classroomUnit) continue;
                   groups.set(u, [...(groups.get(u) ?? []), d]);
                 }

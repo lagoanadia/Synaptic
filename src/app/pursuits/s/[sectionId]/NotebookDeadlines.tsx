@@ -2,6 +2,7 @@
 
 import { useLocale, useT } from "@/app/LangProvider";
 import { useSyncExternalStore } from "react";
+import { useParams } from "next/navigation";
 import { useOpenTab } from "./tabs";
 import type { NotebookDeadline } from "@/lib/notebookDeadlines";
 
@@ -24,6 +25,7 @@ export function NotebookDeadlines({ list, status = "ok", groupOf, groups, side =
   const locale = useLocale();
   // Only the open section tab's subjects (?s=Teoría), like the folders.
   const tab = useOpenTab(groups);
+  const { sectionId } = useParams<{ sectionId: string }>();
   // Dates depend on the viewer's own clock and time zone, so this draws in
   // the browser (right away: the list came with the page).
   const now = useSyncExternalStore(subscribe, () => Math.floor(Date.now() / 60000) * 60000, () => 0);
@@ -35,7 +37,7 @@ export function NotebookDeadlines({ list, status = "ok", groupOf, groups, side =
         <div className="flex flex-col gap-2 rounded-lg border border-border-subtle bg-white px-4 py-3 text-[13px] text-ink-muted">
           {status === "disconnected" ? t("Google Classroom no está conectado (o la conexión ha caducado).") : t("No se han podido cargar las entregas de Classroom.")}
           {status === "disconnected" ? (
-            <a href="/api/classroom/connect?pursuitId=profile" className="w-fit rounded-md bg-ink px-3 py-1.5 text-xs font-semibold text-white">
+            <a href={`/api/classroom/connect?pursuitId=${encodeURIComponent(`s:${sectionId}`)}`} className="w-fit rounded-md bg-ink px-3 py-1.5 text-xs font-semibold text-white">
               {t("Conectar Classroom")}
             </a>
           ) : (
