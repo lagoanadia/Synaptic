@@ -181,3 +181,30 @@ export async function fillMissingTerms(pursuitId: string): Promise<void> {
     }
   }
 }
+
+// Every concept belongs to a unit when a folder has units. Run before its
+// map is drawn: the auto "General" map (pages that had no unit when they
+// were saved) goes once no page is left without one; a map without a unit
+// whose title names one ("UD2…", "Tema 3…", or a unit's exact name) moves
+// into it. Returns the maps still without a unit, to ask about.
+export async function tidyUnitlessMaps(pursuitId: string): Promise<{ id: string; title: string }[]> {
+  const units = await prisma.pursuitContentSection.findMany({ where: { pursuitId }, select: { id: true, name: true } });
+  if (units.length === 0) return [];
+  const maps = await prisma.conceptMap.findMany({ where: { pursuitId, unitId: null }, select: { id: true, title: true, sourceKind: true } });
+  if (maps.length === 0) return [];
+  const num = (s: string) => /^(?:ud|unidad|tema|t|u)\s*\.?\s*(\d+)/i.exec(s.trim())?.[1];
+  const left: { id: string; title: string }[] = [];
+  for (const m of maps) {
+    if (m.sourceKind === "auto") {
+      const loose = await unitSource(pursuitId, null);
+      if (!loose.trim()) await prisma.conceptMap.delete({ where: { id: m.id } });
+      else left.push({ id: m.id, title: m.title });
+      continue;
+    }
+    const n = num(m.title);
+    const unit = units.find((u) => u.name.trim().toLowerCase() === m.title.trim().toLowerCase()) ?? (n ? units.find((u) => num(u.name) === n) : undefined);
+    if (unit) await prisma.conceptMap.update({ where: { id: m.id }, data: { unitId: unit.id } });
+    else left.push({ id: m.id, title: m.title });
+  }
+  return left;
+}

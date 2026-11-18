@@ -19,13 +19,14 @@ import { UpcomingDeadlines } from "./UpcomingDeadlines";
 import { StatusNote } from "./StatusNote";
 import { ProjectsBoard } from "./ProjectsBoard";
 import { PagesBoard, type PageCard } from "./PagesBoard";
+import { AssignMapUnits } from "./AssignMapUnits";
 import { autoTitle } from "@/lib/text";
 import { conceptExcerpt } from "@/lib/review";
 import { UNSORTED, SHARED } from "@/lib/reviewData";
 import { folderBlocks } from "@/lib/blocks";
 import { folderColor, folderCover } from "@/lib/covers";
 import { folderMap } from "@/lib/blockData";
-import { backfillMaps } from "@/lib/autoMap";
+import { backfillMaps, tidyUnitlessMaps } from "@/lib/autoMap";
 import { after } from "next/server";
 import { KnowledgeMap } from "@/app/KnowledgeMap";
 import { Folder } from "@/app/Covers";
@@ -340,9 +341,11 @@ export default async function PursuitPage({
     else if (b.type === "map") {
       // Units with notes from before maps made themselves get theirs now.
       if (study) after(() => backfillMaps(session.user.id, pursuit.id).catch(() => {}));
+      const unitless = grouped ? await tidyUnitlessMaps(pursuit.id) : [];
       content[b.id] = (
         <div className="flex flex-col gap-3">
           <KnowledgeMap clusters={await folderMap(pursuit.id, color)} perRow={3} empty={t("El mapa de cada unidad se crea solo cuando guardas apuntes.")} />
+          {unitless.length > 0 && <AssignMapUnits pursuitId={pursuit.id} maps={unitless} units={pursuit.contentSections.map((u) => ({ id: u.id, name: u.name }))} />}
         </div>
       );
     } else if (b.type === "project") {

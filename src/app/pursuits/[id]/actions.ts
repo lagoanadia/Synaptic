@@ -1324,7 +1324,7 @@ export async function movePage(
   page: { dumpId: string | null; noteId: string | null },
   sectionId: string | null,
 ) {
-  await requireAccess(pursuitId);
+  const { session } = await requireAccess(pursuitId);
   const section = sectionId
     ? await prisma.pursuitContentSection.findFirst({ where: { id: sectionId, pursuitId }, select: { id: true } })
     : null;
@@ -1339,6 +1339,7 @@ export async function movePage(
       ? [prisma.note.updateMany({ where: { id: page.noteId, pursuitId }, data: { sectionId: target, sectionOrder: order } })]
       : []),
   ]);
+  mapLater(session.user.id, pursuitId, [target]);
   revalidatePath(`/pursuits/${pursuitId}`);
 }
 
@@ -1581,7 +1582,7 @@ ${(dump.content ?? "").slice(0, 20000)}`,
 // A unit's pages in a new order (also when one was dragged in from another
 // unit): each gets that unit and its position.
 export async function reorderPages(pursuitId: string, sectionId: string | null, pages: { dumpId: string | null; noteId: string | null }[]) {
-  await requireAccess(pursuitId);
+  const { session } = await requireAccess(pursuitId);
   const section = sectionId ? await prisma.pursuitContentSection.findFirst({ where: { id: sectionId, pursuitId }, select: { id: true } }) : null;
   const target = section?.id ?? null;
   await prisma.$transaction(
@@ -1590,5 +1591,16 @@ export async function reorderPages(pursuitId: string, sectionId: string | null, 
       ...(p.noteId ? [prisma.note.updateMany({ where: { id: p.noteId, pursuitId }, data: { sectionId: target, sectionOrder: i } })] : []),
     ]),
   );
+  // A page dragged in from elsewhere: its concepts join this unit's map.
+  mapLater(session.user.id, pursuitId, [target]);
+  revalidatePath(`/pursuits/${pursuitId}`);
+}
+
+// A concept map without a unit, put in one (or a page's map moved along).
+export async function setMapUnit(pursuitId: string, mapId: string, unitId: string) {
+  await requireAccess(pursuitId);
+  const unit = await prisma.pursuitContentSection.findFirst({ where: { id: unitId, pursuitId }, select: { id: true } });
+  if (!unit) return;
+  await prisma.conceptMap.updateMany({ where: { id: mapId, pursuitId }, data: { unitId: unit.id } });
   revalidatePath(`/pursuits/${pursuitId}`);
 }

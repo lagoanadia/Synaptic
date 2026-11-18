@@ -145,13 +145,13 @@ export async function notebookPaths(userId: string, sectionId: string): Promise<
   return pursuits
     .map((p) => {
       const units = new Map<string, PathUnit & { order: number; known: number; total: number }>();
-      // Only real units on the path (merged by number: "U1" and "UD1" are
-      // one), then a single "General" with everything else.
+      // One stop per unit of the folder (in its order; "Unidad 2" shows as
+      // "UD2"), and maps without a unit together under "General" at the end.
       for (const m of p.conceptMaps) {
-        const label = unitLabel(m.unit?.name ?? "") ?? unitLabel(m.title);
-        const key = label ?? "general";
-        const name = label ? (m.unit?.name ?? label) : "General";
-        const u = units.get(key) ?? { id: key, label: label ?? "General", name, pct: 0, href: `/pursuits/${p.id}/learn/${m.id}`, order: label ? Number(label.slice(2)) : 1e6, known: 0, total: 0 };
+        const key = m.unit?.id ?? "general";
+        const name = m.unit?.name ?? "General";
+        const label = m.unit ? (unitLabel(m.unit.name) ?? m.unit.name) : "General";
+        const u = units.get(key) ?? { id: key, label, name, pct: 0, href: `/pursuits/${p.id}/learn/${m.id}`, order: m.unit?.order ?? 1e6, known: 0, total: 0 };
         for (const c of m.concepts) {
           const s = dotState(c, now);
           u.known += s === "known" ? 1 : s === "fading" ? 0.5 : 0;
