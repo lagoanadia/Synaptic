@@ -17,7 +17,7 @@ function Node({ pct, color, current, size = 48 }: { pct: number; color: string; 
   return (
     <span className="relative block">
       <svg width={s} height={s} viewBox={`0 0 ${s} ${s}`} className="overflow-visible" aria-hidden>
-        <circle cx={s / 2} cy={s / 2} r={r} fill={full ? color : "#fff"} stroke={full ? color : "#ebebea"} strokeWidth={w} />
+        <circle cx={s / 2} cy={s / 2} r={r} fill={full ? color : "var(--background)"} stroke={full ? color : "var(--color-hover)"} strokeWidth={w} />
         {pct > 0 && !full && <circle cx={s / 2} cy={s / 2} r={r} fill="none" stroke={color} strokeWidth={w} strokeLinecap="round" strokeDasharray={`${c * pct} ${c}`} transform={`rotate(-90 ${s / 2} ${s / 2})`} />}
       </svg>
       {full && <span className="absolute inset-0 grid place-items-center text-[15px] font-bold text-white">✓</span>}
@@ -56,7 +56,7 @@ export function PathCard({ path: p, link = false }: { path: SubjectPath; link?: 
               <span
                 aria-hidden
                 className="absolute h-[3px] rounded-full"
-                style={{ top: size / 2 - 1.5, left: `calc(-50% + ${size / 2 + 5}px)`, right: `calc(50% + ${size / 2 + 5}px)`, background: p.units[i - 1].pct >= DONE ? "#c7c5c0" : "#ebebea" }}
+                style={{ top: size / 2 - 1.5, left: `calc(-50% + ${size / 2 + 5}px)`, right: `calc(50% + ${size / 2 + 5}px)`, background: p.units[i - 1].pct >= DONE ? "var(--color-ink-faint)" : "var(--color-hover)" }}
               />
             )}
             <Link href={u.href} title={u.name} className="flex flex-col items-center gap-1.5 px-0.5 text-center text-[11px] leading-tight font-medium text-ink">

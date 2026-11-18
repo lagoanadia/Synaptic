@@ -73,7 +73,7 @@ export function CalendarView({
 
   function anchor(e: React.MouseEvent<HTMLElement>) {
     const r = e.currentTarget.getBoundingClientRect();
-    return { x: Math.max(12, Math.min(r.left, window.innerWidth - 312)), y: Math.min(r.bottom + 6, window.innerHeight - 330) };
+    return { x: Math.max(12, Math.min(r.left, window.innerWidth - Math.min(300, window.innerWidth - 24) - 12)), y: Math.min(r.bottom + 6, window.innerHeight - 330) };
   }
 
   const hiddenCount = hiddenKinds.size + [...hiddenFolders].filter((id) => present.some((f) => f.id === id) || calendars.some((c) => `g:${c.id}` === id)).length;
@@ -208,7 +208,7 @@ export function CalendarView({
       {pop && (
         <>
           <button type="button" aria-label={t("Cerrar")} className="fixed inset-0 z-40 cursor-default" onClick={() => setPop(null)} />
-          <div className="fixed z-50 w-[300px] rounded-xl bg-white p-4 text-sm shadow-[0_0_0_1px_rgba(15,15,15,.05),0_14px_36px_rgba(15,15,15,.18)]" style={{ left: pop.x, top: pop.y }}>
+          <div className="fixed z-50 w-[min(300px,calc(100vw-24px))] rounded-xl bg-white p-4 text-sm shadow-[0_0_0_1px_rgba(15,15,15,.05),0_14px_36px_rgba(15,15,15,.18)]" style={{ left: pop.x, top: pop.y }}>
             {pop.kind === "add" ? <AddForm day={pop.day} folders={folders} onDone={() => setPop(null)} /> : pop.item.kind === "google" && pop.item.calendarId ? <GoogleDetail item={pop.item} onDone={() => setPop(null)} /> : <Detail item={pop.item} onDone={() => setPop(null)} />}
           </div>
         </>
@@ -231,7 +231,7 @@ function AddForm({ day, folders, onDone }: { day: string; folders: Folder[]; onD
     { kind: "task", label: t("☐ Tarea") },
     { kind: "event", label: "● Otro" },
   ];
-  const field = "w-full rounded-md border border-border-subtle bg-white px-2 py-1.5 text-sm";
+  const field = "rounded-md border border-border-subtle bg-white px-2 py-1.5 text-sm outline-none focus:border-accent";
   return (
     <form
       className="flex flex-col gap-2.5"
@@ -246,7 +246,7 @@ function AddForm({ day, folders, onDone }: { day: string; folders: Folder[]; onD
       }}
     >
       <span className="text-xs text-ink-faint">{shortDay(day, locale)}</span>
-      <input autoFocus value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder={t("Examen UD1, entregar memoria…")} aria-label={t("Qué")} className={field} />
+      <input autoFocus value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder={t("Examen UD1, entregar memoria…")} aria-label={t("Qué")} className={`${field} w-full`} />
       <span className="flex rounded-md bg-chip p-0.5 text-xs">
         {kinds.map((k) => (
           <button key={k.kind} type="button" onClick={() => setForm({ ...form, kind: k.kind })} className={`flex-1 rounded px-2 py-1 ${form.kind === k.kind ? "bg-white shadow-sm" : "text-ink-muted"}`}>
@@ -254,7 +254,7 @@ function AddForm({ day, folders, onDone }: { day: string; folders: Folder[]; onD
           </button>
         ))}
       </span>
-      <span className="flex gap-2">
+      <span className="flex min-w-0 gap-2">
         <Select
           value={form.pursuitId ?? ""}
           onChange={(v) => setForm({ ...form, pursuitId: v || null, unitId: null })}
@@ -262,7 +262,7 @@ function AddForm({ day, folders, onDone }: { day: string; folders: Folder[]; onD
           options={[{ value: "", label: t("Sin carpeta") }, ...folders.map((f) => ({ value: f.id, label: f.title }))]}
           className={`${field} min-w-0 flex-1`}
         />
-        <TimePicker value={form.time ?? ""} onChange={(v) => setForm({ ...form, time: v })} ariaLabel={t("Hora (opcional)")} className={`${field} w-24 shrink-0`} />
+        <TimePicker value={form.time ?? ""} onChange={(v) => setForm({ ...form, time: v })} ariaLabel={t("Hora (opcional)")} className={`${field} w-[4.5rem] shrink-0 text-center`} />
       </span>
       {form.kind === "exam" && units.length > 0 && (
         <Select
@@ -270,7 +270,7 @@ function AddForm({ day, folders, onDone }: { day: string; folders: Folder[]; onD
           onChange={(v) => setForm({ ...form, unitId: v || null })}
           ariaLabel={t("Qué entra")}
           options={[{ value: "", label: t("Qué entra…") }, ...units.map((u) => ({ value: u.id, label: u.name }))]}
-          className={field}
+          className={`${field} w-full`}
         />
       )}
       {error && <span className="text-xs text-red-500">{error}</span>}
@@ -364,7 +364,7 @@ function GoogleDetail({ item, onDone }: { item: CalItem; onDone: () => void }) {
   const [form, setForm] = useState({ title: item.title, day: item.day, time: item.time ?? "" });
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
-  const field = "w-full rounded-md border border-border-subtle bg-white px-2 py-1.5 text-sm";
+  const field = "rounded-md border border-border-subtle bg-white px-2 py-1.5 text-sm outline-none focus:border-accent";
   const run = (fn: () => Promise<{ error: string | null }>) =>
     start(async () => {
       const r = await fn();
@@ -389,7 +389,7 @@ function GoogleDetail({ item, onDone }: { item: CalItem; onDone: () => void }) {
       <input autoFocus value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} aria-label={t("Qué")} className={`${field} font-semibold`} />
       <span className="flex gap-2">
         <input type="date" value={form.day} onChange={(e) => e.target.value && setForm({ ...form, day: e.target.value })} aria-label={t("Día")} className={`${field} min-w-0 flex-1`} />
-        <TimePicker value={form.time} onChange={(v) => setForm({ ...form, time: v })} ariaLabel={t("Hora (opcional)")} className={`${field} w-24 shrink-0`} />
+        <TimePicker value={form.time} onChange={(v) => setForm({ ...form, time: v })} ariaLabel={t("Hora (opcional)")} className={`${field} w-[4.5rem] shrink-0 text-center`} />
       </span>
       {error && <span className="text-xs text-red-500">{error}</span>}
       <span className="flex items-center gap-2">

@@ -7,7 +7,7 @@ import { createPortal } from "react-dom";
 // (the same look as the right-click EditMenu). Used instead of the browser's
 // native pop-ups so dates, times and pickers look like Synaptic.
 export const PANEL =
-  "rounded-xl bg-white text-ink shadow-[0_0_0_1px_rgba(15,15,15,.06),0_12px_32px_rgba(15,15,15,.16)] animate-[pop-in_120ms_ease-out]";
+  "pop-panel rounded-xl bg-white text-ink shadow-[0_0_0_1px_rgba(15,15,15,.06),0_12px_32px_rgba(15,15,15,.16)] animate-[pop-in_120ms_ease-out]";
 
 // A panel anchored under (or above, if there's no room) its trigger. Rendered
 // in a portal so overflow-hidden parents don't clip it. Clicking outside or

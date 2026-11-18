@@ -78,13 +78,13 @@ export function KnowledgeMap({
                   cy={n.y}
                   r={n.r * k * (hover?.id === n.id ? 1.4 : 1)}
                   style={{ transition: "r .12s" }}
-                  fill={n.state === "todo" ? "#fff" : c.color}
+                  fill={n.state === "todo" ? "var(--background)" : c.color}
                   stroke={c.color}
                   strokeWidth={1.7 * k}
                   opacity={n.state === "fading" ? 0.35 : 1}
                 />
                 {(labels || n.id === currentId) && (
-                  <text x={n.x} y={n.y + n.r + 14} textAnchor="middle" fontSize={n.id === currentId ? 13 : 11} fontWeight={n.id === currentId ? 600 : 400} fill={n.id === currentId ? "#37352f" : "#787774"}>
+                  <text x={n.x} y={n.y + n.r + 14} textAnchor="middle" fontSize={n.id === currentId ? 13 : 11} fontWeight={n.id === currentId ? 600 : 400} fill={n.id === currentId ? "var(--color-ink)" : "var(--color-ink-muted)"}>
                     {short(n.title, focus && n.id !== currentId ? 20 : 28)}
                   </text>
                 )}

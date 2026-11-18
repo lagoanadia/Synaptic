@@ -48,6 +48,8 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   // Matches the icon's own blue, kept on purpose (see Logo.tsx).
   themeColor: "#2383e2",
+  // No auto-zoom when an input gets focus on iPhone (pinch zoom still works).
+  maximumScale: 1,
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {

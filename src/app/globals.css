@@ -458,3 +458,16 @@ body:has(#landing, #login) .app-pad {
 @media (max-width: 640px) {
   .rich-editor .editor-columns { grid-template-columns: 1fr; }
 }
+
+/* Dark mode: cards and pop-ups drawn with a dark hairline ring would vanish
+   on the dark page, so they get a light ring and a deeper shadow instead. */
+html.dark [class*="shadow-[0_0_0_1px_rgba(15,15,15"],
+html.dark .pop-panel {
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1), 0 10px 28px rgba(0, 0, 0, 0.45);
+}
+html.dark .shadow-sm { box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08), 0 1px 2px rgba(0, 0, 0, 0.4); }
+/* Fields: a soft accent ring instead of the browser's thick white outline. */
+:where(input, textarea, select):focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--color-accent) 45%, transparent);
+  outline-offset: 0;
+}

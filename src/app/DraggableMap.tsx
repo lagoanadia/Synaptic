@@ -216,8 +216,8 @@ export function DraggableMap({
                 aria-label={n.title}
               >
                 {current && <circle r={r + 6} fill="none" stroke={color} strokeWidth={1.5} opacity={0.4} />}
-                <circle r={r} fill={state === "todo" ? "#fff" : color} stroke={color} strokeWidth={1.7} opacity={state === "fading" ? 0.35 : 1} />
-                <text y={r + 13} textAnchor="middle" fontSize={current ? 12.5 : 11} fontWeight={current ? 600 : 400} fill={current ? "#37352f" : "#787774"} style={{ pointerEvents: "none" }}>
+                <circle r={r} fill={state === "todo" ? "var(--background)" : color} stroke={color} strokeWidth={1.7} opacity={state === "fading" ? 0.35 : 1} />
+                <text y={r + 13} textAnchor="middle" fontSize={current ? 12.5 : 11} fontWeight={current ? 600 : 400} fill={current ? "var(--color-ink)" : "var(--color-ink-muted)"} style={{ pointerEvents: "none" }}>
                   {hover === n.id || n.title.length <= 22 ? n.title : `${n.title.slice(0, 21)}…`}
                 </text>
               </g>

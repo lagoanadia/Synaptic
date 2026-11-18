@@ -10,10 +10,10 @@ export function Pill({ item, onClick }: { item: CalItem; onClick?: (e: React.Mou
     item.kind === "exam"
       ? { background: c, color: "#fff" }
       : item.kind === "due"
-        ? { background: `color-mix(in srgb, ${c} 14%, white)`, color: `color-mix(in srgb, ${c} 80%, black)`, borderLeft: `3px solid ${c}` }
+        ? { background: `color-mix(in srgb, ${c} 16%, var(--background))`, color: `color-mix(in srgb, ${c} 75%, var(--foreground))`, borderLeft: `3px solid ${c}` }
         : item.kind === "task"
-          ? { background: "#f7f6f3", borderLeft: `3px solid ${c}` }
-          : { background: "#fff", borderLeft: `3px solid ${c}`, boxShadow: "inset 0 0 0 1px #e9e8e4" };
+          ? { background: "var(--color-callout)", borderLeft: `3px solid ${c}` }
+          : { background: "var(--background)", borderLeft: `3px solid ${c}`, boxShadow: "inset 0 0 0 1px var(--color-border-subtle)" };
   const mark = item.kind === "task" && item.done ? "☑ " : MARK[item.kind];
   const Tag = onClick ? "button" : "span";
   return (
