@@ -72,6 +72,20 @@ function Board({ id, done, setDone }: { id: string; done: boolean; setDone: (v: 
   const svg = useRef<SVGSVGElement>(null);
   const wrap = useRef<HTMLDivElement>(null);
   const [view, setView] = useState({ x: 0, y: 0, z: 1 });
+  // A narrow board (in a column) is taller for its width, so there's room to draw.
+  const [narrow, setNarrow] = useState(false);
+  const frameH = narrow ? Math.round(BOARD_W * 0.75) : BOARD_H;
+  const frameRef = useRef(frameH);
+  useEffect(() => {
+    frameRef.current = frameH;
+  }, [frameH]);
+  useEffect(() => {
+    const el = wrap.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([e]) => setNarrow(e.contentRect.width < 520));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [shapes === null, done]);
   const [panning, setPanning] = useState<{ sx: number; sy: number; vx: number; vy: number } | null>(null);
   // Select tool: the chosen shape, and what a drag on it does.
   const [selected, setSelected] = useState<number | null>(null);
@@ -132,9 +146,9 @@ function Board({ id, done, setDone }: { id: string; done: boolean; setDone: (v: 
         const fx = (e.clientX - r.left) / r.width;
         const fy = (e.clientY - r.top) / r.height;
         const bx = v.x + fx * (BOARD_W / v.z);
-        const by = v.y + fy * (BOARD_H / v.z);
-        const nz = { z, x: bx - fx * (BOARD_W / z), y: by - fy * (BOARD_H / z) };
-        return { z: nz.z, x: Math.max(WORLD.x0, Math.min(WORLD.x1 - BOARD_W / z, nz.x)), y: Math.max(WORLD.y0, Math.min(WORLD.y1 - BOARD_H / z, nz.y)) };
+        const by = v.y + fy * (frameRef.current / v.z);
+        const nz = { z, x: bx - fx * (BOARD_W / z), y: by - fy * (frameRef.current / z) };
+        return { z: nz.z, x: Math.max(WORLD.x0, Math.min(WORLD.x1 - BOARD_W / z, nz.x)), y: Math.max(WORLD.y0, Math.min(WORLD.y1 - frameRef.current / z, nz.y)) };
       });
     };
     el.addEventListener("wheel", onWheel, { passive: false });
@@ -148,18 +162,18 @@ function Board({ id, done, setDone }: { id: string; done: boolean; setDone: (v: 
   };
   // Zoom (50%-400%) and pan: the part of the board on screen.
   const vbW = BOARD_W / view.z;
-  const vbH = BOARD_H / view.z;
+  const vbH = frameH / view.z;
   const fitView = (v: { x: number; y: number; z: number }) => {
     const z = Math.max(0.5, Math.min(4, v.z));
-    return { z, x: Math.max(WORLD.x0, Math.min(WORLD.x1 - BOARD_W / z, v.x)), y: Math.max(WORLD.y0, Math.min(WORLD.y1 - BOARD_H / z, v.y)) };
+    return { z, x: Math.max(WORLD.x0, Math.min(WORLD.x1 - BOARD_W / z, v.x)), y: Math.max(WORLD.y0, Math.min(WORLD.y1 - frameH / z, v.y)) };
   };
   // Zoom keeping the board point under (fx, fy) — 0..1 of the box — in place.
   const zoomAt = (factor: number, fx = 0.5, fy = 0.5) =>
     setView((v) => {
       const z = Math.max(0.5, Math.min(4, v.z * factor));
       const px = v.x + fx * (BOARD_W / v.z);
-      const py = v.y + fy * (BOARD_H / v.z);
-      return fitView({ z, x: px - fx * (BOARD_W / z), y: py - fy * (BOARD_H / z) });
+      const py = v.y + fy * (frameH / v.z);
+      return fitView({ z, x: px - fx * (BOARD_W / z), y: py - fy * (frameH / z) });
     });
   const px = (x: number) => `${((x - view.x) / vbW) * 100}%`;
   const py = (y: number) => `${((y - view.y) / vbH) * 100}%`;
@@ -225,7 +239,9 @@ function Board({ id, done, setDone }: { id: string; done: boolean; setDone: (v: 
 
   return (
     <div ref={wrap} className="relative my-2 overflow-hidden rounded-xl border border-border-subtle bg-white" contentEditable={false} data-board>
-      <div className="absolute top-2 left-2 z-10 flex items-center gap-0.5 rounded-xl border border-border-subtle bg-white p-1 shadow-sm" data-no-print>
+      {/* Tools above the drawing, never over it: in a narrow column they
+          wrap onto a second line instead of covering the board. */}
+      <div className="relative z-10 flex flex-wrap items-center gap-0.5 border-b border-border-subtle bg-white p-1" data-no-print>
         {TOOLS.map((item) => (
           <button key={item.id} type="button" title={t(item.label)} aria-label={t(item.label)} aria-pressed={tool === item.id} onClick={() => {
               setTool(item.id);
@@ -284,12 +300,18 @@ function Board({ id, done, setDone }: { id: string; done: boolean; setDone: (v: 
         >
           {S("M5 12.5l4.5 4.5L19 7.5")}
         </button>
+        <span className="ml-auto flex items-center gap-0.5 text-xs text-ink-muted">
+          <button type="button" onClick={() => zoomAt(1 / 1.25)} disabled={view.z <= 0.5} aria-label={t("Alejar")} title={t("Alejar")} className="grid size-7 place-items-center rounded-full hover:bg-chip disabled:opacity-30">−</button>
+          <button type="button" onClick={() => setView({ x: 0, y: 0, z: 1 })} title={t("Ver todo")} className="min-w-11 rounded-full px-1.5 py-1 tabular-nums hover:bg-chip">{Math.round(view.z * 100)}%</button>
+          <button type="button" onClick={() => zoomAt(1.25)} disabled={view.z >= 4} aria-label={t("Acercar")} title={t("Acercar")} className="grid size-7 place-items-center rounded-full hover:bg-chip disabled:opacity-30">+</button>
+        </span>
       </div>
+      <div className="relative">
       <svg
         ref={svg}
         viewBox={`${view.x} ${view.y} ${vbW} ${vbH}`}
         className="block w-full touch-none select-none"
-        style={{ aspectRatio: `${BOARD_W}/${BOARD_H}`, backgroundImage: "radial-gradient(#dcdad5 1px, transparent 1px)", backgroundSize: "18px 18px", cursor: tool === "text" ? "text" : tool === "select" ? (moving || panning ? "grabbing" : "grab") : "crosshair" }}
+        style={{ aspectRatio: `${BOARD_W}/${frameH}`, backgroundImage: "radial-gradient(#dcdad5 1px, transparent 1px)", backgroundSize: "18px 18px", cursor: tool === "text" ? "text" : tool === "select" ? (moving || panning ? "grabbing" : "grab") : "crosshair" }}
         onPointerDown={(e) => {
           const p = at(e);
           if (tool === "select") {
@@ -552,11 +574,6 @@ function Board({ id, done, setDone }: { id: string; done: boolean; setDone: (v: 
           )}
         </>
       )}
-      <div className="absolute right-2 bottom-2 z-10 flex items-center gap-0.5 rounded-full border border-border-subtle bg-white p-0.5 text-xs text-ink-muted shadow-sm" data-no-print>
-        <button type="button" onClick={() => zoomAt(1 / 1.25)} disabled={view.z <= 0.5} aria-label={t("Alejar")} title={t("Alejar")} className="grid size-7 place-items-center rounded-full hover:bg-chip disabled:opacity-30">−</button>
-        <button type="button" onClick={() => setView({ x: 0, y: 0, z: 1 })} title={t("Ver todo")} className="min-w-11 rounded-full px-1.5 py-1 tabular-nums hover:bg-chip">{Math.round(view.z * 100)}%</button>
-        <button type="button" onClick={() => zoomAt(1.25)} disabled={view.z >= 4} aria-label={t("Acercar")} title={t("Acercar")} className="grid size-7 place-items-center rounded-full hover:bg-chip disabled:opacity-30">+</button>
-      </div>
       {typing && (
         <input
           autoFocus
@@ -588,6 +605,7 @@ function Board({ id, done, setDone }: { id: string; done: boolean; setDone: (v: 
           }}
         />
       )}
+      </div>
     </div>
   );
 }
