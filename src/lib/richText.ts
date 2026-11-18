@@ -1,5 +1,5 @@
 import type { JSONContent } from "@tiptap/core";
-import { parseNoteBlocks, type InlineNode, type ListBlock, type NoteBlock } from "@/lib/text";
+import { COLS_CLOSE, COLS_NEXT, COLS_OPEN, parseNoteBlocks, type InlineNode, type ListBlock, type NoteBlock } from "@/lib/text";
 
 // Stored text format (lib/text.ts shortcuts) ⇄ the editor's document tree.
 // Storage is unchanged; only editing is visual.
@@ -70,6 +70,8 @@ function blockToNode(b: NoteBlock): JSONContent {
     }
     case "paragraph":
       return para(b.inline);
+    case "columns":
+      return { type: "columns", content: b.cols.map((c) => ({ type: "column", content: c.length ? c.map(blockToNode) : [{ type: "paragraph" }] })) };
   }
 }
 
@@ -162,13 +164,19 @@ function nodeToText(n: JSONContent): string {
     }
     case "horizontalRule":
       return "";
+    case "columns":
+      return [COLS_OPEN, (n.content ?? []).map((col) => blocksToText(col.content ?? [])).join(`\n${COLS_NEXT}\n`), COLS_CLOSE].join("\n");
     default:
       return inlineToText(n.content);
   }
 }
 
 export function docToText(doc: JSONContent): string {
-  return (doc.content ?? [])
+  return blocksToText(doc.content ?? []);
+}
+
+function blocksToText(nodes: JSONContent[]): string {
+  return nodes
     .map(nodeToText)
     .filter((block, i, all) => block !== "" || (i > 0 && all[i - 1] !== ""))
     .join("\n\n")

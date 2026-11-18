@@ -43,6 +43,8 @@ function block(b: NoteBlock): string {
       return `<div class="x-b"><table class="x-table">${b.header.length ? `<tr>${b.header.map((c) => `<th>${inline(c)}</th>`).join("")}</tr>` : ""}${b.rows.map((r) => `<tr>${r.map((c) => `<td>${inline(c)}</td>`).join("")}</tr>`).join("")}</table></div>`;
     case "codeBlock":
       return `<div class="x-b x-code">${b.language ? `<span class="x-lang">${esc(b.language)}</span>` : ""}${esc(b.code)}</div>`;
+    case "columns":
+      return `<div class="x-b" style="display:grid;grid-template-columns:repeat(${b.cols.length},minmax(0,1fr));gap:16px">${b.cols.map((c) => `<div>${c.map(block).join("")}</div>`).join("")}</div>`;
     default:
       return "type" in b && (b.type === "bulletList" || b.type === "numberedList" || b.type === "letteredList") ? `<div class="x-b-list">${list(b as ListBlock)}</div>` : "";
   }

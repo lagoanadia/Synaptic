@@ -84,6 +84,9 @@ function blockToMarkdown(block: NoteBlock): string {
     // (```) is the standard equivalent, so it maps over directly.
     case "codeBlock":
       return "```" + block.language + "\n" + block.code + "\n```";
+    // Markdown has no columns: one after another.
+    case "columns":
+      return block.cols.map((c) => c.map(blockToMarkdown).join("\n\n")).filter(Boolean).join("\n\n");
   }
 }
 

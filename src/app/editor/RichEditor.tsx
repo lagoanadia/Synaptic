@@ -17,6 +17,7 @@ import { CodeHighlight } from "./codeHighlight";
 import { OrderedList } from "@tiptap/extension-list";
 import { TableKit } from "@tiptap/extension-table";
 import { ImageWithBoards } from "./Whiteboard";
+import { Column, Columns, convertBlock, setColumns, unsetColumns, type BlockKind } from "./columns";
 import { Placeholder } from "@tiptap/extensions";
 import { docToText, textToDoc } from "@/lib/richText";
 import { termMatches, type TermHint } from "@/lib/terms";
@@ -243,6 +244,8 @@ export function RichEditor({
       CalloutShortcut,
       TableKit.configure({ table: { resizable: false } }),
       ImageWithBoards,
+      Columns,
+      Column,
       Placeholder.configure({ placeholder }),
       KeyTerms,
       BlockMoves,
@@ -439,22 +442,10 @@ export function RichEditor({
             >
               <GripIcon />
             </button>
-            {blockMenu && (
-              <div className="absolute top-7 left-0 flex gap-0.5 rounded-lg bg-white p-1 shadow-[0_0_0_1px_rgba(15,15,15,.05),0_10px_26px_rgba(15,15,15,.16)]" onMouseLeave={() => setBlockMenu(false)}>
-                <Btn onClick={() => moveFromMenu(-1)} title={t("Subir (Ctrl+Shift+↑)")}><ArrowDown size={14} className="rotate-180" /></Btn>
-                <Btn onClick={() => moveFromMenu(1)} title={t("Bajar (Ctrl+Shift+↓)")}><ArrowDown size={14} /></Btn>
-                <Btn
-                  onClick={() => {
-                    deleteBlock(editor, handle.pos);
-                    setHandle(null);
-                    setBlockMenu(false);
-                  }}
-                  title={t("Eliminar bloque")}
-                >
-                  <TrashIcon size={14} />
-                </Btn>
-              </div>
-            )}
+            {blockMenu && <BlockMenu editor={editor} pos={handle.pos} onMove={moveFromMenu} onDone={() => {
+                setHandle(null);
+                setBlockMenu(false);
+              }} />}
           </div>
         )}
         {tbl && (
@@ -816,5 +807,111 @@ function MindMapBtn({ run }: { run: () => Promise<string | null> }) {
       </Btn>
       {err && <span className="absolute top-full right-0 z-30 mt-1 w-56 rounded-lg bg-ink px-2.5 py-1.5 text-xs text-white shadow-lg">{err}</span>}
     </span>
+  );
+}
+
+// The block handle's menu: move, delete, turn into another kind of block,
+// or put columns next to it.
+const KINDS: { kind: BlockKind; label: string; icon: React.ReactNode }[] = [
+  { kind: "text", label: "Texto", icon: "Aa" },
+  { kind: "h1", label: "Título 1", icon: "H1" },
+  { kind: "h2", label: "Título 2", icon: "H2" },
+  { kind: "h3", label: "Título 3", icon: "H3" },
+  { kind: "bullet", label: "Lista", icon: "•" },
+  { kind: "numbered", label: "Lista numerada", icon: "1." },
+  { kind: "callout", label: "Aviso", icon: <QuoteIcon size={13} /> },
+  { kind: "code", label: "Código", icon: "</>" },
+];
+function BlockMenu({ editor, pos, onMove, onDone }: { editor: Editor; pos: number; onMove: (dir: -1 | 1) => void; onDone: () => void }) {
+  const t = useT();
+  const [cols, setCols] = useState(false);
+  // A list item's handle: converting and columns act on its whole list.
+  const $p = editor.state.doc.resolve(pos);
+  const top = $p.depth > 0 ? $p.before(1) : pos;
+  const node = editor.state.doc.nodeAt(top);
+  const type = node?.type.name ?? "";
+  const convertible = ["paragraph", "heading", "bulletList", "orderedList", "blockquote", "codeBlock"].includes(type);
+  const isCols = type === "columns";
+  const row = "flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[13px] text-ink hover:bg-chip";
+  const ic = "grid size-6 shrink-0 place-items-center rounded border border-border-subtle bg-white text-[11px] text-ink-muted";
+  const shape = (n: number) => (
+    <span className="flex w-16 gap-1">
+      {Array.from({ length: n }, (_, i) => (
+        <i key={i} className="h-4 flex-1 rounded-[3px] border-[1.5px] border-ink-faint/50" />
+      ))}
+    </span>
+  );
+  return (
+    <div className="absolute top-7 left-0 z-20 w-60 rounded-xl bg-white p-1.5 shadow-[0_0_0_1px_rgba(15,15,15,.05),0_10px_26px_rgba(15,15,15,.16)]" onMouseLeave={onDone} onMouseDown={(e) => e.preventDefault()}>
+      <div className="mb-1 flex gap-0.5 border-b border-border-subtle pb-1.5">
+        <Btn onClick={() => onMove(-1)} title={t("Subir (Ctrl+Shift+↑)")}><ArrowDown size={14} className="rotate-180" /></Btn>
+        <Btn onClick={() => onMove(1)} title={t("Bajar (Ctrl+Shift+↓)")}><ArrowDown size={14} /></Btn>
+        <Btn
+          onClick={() => {
+            deleteBlock(editor, pos);
+            onDone();
+          }}
+          title={t("Eliminar bloque")}
+        >
+          <TrashIcon size={14} />
+        </Btn>
+      </div>
+      {convertible && (
+        <>
+          <div className="px-2 pt-1.5 pb-1 text-[11px] font-semibold text-ink-faint">{t("Convertir en")}</div>
+          {KINDS.map((k) => (
+            <button
+              key={k.kind}
+              type="button"
+              className={row}
+              onClick={() => {
+                convertBlock(editor, top, k.kind);
+                onDone();
+              }}
+            >
+              <span className={ic}>{k.icon}</span>
+              {t(k.label)}
+            </button>
+          ))}
+        </>
+      )}
+      <div className="px-2 pt-1.5 pb-1 text-[11px] font-semibold text-ink-faint">{t("Columnas")}</div>
+      {!cols ? (
+        <button type="button" className={row} onClick={() => setCols(true)}>
+          <span className={ic}>▥</span>
+          {isCols ? t("Cambiar columnas") : t("Añadir columnas al lado")}
+          <span className="ml-auto text-ink-faint">›</span>
+        </button>
+      ) : (
+        <>
+          {[2, 3, 4].map((n) => (
+            <button
+              key={n}
+              type="button"
+              className={row}
+              onClick={() => {
+                setColumns(editor, top, n);
+                onDone();
+              }}
+            >
+              {shape(n)}
+              {t("{0} columnas", { 0: n })}
+            </button>
+          ))}
+          {isCols && (
+            <button
+              type="button"
+              className={`${row} text-ink-muted`}
+              onClick={() => {
+                unsetColumns(editor, top);
+                onDone();
+              }}
+            >
+              {t("Quitar columnas")}
+            </button>
+          )}
+        </>
+      )}
+    </div>
   );
 }
