@@ -135,9 +135,13 @@ const unitLabel = (name: string): string | null => {
   return m ? `UD${Number(m[1])}` : null;
 };
 
-export async function notebookPaths(userId: string, sectionId: string): Promise<SubjectPath[]> {
+export const notebookPaths = (userId: string, sectionId: string) => pathsOf({ ownerId: userId, sectionId, loose: false });
+// One folder's own path (its page's map).
+export const folderPath = async (pursuitId: string): Promise<SubjectPath | null> => (await pathsOf({ id: pursuitId }))[0] ?? null;
+
+async function pathsOf(where: { id?: string; ownerId?: string; sectionId?: string; loose?: boolean }): Promise<SubjectPath[]> {
   const pursuits = await prisma.pursuit.findMany({
-    where: { ownerId: userId, sectionId, loose: false },
+    where,
     orderBy: { lastTouchedAt: "desc" },
     select: { id: true, title: true, cover: true, conceptMaps: { orderBy: { createdAt: "asc" }, select: mapSelect } },
   });

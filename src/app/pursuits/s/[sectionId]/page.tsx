@@ -17,6 +17,7 @@ import { NotebookDeadlines } from "./NotebookDeadlines";
 import { notebookDeadlines } from "@/lib/notebookDeadlines";
 import { Suspense } from "react";
 import { NotebookMap } from "./NotebookMap";
+import { tidyUnitlessMaps } from "@/lib/autoMap";
 import { notebookProjects } from "@/lib/projectData";
 import { dayOf } from "@/lib/projects";
 import { ProjectGrid } from "@/app/projects/ProjectGrid";
@@ -63,7 +64,8 @@ export default async function NotebookPage({ params }: { params: Promise<{ secti
 
   const mine = await prisma.userTemplate.findMany({ where: { userId }, orderBy: { createdAt: "asc" }, select: { id: true, name: true } });
   const [map, recent, projects, loose] = await Promise.all([
-    study && section ? notebookPaths(userId, section.id) : Promise.resolve([]),
+    // Every concept in a unit before the map is drawn (see tidyUnitlessMaps).
+    study && section ? Promise.all(pursuits.map((p) => tidyUnitlessMaps(p.id))).then(() => notebookPaths(userId, section.id)) : Promise.resolve([]),
     section && !study ? recentPages(userId, section.id, 8) : Promise.resolve([]),
     !study && section ? notebookProjects(userId, section.id) : Promise.resolve([]),
     section ? loosePages(userId, section.id) : Promise.resolve([]),
@@ -175,6 +177,6 @@ export default async function NotebookPage({ params }: { params: Promise<{ secti
 
 // Streams in after the rest of the page: Classroom can take a few seconds.
 async function DeadlinesPanel({ userId, sectionId, groupOf, groups }: { userId: string; sectionId: string; groupOf: Record<string, string | null>; groups: string[] }) {
-  const list = await notebookDeadlines(userId, sectionId).catch(() => []);
-  return <NotebookDeadlines list={list} groupOf={groupOf} groups={groups} side />;
+  const r = await notebookDeadlines(userId, sectionId).catch(() => ({ status: "error" as const, list: [] }));
+  return <NotebookDeadlines list={r.list} status={r.status} groupOf={groupOf} groups={groups} side />;
 }

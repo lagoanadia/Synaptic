@@ -6,9 +6,13 @@ import { Fragment } from "react";
 // Short AI text made easy to scan: "- " lines as a list, **bold**,
 // `code` as a chip, and a leading [fuera] as a "not in your notes" tag.
 function inline(text: string) {
-  return text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g).map((part, i) =>
-    part.startsWith("**") && part.endsWith("**") ? (
+  // *single* stars too: the AI sometimes marks terms that way; they show
+  // bold like **double** ones instead of as stray asterisks.
+  return text.split(/(\*\*[^*]+\*\*|\*[^*\s][^*]*\*|`[^`]+`)/g).map((part, i) =>
+    part.startsWith("**") && part.endsWith("**") && part.length > 4 ? (
       <b key={i} className="font-semibold text-ink">{part.slice(2, -2)}</b>
+    ) : part.length > 2 && part.startsWith("*") && part.endsWith("*") ? (
+      <b key={i} className="font-semibold text-ink">{part.slice(1, -1)}</b>
     ) : part.startsWith("`") && part.endsWith("`") && part.length > 2 ? (
       <code key={i} className="rounded bg-[#1e1e2e]/[0.07] px-1.5 py-0.5 font-mono text-[0.88em] text-[#7c3aed]">{part.slice(1, -1)}</code>
     ) : (

@@ -18,7 +18,8 @@ const startOfDay = (t: number) => {
 // much is handed in and chips for what's left. Hidden when none of its
 // subjects is linked to Classroom.
 // side: shown in a narrow panel, one card per row.
-export function NotebookDeadlines({ list, groupOf, groups, side = false }: { list: NotebookDeadline[]; groupOf: Record<string, string | null>; groups: string[]; side?: boolean }) {
+// status: why there's no list, shown instead of hiding the panel.
+export function NotebookDeadlines({ list, status = "ok", groupOf, groups, side = false }: { list: NotebookDeadline[]; status?: "ok" | "none" | "disconnected" | "error"; groupOf: Record<string, string | null>; groups: string[]; side?: boolean }) {
   const t = useT();
   const locale = useLocale();
   // Only the open section tab's subjects (?s=Teoría), like the folders.
@@ -26,7 +27,26 @@ export function NotebookDeadlines({ list, groupOf, groups, side = false }: { lis
   // Dates depend on the viewer's own clock and time zone, so this draws in
   // the browser (right away: the list came with the page).
   const now = useSyncExternalStore(subscribe, () => Math.floor(Date.now() / 60000) * 60000, () => 0);
-  if (!now || list.length === 0) return null;
+  if (!now || status === "none") return null;
+  if (status !== "ok")
+    return (
+      <section className="flex flex-col gap-2">
+        <h2 className="flex items-center gap-2 border-b border-border-subtle pb-2 text-sm font-semibold">{t("Entregas")}</h2>
+        <div className="flex flex-col gap-2 rounded-lg border border-border-subtle bg-white px-4 py-3 text-[13px] text-ink-muted">
+          {status === "disconnected" ? t("Google Classroom no está conectado (o la conexión ha caducado).") : t("No se han podido cargar las entregas de Classroom.")}
+          {status === "disconnected" ? (
+            <a href="/api/classroom/connect?pursuitId=profile" className="w-fit rounded-md bg-ink px-3 py-1.5 text-xs font-semibold text-white">
+              {t("Conectar Classroom")}
+            </a>
+          ) : (
+            <button type="button" onClick={() => window.location.reload()} className="w-fit rounded-md border border-border-subtle px-3 py-1.5 text-xs font-medium hover:bg-chip">
+              {t("Reintentar")}
+            </button>
+          )}
+        </div>
+      </section>
+    );
+  if (list.length === 0) return null;
   const today = startOfDay(now);
   // "This term": what was due in the last four months or is still to come.
   const term = list.filter((d) => d.dueAt >= today - 120 * DAY && (!tab || groupOf[d.folderId] === tab));
