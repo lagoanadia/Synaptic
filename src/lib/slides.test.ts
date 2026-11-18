@@ -52,3 +52,12 @@ describe("isSlideTitle", () => {
     expect(isSlideTitle("Calculo.java")).toBe(false);
   });
 });
+
+import { explicitUnit } from "./slides";
+describe("explicitUnit", () => {
+  it("reads UD from the file name, not a topic", () => {
+    expect(explicitUnit("PMDM-UD1-T2_mapa-de-tecnologias_v2.pptx")).toBe("UD1");
+    expect(explicitUnit("T2 mapa de tecnologias.pptx")).toBeNull();
+    expect(explicitUnit("Unidad 3 - layouts.pdf")).toBe("UD3");
+  });
+});

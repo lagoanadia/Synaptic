@@ -4,7 +4,7 @@ import { useT } from "@/app/LangProvider";
 import { useEffect, useRef, useState } from "react";
 import { upload } from "@vercel/blob/client";
 import { SlidesIcon, XIcon } from "@/app/icons";
-import { isSlideTitle, slideSourceFor, unitCode } from "@/lib/slides";
+import { explicitUnit, isSlideTitle, slideSourceFor, unitCode } from "@/lib/slides";
 import { listClassroomFiles, saveSlideDeck } from "./actions";
 import { PdfSlides } from "./PdfSlides";
 import { deleteLocalPdf, getLocalPdf, saveLocalPdf } from "@/lib/localPdf";
@@ -283,8 +283,9 @@ export function SlidePanel({
                 });
                 const groups = new Map<string, Deck[]>();
                 for (const d of all) {
-                  // The post's unit wins over the file name ("T2 …" is a topic, not UD2).
-                  const u = d.unit ?? unitCode(d.name) ?? "";
+                  // "UD1" in the file name wins; then the Classroom post's unit (a
+                  // file can be posted again later); then a topic number ("T2").
+                  const u = explicitUnit(d.name) ?? d.unit ?? unitCode(d.name) ?? "";
                   if (classroomUnit && !showAllUnits && u !== classroomUnit) continue;
                   groups.set(u, [...(groups.get(u) ?? []), d]);
                 }
