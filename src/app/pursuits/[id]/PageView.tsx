@@ -189,8 +189,14 @@ export function PageView({ pursuit, crumbs, dump, note, slides, terms, stale: st
         save();
       }
     }
+    // Something in the page asks to be kept now (a whiteboard's ✓).
+    const onAsk = () => save();
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    window.addEventListener("page:save", onAsk);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("page:save", onAsk);
+    };
   });
 
   // Leaving with unsaved changes asks first.

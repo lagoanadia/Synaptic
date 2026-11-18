@@ -4,7 +4,7 @@ import { useT } from "@/app/LangProvider";
 import { useEffect, useRef, useState } from "react";
 import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from "@tiptap/react";
 import Image from "@tiptap/extension-image";
-import { BOARD_COLORS, colorOf, type Color, BOARD_H, BOARD_SRC, BOARD_W, WORLD, attachTarget, bendFor, hitShape, lineGeometry, lineMiddle, moveShape, newShapeId, resizeShape, shapeBox, shapeSvg, tooSmall, type Arrow, type LineShape, type Shape } from "@/lib/whiteboard";
+import { BOARD_COLORS, colorOf, type Color, type Fill, BOARD_H, BOARD_SRC, BOARD_W, WORLD, attachTarget, bendFor, hitShape, lineGeometry, lineMiddle, moveShape, newShapeId, resizeShape, shapeBox, shapeSvg, tooSmall, type Arrow, type LineShape, type Shape } from "@/lib/whiteboard";
 import { saveBoard } from "@/app/pursuits/[id]/boards";
 
 type Tool = "select" | "pen" | "line" | "arrow" | "rect" | "ellipse" | "text";
@@ -40,12 +40,29 @@ function removeShapes(shapes: Shape[], gone: number[]): Shape[] {
 
 // A whiteboard inside a page: draw with pen, line, rectangle, circle or
 // text in four colours; saves itself a moment after each change.
-function Board({ id }: { id: string }) {
+// done: ✓ pressed, so only the drawing shows (no toolbar, grid or frame);
+// a click on it goes back to editing.
+function Board({ id, done, setDone }: { id: string; done: boolean; setDone: (v: boolean) => void }) {
   const t = useT();
   const [shapes, setShapes] = useState<Shape[] | null>(null);
   const [tool, setTool] = useState<Tool>("pen");
   const [color, setColor] = useState<Color>(0);
   const [palette, setPalette] = useState(false);
+  // Fill for boxes and circles: none → soft tint → solid.
+  const [fill, setFill] = useState<Fill | null>(null);
+  const pickFill = () => {
+    const next: Fill | null = fill === null ? "soft" : fill === "soft" ? "solid" : null;
+    setFill(next);
+    const fillable = (sh: Shape) => sh.t === "rect" || sh.t === "ellipse";
+    const set = (sh: Shape): Shape => {
+      if (sh.t !== "rect" && sh.t !== "ellipse") return sh;
+      const { f: _f, ...rest } = sh;
+      void _f;
+      return next ? { ...rest, f: next } : rest;
+    };
+    const targets = many.length ? many : selected !== null ? [selected] : [];
+    if (shapes && targets.some((i) => shapes[i] && fillable(shapes[i]))) commit(shapes.map((sh, j) => (targets.includes(j) ? set(sh) : sh)));
+  };
   const pick = (c: Color) => {
     setColor(c);
     if (many.length && shapes) commit(shapes.map((sh, j) => (many.includes(j) ? { ...sh, c } : sh)));
@@ -185,6 +202,27 @@ function Board({ id }: { id: string }) {
   const middle = sel?.t === "line" ? lineMiddle(sel, shown) : null;
   const snapBox = snap !== null && shapes[snap] ? shapeBox(shapes[snap]) : null;
 
+  if (done && shapes.length) {
+    // Just the drawing, cut to what's drawn, never bigger than drawn.
+    const b = shapes.map((x) => shapeBox(x, shapes)).reduce((u, k) => ({ x0: Math.min(u.x0, k.x0), y0: Math.min(u.y0, k.y0), x1: Math.max(u.x1, k.x1), y1: Math.max(u.y1, k.y1) }));
+    const m = 12;
+    const w = Math.round(b.x1 - b.x0 + m * 2);
+    const h = Math.round(b.y1 - b.y0 + m * 2);
+    return (
+      <div className="my-2" contentEditable={false} data-board title={t("Clic para editar")}>
+        <svg
+          viewBox={`${Math.round(b.x0 - m)} ${Math.round(b.y0 - m)} ${w} ${h}`}
+          role="img"
+          aria-label={t("Pizarra")}
+          onClick={() => setDone(false)}
+          className="block h-auto w-full cursor-pointer"
+          style={{ maxWidth: w, maxHeight: Math.max(BOARD_H, h) }}
+          dangerouslySetInnerHTML={{ __html: shapes.map((x) => shapeSvg(x, shapes)).join("") }}
+        />
+      </div>
+    );
+  }
+
   return (
     <div ref={wrap} className="relative my-2 overflow-hidden rounded-xl border border-border-subtle bg-white" contentEditable={false} data-board>
       <div className="absolute top-2 left-2 z-10 flex items-center gap-0.5 rounded-xl border border-border-subtle bg-white p-1 shadow-sm" data-no-print>
@@ -222,9 +260,29 @@ function Board({ id }: { id: string }) {
             </span>
           )}
         </span>
+        <button type="button" title={t("Relleno")} aria-label={t("Relleno")} onClick={pickFill} className="grid size-8 place-items-center rounded-lg hover:bg-chip">
+          <span className="size-[18px] rounded-[5px] border-2" style={{ borderColor: colorOf(color), background: fill === "solid" ? colorOf(color) : fill === "soft" ? `${colorOf(color)}2e` : "transparent" }} />
+        </button>
         <span className="mx-1 h-5 w-px bg-border-subtle" />
         <button type="button" title={t("Deshacer")} aria-label={t("Deshacer")} disabled={!shapes.length} onClick={() => commit(shapes.slice(0, -1))} className="grid size-8 place-items-center rounded-lg text-ink-muted hover:text-ink disabled:opacity-30">
           {S("M9 14 4 9l5-5|M4 9h10a6 6 0 0 1 0 12h-3")}
+        </button>
+        <button
+          type="button"
+          title={t("Listo")}
+          aria-label={t("Listo")}
+          disabled={!shapes.length}
+          onClick={() => {
+            if (saveTimer.current) window.clearTimeout(saveTimer.current);
+            saveBoard(id, shapes);
+            setSelected(null);
+            setMany([]);
+            setPalette(false);
+            setDone(true);
+          }}
+          className="ml-0.5 grid size-8 place-items-center rounded-lg bg-ink text-white hover:opacity-90 disabled:opacity-30"
+        >
+          {S("M5 12.5l4.5 4.5L19 7.5")}
         </button>
       </div>
       <svg
@@ -311,7 +369,7 @@ function Board({ id }: { id: string }) {
             return;
           }
           (e.target as Element).setPointerCapture?.(e.pointerId);
-          setDraft(tool === "pen" ? { t: "pen", c: color, p: [p] } : tool === "line" || tool === "arrow" ? { t: "line", c: color, a: p, b: p, ...(tool === "arrow" ? { arrow: "end" as const } : {}) } : { t: tool, c: color, a: p, b: p });
+          setDraft(tool === "pen" ? { t: "pen", c: color, p: [p] } : tool === "line" || tool === "arrow" ? { t: "line", c: color, a: p, b: p, ...(tool === "arrow" ? { arrow: "end" as const } : {}) } : { t: tool, c: color, a: p, b: p, ...(fill ? { f: fill } : {}) });
         }}
         onPointerMove={(e) => {
           if (panning) {
@@ -534,13 +592,19 @@ function Board({ id }: { id: string }) {
   );
 }
 
-function ImageOrBoard({ node }: NodeViewProps) {
+// A finished board keeps that in the page itself ("#done" on its address),
+// so it opens showing only the drawing.
+function ImageOrBoard({ node, updateAttributes }: NodeViewProps) {
   const src = String(node.attrs.src ?? "");
   const m = BOARD_SRC.exec(src);
   return (
     <NodeViewWrapper>
       {m ? (
-        <Board id={m[1]} />
+        <Board id={m[1]} done={!!m[2]} setDone={(v) => {
+            updateAttributes({ src: `/api/boards/${m[1]}${v ? "#done" : ""}` });
+            // The page keeps it right away (after it has seen the change).
+            window.setTimeout(() => window.dispatchEvent(new Event("page:save")), 150);
+          }} />
       ) : (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={src} alt="" className="max-w-full rounded-md" />

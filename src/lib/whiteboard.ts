@@ -9,14 +9,16 @@ export const WORLD_W = BOARD_W * 3;
 export const WORLD_H = BOARD_H * 3;
 // The board reaches out on every side of the starting frame (0,0)-(900,400).
 export const WORLD = { x0: -BOARD_W * 2, y0: -BOARD_H * 2, x1: BOARD_W * 4, y1: BOARD_H * 4 };
-export const BOARD_COLORS = ["#37352f", "#e16259", "#2383e2", "#eda100"] as const;
-export const BOARD_SRC = /^\/api\/boards\/([a-z0-9]{10,40})$/;
+export const BOARD_COLORS = ["#37352f", "#e16259", "#2383e2", "#eda100", "#4dab6f", "#e255a1"] as const;
+// "#done" at the end: finished, shown as just the drawing.
+export const BOARD_SRC = /^\/api\/boards\/([a-z0-9]{10,40})(#done)?$/;
 
 type Pt = [number, number];
 // A colour: one of BOARD_COLORS (by index) or any "#rrggbb" picked freely.
 export type Color = number | string;
 export const colorOf = (c: Color): string => (typeof c === "string" ? c : (BOARD_COLORS[c] ?? BOARD_COLORS[0]));
 export type Arrow = "end" | "both";
+export type Fill = "soft" | "solid";
 // Lines can curve (`bend`: how far the middle is pulled sideways), carry
 // arrowheads, and stick to a shape at either end (`fa`/`fb` = that shape's
 // id): then that end sits on the shape's edge and follows it around.
@@ -25,8 +27,9 @@ export type LineShape = { g?: string; t: "line"; c: Color; a: Pt; b: Pt; bend?: 
 export type Shape =
   | { g?: string; t: "pen"; c: Color; p: Pt[] }
   | LineShape
-  | { g?: string; t: "rect"; c: Color; a: Pt; b: Pt; id?: string }
-  | { g?: string; t: "ellipse"; c: Color; a: Pt; b: Pt; id?: string }
+  // f: filled with its colour, "soft" (a light tint) or "solid".
+  | { g?: string; t: "rect"; c: Color; a: Pt; b: Pt; id?: string; f?: Fill }
+  | { g?: string; t: "ellipse"; c: Color; a: Pt; b: Pt; id?: string; f?: Fill }
   // fs: font size (default 20); mid: `a` is the text's centre, not its start.
   | { g?: string; t: "text"; c: Color; a: Pt; s: string; id?: string; fs?: number; mid?: boolean };
 
@@ -60,7 +63,7 @@ export function cleanShapes(raw: unknown): Shape[] {
       if (idOf(o.fa)) l.fa = idOf(o.fa);
       if (idOf(o.fb)) l.fb = idOf(o.fb);
       out.push(l);
-    } else if (o.t === "rect" || o.t === "ellipse") out.push({ t: o.t, c, a: pt(o.a), b: pt(o.b), ...(id ? { id } : {}) });
+    } else if (o.t === "rect" || o.t === "ellipse") out.push({ t: o.t, c, a: pt(o.a), b: pt(o.b), ...(id ? { id } : {}), ...(o.f === "soft" || o.f === "solid" ? { f: o.f } : {}) });
     else if (o.t === "text" && typeof o.s === "string" && o.s.trim())
       out.push({
         t: "text",
@@ -189,9 +192,13 @@ export function shapeSvg(s: Shape, all: Shape[] = []): string {
       return `<path d="${d}" ${stroke}/>${heads}`;
     }
     case "rect":
-      return `<rect x="${Math.min(s.a[0], s.b[0])}" y="${Math.min(s.a[1], s.b[1])}" width="${Math.abs(s.b[0] - s.a[0])}" height="${Math.abs(s.b[1] - s.a[1])}" rx="6" ${stroke}/>`;
-    case "ellipse":
-      return `<ellipse cx="${(s.a[0] + s.b[0]) / 2}" cy="${(s.a[1] + s.b[1]) / 2}" rx="${Math.abs(s.b[0] - s.a[0]) / 2}" ry="${Math.abs(s.b[1] - s.a[1]) / 2}" ${stroke}/>`;
+    case "ellipse": {
+      const fill = s.f ? `fill="${col}" fill-opacity="${s.f === "solid" ? 1 : 0.18}"` : 'fill="none"';
+      const look = `stroke="${col}" stroke-width="3" ${fill} stroke-linejoin="round"`;
+      return s.t === "rect"
+        ? `<rect x="${Math.min(s.a[0], s.b[0])}" y="${Math.min(s.a[1], s.b[1])}" width="${Math.abs(s.b[0] - s.a[0])}" height="${Math.abs(s.b[1] - s.a[1])}" rx="6" ${look}/>`
+        : `<ellipse cx="${(s.a[0] + s.b[0]) / 2}" cy="${(s.a[1] + s.b[1]) / 2}" rx="${Math.abs(s.b[0] - s.a[0]) / 2}" ry="${Math.abs(s.b[1] - s.a[1]) / 2}" ${look}/>`;
+    }
     case "text":
       return `<text x="${s.a[0]}" y="${s.a[1]}" font-size="${s.fs ?? 20}" font-family="Inter, system-ui, sans-serif" fill="${col}"${s.mid ? ' text-anchor="middle" dominant-baseline="central"' : ""}>${esc(s.s)}</text>`;
   }
