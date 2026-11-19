@@ -28,6 +28,8 @@ export type CalItem = {
   // and filter).
   calendarId?: string;
   calendarName?: string;
+  // Our timed events: when they end ("11:00"), if given.
+  endTime?: string | null;
 };
 
 const keyFmt = new Intl.DateTimeFormat("en-CA", { timeZone: APP_TZ, year: "numeric", month: "2-digit", day: "2-digit" });

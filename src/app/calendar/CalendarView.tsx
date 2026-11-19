@@ -222,7 +222,8 @@ function AddForm({ day, folders, onDone }: { day: string; folders: Folder[]; onD
   const locale = useLocale();
   const t = useT();
   const router = useRouter();
-  const [form, setForm] = useState<NewEvent>({ title: "", kind: "exam", day, time: "", pursuitId: folders[0]?.id ?? null, unitId: null });
+  const [allDay, setAllDay] = useState(true);
+  const [form, setForm] = useState<NewEvent>({ title: "", kind: "exam", day, time: "", endTime: "", pursuitId: folders[0]?.id ?? null, unitId: null });
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const units = folders.find((f) => f.id === form.pursuitId)?.units ?? [];
@@ -238,7 +239,7 @@ function AddForm({ day, folders, onDone }: { day: string; folders: Folder[]; onD
       onSubmit={(e) => {
         e.preventDefault();
         start(async () => {
-          const r = await addEvent(form);
+          const r = await addEvent(allDay ? { ...form, time: "", endTime: "" } : form);
           if (r.error) return setError(r.error);
           onDone();
           router.refresh();
@@ -254,15 +255,36 @@ function AddForm({ day, folders, onDone }: { day: string; folders: Folder[]; onD
           </button>
         ))}
       </span>
-      <span className="flex min-w-0 gap-2">
-        <Select
-          value={form.pursuitId ?? ""}
-          onChange={(v) => setForm({ ...form, pursuitId: v || null, unitId: null })}
-          ariaLabel={t("Carpeta")}
-          options={[{ value: "", label: t("Sin carpeta") }, ...folders.map((f) => ({ value: f.id, label: f.title }))]}
-          className={`${field} min-w-0 flex-1`}
-        />
-        <TimePicker value={form.time ?? ""} onChange={(v) => setForm({ ...form, time: v })} ariaLabel={t("Hora (opcional)")} className={`${field} w-[4.5rem] shrink-0 text-center`} />
+      <Select
+        value={form.pursuitId ?? ""}
+        onChange={(v) => setForm({ ...form, pursuitId: v || null, unitId: null })}
+        ariaLabel={t("Carpeta")}
+        options={[{ value: "", label: t("Sin carpeta") }, ...folders.map((f) => ({ value: f.id, label: f.title }))]}
+        className={`${field} w-full`}
+      />
+      {/* All day, or from … to … */}
+      <span className="flex min-h-9 flex-col gap-2">
+        <button
+          type="button"
+          role="switch"
+          aria-checked={allDay}
+          onClick={() => setAllDay((a) => !a)}
+          className="flex shrink-0 items-center gap-2 self-start rounded-md py-1 pr-1 text-sm text-ink-muted"
+        >
+          <span className={`relative h-5 w-9 rounded-full transition-colors ${allDay ? "bg-accent" : "bg-[#d3d1cb]"}`}>
+            <span className={`absolute top-0.5 left-0.5 size-4 rounded-full bg-white shadow-sm transition-transform ${allDay ? "translate-x-4" : ""}`} />
+          </span>
+          {t("Todo el día")}
+        </button>
+        {!allDay && (
+          <span className="flex min-w-0 items-center gap-2">
+            <TimePicker value={form.time ?? ""} onChange={(v) => setForm({ ...form, time: v, endTime: form.endTime && v && form.endTime <= v ? "" : form.endTime })} ariaLabel={t("Hora de inicio")} className={`${field} min-w-0 flex-1 text-center`} />
+            <span className="text-ink-faint" aria-hidden>
+              –
+            </span>
+            <TimePicker value={form.endTime ?? ""} onChange={(v) => setForm({ ...form, endTime: v })} ariaLabel={t("Hora de fin")} className={`${field} min-w-0 flex-1 text-center`} />
+          </span>
+        )}
       </span>
       {form.kind === "exam" && units.length > 0 && (
         <Select
@@ -298,7 +320,7 @@ function Detail({ item, onDone }: { item: CalItem; onDone: () => void }) {
     <div className="flex flex-col gap-2.5">
       <span className="text-xs text-ink-faint">
         {shortDay(item.day, locale)}
-        {item.time && ` · ${item.time}`}
+        {item.time ? ` · ${item.time}${item.endTime ? `–${item.endTime}` : ""}` : item.kind !== "due" ? ` · ${t("Todo el día")}` : ""}
       </span>
       <b className="text-[15px] leading-snug">
         {mark}

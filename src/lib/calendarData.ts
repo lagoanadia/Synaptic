@@ -38,6 +38,7 @@ export async function calendarItems(userId: string, from: string, to: string): P
       kind: (["exam", "task", "event"].includes(e.kind) ? e.kind : "event") as CalItem["kind"],
       day: dayKey(e.date),
       time: e.allDay ? null : timeOf(e.date),
+      endTime: !e.allDay && e.endDate ? timeOf(e.endDate) : null,
       color: e.pursuit ? folderColor(e.pursuit.id, e.pursuit.cover) : NEUTRAL,
       folderId: e.pursuit?.id ?? null,
       folder: e.pursuit?.title ?? null,

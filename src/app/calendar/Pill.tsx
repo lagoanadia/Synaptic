@@ -25,7 +25,7 @@ export function Pill({ item, onClick }: { item: CalItem; onClick?: (e: React.Mou
       className={`block w-full truncate rounded-[4px] px-1.5 py-0.5 text-left text-xs ${item.kind === "exam" ? "font-semibold" : ""} ${item.done ? "line-through opacity-60" : ""}`}
     >
       {mark}
-      {item.time && item.kind !== "google" ? `${item.time} ` : ""}
+      {item.time && item.kind !== "google" ? `${item.time}${item.endTime ? `–${item.endTime}` : ""} ` : ""}
       {item.title}
       {item.time && item.kind === "google" ? ` ${item.time}` : ""}
     </Tag>

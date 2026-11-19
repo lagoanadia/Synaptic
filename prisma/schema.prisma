@@ -646,6 +646,8 @@ model CalendarEvent {
   // A day (allDay) or a moment.
   date      DateTime
   allDay    Boolean  @default(true)
+  // When a timed event ends (null = no end time given).
+  endDate   DateTime?
   done      Boolean  @default(false)
   createdAt DateTime @default(now())
   // The copy in Google Calendar, when sending is on.

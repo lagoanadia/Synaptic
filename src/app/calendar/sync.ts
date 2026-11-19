@@ -28,7 +28,7 @@ export async function syncToGoogle(userId: string): Promise<boolean> {
   for (const e of events) {
     const where = [e.pursuit?.title, e.unit?.name].filter(Boolean).join(" · ");
     const title = [KIND_LABEL[e.kind], e.title, where && `· ${where}`].filter(Boolean).join(" ");
-    jobs.push(putEvent(token, { id: googleIdFor("e", e.id), title, day: dayKey(e.date), time: e.allDay ? null : { start: timeOf(e.date), minutes: 60 } }));
+    jobs.push(putEvent(token, { id: googleIdFor("e", e.id), title, day: dayKey(e.date), time: e.allDay ? null : { start: timeOf(e.date), minutes: e.endDate ? Math.max(15, Math.round((e.endDate.getTime() - e.date.getTime()) / 60000)) : 60 } }));
     const block = googleIdFor("r", e.id);
     if (e.kind === "exam" && c.reviewBlocks) {
       jobs.push(putEvent(token, { id: block, title: `Repaso: ${e.title}`, day: addDays(dayKey(e.date), -1), time: { start: "18:00", minutes: 20 }, description: t("Synaptic · repaso antes del examen") }));

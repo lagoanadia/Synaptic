@@ -1182,4 +1182,7 @@ export const en: Record<string, string> = {
   "Añadido a tu página ✓": "Added to your page ✓",
   "Win+Mayús+S para recortar": "Win+Shift+S to snip",
   "Abrir PDF del ordenador": "Open PDF from computer",
+  "Todo el día": "All day",
+  "Hora de inicio": "Start time",
+  "Hora de fin": "End time",
 };

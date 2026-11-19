@@ -21,7 +21,7 @@ const done = () => {
   revalidatePath("/pursuits");
 };
 
-export type NewEvent = { title: string; kind: "exam" | "task" | "event"; day: string; time?: string; pursuitId?: string | null; unitId?: string | null };
+export type NewEvent = { title: string; kind: "exam" | "task" | "event"; day: string; time?: string; endTime?: string; pursuitId?: string | null; unitId?: string | null };
 
 export async function addEvent(input: NewEvent): Promise<{ error: string | null }> {
   const t = await getT();
@@ -30,6 +30,8 @@ export async function addEvent(input: NewEvent): Promise<{ error: string | null 
   if (!title) return { error: t("Ponle un nombre") };
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.day)) return { error: t("Fecha no válida") };
   const time = input.time && /^\d{2}:\d{2}$/.test(input.time) ? input.time : null;
+  // An end only with a start, and only after it.
+  const endTime = time && input.endTime && /^\d{2}:\d{2}$/.test(input.endTime) && input.endTime > time ? input.endTime : null;
   // Only folders you can open, and only units of that folder.
   const pursuit = input.pursuitId
     ? await prisma.pursuit.findFirst({ where: { id: input.pursuitId, OR: [{ ownerId: userId }, { members: { some: { userId } } }] }, select: { id: true } })
@@ -42,6 +44,7 @@ export async function addEvent(input: NewEvent): Promise<{ error: string | null 
       kind: ["exam", "task", "event"].includes(input.kind) ? input.kind : "event",
       date: time ? zonedDate(input.day, time) : fromKey(input.day),
       allDay: !time,
+      endDate: endTime ? zonedDate(input.day, endTime) : null,
       pursuitId: pursuit?.id ?? null,
       unitId: unit?.id ?? null,
     },
