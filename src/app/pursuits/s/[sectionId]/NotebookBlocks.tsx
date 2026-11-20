@@ -1,12 +1,13 @@
 "use client";
 
 import { useT } from "@/app/LangProvider";
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { XIcon } from "@/app/icons";
 import { Popover } from "@/app/ui/Popover";
 import { BUILTIN_BLOCKS, NOTEBOOK_BLOCK_TYPES, newBlock, type LinkItem, type NotebookBlock, type NotebookBlockType, type TodoItem } from "@/lib/blocks";
-import { saveNotebookBlocks } from "../../actions";
+import { notebookPagesForLink, saveNotebookBlocks } from "../../actions";
+import Link from "next/link";
 import { useNotebookEditing } from "./editMode";
 
 const newId = () => Math.random().toString(36).slice(2, 10);
@@ -190,7 +191,7 @@ export function NotebookBlocks({
             )}
           </header>
         )}
-        {b.type === "todo" && <Todo items={b.items ?? []} onChange={(items) => update(b.id, { items })} />}
+        {b.type === "todo" && <Todo sectionId={sectionId} items={b.items ?? []} onChange={(items) => update(b.id, { items })} />}
         {b.type === "note" && <Note text={b.text ?? ""} onChange={(text) => update(b.id, { text })} />}
         {b.type === "links" && <Links links={b.links ?? []} onChange={(links) => update(b.id, { links })} />}
         {!["todo", "note", "links"].includes(b.type) && (content[b.id] ?? <div className="h-20 animate-pulse rounded-lg bg-chip" />)}
@@ -277,8 +278,10 @@ function moveItem(items: TodoItem[], id: string, spot: TodoSpot): TodoItem[] {
   return [...rest.slice(0, at), ...moved, ...rest.slice(at)];
 }
 
-function Todo({ items, onChange }: { items: TodoItem[]; onChange: (items: TodoItem[]) => void }) {
+function Todo({ sectionId, items, onChange }: { sectionId: string; items: TodoItem[]; onChange: (items: TodoItem[]) => void }) {
   const t = useT();
+  // Linking a page: which to-do the picker is open for, and the pages.
+  const [linking, setLinking] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const [armed, setArmed] = useState<string | null>(null);
   const [dragging, setDragging] = useState<string | null>(null);
@@ -383,6 +386,33 @@ function Todo({ items, onChange }: { items: TodoItem[]; onChange: (items: TodoIt
               aria-label={t("Tarea")}
               className={`min-w-0 flex-1 bg-transparent outline-none ${depth ? "text-[13px]" : "text-sm"} ${it.done ? "text-ink-faint line-through" : ""}`}
             />
+            {it.page ? (
+              <span className="flex shrink-0 items-center">
+                <Link href={it.page.href} title={it.page.title} className="flex max-w-40 items-center gap-1 rounded px-1 py-0.5 text-xs text-ink-muted hover:bg-chip hover:text-ink">
+                  <PageIcon />
+                  <span className="truncate">{it.page.title}</span>
+                </Link>
+                <button type="button" onClick={() => onChange(items.map((x) => (x.id === it.id ? { ...x, page: undefined } : x)))} aria-label={t("Quitar enlace")} title={t("Quitar enlace")} className="rounded px-0.5 text-[11px] text-ink-faint opacity-0 group-hover/item:opacity-100 hover:text-ink max-md:opacity-60">
+                  ×
+                </button>
+              </span>
+            ) : (
+              <span className="relative shrink-0">
+                <button type="button" onClick={() => setLinking(linking === it.id ? null : it.id)} aria-label={t("Enlazar una página")} title={t("Enlazar una página")} className={`rounded p-0.5 text-ink-faint hover:text-ink ${linking === it.id ? "opacity-100" : "opacity-0 group-hover/item:opacity-100 max-md:opacity-60"}`}>
+                  <PageIcon />
+                </button>
+                {linking === it.id && (
+                  <PagePicker
+                    sectionId={sectionId}
+                    onClose={() => setLinking(null)}
+                    onPick={(page) => {
+                      onChange(items.map((x) => (x.id === it.id ? { ...x, page } : x)));
+                      setLinking(null);
+                    }}
+                  />
+                )}
+              </span>
+            )}
             <button type="button" onClick={() => onChange(items.filter((x) => x.id !== it.id))} aria-label={t("Eliminar")} className="rounded p-0.5 text-ink-faint opacity-0 group-hover/item:opacity-100 hover:text-red-600 max-md:opacity-60">
               <XIcon size={12} className="block" />
             </button>
@@ -407,6 +437,50 @@ function Todo({ items, onChange }: { items: TodoItem[]; onChange: (items: TodoIt
         />
       </li>
     </ul>
+  );
+}
+
+export function PageIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="block shrink-0">
+      <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
+      <path d="M14 3v5h5M9 13h6M9 17h4" />
+    </svg>
+  );
+}
+
+// Search the notebook's pages and pick one for a to-do.
+function PagePicker({ sectionId, onPick, onClose }: { sectionId: string; onPick: (page: { href: string; title: string }) => void; onClose: () => void }) {
+  const t = useT();
+  const [pages, setPages] = useState<{ href: string; title: string; folder: string }[] | null>(null);
+  const [q, setQ] = useState("");
+  useEffect(() => {
+    let live = true;
+    void notebookPagesForLink(sectionId).then((p) => live && setPages(p));
+    return () => {
+      live = false;
+    };
+  }, [sectionId]);
+  const fold = (x: string) => x.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const shown = (pages ?? []).filter((p) => !q || fold(`${p.title} ${p.folder}`).includes(fold(q))).slice(0, 30);
+  return (
+    <>
+      <button type="button" aria-label={t("Cerrar")} className="fixed inset-0 z-40 cursor-default" onClick={onClose} />
+      <div className="absolute top-full right-0 z-50 mt-1 flex w-72 flex-col gap-1 rounded-xl bg-white p-1.5 shadow-[0_0_0_1px_rgba(15,15,15,.05),0_10px_26px_rgba(15,15,15,.16)]">
+        <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === "Escape" && onClose()} placeholder={t("Buscar una página…")} className="rounded-md bg-chip px-2.5 py-1.5 text-sm outline-none" />
+        <div className="flex max-h-64 flex-col overflow-y-auto">
+          {pages === null && <span className="px-2 py-2 text-xs text-ink-faint">{t("Cargando…")}</span>}
+          {pages && shown.length === 0 && <span className="px-2 py-2 text-xs text-ink-faint">{t("No hay páginas")}</span>}
+          {shown.map((p) => (
+            <button key={p.href} type="button" onClick={() => onPick({ href: p.href, title: p.title })} className="flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-chip">
+              <PageIcon />
+              <span className="min-w-0 flex-1 truncate">{p.title}</span>
+              {p.folder && <span className="shrink-0 truncate text-xs text-ink-faint">{p.folder}</span>}
+            </button>
+          ))}
+        </div>
+      </div>
+    </>
   );
 }
 

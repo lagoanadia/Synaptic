@@ -10,6 +10,7 @@ import { TrashIcon } from "@/app/icons";
 import { addTask, deleteTask, updateTask } from "./actions";
 import { setNotebookTodo } from "@/app/pursuits/actions";
 import { MiniNotebook } from "@/app/Covers";
+import { PageIcon } from "@/app/pursuits/s/[sectionId]/NotebookBlocks";
 import type { HomeTodoGroup } from "@/app/pursuits/HomeTodos";
 
 // Always visible (faint): hover-only buttons never show on touch screens.
@@ -195,6 +196,12 @@ export function TodayFocus({ projects, today, focus, todos = [] }: { projects: P
                   </button>
                   <span className="min-w-0 flex-1">
                     <span className={done ? "text-ink-faint line-through" : ""}>{n.text}</span>
+                    {n.page && (
+                      <Link href={n.page.href} title={n.page.title} className="mt-1 flex w-fit max-w-full items-center gap-1 rounded bg-chip px-1.5 py-0.5 text-xs text-ink-muted hover:text-ink">
+                        <PageIcon />
+                        <span className="truncate">{n.page.title}</span>
+                      </Link>
+                    )}
                     <a href={`/pursuits/s/${n.group.sectionId}`} className="mt-1 flex items-center gap-1.5 text-xs text-ink-faint hover:text-ink">
                       <MiniNotebook cover={n.group.cover} size={11} />
                       <span className="truncate">{n.group.name}</span>

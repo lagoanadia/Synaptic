@@ -1224,4 +1224,8 @@ export const de: Record<string, string> = {
   "Tus proyectos en el tiempo": "Deine Projekte im Zeitverlauf",
   "Las tarjetas pendientes de cada entrega": "Die offenen Karten jeder Abgabe",
   "Arrastra para mover": "Zum Verschieben ziehen",
+  "Quitar enlace": "Verknüpfung entfernen",
+  "Enlazar una página": "Seite verknüpfen",
+  "Buscar una página…": "Seite suchen…",
+  "No hay páginas": "Keine Seiten",
 };

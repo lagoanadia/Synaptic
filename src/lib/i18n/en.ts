@@ -1224,4 +1224,8 @@ export const en: Record<string, string> = {
   "Tus proyectos en el tiempo": "Your projects over time",
   "Las tarjetas pendientes de cada entrega": "Each delivery's open cards",
   "Arrastra para mover": "Drag to move",
+  "Quitar enlace": "Unlink",
+  "Enlazar una página": "Link a page",
+  "Buscar una página…": "Search a page…",
+  "No hay páginas": "No pages",
 };

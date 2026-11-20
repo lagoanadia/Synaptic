@@ -6,8 +6,9 @@ import { useT } from "@/app/LangProvider";
 import { MiniNotebook } from "@/app/Covers";
 import type { NotebookCover } from "@/lib/covers";
 import { toggleNotebookTodo } from "./actions";
+import { PageIcon } from "./s/[sectionId]/NotebookBlocks";
 
-export type HomeTodoGroup = { sectionId: string; name: string; cover: NotebookCover; items: { blockId: string; id: string; text: string; depth: number; doing?: boolean }[] };
+export type HomeTodoGroup = { sectionId: string; name: string; cover: NotebookCover; items: { blockId: string; id: string; text: string; depth: number; doing?: boolean; page?: { href: string; title: string } }[] };
 
 // "Por hacer" on the home page: what's still open in every notebook's to-do
 // lists. Ticking one here ticks it in its notebook too.
@@ -50,6 +51,12 @@ export function HomeTodos({ groups }: { groups: HomeTodoGroup[] }) {
                       {ticked && "✓"}
                     </button>
                     <span className={`text-sm ${ticked ? "text-ink-faint line-through" : "text-ink"}`}>{it.text}</span>
+                    {it.page && (
+                      <Link href={it.page.href} title={it.page.title} className="flex max-w-40 items-center gap-1 text-xs text-ink-muted hover:text-ink">
+                        <PageIcon />
+                        <span className="truncate">{it.page.title}</span>
+                      </Link>
+                    )}
                   </li>
                 );
               })}
