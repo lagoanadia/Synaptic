@@ -267,7 +267,7 @@ export function PageView({ pursuit, crumbs, dump, note, slides, terms, stale: st
           saveSlideDeck(pursuit.id, file.name, url, file.size, dump?.id).catch(() => {});
           return url;
         }}
-        onAsk={(text) => askPursuit(pursuit.id, t("Explícame esto de forma sencilla: \"{0}\"", { 0: text }))}
+        onAsk={(text) => askPursuit(pursuit.id, text, true)}
         onCard={(text) => cardFromSelection(pursuit.id, text, note?.id ?? null)}
         onMap={async (text) => {
           const r = await addToMap(pursuit.id, { dumpId: dump?.id ?? null, noteId: note?.id ?? null }, text);
