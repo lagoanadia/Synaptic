@@ -8,6 +8,7 @@ import { cleanHomeBlocks, cleanNotebookBlocks } from "@/lib/blocks";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { autoTitle } from "@/lib/text";
 import { wipePursuit } from "@/lib/wipe";
 import { upsertSection } from "@/lib/sections";
 
@@ -328,6 +329,19 @@ export async function setNotebookTodo(sectionId: string, blockId: string, itemId
   await prisma.section.update({ where: { id: sectionId }, data: { blocks } });
   revalidatePath(`/pursuits/s/${sectionId}`);
   revalidatePath("/pursuits");
+}
+
+// The notebook's pages, to link one to a to-do (newest first).
+export async function notebookPagesForLink(sectionId: string): Promise<{ href: string; title: string; folder: string }[]> {
+  const session = await auth();
+  if (!session?.user?.id) return [];
+  const dumps = await prisma.brainDump.findMany({
+    where: { pursuit: { sectionId, ownerId: session.user.id } },
+    orderBy: { updatedAt: "desc" },
+    take: 200,
+    select: { id: true, pursuitId: true, content: true, pursuit: { select: { title: true, loose: true } }, notes: { select: { content: true }, take: 1 } },
+  });
+  return dumps.map((d) => ({ href: `/pursuits/${d.pursuitId}/dump/${d.id}`, title: autoTitle(d.notes[0]?.content ?? d.content ?? "", 8) || "Sin título", folder: d.pursuit.loose ? "" : d.pursuit.title }));
 }
 
 // A notebook's own blocks (to-do lists, notes, links…), saved whole.
