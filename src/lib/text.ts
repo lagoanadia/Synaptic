@@ -68,7 +68,8 @@ export type NoteBlock =
   | { type: "heading"; level: 1 | 2 | 3; inline: InlineNode[] }
   | { type: "callout"; inline: InlineNode[] }
   | ListBlock
-  | { type: "paragraph"; inline: InlineNode[] }
+  // indent: Tab levels (stored as two leading spaces each).
+  | { type: "paragraph"; inline: InlineNode[]; indent?: number }
   | { type: "image"; url: string }
   | { type: "pdf"; url: string; title: string; cover: string }
   // No header row: `header` is empty and every row is in `rows`.
@@ -269,7 +270,11 @@ function parseTextBlocks(text: string): NoteBlock[] {
       paraLines.push(lines[i]);
       i++;
     }
-    blocks.push({ type: "paragraph", inline: parseInline(paraLines.join("\n")) });
+    // Leading spaces on its first line: its indent (Tab levels, two spaces each).
+    const lead = /^ */.exec(paraLines[0] ?? "")![0].length;
+    const indent = Math.min(8, Math.floor(lead / 2));
+    if (paraLines.length) paraLines[0] = paraLines[0].slice(lead);
+    blocks.push(indent ? { type: "paragraph", inline: parseInline(paraLines.join("\n")), indent } : { type: "paragraph", inline: parseInline(paraLines.join("\n")) });
   }
 
   return blocks;

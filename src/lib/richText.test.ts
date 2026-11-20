@@ -71,3 +71,16 @@ describe("tables without a header and list extras", () => {
     expect(round(text)).toBe(text);
   });
 });
+
+describe("indented paragraphs", () => {
+  it("keep their Tab levels through the editor and back", () => {
+    const text = "Normal\n\n  Un nivel\n\n    Dos niveles";
+    const doc = textToDoc(text);
+    expect(doc.content?.map((n) => n.attrs?.indent ?? 0)).toEqual([0, 1, 2]);
+    expect(docToText(doc)).toBe(text);
+  });
+  it("leave code indentation alone", () => {
+    const text = "<python\ndef f():\n    return 1\n>";
+    expect(docToText(textToDoc(text))).toBe(text);
+  });
+});

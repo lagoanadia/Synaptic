@@ -20,6 +20,7 @@ import { ImageWithBoards } from "./Whiteboard";
 import { Column, Columns, convertBlock, setColumns, unsetColumns, type BlockKind } from "./columns";
 import { Placeholder } from "@tiptap/extensions";
 import { PdfCard, pdfTitle } from "./pdfCard";
+import { Indentation } from "./indentation";
 import { docToText, textToDoc } from "@/lib/richText";
 import { termMatches, type TermHint } from "@/lib/terms";
 
@@ -260,6 +261,7 @@ export function RichEditor({
       TableKit.configure({ table: { resizable: false } }),
       ImageWithBoards,
       PdfCard,
+      Indentation,
       Columns,
       Column,
       Placeholder.configure({ placeholder }),

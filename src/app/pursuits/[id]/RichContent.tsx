@@ -154,7 +154,7 @@ function Blocks({ blocks, paragraphClassName }: { blocks: NoteBlock[]; paragraph
             return <ListBlockView key={i} block={block} depth={0} />;
           case "paragraph":
             return (
-              <p key={i} className={paragraphClassName}>
+              <p key={i} className={paragraphClassName} style={block.indent ? { marginLeft: `${block.indent * 1.75}em` } : undefined}>
                 <Inline nodes={block.inline} />
               </p>
             );

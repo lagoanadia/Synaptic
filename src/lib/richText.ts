@@ -24,9 +24,10 @@ function inlineToNodes(inline: InlineNode[]): JSONContent[] {
   return out;
 }
 
-const para = (inline: InlineNode[]): JSONContent => {
+const para = (inline: InlineNode[], indent = 0): JSONContent => {
   const content = inlineToNodes(inline);
-  return content.length ? { type: "paragraph", content } : { type: "paragraph" };
+  const attrs = indent ? { attrs: { indent } } : {};
+  return content.length ? { type: "paragraph", ...attrs, content } : { type: "paragraph", ...attrs };
 };
 
 function listToNode(list: ListBlock): JSONContent {
@@ -71,7 +72,7 @@ function blockToNode(b: NoteBlock): JSONContent {
       };
     }
     case "paragraph":
-      return para(b.inline);
+      return para(b.inline, b.indent ?? 0);
     case "columns":
       return { type: "columns", content: b.cols.map((c) => ({ type: "column", content: c.length ? c.map(blockToNode) : [{ type: "paragraph" }] })) };
   }
@@ -139,8 +140,12 @@ function nodeToText(n: JSONContent): string {
   switch (n.type) {
     case "heading":
       return `${"#".repeat(Number(n.attrs?.level ?? 1))} ${inlineToText(n.content).replace(/\n/g, " ")}`;
-    case "paragraph":
-      return inlineToText(n.content);
+    case "paragraph": {
+      // Each Tab level is two leading spaces (lib/text.ts reads them back).
+      const text = inlineToText(n.content);
+      const indent = Math.min(8, Number(n.attrs?.indent) || 0);
+      return indent && text ? "  ".repeat(indent) + text : text;
+    }
     case "blockquote":
       return (n.content ?? [])
         .map((p) => inlineToText(p.content).replace(/\n/g, " "))
@@ -185,5 +190,7 @@ function blocksToText(nodes: JSONContent[]): string {
     .filter((block, i, all) => block !== "" || (i > 0 && all[i - 1] !== ""))
     .join("\n\n")
     .replace(/\n{3,}/g, "\n\n")
-    .trim();
+    // Not trimStart: an indented first paragraph keeps its leading spaces.
+    .replace(/^\n+/, "")
+    .trimEnd();
 }
