@@ -18,7 +18,7 @@ import { buildOrTsQuery } from "@/lib/search";
 import { parseOrganizeResponse } from "@/lib/organize";
 import { parseJsonLoosely } from "@/lib/json";
 import { MAX_VISION_IMAGES } from "@/lib/visionLimits";
-import { askJson, languageRule, TEXT_MODEL, VISION_MODEL, createJsonCompletion } from "@/lib/ai";
+import { askJson, chat, languageRule, TEXT_MODEL, VISION_MODEL, createJsonCompletion } from "@/lib/ai";
 import { parseFlashcardsResponse } from "@/lib/flashcards";
 import { computeNextReview, dueDateAfter } from "@/lib/sm2";
 import { aiBudget, requirePursuitAccess } from "@/lib/access";
@@ -793,9 +793,12 @@ const ASK_CONTEXT_LIMIT = 6;
 // "Ask your subject": retrieval with full-text search (shared words) instead of
 // embeddings (shared meaning). Enough at personal scale; switch when searches
 // clearly miss.
+// explain: the text the student selected in a page, to explain simply. Their
+// notes are context, but general knowledge is allowed (a command, a term…).
 export async function askPursuit(
   pursuitId: string,
   question: string,
+  explain = false,
 ): Promise<{ error: string | null; answer?: string }> {
   const t = await getT();
   const { session } = await requireAccess(pursuitId);
@@ -839,11 +842,13 @@ export async function askPursuit(
       ? contextPieces.map((c, i) => `[${i + 1}]\n${c}`).join("\n\n")
       : "(No matching content found in this pursuit.)";
 
-  const prompt = `Context from this pursuit's brain dumps and organized notes (this may be written in a different language than the question below — that's normal, ignore it for the purpose of picking a reply language):\n\n${context}\n\n---\n\nQuestion: ${q}\n\nAnswer using ONLY the context above — never use outside knowledge, even if you know the answer. If the context doesn't contain the answer, say plainly that this pursuit's notes don't cover it. IMPORTANT: reply in the same language as the Question above, never the language of the context — even if every word of the context is in a different language, translate the substance and answer in the Question's language. Plain prose (no markdown formatting), and keep it short.`;
+  const prompt = explain
+    ? `A student selected this from their notes and wants it explained simply:\n\n"""\n${q.slice(0, 4000)}\n"""\n\nRelated parts of their notes (may help, may not):\n\n${context.slice(0, 8000)}\n\n---\n\nExplain what it means and what it does, clearly and simply, as to a first-year programming student. Use your general knowledge (commands, code, terms) — don't limit yourself to the notes. If it's code or commands, go piece by piece. Plain prose and short lines; no markdown headings. Reply in the user's language.`
+    : `Context from this pursuit's brain dumps and organized notes (this may be written in a different language than the question below — that's normal, ignore it for the purpose of picking a reply language):\n\n${context}\n\n---\n\nQuestion: ${q}\n\nAnswer using ONLY the context above — never use outside knowledge, even if you know the answer. If the context doesn't contain the answer, say plainly that this pursuit's notes don't cover it. IMPORTANT: reply in the same language as the Question above, never the language of the context — even if every word of the context is in a different language, translate the substance and answer in the Question's language. Plain prose (no markdown formatting), and keep it short.`;
 
   let completion;
   try {
-    completion = await groq.chat.completions.create({
+    completion = await chat({
       model: TEXT_MODEL,
       messages: [{ role: "system", content: await languageRule() }, { role: "user", content: prompt }],
     });
