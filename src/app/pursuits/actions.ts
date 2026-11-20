@@ -315,11 +315,16 @@ export async function newLoosePage(sectionId: string, group: string | null = nul
 
 // Ticking a notebook to-do from the home page: the same list, changed in place.
 export async function toggleNotebookTodo(sectionId: string, blockId: string, itemId: string, done: boolean) {
+  return setNotebookTodo(sectionId, blockId, itemId, done ? "DONE" : "TODO");
+}
+
+// Its column on the home page: to do, started, done.
+export async function setNotebookTodo(sectionId: string, blockId: string, itemId: string, state: "TODO" | "IN_PROGRESS" | "DONE") {
   const session = await auth();
   if (!session?.user?.id) return;
   const section = await prisma.section.findFirst({ where: { id: sectionId, userId: session.user.id }, select: { blocks: true } });
   if (!section) return;
-  const blocks = cleanNotebookBlocks(section.blocks).map((b) => (b.id === blockId && b.type === "todo" ? { ...b, items: (b.items ?? []).map((i) => (i.id === itemId ? { ...i, done } : i)) } : b));
+  const blocks = cleanNotebookBlocks(section.blocks).map((b) => (b.id === blockId && b.type === "todo" ? { ...b, items: (b.items ?? []).map((i) => (i.id === itemId ? { ...i, done: state === "DONE", doing: state === "IN_PROGRESS" } : i)) } : b));
   await prisma.section.update({ where: { id: sectionId }, data: { blocks } });
   revalidatePath(`/pursuits/s/${sectionId}`);
   revalidatePath("/pursuits");

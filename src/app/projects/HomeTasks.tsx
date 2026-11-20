@@ -8,7 +8,7 @@ import { TASK_COLUMNS, dueLabel, progress, type ProjectItem, type TaskItem, type
 import type { FolderCover } from "@/lib/covers";
 import { TrashIcon } from "@/app/icons";
 import { addTask, deleteTask, updateTask } from "./actions";
-import { toggleNotebookTodo } from "@/app/pursuits/actions";
+import { setNotebookTodo } from "@/app/pursuits/actions";
 import { MiniNotebook } from "@/app/Covers";
 import type { HomeTodoGroup } from "@/app/pursuits/HomeTodos";
 
@@ -110,18 +110,43 @@ export function TodayFocus({ projects, today, focus, todos = [] }: { projects: P
   const tr = t; // `t` is a task inside the lists below
   const [tasks, setTasks] = useState(focus);
   const [, start] = useTransition();
-  const [ticked, setTicked] = useState<Set<string>>(new Set());
   const notes = todos.flatMap((g) => g.items.map((it) => ({ ...it, group: g })));
-  const tick = (it: (typeof notes)[number]) => {
-    const now = !ticked.has(it.id);
-    setTicked((d) => {
-      const n = new Set(d);
-      if (now) n.add(it.id);
-      else n.delete(it.id);
-      return n;
-    });
-    start(() => toggleNotebookTodo(it.group.sectionId, it.blockId, it.id, now));
+  // Where each notebook to-do sits (moved here, saved behind).
+  const [noteState, setNoteState] = useState<Record<string, TaskStatus>>(() => Object.fromEntries(notes.map((n) => [n.id, n.doing ? "IN_PROGRESS" : "TODO"])));
+  const stateOf = (id: string): TaskStatus => noteState[id] ?? "TODO";
+  const moveNote = (it: (typeof notes)[number], state: TaskStatus) => {
+    setNoteState((s) => ({ ...s, [it.id]: state }));
+    start(() => setNotebookTodo(it.group.sectionId, it.blockId, it.id, state));
   };
+  const tick = (it: (typeof notes)[number]) => moveNote(it, stateOf(it.id) === "DONE" ? "TODO" : "DONE");
+  // Drag a card to another column.
+  const [drag, setDrag] = useState<{ id: string; note: boolean } | null>(null);
+  const [overCol, setOverCol] = useState<TaskStatus | null>(null);
+  const dropOn = (status: TaskStatus) => {
+    const d = drag;
+    setDrag(null);
+    setOverCol(null);
+    if (!d) return;
+    if (d.note) {
+      const n = notes.find((x) => x.id === d.id);
+      if (n && stateOf(n.id) !== status) moveNote(n, status);
+    } else {
+      const task = tasks.find((x) => x.id === d.id);
+      if (task && task.status !== status) set(task, status);
+    }
+  };
+  const dragProps = (id: string, note: boolean) => ({
+    draggable: true,
+    onDragStart: (e: React.DragEvent) => {
+      e.dataTransfer.effectAllowed = "move";
+      e.dataTransfer.setData("text/plain", id);
+      setDrag({ id, note });
+    },
+    onDragEnd: () => {
+      setDrag(null);
+      setOverCol(null);
+    },
+  });
   const byId = new Map(projects.map((p) => [p.id, p]));
   const set = (t: TaskItem, status: TaskStatus) => {
     setTasks((ts) => ts.map((x) => (x.id === t.id ? { ...x, status } : x)));
@@ -136,18 +161,30 @@ export function TodayFocus({ projects, today, focus, todos = [] }: { projects: P
     <div className="grid gap-3 md:grid-cols-3">
       {TASK_COLUMNS.map((c) => {
         const items = tasks.filter((t) => t.status === c.status);
-        const mine = c.status === "TODO" ? notes.filter((n) => !ticked.has(n.id)) : c.status === "DONE" ? notes.filter((n) => ticked.has(n.id)) : [];
+        const mine = notes.filter((n) => stateOf(n.id) === c.status);
         return (
-          <div key={c.status} className="rounded-xl bg-[#f7f7f5] p-2.5">
+          <div
+            key={c.status}
+            onDragOver={(e) => {
+              if (!drag) return;
+              e.preventDefault();
+              if (overCol !== c.status) setOverCol(c.status);
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              dropOn(c.status);
+            }}
+            className={`rounded-xl p-2.5 transition-colors ${overCol === c.status ? "bg-accent-soft outline-2 -outline-offset-2 outline-accent outline-dashed" : "bg-[#f7f7f5]"}`}
+          >
             <div className="flex items-center gap-2 px-1 pb-1.5 text-[13px] font-semibold">
               <span className="size-2 rounded-full" style={{ background: c.dot }} />
               {t(c.label)}
               <span className="font-normal text-ink-faint">{items.length + mine.length}</span>
             </div>
             {mine.map((n) => {
-              const done = ticked.has(n.id);
+              const done = stateOf(n.id) === "DONE";
               return (
-                <div key={n.id} className="mb-2 flex items-start gap-2.5 rounded-lg bg-white px-3 py-2 text-sm shadow-[0_0_0_1px_rgba(15,15,15,.06)]">
+                <div key={n.id} {...dragProps(n.id, true)} className={`mb-2 flex cursor-grab items-start gap-2.5 rounded-lg bg-white px-3 py-2 text-sm shadow-[0_0_0_1px_rgba(15,15,15,.06)] active:cursor-grabbing ${drag?.id === n.id ? "opacity-40" : ""}`}>
                   <button
                     type="button"
                     onClick={() => tick(n)}
@@ -170,7 +207,7 @@ export function TodayFocus({ projects, today, focus, todos = [] }: { projects: P
               const p = byId.get(t.pursuitId);
               const due = t.dueDate && t.status !== "DONE" ? dueLabel(t.dueDate, today, tr, locale) : null;
               return (
-                <div key={t.id} className="mb-2 flex items-start gap-2.5 rounded-lg bg-white px-3 py-2 text-sm shadow-[0_0_0_1px_rgba(15,15,15,.06)]">
+                <div key={t.id} {...dragProps(t.id, false)} className={`mb-2 flex cursor-grab items-start gap-2.5 rounded-lg bg-white px-3 py-2 text-sm shadow-[0_0_0_1px_rgba(15,15,15,.06)] active:cursor-grabbing ${drag?.id === t.id ? "opacity-40" : ""}`}>
                   <button
                     type="button"
                     onClick={() => set(t, t.status === "DONE" ? "TODO" : "DONE")}

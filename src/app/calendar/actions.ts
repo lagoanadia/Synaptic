@@ -5,7 +5,7 @@ import { getT } from "@/lib/i18n/server";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { fromKey, zonedDate } from "@/lib/calendar";
+import { fromKey, timeOf, zonedDate } from "@/lib/calendar";
 import { calendarToken, listCalendars, type GoogleCalendar } from "@/lib/googleCalendar";
 import { syncToGoogle, unsyncEvent } from "./sync";
 
@@ -50,6 +50,34 @@ export async function addEvent(input: NewEvent): Promise<{ error: string | null 
     },
   });
   await syncToGoogle(userId).catch(() => {});
+  done();
+  return { error: null };
+}
+
+// Dragged to another day in the calendar: same time, new day. Your events,
+// a project's due date, or (written to Google) a Google event.
+export async function moveCalItem(id: string, day: string): Promise<{ error: string | null }> {
+  const t = await getT();
+  const userId = await me();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return { error: t("Fecha no válida") };
+  if (id.startsWith("p-")) {
+    const { count } = await prisma.project.updateMany({
+      where: { id: id.slice(2), pursuit: { OR: [{ ownerId: userId }, { members: { some: { userId } } }] } },
+      data: { dueDate: fromKey(day) },
+    });
+    if (!count) return { error: t("No encontrada") };
+  } else if (!id.startsWith("g-")) {
+    const e = await prisma.calendarEvent.findFirst({ where: { id, userId }, select: { allDay: true, date: true, endDate: true } });
+    if (!e) return { error: t("No encontrada") };
+    await prisma.calendarEvent.update({
+      where: { id },
+      data: {
+        date: e.allDay ? fromKey(day) : zonedDate(day, timeOf(e.date)),
+        endDate: !e.allDay && e.endDate ? zonedDate(day, timeOf(e.endDate)) : null,
+      },
+    });
+    await syncToGoogle(userId).catch(() => {});
+  } else return { error: t("No encontrada") };
   done();
   return { error: null };
 }

@@ -8,10 +8,11 @@ import Link from "next/link";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowUpRight, CheckIcon, TrashIcon } from "@/app/icons";
+
 import { WEEKDAYS, fromKey, sortItems, type CalItem, type CalKind } from "@/lib/calendar";
 import { Pill } from "./Pill";
 import { GoogleModal, GoogleLogo } from "./GoogleModal";
-import { addEvent, removeEvent, removeGoogleEvent, toggleEventDone, updateGoogleEvent, type NewEvent } from "./actions";
+import { addEvent, moveCalItem, removeEvent, removeGoogleEvent, toggleEventDone, updateGoogleEvent, type NewEvent } from "./actions";
 
 type Folder = { id: string; title: string; color: string; units: { id: string; name: string }[] };
 type Pop = { kind: "add"; day: string; x: number; y: number } | { kind: "item"; item: CalItem; x: number; y: number };
@@ -58,7 +59,33 @@ export function CalendarView({
   const [filters, setFilters] = useState(false);
   const [modal, setModal] = useState(justConnected === "connected" || justConnected === "failed");
 
-  const shown = items.filter((i) => !hiddenKinds.has(i.kind) && !(i.folderId && hiddenFolders.has(i.folderId)) && !(i.calendarId && hiddenFolders.has(`g:${i.calendarId}`)));
+  // Drag a pill to another day (if a mistake): moved here at once, saved behind.
+  const [moved, setMoved] = useState<Record<string, string>>({});
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [over, setOver] = useState<string | null>(null);
+  const [, startMove] = useTransition();
+  const movable = (x: CalItem) => x.editable || x.kind === "due" || (x.kind === "google" && !!x.calendarId);
+  const drop = (day: string) => {
+    const x = items.find((i) => i.id === dragId);
+    setDragId(null);
+    setOver(null);
+    if (!x || (moved[x.id] ?? x.day) === day) return;
+    const back = moved[x.id];
+    setMoved((m) => ({ ...m, [x.id]: day }));
+    startMove(async () => {
+      const r = x.kind === "google" ? await updateGoogleEvent(x.calendarId!, x.id, { title: x.title, day, time: x.time }) : await moveCalItem(x.id, day);
+      if (r.error) {
+        setMoved((m) => {
+          const n = { ...m };
+          if (back) n[x.id] = back;
+          else delete n[x.id];
+          return n;
+        });
+        void ask.alert(r.error);
+      }
+    });
+  };
+  const shown = items.map((i) => (moved[i.id] ? { ...i, day: moved[i.id] } : i)).filter((i) => !hiddenKinds.has(i.kind) && !(i.folderId && hiddenFolders.has(i.folderId)) && !(i.calendarId && hiddenFolders.has(`g:${i.calendarId}`)));
   // Each Google calendar you bring in, with its own colour.
   const calendars = [...new Map(items.filter((i) => i.calendarId).map((i) => [i.calendarId!, { id: i.calendarId!, name: i.calendarName ?? "Google", color: i.color }])).values()];
   const onDay = (d: string) => sortItems(shown.filter((i) => i.day === d));
@@ -158,7 +185,17 @@ export function CalendarView({
                     if (window.innerWidth < 640) return setSelected(d);
                     setPop({ kind: "add", day: d, ...anchor(e) });
                   }}
-                  className={`group relative flex cursor-pointer flex-col gap-1 border-r border-border-subtle p-1 last:border-r-0 sm:p-1.5 ${view === "week" ? "min-h-[60vh]" : "min-h-16 sm:min-h-[112px]"} ${selected === d ? "max-sm:bg-chip/60" : ""} hover:bg-[#fbfbfa]`}
+                  onDragOver={(e) => {
+                    if (!dragId) return;
+                    e.preventDefault();
+                    if (over !== d) setOver(d);
+                  }}
+                  onDragLeave={() => over === d && setOver(null)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    drop(d);
+                  }}
+                  className={`group relative flex cursor-pointer flex-col gap-1 border-r border-border-subtle p-1 last:border-r-0 sm:p-1.5 ${view === "week" ? "min-h-[60vh]" : "min-h-16 sm:min-h-[112px]"} ${selected === d ? "max-sm:bg-chip/60" : ""} ${over === d ? "bg-accent-soft outline-2 -outline-offset-2 outline-accent outline-dashed" : "hover:bg-[#fbfbfa]"}`}
                 >
                   <span className="flex items-center justify-between">
                     <span
@@ -169,14 +206,28 @@ export function CalendarView({
                   </span>
                   <span className="hidden flex-col gap-1 sm:flex">
                     {list.slice(0, view === "week" ? 20 : 4).map((x) => (
-                      <Pill
+                      <span
                         key={x.id}
-                        item={x}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setPop({ kind: "item", item: x, ...anchor(e) });
+                        draggable={movable(x)}
+                        onDragStart={(e) => {
+                          e.dataTransfer.effectAllowed = "move";
+                          e.dataTransfer.setData("text/plain", x.id);
+                          setDragId(x.id);
                         }}
-                      />
+                        onDragEnd={() => {
+                          setDragId(null);
+                          setOver(null);
+                        }}
+                        className={`block ${movable(x) ? "cursor-grab active:cursor-grabbing" : ""} ${dragId === x.id ? "opacity-40" : ""}`}
+                      >
+                        <Pill
+                          item={x}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setPop({ kind: "item", item: x, ...anchor(e) });
+                          }}
+                        />
+                      </span>
                     ))}
                     {view === "month" && list.length > 4 && <span className="px-1 text-[11px] text-ink-faint">+{list.length - 4}</span>}
                   </span>

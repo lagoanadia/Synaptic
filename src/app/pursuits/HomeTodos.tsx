@@ -7,7 +7,7 @@ import { MiniNotebook } from "@/app/Covers";
 import type { NotebookCover } from "@/lib/covers";
 import { toggleNotebookTodo } from "./actions";
 
-export type HomeTodoGroup = { sectionId: string; name: string; cover: NotebookCover; items: { blockId: string; id: string; text: string; depth: number }[] };
+export type HomeTodoGroup = { sectionId: string; name: string; cover: NotebookCover; items: { blockId: string; id: string; text: string; depth: number; doing?: boolean }[] };
 
 // "Por hacer" on the home page: what's still open in every notebook's to-do
 // lists. Ticking one here ticks it in its notebook too.
