@@ -92,7 +92,8 @@ export default async function NotebookPage({ params }: { params: Promise<{ secti
   const builtins: BuiltinBlockType[] = study ? ["folders", "map"] : projectsKind ? ["folders", "tasks", "timeline", "boards"] : ["folders", "boards"];
   const defaults: NotebookBlock[] = [
     { id: "folders", type: "folders" },
-    ...(projectsKind ? [{ id: "tasks", type: "tasks" as const }, { id: "timeline", type: "timeline" as const }] : []),
+    // Projects and Tasks side by side; the calendar below, full width.
+    ...(projectsKind ? [{ id: "tasks", type: "tasks" as const, join: true }, { id: "timeline", type: "timeline" as const }] : []),
     ...(loose.length ? [{ id: "pages", type: "pages" as const }] : []),
     ...(study ? [{ id: "map", type: "map" as const }] : []),
     ...(openTasks.length ? [{ id: "boards", type: "boards" as const }] : []),

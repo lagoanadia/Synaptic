@@ -1223,4 +1223,5 @@ export const en: Record<string, string> = {
   "El tablero de tareas de tus proyectos": "Your projects' task board",
   "Tus proyectos en el tiempo": "Your projects over time",
   "Las tarjetas pendientes de cada entrega": "Each delivery's open cards",
+  "Arrastra para mover": "Drag to move",
 };

@@ -168,8 +168,8 @@ export const BUILTIN_LABEL: Record<BuiltinBlockType, { label: string; hint: stri
 export type NotebookBlockType = "todo" | "note" | "links" | "pages" | "week" | "recent" | BuiltinBlockType;
 export type TodoItem = { id: string; text: string; done: boolean };
 export type LinkItem = { id: string; label: string; url: string };
-// wide: full width (true) or half (false); unset = the type's usual width.
-export type NotebookBlock = { id: string; type: NotebookBlockType; title?: string; items?: TodoItem[]; text?: string; links?: LinkItem[]; wide?: boolean };
+// join: in the same row as the block before it (side by side, up to 3).
+export type NotebookBlock = { id: string; type: NotebookBlockType; title?: string; items?: TodoItem[]; text?: string; links?: LinkItem[]; join?: boolean };
 export const NOTEBOOK_BLOCK_TYPES: { type: NotebookBlockType; label: string; hint: string }[] = [
   { type: "todo", label: "Lista de tareas", hint: "Cosas por hacer, para tacharlas" },
   { type: "note", label: "Nota", hint: "Un texto libre siempre a la vista" },
@@ -199,9 +199,9 @@ export function cleanNotebookBlocks(raw: unknown): NotebookBlock[] {
     .filter((b) => !((BUILTIN_BLOCKS as readonly string[]).includes(b.type) || b.type === "pages") || (!once.has(b.type) && !!once.add(b.type)))
     .slice(0, 30)
     .map((b) => {
-      const wide = typeof b.wide === "boolean" ? { wide: b.wide } : {};
-      if ((BUILTIN_BLOCKS as readonly string[]).includes(b.type)) return { id: b.type, type: b.type, ...wide };
-      const out: NotebookBlock = { id: str(b.id, 20) || newId(), type: b.type, ...wide };
+      const join = b.join === true ? { join: true } : {};
+      if ((BUILTIN_BLOCKS as readonly string[]).includes(b.type)) return { id: b.type, type: b.type, ...join };
+      const out: NotebookBlock = { id: str(b.id, 20) || newId(), type: b.type, ...join };
       if (b.title !== undefined && ["todo", "note", "links"].includes(b.type)) out.title = str(b.title, 60);
       if (b.type === "todo")
         out.items = (Array.isArray(b.items) ? b.items : []).slice(0, 200).map((i) => ({ id: str(i?.id, 20) || newId(), text: str(i?.text, 300), done: !!i?.done }));

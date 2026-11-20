@@ -3,7 +3,7 @@
 import { useT } from "@/app/LangProvider";
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowDown, XIcon } from "@/app/icons";
+import { XIcon } from "@/app/icons";
 import { Popover } from "@/app/ui/Popover";
 import { BUILTIN_BLOCKS, NOTEBOOK_BLOCK_TYPES, newBlock, type LinkItem, type NotebookBlock, type NotebookBlockType, type TodoItem } from "@/lib/blocks";
 import { saveNotebookBlocks } from "../../actions";
@@ -23,33 +23,46 @@ const DEFAULT_TITLE: Record<NotebookBlockType, string> = {
   timeline: "Calendario",
   boards: "Tableros por entrega",
 };
-// Sections that draw their own heading: theirs shows only while editing.
+// Sections that draw their own heading: no second one on top.
 const OWN_HEADING = new Set<NotebookBlockType>(BUILTIN_BLOCKS);
-// Wide unless you made them narrow: the big sections and the week.
-const WIDE_BY_DEFAULT = new Set<NotebookBlockType>(["map", "timeline", "boards", "week"]);
-const isWide = (b: NotebookBlock) => b.wide ?? WIDE_BY_DEFAULT.has(b.type);
+const MAX_PER_ROW = 3;
 
-// Rows of the page: a wide block alone; two narrow ones side by side; a
-// narrow one with no narrow partner takes the whole row.
+// Rows of the page: a block starts a row unless it's joined to the one before.
 function rowsOf(blocks: NotebookBlock[]) {
   const rows: NotebookBlock[][] = [];
-  for (let i = 0; i < blocks.length; i++) {
-    const b = blocks[i];
-    const next = blocks[i + 1];
-    if (!isWide(b) && next && !isWide(next)) {
-      rows.push([b, next]);
-      i++;
-    } else rows.push([b]);
-  }
+  blocks.forEach((b, i) => (b.join && i > 0 && rows.length && rows[rows.length - 1].length < MAX_PER_ROW ? rows[rows.length - 1].push(b) : rows.push([b])));
   return rows;
+}
+
+type Spot = { id: string; side: "left" | "right" | "above" | "below" };
+
+// Where the dragged block lands: beside the target (joins its row) or
+// above/below the target's row (a row of its own).
+function place(blocks: NotebookBlock[], dragId: string, spot: Spot): NotebookBlock[] {
+  if (dragId === spot.id) return blocks;
+  const rows = rowsOf(blocks).map((r) => r.filter((b) => b.id !== dragId)).filter((r) => r.length);
+  const dragged = blocks.find((b) => b.id === dragId);
+  if (!dragged) return blocks;
+  const ri = rows.findIndex((r) => r.some((b) => b.id === spot.id));
+  if (ri < 0) return blocks;
+  const row = rows[ri];
+  const side = (spot.side === "left" || spot.side === "right") && row.length >= MAX_PER_ROW ? "below" : spot.side;
+  if (side === "above") rows.splice(ri, 0, [dragged]);
+  else if (side === "below") rows.splice(ri + 1, 0, [dragged]);
+  else {
+    const at = row.findIndex((b) => b.id === spot.id) + (side === "right" ? 1 : 0);
+    row.splice(at, 0, dragged);
+  }
+  return rows.flatMap((r) => r.map((b, i) => ({ ...b, join: i > 0 ? true : undefined })));
 }
 
 // Every section of a notebook page as a block: its folders, map, tasks,
 // calendar… and your own to-do lists, notes, links, week and recent pages.
-// In edit mode (✎) they move, go, come back from "+ Añadir bloque", and
-// switch between half and full width. Every change saves at once.
-// `content` holds the server-drawn ones by id; `addable` the built-in
-// sections this notebook can have.
+// In edit mode (✎) you drag one by its ⋮⋮ handle: beside another (a
+// vertical line) puts them in the same row; above or below (a horizontal
+// line) gives it a row of its own. × removes it; "+ Añadir bloque" brings
+// any back. Every change saves at once. `content` holds the server-drawn
+// ones by id; `addable` the built-in sections this notebook can have.
 export function NotebookBlocks({
   sectionId,
   blocks: initial,
@@ -68,6 +81,10 @@ export function NotebookBlocks({
   const [adding, setAdding] = useState(false);
   const addBtn = useRef<HTMLButtonElement>(null);
   const editing = useNotebookEditing();
+  // Dragging: which block (armed by its handle) and where it would land.
+  const [armed, setArmed] = useState<string | null>(null);
+  const [dragging, setDragging] = useState<string | null>(null);
+  const [spot, setSpot] = useState<Spot | null>(null);
 
   function save(next: NotebookBlock[], refresh = false) {
     setBlocks(next);
@@ -77,11 +94,10 @@ export function NotebookBlocks({
     });
   }
   const update = (id: string, patch: Partial<NotebookBlock>) => save(blocks.map((b) => (b.id === id ? { ...b, ...patch } : b)));
-  const move = (i: number, d: -1 | 1) => {
-    const j = i + d;
-    if (j < 0 || j >= blocks.length) return;
-    const next = [...blocks];
-    [next[i], next[j]] = [next[j], next[i]];
+  const remove = (id: string) => {
+    const i = blocks.findIndex((b) => b.id === id);
+    // The one after it starts the row if this one did.
+    const next = blocks.map((b, j) => (j === i + 1 && !blocks[i].join ? { ...b, join: undefined } : b)).filter((b) => b.id !== id);
     save(next);
   };
   const menu = [
@@ -89,14 +105,73 @@ export function NotebookBlocks({
     ...NOTEBOOK_BLOCK_TYPES.filter((item) => !(item.type === "pages" && blocks.some((b) => b.type === "pages"))),
   ];
 
-  const block = (b: NotebookBlock) => {
-    const i = blocks.indexOf(b);
+  function onOver(e: React.DragEvent, b: NotebookBlock, rowFull: boolean) {
+    if (!dragging || dragging === b.id) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    const r = e.currentTarget.getBoundingClientRect();
+    const x = (e.clientX - r.left) / r.width;
+    const y = (e.clientY - r.top) / r.height;
+    const side: Spot["side"] = !rowFull && x < 0.22 ? "left" : !rowFull && x > 0.78 ? "right" : y < 0.5 ? "above" : "below";
+    if (spot?.id !== b.id || spot.side !== side) setSpot({ id: b.id, side });
+  }
+  function endDrag() {
+    setDragging(null);
+    setArmed(null);
+    setSpot(null);
+  }
+
+  const block = (b: NotebookBlock, rowFull: boolean) => {
     const own = OWN_HEADING.has(b.type);
-    const wide = isWide(b);
+    const here = spot?.id === b.id ? spot.side : null;
     return (
-      <section key={b.id} className={`flex min-w-0 flex-col gap-3 ${editing ? "rounded-lg p-3 outline-[1.5px] outline-offset-0 outline-[#d3d1cb] outline-dashed" : ""}`}>
-        {(!own || editing) && (
-          <header className="flex items-center gap-2 border-b border-border-subtle pb-2">
+      <section
+        key={b.id}
+        draggable={editing && armed === b.id}
+        onDragStart={(e) => {
+          e.dataTransfer.effectAllowed = "move";
+          e.dataTransfer.setData("text/plain", b.id);
+          setDragging(b.id);
+        }}
+        onDragEnd={endDrag}
+        onDragOver={(e) => onOver(e, b, rowFull)}
+        onDrop={(e) => {
+          e.preventDefault();
+          if (dragging && spot) save(place(blocks, dragging, spot), true);
+          endDrag();
+        }}
+        className={`group/blk relative flex min-w-0 flex-col gap-3 ${editing ? "rounded-lg p-3 outline-[1.5px] outline-offset-0 outline-[#d3d1cb] outline-dashed" : ""} ${dragging === b.id ? "opacity-35" : ""}`}
+      >
+        {/* Where it would land */}
+        {here === "left" && <span className="pointer-events-none absolute inset-y-0 -left-[22px] w-1 rounded-full bg-accent shadow-[0_0_12px_var(--color-accent)]" />}
+        {here === "right" && <span className="pointer-events-none absolute inset-y-0 -right-[22px] w-1 rounded-full bg-accent shadow-[0_0_12px_var(--color-accent)]" />}
+        {here === "above" && <span className="pointer-events-none absolute inset-x-0 -top-[22px] h-1 rounded-full bg-accent shadow-[0_0_12px_var(--color-accent)]" />}
+        {here === "below" && <span className="pointer-events-none absolute inset-x-0 -bottom-[22px] h-1 rounded-full bg-accent shadow-[0_0_12px_var(--color-accent)]" />}
+        {editing && (
+          <>
+            <span
+              onPointerDown={() => setArmed(b.id)}
+              onPointerUp={() => !dragging && setArmed(null)}
+              title={t("Arrastra para mover")}
+              aria-label={t("Arrastra para mover")}
+              className="absolute top-3 -left-3.5 z-10 grid h-7 w-5 cursor-grab place-items-center rounded-md bg-chip text-ink-faint opacity-0 shadow-[0_0_0_1px_var(--color-border-subtle)] transition-opacity group-hover/blk:opacity-100 hover:text-ink active:cursor-grabbing max-md:opacity-100"
+            >
+              <svg width="10" height="14" viewBox="0 0 10 14" fill="currentColor" aria-hidden>
+                <circle cx="3" cy="3" r="1.3" />
+                <circle cx="7" cy="3" r="1.3" />
+                <circle cx="3" cy="7" r="1.3" />
+                <circle cx="7" cy="7" r="1.3" />
+                <circle cx="3" cy="11" r="1.3" />
+                <circle cx="7" cy="11" r="1.3" />
+              </svg>
+            </span>
+            <button type="button" onClick={() => remove(b.id)} title={t("Quitar bloque")} aria-label={t("Quitar bloque")} className="absolute top-2.5 right-2.5 z-10 rounded p-1 text-ink-faint hover:bg-chip hover:text-red-600">
+              <XIcon size={13} className="block" />
+            </button>
+          </>
+        )}
+        {!own && (
+          <header className={`flex items-center gap-2 border-b border-border-subtle pb-2 ${editing ? "pr-7" : ""}`}>
             {["todo", "note", "links"].includes(b.type) ? (
               <input
                 defaultValue={b.title ?? t(DEFAULT_TITLE[b.type])}
@@ -106,35 +181,11 @@ export function NotebookBlocks({
                 className="min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none"
               />
             ) : (
-              <h2 className="min-w-0 flex-1 text-sm font-semibold">{t(addable.find((a) => a.type === b.type)?.label ?? DEFAULT_TITLE[b.type])}</h2>
+              <h2 className="min-w-0 flex-1 text-sm font-semibold">{t(DEFAULT_TITLE[b.type])}</h2>
             )}
             {b.type === "todo" && (b.items?.length ?? 0) > 0 && (
               <span className="text-xs text-ink-faint">
                 {b.items!.filter((x) => x.done).length}/{b.items!.length}
-              </span>
-            )}
-            {editing && (
-              <span className="flex items-center gap-0.5">
-                <button
-                  type="button"
-                  onClick={() => update(b.id, { wide: !wide })}
-                  title={wide ? t("Media anchura") : t("Ancho completo")}
-                  aria-label={wide ? t("Media anchura") : t("Ancho completo")}
-                  className="rounded p-1 text-ink-faint hover:bg-chip hover:text-ink"
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                    {wide ? <path d="M4 12h6M7 9l3 3-3 3M20 12h-6M17 9l-3 3 3 3" /> : <path d="M4 12h16M7 9l-3 3 3 3M17 9l3 3-3 3" />}
-                  </svg>
-                </button>
-                <button type="button" onClick={() => move(i, -1)} disabled={i === 0} title={t("Subir")} className="rounded p-1 text-ink-faint hover:bg-chip disabled:opacity-30">
-                  <ArrowDown size={13} className="block rotate-180" />
-                </button>
-                <button type="button" onClick={() => move(i, 1)} disabled={i === blocks.length - 1} title={t("Bajar")} className="rounded p-1 text-ink-faint hover:bg-chip disabled:opacity-30">
-                  <ArrowDown size={13} className="block" />
-                </button>
-                <button type="button" onClick={() => save(blocks.filter((x) => x.id !== b.id))} title={t("Quitar bloque")} className="rounded p-1 text-ink-faint hover:bg-chip hover:text-red-600">
-                  <XIcon size={13} className="block" />
-                </button>
               </span>
             )}
           </header>
@@ -148,16 +199,16 @@ export function NotebookBlocks({
   };
 
   return (
-    <div className={`flex flex-col gap-10 ${blocks.length === 0 && !editing ? "hidden" : ""}`}>
-      {rowsOf(blocks).map((row) =>
-        row.length === 2 ? (
-          <div key={row[0].id} className="grid items-start gap-x-10 gap-y-10 lg:grid-cols-2">
-            {row.map(block)}
-          </div>
-        ) : (
-          block(row[0])
-        ),
-      )}
+    <div className={`flex flex-col gap-11 ${blocks.length === 0 && !editing ? "hidden" : ""} ${editing ? "pl-4" : ""}`}>
+      {rowsOf(blocks).map((row) => (
+        <div
+          key={row[0].id}
+          className="grid items-start gap-11 md:[grid-template-columns:var(--cols)]"
+          style={{ "--cols": `repeat(${row.length}, minmax(0, 1fr))` } as React.CSSProperties}
+        >
+          {row.map((b) => block(b, row.length >= MAX_PER_ROW))}
+        </div>
+      ))}
 
       {editing && (
         <button
