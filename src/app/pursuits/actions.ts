@@ -313,6 +313,18 @@ export async function newLoosePage(sectionId: string, group: string | null = nul
   return `/pursuits/${pursuit.id}/dump/new`;
 }
 
+// Ticking a notebook to-do from the home page: the same list, changed in place.
+export async function toggleNotebookTodo(sectionId: string, blockId: string, itemId: string, done: boolean) {
+  const session = await auth();
+  if (!session?.user?.id) return;
+  const section = await prisma.section.findFirst({ where: { id: sectionId, userId: session.user.id }, select: { blocks: true } });
+  if (!section) return;
+  const blocks = cleanNotebookBlocks(section.blocks).map((b) => (b.id === blockId && b.type === "todo" ? { ...b, items: (b.items ?? []).map((i) => (i.id === itemId ? { ...i, done } : i)) } : b));
+  await prisma.section.update({ where: { id: sectionId }, data: { blocks } });
+  revalidatePath(`/pursuits/s/${sectionId}`);
+  revalidatePath("/pursuits");
+}
+
 // A notebook's own blocks (to-do lists, notes, links…), saved whole.
 export async function saveNotebookBlocks(sectionId: string, blocks: unknown) {
   const session = await auth();

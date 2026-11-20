@@ -9,13 +9,14 @@ import { calendarItems } from "@/lib/calendarData";
 import { dayKey, weekOf } from "@/lib/calendar";
 import { KnowledgeMap } from "../KnowledgeMap";
 import { SHARED, UNSORTED, accessiblePursuits } from "@/lib/reviewData";
-import { homeBlocks } from "@/lib/blocks";
+import { cleanNotebookBlocks, homeBlocks } from "@/lib/blocks";
 import { notebookCover } from "@/lib/covers";
 import { folderItems, notebookMap, recentPages } from "@/lib/blockData";
 import { Greeting } from "./Greeting";
 import { SampleNote } from "./SampleNote";
 import { NotebookShelf, type ShelfItem } from "./NotebookShelf";
 import { HomeBlocks } from "./HomeBlocks";
+import { HomeTodos, type HomeTodoGroup } from "./HomeTodos";
 import { FolderRow, RecentList } from "./BlockViews";
 import { allProjects } from "@/lib/projectData";
 import { dayOf, isFocus } from "@/lib/projects";
@@ -30,7 +31,7 @@ export default async function HomePage() {
   const userId = session.user.id;
 
   const [sections, viewer, pursuitBuckets] = await Promise.all([
-    prisma.section.findMany({ where: { userId }, orderBy: { order: "asc" }, select: { id: true, name: true, cover: true, study: true } }),
+    prisma.section.findMany({ where: { userId }, orderBy: { order: "asc" }, select: { id: true, name: true, cover: true, study: true, blocks: true } }),
     prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { onboardedAt: true, homeBlocks: true, sampleContent: true } }),
     prisma.pursuit.findMany({ where: accessiblePursuits(userId), select: { ownerId: true, sectionId: true } }),
   ]);
@@ -76,11 +77,38 @@ export default async function HomePage() {
     }),
   );
 
+  // Every notebook's open to-dos, for "Por hacer" (a done task hides its
+  // subtasks too).
+  const todos: HomeTodoGroup[] = sections
+    .map((s) => ({
+      sectionId: s.id,
+      name: s.name,
+      cover: notebookCover(s.id, s.cover),
+      items: cleanNotebookBlocks(s.blocks).flatMap((b) => {
+        if (b.type !== "todo") return [];
+        const out: HomeTodoGroup["items"] = [];
+        let hideBelow: number | null = null;
+        for (const it of b.items ?? []) {
+          const depth = it.depth ?? 0;
+          if (hideBelow !== null && depth > hideBelow) continue;
+          hideBelow = null;
+          if (it.done) {
+            hideBelow = depth;
+            continue;
+          }
+          if (it.text.trim()) out.push({ blockId: b.id, id: it.id, text: it.text, depth });
+        }
+        return out;
+      }),
+    }))
+    .filter((g) => g.items.length > 0);
+
   return (
     <div className="relative mx-auto flex w-full max-w-[1100px] flex-1 flex-col gap-10 px-6 pt-4 pb-10 sm:px-12 lg:pt-6 lg:pb-14">
       <Greeting name={session.user.name ?? null} />
       {sample && <SampleNote topic={sample.topic} cards={sample.flashcards?.length ?? 0} />}
       <NotebookShelf items={shelf} />
+      <HomeTodos groups={todos} />
       <HomeBlocks
         blocks={blocks}
         notebooks={sections.map((s) => ({ id: s.id, name: s.name, cover: notebookCover(s.id, s.cover) }))}
