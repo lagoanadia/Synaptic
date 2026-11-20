@@ -10,6 +10,7 @@ import { NOTEBOOK_COVERS, type NotebookCover } from "@/lib/covers";
 import { deleteSection, setNotebook } from "../../actions";
 import { EditMenu, menuAt, type EditTarget } from "../../EditMenu";
 import { TemplatePick } from "../../TemplatePick";
+import { setNotebookEditing, useNotebookEditing } from "./editMode";
 
 // A notebook's header: its cover, name (click to rename), "Repasar" for
 // study notebooks, and ⚙ for its template (estudios / proyectos), cover, delete.
@@ -36,6 +37,7 @@ export function NotebookHeader({
   const [error, setError] = useState<string | null>(null);
   const [, start] = useTransition();
   const router = useRouter();
+  const blocksEditing = useNotebookEditing();
 
   const update = (data: Parameters<typeof setNotebook>[1]) =>
     start(async () => {
@@ -85,6 +87,27 @@ export function NotebookHeader({
           <Link href={`/review?section=${id}`} className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-white">
             {t("▶ Repasar")}
           </Link>
+        )}
+        {editable && (
+          <button
+            type="button"
+            onClick={() => setNotebookEditing(!blocksEditing)}
+            aria-pressed={blocksEditing}
+            aria-label={blocksEditing ? t("Listo") : t("Editar bloques")}
+            title={blocksEditing ? t("Listo") : t("Editar bloques")}
+            className={`grid size-8 place-items-center rounded-md ${blocksEditing ? "bg-ink text-white" : "text-ink-faint hover:bg-chip hover:text-ink"}`}
+          >
+            {blocksEditing ? (
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M5 12.5l4.5 4.5L19 7.5" />
+              </svg>
+            ) : (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M4 20h4L19 9l-4-4L4 16z" />
+                <path d="M13.5 6.5l4 4" />
+              </svg>
+            )}
+          </button>
         )}
         {editable && (
           <button type="button" onClick={() => setMenu((m) => !m)} aria-label={t("Ajustes de la libreta")} title={t("Ajustes")} className="rounded-md px-2 py-1.5 text-ink-faint hover:bg-chip hover:text-ink">

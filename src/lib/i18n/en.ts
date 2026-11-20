@@ -1201,4 +1201,5 @@ export const en: Record<string, string> = {
   "Páginas sueltas de la libreta, sin carpeta": "The notebook's loose pages, outside any folder",
   "Tus clases, entregas y repasos de los próximos 7 días": "Your classes, deadlines and reviews for the next 7 days",
   "Las últimas páginas de esta libreta": "The latest pages in this notebook",
+  "Editar bloques": "Edit blocks",
 };

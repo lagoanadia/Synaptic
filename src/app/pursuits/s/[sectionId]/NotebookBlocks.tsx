@@ -7,6 +7,7 @@ import { ArrowDown, XIcon } from "@/app/icons";
 import { Popover } from "@/app/ui/Popover";
 import { NOTEBOOK_BLOCK_TYPES, newBlock, type LinkItem, type NotebookBlock, type NotebookBlockType, type TodoItem } from "@/lib/blocks";
 import { saveNotebookBlocks } from "../../actions";
+import { useNotebookEditing } from "./editMode";
 
 const newId = () => Math.random().toString(36).slice(2, 10);
 const DEFAULT_TITLE: Record<NotebookBlockType, string> = { todo: "Por hacer", note: "Nota", links: "Enlaces", pages: "Páginas", week: "Esta semana", recent: "Recientes" };
@@ -21,6 +22,7 @@ export function NotebookBlocks({ sectionId, blocks: initial, content }: { sectio
   const [, start] = useTransition();
   const [adding, setAdding] = useState(false);
   const addBtn = useRef<HTMLButtonElement>(null);
+  const editing = useNotebookEditing();
 
   function save(next: NotebookBlock[], refresh = false) {
     setBlocks(next);
@@ -39,11 +41,11 @@ export function NotebookBlocks({ sectionId, blocks: initial, content }: { sectio
   };
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className={`flex flex-col gap-8 ${blocks.length === 0 && !editing ? "hidden" : ""}`}>
       {blocks.length > 0 && (
         <div className="grid items-start gap-x-8 gap-y-8 md:grid-cols-2">
           {blocks.map((b, i) => (
-            <section key={b.id} className={`group/block flex min-w-0 flex-col gap-3 ${b.type === "week" ? "md:col-span-2" : ""}`}>
+            <section key={b.id} className={`flex min-w-0 flex-col gap-3 ${b.type === "week" ? "md:col-span-2" : ""} ${editing ? "rounded-lg p-3 outline-[1.5px] outline-offset-0 outline-[#d3d1cb] outline-dashed" : ""}`}>
               <header className="flex items-center gap-2 border-b border-border-subtle pb-2">
                 {["todo", "note", "links"].includes(b.type) ? (
                   <input
@@ -61,7 +63,8 @@ export function NotebookBlocks({ sectionId, blocks: initial, content }: { sectio
                     {b.items!.filter((x) => x.done).length}/{b.items!.length}
                   </span>
                 )}
-                <span className="flex items-center gap-0.5 opacity-0 transition-opacity group-focus-within/block:opacity-100 group-hover/block:opacity-100 max-md:opacity-100">
+                {editing && (
+                <span className="flex items-center gap-0.5">
                   <button type="button" onClick={() => move(i, -1)} disabled={i === 0} title={t("Subir")} className="rounded p-1 text-ink-faint hover:bg-chip disabled:opacity-30">
                     <ArrowDown size={13} className="block rotate-180" />
                   </button>
@@ -72,6 +75,7 @@ export function NotebookBlocks({ sectionId, blocks: initial, content }: { sectio
                     <XIcon size={13} className="block" />
                   </button>
                 </span>
+                )}
               </header>
               {b.type === "todo" && <Todo items={b.items ?? []} onChange={(items) => update(b.id, { items })} />}
               {b.type === "note" && <Note text={b.text ?? ""} onChange={(text) => update(b.id, { text })} />}
@@ -82,6 +86,7 @@ export function NotebookBlocks({ sectionId, blocks: initial, content }: { sectio
         </div>
       )}
 
+      {editing && (
       <button
         ref={addBtn}
         type="button"
@@ -90,7 +95,8 @@ export function NotebookBlocks({ sectionId, blocks: initial, content }: { sectio
       >
         {t("+ Añadir bloque")}
       </button>
-      <Popover anchor={addBtn} open={adding} onClose={() => setAdding(false)} label={t("Añadir bloque")}>
+      )}
+      <Popover anchor={addBtn} open={editing && adding} onClose={() => setAdding(false)} label={t("Añadir bloque")}>
         <div className="flex w-72 flex-col p-1">
           {NOTEBOOK_BLOCK_TYPES.filter((item) => !(item.type === "pages" && blocks.some((b) => b.type === "pages"))).map((item) => (
             <button

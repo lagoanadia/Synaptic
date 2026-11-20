@@ -1201,4 +1201,5 @@ export const de: Record<string, string> = {
   "Páginas sueltas de la libreta, sin carpeta": "Lose Seiten des Notizbuchs, ohne Ordner",
   "Tus clases, entregas y repasos de los próximos 7 días": "Deine Kurse, Abgaben und Wiederholungen der nächsten 7 Tage",
   "Las últimas páginas de esta libreta": "Die neuesten Seiten in diesem Notizbuch",
+  "Editar bloques": "Blöcke bearbeiten",
 };
