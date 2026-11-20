@@ -5,17 +5,62 @@ import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowDown, XIcon } from "@/app/icons";
 import { Popover } from "@/app/ui/Popover";
-import { NOTEBOOK_BLOCK_TYPES, newBlock, type LinkItem, type NotebookBlock, type NotebookBlockType, type TodoItem } from "@/lib/blocks";
+import { BUILTIN_BLOCKS, NOTEBOOK_BLOCK_TYPES, newBlock, type LinkItem, type NotebookBlock, type NotebookBlockType, type TodoItem } from "@/lib/blocks";
 import { saveNotebookBlocks } from "../../actions";
 import { useNotebookEditing } from "./editMode";
 
 const newId = () => Math.random().toString(36).slice(2, 10);
-const DEFAULT_TITLE: Record<NotebookBlockType, string> = { todo: "Por hacer", note: "Nota", links: "Enlaces", pages: "Páginas", week: "Esta semana", recent: "Recientes", map: "Mapa" };
+const DEFAULT_TITLE: Record<NotebookBlockType, string> = {
+  todo: "Por hacer",
+  note: "Nota",
+  links: "Enlaces",
+  pages: "Páginas",
+  week: "Esta semana",
+  recent: "Recientes",
+  map: "Mapa",
+  folders: "Carpetas",
+  tasks: "Tareas",
+  timeline: "Calendario",
+  boards: "Tableros por entrega",
+};
+// Sections that draw their own heading: theirs shows only while editing.
+const OWN_HEADING = new Set<NotebookBlockType>(BUILTIN_BLOCKS);
+// Wide unless you made them narrow: the big sections and the week.
+const WIDE_BY_DEFAULT = new Set<NotebookBlockType>(["map", "timeline", "boards", "week"]);
+const isWide = (b: NotebookBlock) => b.wide ?? WIDE_BY_DEFAULT.has(b.type);
 
-// A notebook's own blocks under its folders: to-do lists, notes, links,
-// this week and recent pages. Every change saves at once. `content` holds
-// the server-rendered blocks (week, recent) by id.
-export function NotebookBlocks({ sectionId, blocks: initial, content }: { sectionId: string; blocks: NotebookBlock[]; content: Record<string, React.ReactNode> }) {
+// Rows of the page: a wide block alone; two narrow ones side by side; a
+// narrow one with no narrow partner takes the whole row.
+function rowsOf(blocks: NotebookBlock[]) {
+  const rows: NotebookBlock[][] = [];
+  for (let i = 0; i < blocks.length; i++) {
+    const b = blocks[i];
+    const next = blocks[i + 1];
+    if (!isWide(b) && next && !isWide(next)) {
+      rows.push([b, next]);
+      i++;
+    } else rows.push([b]);
+  }
+  return rows;
+}
+
+// Every section of a notebook page as a block: its folders, map, tasks,
+// calendar… and your own to-do lists, notes, links, week and recent pages.
+// In edit mode (✎) they move, go, come back from "+ Añadir bloque", and
+// switch between half and full width. Every change saves at once.
+// `content` holds the server-drawn ones by id; `addable` the built-in
+// sections this notebook can have.
+export function NotebookBlocks({
+  sectionId,
+  blocks: initial,
+  content,
+  addable = [],
+}: {
+  sectionId: string;
+  blocks: NotebookBlock[];
+  content: Record<string, React.ReactNode>;
+  addable?: { type: NotebookBlockType; label: string; hint: string }[];
+}) {
   const t = useT();
   const router = useRouter();
   const [blocks, setBlocks] = useState(initial);
@@ -39,75 +84,104 @@ export function NotebookBlocks({ sectionId, blocks: initial, content }: { sectio
     [next[i], next[j]] = [next[j], next[i]];
     save(next);
   };
+  const menu = [
+    ...addable.filter((a) => !blocks.some((b) => b.type === a.type)),
+    ...NOTEBOOK_BLOCK_TYPES.filter((item) => !(item.type === "pages" && blocks.some((b) => b.type === "pages"))),
+  ];
+
+  const block = (b: NotebookBlock) => {
+    const i = blocks.indexOf(b);
+    const own = OWN_HEADING.has(b.type);
+    const wide = isWide(b);
+    return (
+      <section key={b.id} className={`flex min-w-0 flex-col gap-3 ${editing ? "rounded-lg p-3 outline-[1.5px] outline-offset-0 outline-[#d3d1cb] outline-dashed" : ""}`}>
+        {(!own || editing) && (
+          <header className="flex items-center gap-2 border-b border-border-subtle pb-2">
+            {["todo", "note", "links"].includes(b.type) ? (
+              <input
+                defaultValue={b.title ?? t(DEFAULT_TITLE[b.type])}
+                onBlur={(e) => e.target.value.trim() !== (b.title ?? t(DEFAULT_TITLE[b.type])) && update(b.id, { title: e.target.value.trim() })}
+                onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+                aria-label={t("Título del bloque")}
+                className="min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none"
+              />
+            ) : (
+              <h2 className="min-w-0 flex-1 text-sm font-semibold">{t(addable.find((a) => a.type === b.type)?.label ?? DEFAULT_TITLE[b.type])}</h2>
+            )}
+            {b.type === "todo" && (b.items?.length ?? 0) > 0 && (
+              <span className="text-xs text-ink-faint">
+                {b.items!.filter((x) => x.done).length}/{b.items!.length}
+              </span>
+            )}
+            {editing && (
+              <span className="flex items-center gap-0.5">
+                <button
+                  type="button"
+                  onClick={() => update(b.id, { wide: !wide })}
+                  title={wide ? t("Media anchura") : t("Ancho completo")}
+                  aria-label={wide ? t("Media anchura") : t("Ancho completo")}
+                  className="rounded p-1 text-ink-faint hover:bg-chip hover:text-ink"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                    {wide ? <path d="M4 12h6M7 9l3 3-3 3M20 12h-6M17 9l-3 3 3 3" /> : <path d="M4 12h16M7 9l-3 3 3 3M17 9l3 3-3 3" />}
+                  </svg>
+                </button>
+                <button type="button" onClick={() => move(i, -1)} disabled={i === 0} title={t("Subir")} className="rounded p-1 text-ink-faint hover:bg-chip disabled:opacity-30">
+                  <ArrowDown size={13} className="block rotate-180" />
+                </button>
+                <button type="button" onClick={() => move(i, 1)} disabled={i === blocks.length - 1} title={t("Bajar")} className="rounded p-1 text-ink-faint hover:bg-chip disabled:opacity-30">
+                  <ArrowDown size={13} className="block" />
+                </button>
+                <button type="button" onClick={() => save(blocks.filter((x) => x.id !== b.id))} title={t("Quitar bloque")} className="rounded p-1 text-ink-faint hover:bg-chip hover:text-red-600">
+                  <XIcon size={13} className="block" />
+                </button>
+              </span>
+            )}
+          </header>
+        )}
+        {b.type === "todo" && <Todo items={b.items ?? []} onChange={(items) => update(b.id, { items })} />}
+        {b.type === "note" && <Note text={b.text ?? ""} onChange={(text) => update(b.id, { text })} />}
+        {b.type === "links" && <Links links={b.links ?? []} onChange={(links) => update(b.id, { links })} />}
+        {!["todo", "note", "links"].includes(b.type) && (content[b.id] ?? <div className="h-20 animate-pulse rounded-lg bg-chip" />)}
+      </section>
+    );
+  };
 
   return (
-    <div className={`flex flex-col gap-8 ${blocks.length === 0 && !editing ? "hidden" : ""}`}>
-      {blocks.length > 0 && (
-        <div className="grid items-start gap-x-8 gap-y-8 md:grid-cols-2">
-          {blocks.map((b, i) => (
-            <section key={b.id} className={`flex min-w-0 flex-col gap-3 ${b.type === "week" || b.type === "map" ? "md:col-span-2" : ""} ${editing ? "rounded-lg p-3 outline-[1.5px] outline-offset-0 outline-[#d3d1cb] outline-dashed" : ""}`}>
-              {(b.type !== "map" || editing) && (
-              <header className="flex items-center gap-2 border-b border-border-subtle pb-2">
-                {["todo", "note", "links"].includes(b.type) ? (
-                  <input
-                    defaultValue={b.title ?? t(DEFAULT_TITLE[b.type])}
-                    onBlur={(e) => e.target.value.trim() !== (b.title ?? t(DEFAULT_TITLE[b.type])) && update(b.id, { title: e.target.value.trim() })}
-                    onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
-                    aria-label={t("Título del bloque")}
-                    className="min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none"
-                  />
-                ) : (
-                  <h2 className="min-w-0 flex-1 text-sm font-semibold">{t(DEFAULT_TITLE[b.type])}</h2>
-                )}
-                {b.type === "todo" && (b.items?.length ?? 0) > 0 && (
-                  <span className="text-xs text-ink-faint">
-                    {b.items!.filter((x) => x.done).length}/{b.items!.length}
-                  </span>
-                )}
-                {editing && (
-                <span className="flex items-center gap-0.5">
-                  <button type="button" onClick={() => move(i, -1)} disabled={i === 0} title={t("Subir")} className="rounded p-1 text-ink-faint hover:bg-chip disabled:opacity-30">
-                    <ArrowDown size={13} className="block rotate-180" />
-                  </button>
-                  <button type="button" onClick={() => move(i, 1)} disabled={i === blocks.length - 1} title={t("Bajar")} className="rounded p-1 text-ink-faint hover:bg-chip disabled:opacity-30">
-                    <ArrowDown size={13} className="block" />
-                  </button>
-                  {b.type !== "map" && <button type="button" onClick={() => save(blocks.filter((x) => x.id !== b.id))} title={t("Quitar bloque")} className="rounded p-1 text-ink-faint hover:bg-chip hover:text-red-600">
-                    <XIcon size={13} className="block" />
-                  </button>}
-                </span>
-                )}
-              </header>
-              )}
-              {b.type === "todo" && <Todo items={b.items ?? []} onChange={(items) => update(b.id, { items })} />}
-              {b.type === "note" && <Note text={b.text ?? ""} onChange={(text) => update(b.id, { text })} />}
-              {b.type === "links" && <Links links={b.links ?? []} onChange={(links) => update(b.id, { links })} />}
-              {(b.type === "week" || b.type === "recent" || b.type === "pages" || b.type === "map") && (content[b.id] ?? <div className="h-20 animate-pulse rounded-lg bg-chip" />)}
-            </section>
-          ))}
-        </div>
+    <div className={`flex flex-col gap-10 ${blocks.length === 0 && !editing ? "hidden" : ""}`}>
+      {rowsOf(blocks).map((row) =>
+        row.length === 2 ? (
+          <div key={row[0].id} className="grid items-start gap-x-10 gap-y-10 lg:grid-cols-2">
+            {row.map(block)}
+          </div>
+        ) : (
+          block(row[0])
+        ),
       )}
 
       {editing && (
-      <button
-        ref={addBtn}
-        type="button"
-        onClick={() => setAdding((a) => !a)}
-        className="self-start rounded-md border border-dashed border-[#d3d1cb] px-3 py-1.5 text-sm text-ink-muted hover:bg-chip"
-      >
-        {t("+ Añadir bloque")}
-      </button>
+        <button
+          ref={addBtn}
+          type="button"
+          onClick={() => setAdding((a) => !a)}
+          className="self-start rounded-md border border-dashed border-[#d3d1cb] px-3 py-1.5 text-sm text-ink-muted hover:bg-chip"
+        >
+          {t("+ Añadir bloque")}
+        </button>
       )}
       <Popover anchor={addBtn} open={editing && adding} onClose={() => setAdding(false)} label={t("Añadir bloque")}>
-        <div className="flex w-72 flex-col p-1">
-          {NOTEBOOK_BLOCK_TYPES.filter((item) => !(item.type === "pages" && blocks.some((b) => b.type === "pages"))).map((item) => (
+        <div className="flex max-h-96 w-72 flex-col overflow-y-auto p-1">
+          {menu.map((item) => (
             <button
               key={item.type}
               type="button"
               onClick={() => {
                 setAdding(false);
-                const b: NotebookBlock = { ...newBlock(item.type), ...(item.type === "todo" ? { items: [] } : item.type === "note" ? { text: "" } : item.type === "links" ? { links: [] } : {}) };
-                save([...blocks, b], item.type === "week" || item.type === "recent" || item.type === "pages");
+                const builtin = (BUILTIN_BLOCKS as readonly string[]).includes(item.type);
+                const b: NotebookBlock = builtin
+                  ? { id: item.type, type: item.type }
+                  : { ...newBlock(item.type), ...(item.type === "todo" ? { items: [] } : item.type === "note" ? { text: "" } : item.type === "links" ? { links: [] } : {}) };
+                save([...blocks, b], builtin || item.type === "week" || item.type === "recent" || item.type === "pages");
               }}
               className="flex flex-col rounded-md px-2.5 py-1.5 text-left hover:bg-hover"
             >

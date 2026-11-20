@@ -102,3 +102,15 @@ export function Folder({
     </span>
   );
 }
+
+// A folder cover's print filling its parent (position: relative): the
+// banner of a PDF card, say.
+export function CoverFill({ cover, scale = 2 }: { cover: FolderCover; scale?: number }) {
+  return (
+    <span className="absolute inset-0 block overflow-hidden" style={{ background: FOLDER_COVERS[cover] }} aria-hidden>
+      <svg className="absolute inset-0 h-full w-full" preserveAspectRatio="none">
+        <rect width={`${100 / scale}%`} height={`${100 / scale}%`} transform={`scale(${scale})`} {...folderPaint(cover)} />
+      </svg>
+    </span>
+  );
+}

@@ -1,5 +1,5 @@
 import type { JSONContent } from "@tiptap/core";
-import { COLS_CLOSE, COLS_NEXT, COLS_OPEN, parseNoteBlocks, type InlineNode, type ListBlock, type NoteBlock } from "@/lib/text";
+import { COLS_CLOSE, COLS_NEXT, COLS_OPEN, parseNoteBlocks, pdfMarker, type InlineNode, type ListBlock, type NoteBlock } from "@/lib/text";
 
 // Stored text format (lib/text.ts shortcuts) ⇄ the editor's document tree.
 // Storage is unchanged; only editing is visual.
@@ -52,6 +52,8 @@ function blockToNode(b: NoteBlock): JSONContent {
       return listToNode(b);
     case "image":
       return { type: "image", attrs: { src: b.url } };
+    case "pdf":
+      return { type: "pdfCard", attrs: { src: b.url, title: b.title, cover: b.cover } };
     case "codeBlock":
       return {
         type: "codeBlock",
@@ -150,6 +152,8 @@ function nodeToText(n: JSONContent): string {
       return listToText(n, 0);
     case "image":
       return n.attrs?.src ? `![image](${String(n.attrs.src)})` : "";
+    case "pdfCard":
+      return n.attrs?.src ? pdfMarker(String(n.attrs.src), String(n.attrs.title ?? ""), String(n.attrs.cover ?? "")) : "";
     case "codeBlock": {
       const code = (n.content ?? []).map((c) => c.text ?? "").join("");
       return `<${String(n.attrs?.language ?? "")}\n${code}\n>`;

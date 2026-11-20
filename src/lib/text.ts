@@ -5,7 +5,7 @@ const LEADING_MARKER = /^(?:!|-|\d+\.|[a-zA-Z]\.)\s+/;
 export function autoTitle(content: string | null, maxWords = 8): string {
   if (!content || content.trim() === "") return "Untitled";
   // Image markers have no spaces, so left in they'd become one giant "word".
-  const withoutImages = content.replace(/!\[image\]\([^)]*\)/g, " ").trim();
+  const withoutImages = content.replace(/!\[(?:image|pdf:[^\]\n]*)\]\([^)]*\)/g, " ").trim();
   if (withoutImages === "") return "Untitled";
   const trimmed = withoutImages;
   const firstLine = trimmed.split("\n")[0].trim();
@@ -20,19 +20,25 @@ export function autoTitle(content: string | null, maxWords = 8): string {
 
 export type ContentSegment =
   | { type: "text"; value: string }
-  | { type: "image"; url: string };
+  | { type: "image"; url: string }
+  | { type: "pdf"; url: string; title: string; cover: string };
 
-// Splits stored content into text and image segments, in order.
+// A PDF shown as a card: "![pdf:cover:Title](url)". The title can't hold
+// "]" or a line break; the cover is a folder-cover key ("" = from the url).
+export const pdfMarker = (url: string, title: string, cover: string) => `![pdf:${cover.replace(/[^\w-]/g, "")}:${title.replace(/[\]\n\r]/g, " ").trim()}](${url.replace(/\)/g, "%29")})`;
+
+// Splits stored content into text, image and PDF-card segments, in order.
 export function parseContent(content: string): ContentSegment[] {
   const segments: ContentSegment[] = [];
-  const pattern = /!\[image\]\(([^)]+)\)/g;
+  const pattern = /!\[(image|pdf:([\w-]*):([^\]\n]*))\]\(([^)]+)\)/g;
   let lastIndex = 0;
   let match: RegExpExecArray | null;
   while ((match = pattern.exec(content)) !== null) {
     if (match.index > lastIndex) {
       segments.push({ type: "text", value: content.slice(lastIndex, match.index) });
     }
-    segments.push({ type: "image", url: match[1] });
+    if (match[1] === "image") segments.push({ type: "image", url: match[4] });
+    else segments.push({ type: "pdf", url: match[4], title: match[3].trim(), cover: match[2] });
     lastIndex = pattern.lastIndex;
   }
   if (lastIndex < content.length) {
@@ -64,6 +70,7 @@ export type NoteBlock =
   | ListBlock
   | { type: "paragraph"; inline: InlineNode[] }
   | { type: "image"; url: string }
+  | { type: "pdf"; url: string; title: string; cover: string }
   // No header row: `header` is empty and every row is in `rows`.
   | { type: "table"; header: InlineNode[][]; rows: InlineNode[][][] }
   | { type: "codeBlock"; code: string; language: string }
@@ -331,6 +338,8 @@ function plainBlocks(content: string): NoteBlock[] {
   for (const segment of parseContent(content)) {
     if (segment.type === "image") {
       blocks.push({ type: "image", url: segment.url });
+    } else if (segment.type === "pdf") {
+      blocks.push({ type: "pdf", url: segment.url, title: segment.title, cover: segment.cover });
     } else {
       blocks.push(...parseTextBlocks(segment.value));
     }

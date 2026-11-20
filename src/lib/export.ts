@@ -78,6 +78,8 @@ function blockToMarkdown(block: NoteBlock): string {
     }
     case "image":
       return `![image](${block.url})`;
+    case "pdf":
+      return `[📄 ${block.title || "PDF"}](${block.url})`;
     case "paragraph":
       return inlineToMarkdown(block.inline);
     // Our own `<`/`>` fences aren't Markdown, but GFM's fenced code block

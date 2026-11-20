@@ -50,18 +50,15 @@ export default async function TestsPage() {
       </svg>
     );
   };
-  const head = (title: string, hint: string, side?: React.ReactNode) => (
+  const head = (title: string, side?: React.ReactNode) => (
     <div className="flex items-end gap-3 border-b border-border-subtle pb-2">
-      <div className="min-w-0 flex-1">
-        <h2 className="text-[15px] font-semibold">{title}</h2>
-        <p className="text-[13px] text-ink-faint">{hint}</p>
-      </div>
+      <h2 className="min-w-0 flex-1 text-[15px] font-semibold">{title}</h2>
       {side}
     </div>
   );
 
   return (
-    <div className="mx-auto flex w-full max-w-[1000px] flex-1 flex-col gap-10 px-6 py-8 sm:px-12 lg:py-12">
+    <div className="mx-auto flex w-full max-w-[1560px] flex-1 flex-col gap-10 px-6 py-8 sm:px-12 lg:py-12">
       <div className="flex flex-col gap-1">
         <nav className="text-sm text-ink-faint">
           <Link href="/review" className="hover:text-ink hover:underline">
@@ -70,7 +67,6 @@ export default async function TestsPage() {
           / <span className="text-ink-muted">{t("Mis tests")}</span>
         </nav>
         <h1 className="text-[2rem] font-bold tracking-tight">{t("Mis tests")}</h1>
-        <p className="text-sm text-ink-muted">{t("El test final de cada asignatura y los tests que has guardado para repetir.")}</p>
       </div>
 
       {/* Only when some notes still have no questions. */}
@@ -79,11 +75,10 @@ export default async function TestsPage() {
       <section className="flex flex-col gap-3">
         {head(
           t("Test final"),
-          t("Preguntas de respuesta escrita que la IA corrige. Se abre al repasar todas las tarjetas de la asignatura."),
           subjects.length > 0 && <span className="shrink-0 text-xs text-ink-faint">{t("{0} de {1} listos", { 0: readyCount, 1: subjects.length })}</span>,
         )}
         {subjects.length === 0 && <p className="py-2 text-[13px] text-ink-faint">{t("Aún no tienes tarjetas en ninguna asignatura.")}</p>}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
           {subjects.map((s) => {
             const ready = s.seen >= s.total;
             const left = s.total - s.seen;
@@ -117,7 +112,7 @@ export default async function TestsPage() {
       </section>
 
       <section className="flex flex-col gap-3">
-        {head(t("Guardados"), t("Tus quizzes y tests finales guardados, para rehacerlos."))}
+        {head(t("Guardados"))}
         {tests.length === 0 ? (
           <p className="py-2 text-[13px] text-ink-faint">{t("Al acabar un quiz o un test final, pulsa «Guardar test» y aparecerá aquí.")}</p>
         ) : (

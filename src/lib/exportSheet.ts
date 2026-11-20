@@ -37,6 +37,8 @@ function block(b: NoteBlock): string {
       return `<div class="x-b x-callout">${inline(b.inline)}</div>`;
     case "paragraph":
       return `<p class="x-text">${inline(b.inline)}</p>`;
+    case "pdf":
+      return `<p class="x-text"><a href="${esc(b.url)}">📄 ${esc(b.title || "PDF")}</a></p>`;
     case "image":
       return `<div class="x-b"><img class="x-img" src="${esc(b.url)}" alt=""></div>`;
     case "table":

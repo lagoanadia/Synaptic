@@ -13,6 +13,8 @@ import { docToText, textToDoc } from "@/lib/richText";
 import type { Editor } from "@tiptap/core";
 import { uploadToBlob } from "@/lib/blobUpload";
 import { SlidePanel } from "./SlidePanel";
+import { OPEN_PDF_EVENT, type OpenPdfDetail } from "@/app/editor/pdfCard";
+import { saveSlideDeck } from "./actions";
 import { VoiceNote } from "./VoiceNote";
 import { ExportPdfDialog } from "./ExportPdfDialog";
 import type { TermHint } from "@/lib/terms";
@@ -82,6 +84,18 @@ export function PageView({ pursuit, crumbs, dump, note, slides, terms, stale: st
   const editorRef = useRef<Editor | null>(null);
   const versions = useRef({ organized: note?.updatedAt ?? "", original: dump?.updatedAt ?? "" });
   const [split, setSplit] = useState(false);
+  // A PDF card was clicked: open the slides panel with that PDF.
+  const [pdfRequest, setPdfRequest] = useState<(OpenPdfDetail & { n: number }) | null>(null);
+  useEffect(() => {
+    const onOpen = (e: Event) => {
+      const d = (e as CustomEvent<OpenPdfDetail>).detail;
+      if (!d?.url) return;
+      setSplit(true);
+      setPdfRequest({ ...d, n: Date.now() });
+    };
+    window.addEventListener(OPEN_PDF_EVENT, onOpen);
+    return () => window.removeEventListener(OPEN_PDF_EVENT, onOpen);
+  }, []);
   const [saved, setSaved] = useState(false);
   const [menu, setMenu] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -247,6 +261,12 @@ export function PageView({ pursuit, crumbs, dump, note, slides, terms, stale: st
           setDirty((d) => (d[view] === changed ? d : { ...d, [view]: changed }));
         }}
         onUploadImage={(file) => uploadToBlob(pursuit.id, file, file.name, "image")}
+        onUploadPdf={async (file) => {
+          const url = await uploadToBlob(pursuit.id, file, file.name, "slides");
+          // Also among the folder's slides, so the panel's "+" lists it.
+          saveSlideDeck(pursuit.id, file.name, url, file.size, dump?.id).catch(() => {});
+          return url;
+        }}
         onAsk={(text) => askPursuit(pursuit.id, t("Explícame esto de forma sencilla: \"{0}\"", { 0: text }))}
         onCard={(text) => cardFromSelection(pursuit.id, text, note?.id ?? null)}
         onMap={async (text) => {
@@ -382,6 +402,7 @@ export function PageView({ pursuit, crumbs, dump, note, slides, terms, stale: st
           classroomCourseId={slides.classroomCourseId}
           classroomUnit={slides.classroomUnit}
           dumpId={dump?.id}
+          request={pdfRequest}
           onClose={() => setSplit(false)}
           onTranscribe={async (image) => {
             const r = await transcribeSlide(pursuit.id, image);

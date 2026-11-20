@@ -41,6 +41,7 @@ export function SlidePanel({
   classroomUnit = null,
   dumpId,
   onClose,
+  request = null,
   onTranscribe,
   onAddText,
   children,
@@ -54,6 +55,8 @@ export function SlidePanel({
   dumpId?: string;
   // Opened from a toggle elsewhere: no button of its own; ✕ hands back.
   onClose?: () => void;
+  // Open this one now (a PDF card clicked in the page); `n` makes a repeat count.
+  request?: { name: string; url: string; n: number } | null;
   // Selected part of a slide (JPEG data URL) → into the note; an error or null.
   onTranscribe?: (image: string, page: number) => Promise<string | null>;
   // Text selected in a PDF (lines with sizes) → structured into the note.
@@ -105,6 +108,13 @@ export function SlidePanel({
     }
     store.set(key, JSON.stringify({ tabs, active: deck?.url ?? null, width, collapsed }));
   }, [key, tabs, deck, width, collapsed]);
+
+  // After the saved tabs are read (the effect above runs first).
+  const requestN = request?.n;
+  useEffect(() => {
+    if (request) open({ name: request.name, url: request.url });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requestN]);
 
   function open(d: Deck) {
     if (!slideSourceFor(d.url)) return setStatus(t("Usa un enlace de Google Slides / Drive, un .pptx o un .pdf"));

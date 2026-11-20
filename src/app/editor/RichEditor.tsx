@@ -19,6 +19,7 @@ import { TableKit } from "@tiptap/extension-table";
 import { ImageWithBoards } from "./Whiteboard";
 import { Column, Columns, convertBlock, setColumns, unsetColumns, type BlockKind } from "./columns";
 import { Placeholder } from "@tiptap/extensions";
+import { PdfCard, pdfTitle } from "./pdfCard";
 import { docToText, textToDoc } from "@/lib/richText";
 import { termMatches, type TermHint } from "@/lib/terms";
 
@@ -157,6 +158,7 @@ export function RichEditor({
   initialText,
   onChange,
   onUploadImage,
+  onUploadPdf,
   placeholder: placeholderProp,
   editorRef,
   toolbarExtras,
@@ -173,6 +175,8 @@ export function RichEditor({
   onChange: (text: string) => void;
   // Uploads an image and returns its URL; enables paste/drop/button.
   onUploadImage?: (file: File) => Promise<string>;
+  // A PDF → its URL; it goes in as a card that opens beside the page.
+  onUploadPdf?: (file: File) => Promise<string>;
   placeholder?: string;
   // Lets the parent insert things (voice transcripts, PDF pages).
   editorRef?: React.RefObject<Editor | null>;
@@ -200,9 +204,11 @@ export function RichEditor({
   const [blockMenu, setBlockMenu] = useState(false);
   const hideHint = useRef<number | null>(null);
   const uploadRef = useRef(onUploadImage);
+  const pdfRef = useRef(onUploadPdf);
   const onChangeRef = useRef(onChange);
   useEffect(() => {
     uploadRef.current = onUploadImage;
+    pdfRef.current = onUploadPdf;
     onChangeRef.current = onChange;
   });
   const [uploading, setUploading] = useState(false);
@@ -217,14 +223,23 @@ export function RichEditor({
   const refreshRef = useRef<(e: Editor) => void>(() => {});
   const keyRef = useRef<(e: KeyboardEvent) => boolean>(() => false);
 
+  // What can be dropped/pasted/picked in: images, and PDFs when there's a place for them.
+  function accepted(f: File) {
+    return (f.type.startsWith("image/") && !!uploadRef.current) || (isPdf(f) && !!pdfRef.current);
+  }
+  // Images and PDFs (as cards), in the order given.
   async function insertImages(editor: Editor, files: File[]) {
-    const upload = uploadRef.current;
-    if (!upload) return;
     setUploading(true);
     try {
       for (const file of files) {
-        const url = await upload(file);
-        editor.chain().focus().setImage({ src: url }).run();
+        if (isPdf(file)) {
+          if (!pdfRef.current) continue;
+          const url = await pdfRef.current(file);
+          editor.chain().focus().insertContent({ type: "pdfCard", attrs: { src: url, title: pdfTitle(file.name), cover: "" } }).run();
+        } else if (uploadRef.current) {
+          const url = await uploadRef.current(file);
+          editor.chain().focus().setImage({ src: url }).run();
+        }
       }
     } finally {
       setUploading(false);
@@ -244,6 +259,7 @@ export function RichEditor({
       CalloutShortcut,
       TableKit.configure({ table: { resizable: false } }),
       ImageWithBoards,
+      PdfCard,
       Columns,
       Column,
       Placeholder.configure({ placeholder }),
@@ -256,8 +272,8 @@ export function RichEditor({
       attributes: { class: "rich-editor", "aria-label": t("Contenido de la página") },
       handleKeyDown: (_view, event) => keyRef.current(event),
       handlePaste: (view, event) => {
-        const files = [...(event.clipboardData?.files ?? [])].filter((f) => f.type.startsWith("image/"));
-        if (files.length && uploadRef.current && editorInstance.current) {
+        const files = [...(event.clipboardData?.files ?? [])].filter(accepted);
+        if (files.length && editorInstance.current) {
           insertImages(editorInstance.current, files);
           return true;
         }
@@ -272,8 +288,8 @@ export function RichEditor({
       },
       handleDrop: (view, event) => {
         if (dropBlock(view, event)) return true;
-        const files = [...(event.dataTransfer?.files ?? [])].filter((f) => f.type.startsWith("image/"));
-        if (files.length === 0 || !uploadRef.current || !editorInstance.current) return false;
+        const files = [...(event.dataTransfer?.files ?? [])].filter(accepted);
+        if (files.length === 0 || !editorInstance.current) return false;
         insertImages(editorInstance.current, files);
         return true;
       },
@@ -332,7 +348,7 @@ export function RichEditor({
     setBlockMenu(true);
   }
 
-  const items = slash ? slashItems(t, !!onUploadImage, !!onBoard).filter((it) => fold(it.label).split(" ").some((w) => w.startsWith(fold(slash.query)))) : [];
+  const items = slash ? slashItems(t, !!onUploadImage, !!onBoard, !!onUploadPdf).filter((it) => fold(it.label).split(" ").some((w) => w.startsWith(fold(slash.query)))) : [];
   const pick = (it: SlashItem) => {
     if (!slash || !editor) return;
     const to = editor.state.selection.from;
@@ -397,7 +413,7 @@ export function RichEditor({
     return (
       <>
       {/* Same formatting bar as the full editor, so a page edits the same way. */}
-      <Toolbar editor={editor} onImage={onUploadImage ? () => fileInput.current?.click() : undefined} onBoard={onBoard ? () => onBoard().then((src) => editor.chain().focus().setImage({ src }).createParagraphNear().run()) : undefined} onMindMap={onMindMap ? async () => { const r = await onMindMap(); if (r.src) editor.chain().focus("end").setImage({ src: r.src }).createParagraphNear().run(); return r.error; } : undefined} uploading={uploading} extras={toolbarExtras} bare />
+      <Toolbar editor={editor} pdf={!!onUploadPdf} onImage={onUploadImage || onUploadPdf ? () => fileInput.current?.click() : undefined} onBoard={onBoard ? () => onBoard().then((src) => editor.chain().focus().setImage({ src }).createParagraphNear().run()) : undefined} onMindMap={onMindMap ? async () => { const r = await onMindMap(); if (r.src) editor.chain().focus("end").setImage({ src: r.src }).createParagraphNear().run(); return r.error; } : undefined} uploading={uploading} extras={toolbarExtras} bare />
       <div
         ref={wrap}
         className="relative"
@@ -409,7 +425,7 @@ export function RichEditor({
         <input
           ref={fileInput}
           type="file"
-          accept="image/*"
+          accept={onUploadPdf ? "image/*,application/pdf" : "image/*"}
           multiple
           className="hidden"
           onChange={(e) => {
@@ -506,7 +522,8 @@ export function RichEditor({
     <div className="flex flex-col rounded-2xl border border-border-subtle bg-white">
       <Toolbar
         editor={editor}
-        onImage={onUploadImage ? () => fileInput.current?.click() : undefined}
+        pdf={!!onUploadPdf}
+        onImage={onUploadImage || onUploadPdf ? () => fileInput.current?.click() : undefined}
         onBoard={onBoard ? () => onBoard().then((src) => editor.chain().focus().setImage({ src }).createParagraphNear().run()) : undefined} onMindMap={onMindMap ? async () => { const r = await onMindMap(); if (r.src) editor.chain().focus("end").setImage({ src: r.src }).createParagraphNear().run(); return r.error; } : undefined}
         uploading={uploading}
         extras={toolbarExtras}
@@ -514,7 +531,7 @@ export function RichEditor({
       <input
         ref={fileInput}
         type="file"
-        accept="image/*"
+        accept={onUploadPdf ? "image/*,application/pdf" : "image/*"}
         multiple
         className="hidden"
         onChange={(e) => {
@@ -531,6 +548,7 @@ export function RichEditor({
 function Toolbar({
   editor,
   onImage,
+  pdf = false,
   onBoard,
   onMindMap,
   uploading,
@@ -539,6 +557,8 @@ function Toolbar({
 }: {
   editor: Editor;
   onImage?: () => void;
+  // The image button takes PDFs too.
+  pdf?: boolean;
   // Insert a new whiteboard (drawn picture) where the cursor is.
   onBoard?: () => void;
   // Make a mind map of the page with AI (inserted at the end); an error or null.
@@ -619,7 +639,7 @@ function Toolbar({
         </span>
       )}
       {onImage && (
-        <Btn onClick={onImage} title={t("Insertar imagen (o pégala / arrástrala)")}>{uploading ? "…" : <ImageIcon />}</Btn>
+        <Btn onClick={onImage} title={pdf ? t("Insertar imagen o PDF (o arrástralos)") : t("Insertar imagen (o pégala / arrástrala)")}>{uploading ? "…" : <ImageIcon />}</Btn>
       )}
       {onMindMap && <MindMapBtn run={onMindMap} />}
       {onBoard && (
@@ -678,9 +698,10 @@ type Sel = { text: string; top: number; left: number };
 type Chain = ReturnType<Editor["chain"]>;
 type SlashItem = { label: string; icon: React.ReactNode; run: (c: Chain) => void; image?: boolean; board?: boolean };
 
+const isPdf = (f: File) => f.type === "application/pdf" || /\.pdf$/i.test(f.name);
 const fold = (t: string) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
-function slashItems(t: T, images: boolean, boards = false): SlashItem[] {
+function slashItems(t: T, images: boolean, boards = false, pdfs = false): SlashItem[] {
   return [
     { label: t("Título"), icon: "H1", run: (c) => c.setHeading({ level: 1 }).run() },
     { label: t("Subtítulo"), icon: "H2", run: (c) => c.setHeading({ level: 2 }).run() },
@@ -692,6 +713,7 @@ function slashItems(t: T, images: boolean, boards = false): SlashItem[] {
     { label: t("Tabla"), icon: "▦", run: (c) => c.insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run() },
     ...(images ? [{ label: t("Imagen"), icon: <ImageIcon />, run: (c: Chain) => c.run(), image: true }] : []),
     ...(boards ? [{ label: t("Pizarra"), icon: "✎", run: (c: Chain) => c.run(), board: true }] : []),
+    ...(pdfs ? [{ label: "PDF", icon: "📄", run: (c: Chain) => c.run(), image: true }] : []),
   ];
 }
 

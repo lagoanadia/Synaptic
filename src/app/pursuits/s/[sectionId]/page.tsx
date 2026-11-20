@@ -24,7 +24,7 @@ import { ProjectGrid } from "@/app/projects/ProjectGrid";
 import { TaskBoard } from "@/app/projects/TaskBoard";
 import { ProjectTimeline } from "@/app/projects/ProjectTimeline";
 import { NotebookBlocks } from "./NotebookBlocks";
-import { cleanNotebookBlocks } from "@/lib/blocks";
+import { BUILTIN_BLOCKS, BUILTIN_LABEL, cleanNotebookBlocks, type BuiltinBlockType, type NotebookBlock } from "@/lib/blocks";
 import { WeekStrip } from "@/app/calendar/WeekStrip";
 import { calendarItems } from "@/lib/calendarData";
 import { dayKey, weekOf } from "@/lib/calendar";
@@ -85,9 +85,24 @@ export default async function NotebookPage({ params }: { params: Promise<{ secti
       );
 
   // The notebook's own blocks; week and recent are drawn here, the rest in the browser.
+  // Every section of the page is a block. The built-in ones this kind of
+  // notebook has, in their usual order; your saved order once you've moved
+  // or removed one.
+  const projectsKind = !study && !general;
+  const builtins: BuiltinBlockType[] = study ? ["folders", "map"] : projectsKind ? ["folders", "tasks", "timeline", "boards"] : ["folders", "boards"];
+  const defaults: NotebookBlock[] = [
+    { id: "folders", type: "folders" },
+    ...(projectsKind ? [{ id: "tasks", type: "tasks" as const }, { id: "timeline", type: "timeline" as const }] : []),
+    ...(loose.length ? [{ id: "pages", type: "pages" as const }] : []),
+    ...(study ? [{ id: "map", type: "map" as const }] : []),
+    ...(openTasks.length ? [{ id: "boards", type: "boards" as const }] : []),
+    ...(!study ? [{ id: "recent", type: "recent" as const }] : []),
+  ];
   const saved = section ? cleanNotebookBlocks(section.blocks) : [];
-  // Study notebooks: the map is a block too, first unless you moved it.
-  const ownBlocks = study && section && !saved.some((b) => b.type === "map") ? [{ id: "map", type: "map" as const }, ...saved] : saved;
+  const customized = saved.some((b) => (BUILTIN_BLOCKS as readonly string[]).includes(b.type));
+  const ownBlocks = (customized ? saved : [...defaults.filter((d) => !saved.some((x) => x.type === d.type)), ...saved]).filter(
+    (b) => !(BUILTIN_BLOCKS as readonly string[]).includes(b.type) || builtins.includes(b.type as BuiltinBlockType),
+  );
   const blockContent = Object.fromEntries(
     await Promise.all(
       ownBlocks
@@ -108,7 +123,7 @@ export default async function NotebookPage({ params }: { params: Promise<{ secti
   const sectionHeader = (title: string) => <h2 className="border-b border-border-subtle pb-2 text-sm font-semibold">{t(title)}</h2>;
 
   return (
-    <div className={`mx-auto flex w-full ${study && section ? "max-w-[1560px]" : "max-w-[1100px]"} flex-1 flex-col gap-10 px-6 py-8 sm:px-12 lg:py-12`}>
+    <div className={`mx-auto flex w-full max-w-[1560px] flex-1 flex-col gap-10 px-6 py-8 sm:px-12 lg:py-12`}>
       <div className="flex flex-col gap-6">
         <nav className="text-sm text-ink-faint">
           <Link href="/pursuits" className="hover:text-ink hover:underline">
@@ -119,92 +134,82 @@ export default async function NotebookPage({ params }: { params: Promise<{ secti
         <NotebookHeader id={sectionId} name={name} cover={notebookCover(sectionId, section?.cover)} study={study} kind={(section?.kind as "study" | "projects" | "general" | null) ?? null} editable={!isVirtual} />
       </div>
 
-      {section && study ? (
-        <NotebookFolders
-          sectionId={section.id}
-          sectionName={name}
-          title={t("Asignaturas")}
-          groups={section.groups}
-          items={folders}
-          newLabel={t("Nueva asignatura")}
-        />
-      ) : study || !section || general ? (
+      {!section ? (
         <section className="flex flex-col gap-3">
-          {sectionHeader(study ? t("Asignaturas") : t("Carpetas"))}
-          <FolderRow items={folders} after={!isVirtual && <NewFolder sectionName={name} label={study ? t("Nueva asignatura") : t("Nueva carpeta")} template={study ? undefined : "blank"} mine={study ? [] : mine} />} />
+          {sectionHeader(t("Carpetas"))}
+          <FolderRow items={folders} />
         </section>
       ) : (
-        <>
-          <section className="flex flex-col gap-3">
-            <h2 className="text-[22px] font-bold">{t("Proyectos")}</h2>
-            <ProjectGrid projects={projects} today={today} after={<NewFolder sectionName={name} label={t("Nuevo proyecto")} template="project" mine={mine} fill />} />
-          </section>
-          <section className="flex flex-col gap-3">
-            <h2 className="text-[22px] font-bold">{t("Tareas")}</h2>
-            <TaskBoard
-              tasks={projects.flatMap((p) => p.tasks)}
-              projects={projects.filter((p) => !p.finished || p.tasks.some((t) => t.status !== "DONE")).map((p) => ({ id: p.id, title: p.title, cover: p.cover }))}
-              today={today}
-              sectionId={isVirtual ? undefined : sectionId}
-            />
-          </section>
-          <section className="flex flex-col gap-3">
-            <h2 className="text-[22px] font-bold">{t("Calendario")}</h2>
-            <ProjectTimeline projects={projects} today={today} />
-          </section>
-        </>
-      )}
-
-
-      {/* Pages made right in the notebook, without a folder. */}
-      {/* Only when there are some and no Páginas block shows them; otherwise it's a block you add. */}
-      {section && loose.length > 0 && !ownBlocks.some((b) => b.type === "pages") && <LoosePages sectionId={section.id} groups={section.groups} pages={loose} />}
-
-      {/* Study notebooks: the map on the left, assignments in a panel on the right that stays in view. */}
-      {section && (
         <NotebookBlocks
           sectionId={section.id}
           blocks={ownBlocks}
+          addable={builtins.map((b) => ({ type: b, label: b === "folders" && study ? "Asignaturas" : b === "folders" && projectsKind ? "Proyectos" : BUILTIN_LABEL[b].label, hint: BUILTIN_LABEL[b].hint }))}
           content={{
             ...blockContent,
+            folders: study ? (
+              <NotebookFolders sectionId={section.id} sectionName={name} title={t("Asignaturas")} groups={section.groups} items={folders} newLabel={t("Nueva asignatura")} />
+            ) : projectsKind ? (
+              <section className="flex flex-col gap-3">
+                <h2 className="text-[22px] font-bold">{t("Proyectos")}</h2>
+                <ProjectGrid projects={projects} today={today} after={<NewFolder sectionName={name} label={t("Nuevo proyecto")} template="project" mine={mine} fill />} />
+              </section>
+            ) : (
+              <section className="flex flex-col gap-3">
+                {sectionHeader(t("Carpetas"))}
+                <FolderRow items={folders} after={<NewFolder sectionName={name} label={t("Nueva carpeta")} template="blank" mine={mine} />} />
+              </section>
+            ),
+            tasks: projectsKind && (
+              <section className="flex flex-col gap-3">
+                <h2 className="text-[22px] font-bold">{t("Tareas")}</h2>
+                <TaskBoard
+                  tasks={projects.flatMap((p) => p.tasks)}
+                  projects={projects.filter((p) => !p.finished || p.tasks.some((t) => t.status !== "DONE")).map((p) => ({ id: p.id, title: p.title, cover: p.cover }))}
+                  today={today}
+                  sectionId={sectionId}
+                />
+              </section>
+            ),
+            timeline: projectsKind && (
+              <section className="flex flex-col gap-3">
+                <h2 className="text-[22px] font-bold">{t("Calendario")}</h2>
+                <ProjectTimeline projects={projects} today={today} />
+              </section>
+            ),
             map: study && (
-        <div className="flex flex-col gap-10 lg:flex-row lg:items-start lg:gap-8">
-          <div className="min-w-0 flex-1">{map.length > 0 && <NotebookMap paths={map} groupOf={groupOf} groups={section.groups} title={t("Mapa")} />}</div>
-          <aside className="lg:sticky lg:top-6 lg:w-[380px] lg:shrink-0 empty:hidden">
-            <Suspense fallback={null}>
-              <DeadlinesPanel userId={userId} sectionId={section.id} groupOf={groupOf} groups={section.groups} />
-            </Suspense>
-          </aside>
-        </div>
+              <div className="flex flex-col gap-10 lg:flex-row lg:items-start lg:gap-8">
+                <div className="min-w-0 flex-1">{map.length > 0 && <NotebookMap paths={map} groupOf={groupOf} groups={section.groups} title={t("Mapa")} />}</div>
+                <aside className="lg:sticky lg:top-6 lg:w-[380px] lg:shrink-0 empty:hidden">
+                  <Suspense fallback={null}>
+                    <DeadlinesPanel userId={userId} sectionId={section.id} groupOf={groupOf} groups={section.groups} />
+                  </Suspense>
+                </aside>
+              </div>
+            ),
+            boards: (
+              <section className="flex flex-col gap-1">
+                {sectionHeader(t("Tableros por entrega"))}
+                {openTasks.length === 0 ? (
+                  <p className="py-2 text-[13px] text-ink-faint">{t("No hay tarjetas pendientes en ninguna entrega.")}</p>
+                ) : (
+                  <ul>
+                    {openTasks.map((t) => (
+                      <li key={t.id}>
+                        <Link href={`/pursuits/${t.pursuitId}/projects/${t.projectId}`} className="flex items-center gap-3 border-b border-[#f1f1ef] px-1 py-2 text-sm hover:bg-[#fbfbfa]">
+                          <span className={`size-3.5 rounded-[3px] border-[1.5px] ${t.status === "IN_PROGRESS" ? "border-amber bg-amber/20" : "border-[#c7c5c0]"}`} />
+                          <span className="min-w-0 flex-1 truncate">{t.title}</span>
+                          <span className="size-2 rounded-full" style={{ background: t.color }} />
+                          <span className="text-xs text-ink-faint">{t.folder}</span>
+                          {t.due && <span className="w-14 text-right text-xs text-ink-faint">{t.due.toLocaleDateString(locale, { day: "numeric", month: "short" })}</span>}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
             ),
           }}
         />
-      )}
-
-      {openTasks.length > 0 && (
-        <section className="flex flex-col gap-1">
-          {sectionHeader(t("Tableros por entrega"))}
-          <ul>
-            {openTasks.map((t) => (
-              <li key={t.id}>
-                <Link href={`/pursuits/${t.pursuitId}/projects/${t.projectId}`} className="flex items-center gap-3 border-b border-[#f1f1ef] px-1 py-2 text-sm hover:bg-[#fbfbfa]">
-                  <span className={`size-3.5 rounded-[3px] border-[1.5px] ${t.status === "IN_PROGRESS" ? "border-amber bg-amber/20" : "border-[#c7c5c0]"}`} />
-                  <span className="min-w-0 flex-1 truncate">{t.title}</span>
-                  <span className="size-2 rounded-full" style={{ background: t.color }} />
-                  <span className="text-xs text-ink-faint">{t.folder}</span>
-                  {t.due && <span className="w-14 text-right text-xs text-ink-faint">{t.due.toLocaleDateString(locale, { day: "numeric", month: "short" })}</span>}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      {section && !study && (
-        <section className="flex flex-col gap-1">
-          {sectionHeader(t("Páginas recientes"))}
-          <RecentList pages={recent} />
-        </section>
       )}
     </div>
   );

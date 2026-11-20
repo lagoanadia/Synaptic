@@ -153,12 +153,23 @@ export function newBlock<T extends string>(type: T) {
 
 // A notebook page's own blocks, under its folders: a to-do list, a note,
 // links, this week, recent pages. Stored on the Section.
-// "map": the study map and deliveries, built in (never in the add menu,
-// never removed) but moved like the rest.
-export type NotebookBlockType = "todo" | "note" | "links" | "pages" | "week" | "recent" | "map";
+// The notebook's own sections are blocks too ("built in"): its folders,
+// the study map, the projects' tasks and calendar, the per-delivery boards.
+// In edit mode they move and go like the rest, and come back from the menu.
+export const BUILTIN_BLOCKS = ["folders", "map", "tasks", "timeline", "boards"] as const;
+export type BuiltinBlockType = (typeof BUILTIN_BLOCKS)[number];
+export const BUILTIN_LABEL: Record<BuiltinBlockType, { label: string; hint: string }> = {
+  folders: { label: "Carpetas", hint: "Las asignaturas, proyectos o carpetas de la libreta" },
+  map: { label: "Mapa", hint: "El mapa de unidades y las entregas" },
+  tasks: { label: "Tareas", hint: "El tablero de tareas de tus proyectos" },
+  timeline: { label: "Calendario", hint: "Tus proyectos en el tiempo" },
+  boards: { label: "Tableros por entrega", hint: "Las tarjetas pendientes de cada entrega" },
+};
+export type NotebookBlockType = "todo" | "note" | "links" | "pages" | "week" | "recent" | BuiltinBlockType;
 export type TodoItem = { id: string; text: string; done: boolean };
 export type LinkItem = { id: string; label: string; url: string };
-export type NotebookBlock = { id: string; type: NotebookBlockType; title?: string; items?: TodoItem[]; text?: string; links?: LinkItem[] };
+// wide: full width (true) or half (false); unset = the type's usual width.
+export type NotebookBlock = { id: string; type: NotebookBlockType; title?: string; items?: TodoItem[]; text?: string; links?: LinkItem[]; wide?: boolean };
 export const NOTEBOOK_BLOCK_TYPES: { type: NotebookBlockType; label: string; hint: string }[] = [
   { type: "todo", label: "Lista de tareas", hint: "Cosas por hacer, para tacharlas" },
   { type: "note", label: "Nota", hint: "Un texto libre siempre a la vista" },
@@ -180,15 +191,17 @@ const safeUrl = (v: unknown) => {
 // only each type's fields, sane sizes.
 export function cleanNotebookBlocks(raw: unknown): NotebookBlock[] {
   if (!Array.isArray(raw)) return [];
-  const types = [...NOTEBOOK_BLOCK_TYPES.map((t) => t.type as string), "map"];
-  let maps = 0;
+  const types = [...NOTEBOOK_BLOCK_TYPES.map((t) => t.type as string), ...BUILTIN_BLOCKS];
+  const once = new Set<string>();
   return raw
     .filter((b): b is NotebookBlock => !!b && typeof b === "object" && types.includes((b as NotebookBlock).type))
-    .filter((b) => b.type !== "map" || maps++ === 0)
-    .slice(0, 21)
+    // Built-in sections and the loose pages: one of each.
+    .filter((b) => !((BUILTIN_BLOCKS as readonly string[]).includes(b.type) || b.type === "pages") || (!once.has(b.type) && !!once.add(b.type)))
+    .slice(0, 30)
     .map((b) => {
-      if (b.type === "map") return { id: "map", type: "map" as const };
-      const out: NotebookBlock = { id: str(b.id, 20) || newId(), type: b.type };
+      const wide = typeof b.wide === "boolean" ? { wide: b.wide } : {};
+      if ((BUILTIN_BLOCKS as readonly string[]).includes(b.type)) return { id: b.type, type: b.type, ...wide };
+      const out: NotebookBlock = { id: str(b.id, 20) || newId(), type: b.type, ...wide };
       if (b.title !== undefined && ["todo", "note", "links"].includes(b.type)) out.title = str(b.title, 60);
       if (b.type === "todo")
         out.items = (Array.isArray(b.items) ? b.items : []).slice(0, 200).map((i) => ({ id: str(i?.id, 20) || newId(), text: str(i?.text, 300), done: !!i?.done }));

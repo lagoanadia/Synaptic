@@ -114,6 +114,13 @@ function Blocks({ blocks, paragraphClassName }: { blocks: NoteBlock[]; paragraph
     <div className="flex flex-col gap-3">
       {blocks.map((block, i) => {
         switch (block.type) {
+          case "pdf":
+            return (
+              <a key={i} href={block.url} target="_blank" rel="noopener noreferrer" className="flex w-full max-w-[340px] items-center gap-3 rounded-xl bg-chip px-4 py-3 font-bold tracking-tight uppercase hover:bg-hover">
+                <span className="rounded-md bg-ink px-1.5 py-0.5 text-[10px] tracking-wider text-white">PDF</span>
+                <span className="min-w-0 truncate">{block.title || "PDF"}</span>
+              </a>
+            );
           case "image":
             return (
               // eslint-disable-next-line @next/next/no-img-element

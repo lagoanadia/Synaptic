@@ -99,7 +99,7 @@ export function buildQuiz(
 // markers, and the markdown shortcut characters, then cuts at a word.
 export function conceptExcerpt(content: string, maxChars = 280): string {
   const lines = content
-    .replace(/!\[image\]\([^)]*\)/g, " ")
+    .replace(/!\[(?:image|pdf:[^\]\n]*)\]\([^)]*\)/g, " ")
     .split("\n")
     .map((l) => l.trim());
   if (lines[0] && /^#+/.test(lines[0])) lines.shift();
