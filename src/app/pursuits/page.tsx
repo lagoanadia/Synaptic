@@ -72,7 +72,7 @@ export default async function HomePage() {
             hideBelow = depth;
             continue;
           }
-          if (it.text.trim()) out.push({ blockId: b.id, id: it.id, text: it.text, depth });
+          if (it.text.trim()) out.push({ blockId: b.id, id: it.id, text: it.text, depth, ...(it.doing ? { doing: true } : {}) });
         }
         return out;
       }),

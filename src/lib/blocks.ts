@@ -167,7 +167,8 @@ export const BUILTIN_LABEL: Record<BuiltinBlockType, { label: string; hint: stri
 };
 export type NotebookBlockType = "todo" | "note" | "links" | "pages" | "week" | "recent" | BuiltinBlockType;
 // depth: 0 a task, 1 its subtask, 2 a subtask of that.
-export type TodoItem = { id: string; text: string; done: boolean; depth?: number };
+// doing: started (the home page's "En curso"); the notebook shows it as open.
+export type TodoItem = { id: string; text: string; done: boolean; depth?: number; doing?: boolean };
 export type LinkItem = { id: string; label: string; url: string };
 // join: in the same row as the block before it (side by side, up to 3).
 export type NotebookBlock = { id: string; type: NotebookBlockType; title?: string; items?: TodoItem[]; text?: string; links?: LinkItem[]; join?: boolean };
@@ -207,7 +208,7 @@ export function cleanNotebookBlocks(raw: unknown): NotebookBlock[] {
       if (b.type === "todo")
         out.items = (Array.isArray(b.items) ? b.items : []).slice(0, 200).map((i) => {
           const depth = Math.max(0, Math.min(2, Math.round(Number(i?.depth) || 0)));
-          return { id: str(i?.id, 20) || newId(), text: str(i?.text, 300), done: !!i?.done, ...(depth ? { depth } : {}) };
+          return { id: str(i?.id, 20) || newId(), text: str(i?.text, 300), done: !!i?.done, ...(depth ? { depth } : {}), ...(i?.doing === true && !i?.done ? { doing: true } : {}) };
         });
       if (b.type === "note") out.text = str(b.text, 5000);
       if (b.type === "links")
