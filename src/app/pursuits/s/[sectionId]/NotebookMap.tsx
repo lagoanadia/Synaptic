@@ -59,8 +59,8 @@ export function PathCard({ path: p, link = false }: { path: SubjectPath; link?: 
                 style={{ top: size / 2 - 1.5, left: `calc(-50% + ${size / 2 + 5}px)`, right: `calc(50% + ${size / 2 + 5}px)`, background: p.units[i - 1].pct >= DONE ? "var(--color-ink-faint)" : "var(--color-hover)" }}
               />
             )}
-            <Link href={u.href} title={u.name} className="flex flex-col items-center gap-1.5 px-0.5 text-center text-[11px] leading-tight font-medium text-ink">
-              <Node pct={u.pct} color={p.color} current={i === cur} size={size} />
+            <Link href={u.href} title={u.name} className="flex flex-col items-center gap-1 px-0.5 text-center text-[11px] leading-tight font-medium text-ink">
+              <span className="mb-2"><Node pct={u.pct} color={p.color} current={i === cur} size={size} /></span>
               <span className="line-clamp-2 max-w-full break-words">{u.label}</span>
               <span className="text-[10px] font-medium text-ink-faint">{Math.round(u.pct * 100)}%</span>
             </Link>

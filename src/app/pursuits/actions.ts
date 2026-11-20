@@ -4,7 +4,7 @@ import { getT } from "@/lib/i18n/server";
 
 import { revalidatePath } from "next/cache";
 import { blocksFromTemplate, templateBlocks } from "@/lib/blocks";
-import { cleanHomeBlocks } from "@/lib/blocks";
+import { cleanHomeBlocks, cleanNotebookBlocks } from "@/lib/blocks";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
@@ -311,4 +311,14 @@ export async function newLoosePage(sectionId: string, group: string | null = nul
   const existing = await prisma.pursuit.findFirst({ where: { sectionId, ownerId: session.user.id, loose: true, group: tab }, select: { id: true } });
   const pursuit = existing ?? (await prisma.pursuit.create({ data: { title: "Páginas", ownerId: session.user.id, sectionId, loose: true, group: tab }, select: { id: true } }));
   return `/pursuits/${pursuit.id}/dump/new`;
+}
+
+// A notebook's own blocks (to-do lists, notes, links…), saved whole.
+export async function saveNotebookBlocks(sectionId: string, blocks: unknown) {
+  const session = await auth();
+  if (!session?.user?.id) return;
+  const section = await prisma.section.findFirst({ where: { id: sectionId, userId: session.user.id }, select: { id: true } });
+  if (!section) return;
+  await prisma.section.update({ where: { id: sectionId }, data: { blocks: cleanNotebookBlocks(blocks) } });
+  revalidatePath(`/pursuits/s/${sectionId}`);
 }

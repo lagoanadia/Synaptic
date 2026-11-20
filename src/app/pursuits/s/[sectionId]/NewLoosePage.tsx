@@ -10,7 +10,7 @@ import { useOpenTab } from "./tabs";
 
 // "Páginas +": pages right in the notebook, no folder needed. They belong
 // to the section tab they were made on, and the list shows the open tab's.
-export function LoosePages({ sectionId, groups, pages }: { sectionId: string; groups: string[]; pages: LoosePage[] }) {
+export function LoosePages({ sectionId, groups, pages, bare = false }: { sectionId: string; groups: string[]; pages: LoosePage[]; bare?: boolean }) {
   const t = useT();
   const locale = useLocale();
   const router = useRouter();
@@ -19,8 +19,8 @@ export function LoosePages({ sectionId, groups, pages }: { sectionId: string; gr
   const shown = tab ? pages.filter((p) => p.group === tab) : pages;
   return (
     <section className="flex flex-col gap-1">
-      <div className="flex items-center gap-1.5 border-b border-border-subtle pb-1">
-        <h2 className="text-sm font-semibold">{t("Páginas")}</h2>
+      <div className={`flex items-center gap-1.5 ${bare ? "order-last pt-1" : "border-b border-border-subtle pb-1"}`}>
+        {!bare && <h2 className="text-sm font-semibold">{t("Páginas")}</h2>}
         <button
           type="button"
           disabled={pending}
@@ -31,14 +31,14 @@ export function LoosePages({ sectionId, groups, pages }: { sectionId: string; gr
             })
           }
           aria-label={t("Nueva página")}
-          title={t("Nueva página")}
-          className="grid size-6 place-items-center rounded-md text-ink-faint hover:bg-chip hover:text-ink disabled:opacity-50"
+          title={bare ? undefined : t("Nueva página")}
+          className={bare ? "rounded-md px-1 py-1 text-sm text-ink-faint hover:bg-chip hover:text-ink disabled:opacity-50" : "grid size-6 place-items-center rounded-md text-ink-faint hover:bg-chip hover:text-ink disabled:opacity-50"}
         >
-          {pending ? "…" : "+"}
+          {pending ? "…" : bare ? t("+ Nueva página") : "+"}
         </button>
       </div>
       {shown.length === 0 ? (
-        <p className="py-2 text-[13px] text-ink-faint">{t("Escribe una página aquí sin meterla en ninguna carpeta.")}</p>
+        bare ? null : <p className="py-2 text-[13px] text-ink-faint">{t("Escribe una página aquí sin meterla en ninguna carpeta.")}</p>
       ) : (
         <ul className="flex flex-col">
           {shown.map((p) => (

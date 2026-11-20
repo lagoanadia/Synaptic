@@ -23,6 +23,11 @@ import { dayOf } from "@/lib/projects";
 import { ProjectGrid } from "@/app/projects/ProjectGrid";
 import { TaskBoard } from "@/app/projects/TaskBoard";
 import { ProjectTimeline } from "@/app/projects/ProjectTimeline";
+import { NotebookBlocks } from "./NotebookBlocks";
+import { cleanNotebookBlocks } from "@/lib/blocks";
+import { WeekStrip } from "@/app/calendar/WeekStrip";
+import { calendarItems } from "@/lib/calendarData";
+import { dayKey, weekOf } from "@/lib/calendar";
 
 // A notebook: its folders, then — with study tools — its map and this
 // week's pages; without — open tasks and recent pages.
@@ -79,6 +84,24 @@ export default async function NotebookPage({ params }: { params: Promise<{ secti
         ),
       );
 
+  // The notebook's own blocks; week and recent are drawn here, the rest in the browser.
+  const ownBlocks = section ? cleanNotebookBlocks(section.blocks) : [];
+  const blockContent = Object.fromEntries(
+    await Promise.all(
+      ownBlocks
+        .filter((b) => b.type === "week" || b.type === "recent" || b.type === "pages")
+        .map(async (b) => {
+          if (b.type === "pages") return [b.id, <LoosePages key={b.id} sectionId={section!.id} groups={section!.groups} pages={loose} bare />] as const;
+          if (b.type === "week") {
+            const days = weekOf(dayKey(now));
+            const { items } = await calendarItems(userId, days[0], days[6]);
+            return [b.id, <WeekStrip key={b.id} days={days} today={dayKey(now)} items={items} />] as const;
+          }
+          return [b.id, <RecentList key={b.id} pages={recent.length ? recent : await recentPages(userId, section!.id, 8)} />] as const;
+        }),
+    ),
+  );
+
   const groupOf = Object.fromEntries(folders.map((f) => [f.id, f.group ?? null]));
   const sectionHeader = (title: string) => <h2 className="border-b border-border-subtle pb-2 text-sm font-semibold">{t(title)}</h2>;
 
@@ -132,7 +155,8 @@ export default async function NotebookPage({ params }: { params: Promise<{ secti
 
 
       {/* Pages made right in the notebook, without a folder. */}
-      {section && <LoosePages sectionId={section.id} groups={section.groups} pages={loose} />}
+      {/* Only when there are some and no Páginas block shows them; otherwise it's a block you add. */}
+      {section && loose.length > 0 && !ownBlocks.some((b) => b.type === "pages") && <LoosePages sectionId={section.id} groups={section.groups} pages={loose} />}
 
       {/* Study notebooks: the map on the left, assignments in a panel on the right that stays in view. */}
       {study && section && (
@@ -145,6 +169,8 @@ export default async function NotebookPage({ params }: { params: Promise<{ secti
           </aside>
         </div>
       )}
+
+      {section && <NotebookBlocks sectionId={section.id} blocks={ownBlocks} content={blockContent} />}
 
       {openTasks.length > 0 && (
         <section className="flex flex-col gap-1">

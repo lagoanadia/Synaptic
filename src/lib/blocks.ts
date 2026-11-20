@@ -150,3 +150,49 @@ export function folderBlocks(raw: unknown, study: boolean, hasTasks = false): Fo
 export function newBlock<T extends string>(type: T) {
   return { id: newId(), type };
 }
+
+// A notebook page's own blocks, under its folders: a to-do list, a note,
+// links, this week, recent pages. Stored on the Section.
+export type NotebookBlockType = "todo" | "note" | "links" | "pages" | "week" | "recent";
+export type TodoItem = { id: string; text: string; done: boolean };
+export type LinkItem = { id: string; label: string; url: string };
+export type NotebookBlock = { id: string; type: NotebookBlockType; title?: string; items?: TodoItem[]; text?: string; links?: LinkItem[] };
+export const NOTEBOOK_BLOCK_TYPES: { type: NotebookBlockType; label: string; hint: string }[] = [
+  { type: "todo", label: "Lista de tareas", hint: "Cosas por hacer, para tacharlas" },
+  { type: "note", label: "Nota", hint: "Un texto libre siempre a la vista" },
+  { type: "links", label: "Enlaces", hint: "Webs que usas a menudo: Classroom, Moodle…" },
+  { type: "pages", label: "Páginas", hint: "Páginas sueltas de la libreta, sin carpeta" },
+  { type: "week", label: "Esta semana", hint: "Tus clases, entregas y repasos de los próximos 7 días" },
+  { type: "recent", label: "Recientes", hint: "Las últimas páginas de esta libreta" },
+];
+
+const str = (v: unknown, max: number) => (typeof v === "string" ? v.slice(0, max) : "");
+const safeUrl = (v: unknown) => {
+  const s = str(v, 500).trim();
+  if (!s) return "";
+  const u = /^[a-z][a-z0-9+.-]*:/i.test(s) ? s : `https://${s}`;
+  return /^https?:\/\//i.test(u) ? u : "";
+};
+
+// What the browser sent → blocks we can store: known types, short ids,
+// only each type's fields, sane sizes.
+export function cleanNotebookBlocks(raw: unknown): NotebookBlock[] {
+  if (!Array.isArray(raw)) return [];
+  const types = NOTEBOOK_BLOCK_TYPES.map((t) => t.type as string);
+  return raw
+    .filter((b): b is NotebookBlock => !!b && typeof b === "object" && types.includes((b as NotebookBlock).type))
+    .slice(0, 20)
+    .map((b) => {
+      const out: NotebookBlock = { id: str(b.id, 20) || newId(), type: b.type };
+      if (b.title !== undefined && ["todo", "note", "links"].includes(b.type)) out.title = str(b.title, 60);
+      if (b.type === "todo")
+        out.items = (Array.isArray(b.items) ? b.items : []).slice(0, 200).map((i) => ({ id: str(i?.id, 20) || newId(), text: str(i?.text, 300), done: !!i?.done }));
+      if (b.type === "note") out.text = str(b.text, 5000);
+      if (b.type === "links")
+        out.links = (Array.isArray(b.links) ? b.links : [])
+          .slice(0, 50)
+          .map((l) => ({ id: str(l?.id, 20) || newId(), label: str(l?.label, 80), url: safeUrl(l?.url) }))
+          .filter((l) => l.url);
+      return out;
+    });
+}

@@ -88,7 +88,7 @@ export function NotebookDeadlines({ list, status = "ok", groupOf, groups, side =
     const c = 2 * Math.PI * r;
     return (
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="shrink-0 overflow-visible" aria-hidden>
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#ebebea" strokeWidth={width} />
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--color-chip)" strokeWidth={width} />
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={width} strokeLinecap="round" strokeDasharray={`${c * value} ${c}`} transform={`rotate(-90 ${size / 2} ${size / 2})`} />
       </svg>
     );

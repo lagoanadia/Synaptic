@@ -343,6 +343,8 @@ model Section {
   kind  String?
   // Tabs to sort its folders into ("Teoría", "Prácticas"…), in order.
   groups String[] @default([])
+  // Its own page blocks under the folders (lib/blocks.ts NotebookBlock).
+  blocks Json?
 
   userId String
   user   User   @relation(fields: [userId], references: [id])
