@@ -246,47 +246,149 @@ export function NotebookBlocks({
   );
 }
 
+const MAX_DEPTH = 2;
+type TodoSpot = { id: string; where: "above" | "below" | "inside" };
+
+// An item and its subtasks (the items right after it that sit deeper).
+function subtree(items: TodoItem[], i: number) {
+  const d = items[i].depth ?? 0;
+  let end = i + 1;
+  while (end < items.length && (items[end].depth ?? 0) > d) end++;
+  return [i, end] as const;
+}
+
+// Moves an item, with its subtasks, above/below another or inside it (as
+// its last subtask). Depths stay within MAX_DEPTH.
+function moveItem(items: TodoItem[], id: string, spot: TodoSpot): TodoItem[] {
+  const from = items.findIndex((x) => x.id === id);
+  if (from < 0 || id === spot.id) return items;
+  const [s, e] = subtree(items, from);
+  const group = items.slice(s, e);
+  if (group.some((x) => x.id === spot.id)) return items; // not into itself
+  const rest = [...items.slice(0, s), ...items.slice(e)];
+  const ti = rest.findIndex((x) => x.id === spot.id);
+  if (ti < 0) return items;
+  const td = rest[ti].depth ?? 0;
+  const [, tEnd] = subtree(rest, ti);
+  const at = spot.where === "above" ? ti : tEnd;
+  const depth = spot.where === "inside" ? td + 1 : td;
+  const base = group[0].depth ?? 0;
+  const moved = group.map((x) => ({ ...x, depth: Math.min(MAX_DEPTH, Math.max(0, (x.depth ?? 0) - base + depth)) || undefined }));
+  return [...rest.slice(0, at), ...moved, ...rest.slice(at)];
+}
+
 function Todo({ items, onChange }: { items: TodoItem[]; onChange: (items: TodoItem[]) => void }) {
   const t = useT();
   const [draft, setDraft] = useState("");
-  // Done ones sink to the bottom.
-  const sorted = [...items.filter((i) => !i.done), ...items.filter((i) => i.done)];
+  const [armed, setArmed] = useState<string | null>(null);
+  const [dragging, setDragging] = useState<string | null>(null);
+  const [spot, setSpot] = useState<TodoSpot | null>(null);
   const add = () => {
     const text = draft.trim();
     if (!text) return;
     onChange([...items, { id: newId(), text, done: false }]);
     setDraft("");
   };
+  // Tab / Shift+Tab: in or out one level (never deeper than one below the item above).
+  const indent = (i: number, d: 1 | -1) => {
+    const cur = items[i].depth ?? 0;
+    const max = i === 0 ? 0 : Math.min(MAX_DEPTH, (items[i - 1].depth ?? 0) + 1);
+    const next = Math.max(0, Math.min(max, cur + d));
+    if (next === cur) return;
+    const [s, e] = subtree(items, i);
+    onChange(items.map((x, j) => (j >= s && j < e ? { ...x, depth: Math.min(MAX_DEPTH, (x.depth ?? 0) + next - cur) || undefined } : x)));
+  };
+  const end = () => {
+    setDragging(null);
+    setArmed(null);
+    setSpot(null);
+  };
   return (
     <ul className="flex flex-col">
-      {sorted.map((it) => (
-        <li key={it.id} className="group/item flex items-center gap-2.5 rounded-md px-1 py-1 hover:bg-hover">
-          <button
-            type="button"
-            role="checkbox"
-            aria-checked={it.done}
-            aria-label={it.text}
-            onClick={() => onChange(items.map((x) => (x.id === it.id ? { ...x, done: !x.done } : x)))}
-            className={`grid size-4 shrink-0 place-items-center rounded-[4px] border-[1.5px] text-[10px] text-white ${it.done ? "border-accent bg-accent" : "border-[#c7c6c2] hover:border-accent"}`}
-          >
-            {it.done && "✓"}
-          </button>
-          <input
-            defaultValue={it.text}
-            onBlur={(e) => {
-              const v = e.target.value.trim();
-              if (!v) onChange(items.filter((x) => x.id !== it.id));
-              else if (v !== it.text) onChange(items.map((x) => (x.id === it.id ? { ...x, text: v } : x)));
+      {items.map((it, i) => {
+        const depth = it.depth ?? 0;
+        const here = spot?.id === it.id ? spot.where : null;
+        return (
+          <li
+            key={it.id}
+            draggable={armed === it.id}
+            onDragStart={(e) => {
+              e.stopPropagation();
+              e.dataTransfer.effectAllowed = "move";
+              e.dataTransfer.setData("text/plain", it.id);
+              setDragging(it.id);
             }}
-            onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
-            aria-label={t("Tarea")}
-            className={`min-w-0 flex-1 bg-transparent text-sm outline-none ${it.done ? "text-ink-faint line-through" : ""}`}
-          />
-          <button type="button" onClick={() => onChange(items.filter((x) => x.id !== it.id))} aria-label={t("Eliminar")} className="rounded p-0.5 text-ink-faint opacity-0 group-hover/item:opacity-100 hover:text-red-600 max-md:opacity-60">
-            <XIcon size={12} className="block" />
-          </button>
-        </li>
-      ))}
+            onDragEnd={end}
+            onDragOver={(e) => {
+              if (!dragging || dragging === it.id) return;
+              e.preventDefault();
+              e.stopPropagation();
+              const r = e.currentTarget.getBoundingClientRect();
+              const y = (e.clientY - r.top) / r.height;
+              const where: TodoSpot["where"] = y < 0.3 ? "above" : y > 0.7 || depth >= MAX_DEPTH ? (y < 0.5 ? "above" : "below") : "inside";
+              if (spot?.id !== it.id || spot.where !== where) setSpot({ id: it.id, where });
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (dragging && spot) onChange(moveItem(items, dragging, spot));
+              end();
+            }}
+            style={{ paddingLeft: 4 + depth * 26 }}
+            className={`group/item relative flex items-center gap-2.5 rounded-md py-1 pr-1 hover:bg-hover ${dragging === it.id ? "opacity-40" : ""} ${here === "inside" ? "bg-accent-soft outline-[1.5px] outline-accent outline-solid" : ""}`}
+          >
+            {here === "above" && <span className="pointer-events-none absolute -top-px right-0 h-[3px] rounded-full bg-accent" style={{ left: depth * 26 }} />}
+            {here === "below" && <span className="pointer-events-none absolute -bottom-px right-0 h-[3px] rounded-full bg-accent" style={{ left: depth * 26 }} />}
+            {/* Grab here to drag (up, down, or onto another to make it a subtask). */}
+            <span
+              onPointerDown={() => setArmed(it.id)}
+              onPointerUp={() => !dragging && setArmed(null)}
+              title={t("Arrastra para mover")}
+              aria-hidden
+              className="-ml-4 grid h-5 w-3 shrink-0 cursor-grab place-items-center text-ink-faint opacity-0 group-hover/item:opacity-100 active:cursor-grabbing max-md:opacity-60"
+            >
+              <svg width="8" height="12" viewBox="0 0 8 12" fill="currentColor">
+                <circle cx="2" cy="2" r="1.1" />
+                <circle cx="6" cy="2" r="1.1" />
+                <circle cx="2" cy="6" r="1.1" />
+                <circle cx="6" cy="6" r="1.1" />
+                <circle cx="2" cy="10" r="1.1" />
+                <circle cx="6" cy="10" r="1.1" />
+              </svg>
+            </span>
+            <button
+              type="button"
+              role="checkbox"
+              aria-checked={it.done}
+              aria-label={it.text}
+              onClick={() => onChange(items.map((x) => (x.id === it.id ? { ...x, done: !x.done } : x)))}
+              className={`grid size-4 shrink-0 place-items-center rounded-[4px] border-[1.5px] text-[10px] text-white ${it.done ? "border-accent bg-accent" : "border-[#c7c6c2] hover:border-accent"}`}
+            >
+              {it.done && "✓"}
+            </button>
+            <input
+              defaultValue={it.text}
+              onBlur={(e) => {
+                const v = e.target.value.trim();
+                if (!v) onChange(items.filter((x) => x.id !== it.id));
+                else if (v !== it.text) onChange(items.map((x) => (x.id === it.id ? { ...x, text: v } : x)));
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") e.currentTarget.blur();
+                else if (e.key === "Tab") {
+                  e.preventDefault();
+                  indent(i, e.shiftKey ? -1 : 1);
+                }
+              }}
+              aria-label={t("Tarea")}
+              className={`min-w-0 flex-1 bg-transparent outline-none ${depth ? "text-[13px]" : "text-sm"} ${it.done ? "text-ink-faint line-through" : ""}`}
+            />
+            <button type="button" onClick={() => onChange(items.filter((x) => x.id !== it.id))} aria-label={t("Eliminar")} className="rounded p-0.5 text-ink-faint opacity-0 group-hover/item:opacity-100 hover:text-red-600 max-md:opacity-60">
+              <XIcon size={12} className="block" />
+            </button>
+          </li>
+        );
+      })}
       <li className="flex items-center gap-2.5 px-1 py-1">
         <span className="grid size-4 shrink-0 place-items-center text-ink-faint">+</span>
         <input
