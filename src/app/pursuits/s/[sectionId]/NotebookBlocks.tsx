@@ -10,7 +10,7 @@ import { saveNotebookBlocks } from "../../actions";
 import { useNotebookEditing } from "./editMode";
 
 const newId = () => Math.random().toString(36).slice(2, 10);
-const DEFAULT_TITLE: Record<NotebookBlockType, string> = { todo: "Por hacer", note: "Nota", links: "Enlaces", pages: "Páginas", week: "Esta semana", recent: "Recientes" };
+const DEFAULT_TITLE: Record<NotebookBlockType, string> = { todo: "Por hacer", note: "Nota", links: "Enlaces", pages: "Páginas", week: "Esta semana", recent: "Recientes", map: "Mapa" };
 
 // A notebook's own blocks under its folders: to-do lists, notes, links,
 // this week and recent pages. Every change saves at once. `content` holds
@@ -45,7 +45,8 @@ export function NotebookBlocks({ sectionId, blocks: initial, content }: { sectio
       {blocks.length > 0 && (
         <div className="grid items-start gap-x-8 gap-y-8 md:grid-cols-2">
           {blocks.map((b, i) => (
-            <section key={b.id} className={`flex min-w-0 flex-col gap-3 ${b.type === "week" ? "md:col-span-2" : ""} ${editing ? "rounded-lg p-3 outline-[1.5px] outline-offset-0 outline-[#d3d1cb] outline-dashed" : ""}`}>
+            <section key={b.id} className={`flex min-w-0 flex-col gap-3 ${b.type === "week" || b.type === "map" ? "md:col-span-2" : ""} ${editing ? "rounded-lg p-3 outline-[1.5px] outline-offset-0 outline-[#d3d1cb] outline-dashed" : ""}`}>
+              {(b.type !== "map" || editing) && (
               <header className="flex items-center gap-2 border-b border-border-subtle pb-2">
                 {["todo", "note", "links"].includes(b.type) ? (
                   <input
@@ -71,16 +72,17 @@ export function NotebookBlocks({ sectionId, blocks: initial, content }: { sectio
                   <button type="button" onClick={() => move(i, 1)} disabled={i === blocks.length - 1} title={t("Bajar")} className="rounded p-1 text-ink-faint hover:bg-chip disabled:opacity-30">
                     <ArrowDown size={13} className="block" />
                   </button>
-                  <button type="button" onClick={() => save(blocks.filter((x) => x.id !== b.id))} title={t("Quitar bloque")} className="rounded p-1 text-ink-faint hover:bg-chip hover:text-red-600">
+                  {b.type !== "map" && <button type="button" onClick={() => save(blocks.filter((x) => x.id !== b.id))} title={t("Quitar bloque")} className="rounded p-1 text-ink-faint hover:bg-chip hover:text-red-600">
                     <XIcon size={13} className="block" />
-                  </button>
+                  </button>}
                 </span>
                 )}
               </header>
+              )}
               {b.type === "todo" && <Todo items={b.items ?? []} onChange={(items) => update(b.id, { items })} />}
               {b.type === "note" && <Note text={b.text ?? ""} onChange={(text) => update(b.id, { text })} />}
               {b.type === "links" && <Links links={b.links ?? []} onChange={(links) => update(b.id, { links })} />}
-              {(b.type === "week" || b.type === "recent" || b.type === "pages") && (content[b.id] ?? <div className="h-20 animate-pulse rounded-lg bg-chip" />)}
+              {(b.type === "week" || b.type === "recent" || b.type === "pages" || b.type === "map") && (content[b.id] ?? <div className="h-20 animate-pulse rounded-lg bg-chip" />)}
             </section>
           ))}
         </div>

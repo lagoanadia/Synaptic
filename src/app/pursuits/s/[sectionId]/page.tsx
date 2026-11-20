@@ -85,7 +85,9 @@ export default async function NotebookPage({ params }: { params: Promise<{ secti
       );
 
   // The notebook's own blocks; week and recent are drawn here, the rest in the browser.
-  const ownBlocks = section ? cleanNotebookBlocks(section.blocks) : [];
+  const saved = section ? cleanNotebookBlocks(section.blocks) : [];
+  // Study notebooks: the map is a block too, first unless you moved it.
+  const ownBlocks = study && section && !saved.some((b) => b.type === "map") ? [{ id: "map", type: "map" as const }, ...saved] : saved;
   const blockContent = Object.fromEntries(
     await Promise.all(
       ownBlocks
@@ -159,7 +161,13 @@ export default async function NotebookPage({ params }: { params: Promise<{ secti
       {section && loose.length > 0 && !ownBlocks.some((b) => b.type === "pages") && <LoosePages sectionId={section.id} groups={section.groups} pages={loose} />}
 
       {/* Study notebooks: the map on the left, assignments in a panel on the right that stays in view. */}
-      {study && section && (
+      {section && (
+        <NotebookBlocks
+          sectionId={section.id}
+          blocks={ownBlocks}
+          content={{
+            ...blockContent,
+            map: study && (
         <div className="flex flex-col gap-10 lg:flex-row lg:items-start lg:gap-8">
           <div className="min-w-0 flex-1">{map.length > 0 && <NotebookMap paths={map} groupOf={groupOf} groups={section.groups} title={t("Mapa")} />}</div>
           <aside className="lg:sticky lg:top-6 lg:w-[380px] lg:shrink-0 empty:hidden">
@@ -168,9 +176,10 @@ export default async function NotebookPage({ params }: { params: Promise<{ secti
             </Suspense>
           </aside>
         </div>
+            ),
+          }}
+        />
       )}
-
-      {section && <NotebookBlocks sectionId={section.id} blocks={ownBlocks} content={blockContent} />}
 
       {openTasks.length > 0 && (
         <section className="flex flex-col gap-1">

@@ -1202,4 +1202,13 @@ export const en: Record<string, string> = {
   "Tus clases, entregas y repasos de los próximos 7 días": "Your classes, deadlines and reviews for the next 7 days",
   "Las últimas páginas de esta libreta": "The latest pages in this notebook",
   "Editar bloques": "Edit blocks",
+  "El test final de cada asignatura y los tests que has guardado para repetir.": "Each subject's final test and the tests you saved to retake.",
+  "Preguntas de respuesta escrita que la IA corrige. Se abre al repasar todas las tarjetas de la asignatura.": "Written-answer questions marked by AI. Opens once you've gone over all the subject's cards.",
+  "{0} de {1} listos": "{0} of {1} ready",
+  "Faltan {0} de {1} tarjetas": "{0} of {1} cards to go",
+  "Empezar test final": "Start final test",
+  "Hacerlo ya": "Do it now",
+  "Tus quizzes y tests finales guardados, para rehacerlos.": "Your saved quizzes and final tests, to retake.",
+  "Al acabar un quiz o un test final, pulsa «Guardar test» y aparecerá aquí.": "When you finish a quiz or final test, tap “Save test” and it will show up here.",
+  "La IA puede crearlas para que los tests los cubran todos.": "AI can write them so your tests cover everything.",
 };

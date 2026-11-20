@@ -72,7 +72,7 @@ export async function buildStarterSpace(userId: string, plan: StarterPlan): Prom
           cover: folderCover(f.title),
           ...(f.classroomCourseId ? { classroomCourseId: f.classroomCourseId, classroomCourseName: f.title, classroomEnabled: true } : {}),
           ...(f.challenges
-            ? { blocks: ["pages", "map", "review", "challenges"].map((type) => ({ id: type, type })) }
+            ? { blocks: ["pages", "map", "challenges"].map((type) => ({ id: type, type })) }
             : {}),
         },
       });

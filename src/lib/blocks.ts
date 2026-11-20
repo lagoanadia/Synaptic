@@ -39,7 +39,6 @@ export const FOLDER_BLOCK_TYPES: { type: FolderBlockType; label: string; hint: s
   { type: "project", label: "Tareas", hint: "Fechas, progreso y tablero de tareas" },
   { type: "pages", label: "Páginas", hint: "Lista o tablero" },
   { type: "map", label: "Mapa", hint: "Tus conceptos; desde aquí entras a Aprender", study: true },
-  { type: "review", label: "Repaso", hint: "Las tarjetas de hoy", study: true },
   { type: "ask", label: "Preguntar", hint: "Pregunta a tus apuntes" },
   { type: "challenges", label: "Retos", hint: "Ejercicios de código · programación", study: true },
   { type: "deadlines", label: "Entregas", hint: "Lo que viene de Classroom" },
@@ -136,14 +135,15 @@ export function cleanHomeBlocks(blocks: unknown, mine: Set<string>, projects: Se
     }));
 }
 
-// A folder: what you saved, or Páginas + Mapa + Repaso in a notebook with
+// A folder: what you saved, or Páginas + Mapa in a notebook with
 // study tools; a project (Tareas, then Páginas) otherwise.
-// Study blocks are dropped from folders in notebooks without study tools.
+// Study blocks are dropped from folders in notebooks without study tools;
+// the old "Repaso" block is gone (the ▶ Repasar button and Mis tests do it).
 export function folderBlocks(raw: unknown, study: boolean, hasTasks = false): FolderBlock[] {
   const saved = readList<FolderBlock>(raw, FOLDER_BLOCK_TYPES.map((t) => t.type));
   const studyTypes = new Set(FOLDER_BLOCK_TYPES.filter((t) => t.study).map((t) => t.type));
   const b = (type: FolderBlockType): FolderBlock => ({ id: type, type });
-  const list = saved ?? (study ? [b("pages"), b("map"), b("review")] : hasTasks ? [b("project"), b("tasks"), b("pages")] : [b("project"), b("pages")]);
+  const list = (saved ?? (study ? [b("pages"), b("map")] : hasTasks ? [b("project"), b("tasks"), b("pages")] : [b("project"), b("pages")])).filter((b) => b.type !== "review");
   return study ? list : list.filter((b) => !studyTypes.has(b.type));
 }
 
@@ -153,7 +153,9 @@ export function newBlock<T extends string>(type: T) {
 
 // A notebook page's own blocks, under its folders: a to-do list, a note,
 // links, this week, recent pages. Stored on the Section.
-export type NotebookBlockType = "todo" | "note" | "links" | "pages" | "week" | "recent";
+// "map": the study map and deliveries, built in (never in the add menu,
+// never removed) but moved like the rest.
+export type NotebookBlockType = "todo" | "note" | "links" | "pages" | "week" | "recent" | "map";
 export type TodoItem = { id: string; text: string; done: boolean };
 export type LinkItem = { id: string; label: string; url: string };
 export type NotebookBlock = { id: string; type: NotebookBlockType; title?: string; items?: TodoItem[]; text?: string; links?: LinkItem[] };
@@ -178,11 +180,14 @@ const safeUrl = (v: unknown) => {
 // only each type's fields, sane sizes.
 export function cleanNotebookBlocks(raw: unknown): NotebookBlock[] {
   if (!Array.isArray(raw)) return [];
-  const types = NOTEBOOK_BLOCK_TYPES.map((t) => t.type as string);
+  const types = [...NOTEBOOK_BLOCK_TYPES.map((t) => t.type as string), "map"];
+  let maps = 0;
   return raw
     .filter((b): b is NotebookBlock => !!b && typeof b === "object" && types.includes((b as NotebookBlock).type))
-    .slice(0, 20)
+    .filter((b) => b.type !== "map" || maps++ === 0)
+    .slice(0, 21)
     .map((b) => {
+      if (b.type === "map") return { id: "map", type: "map" as const };
       const out: NotebookBlock = { id: str(b.id, 20) || newId(), type: b.type };
       if (b.title !== undefined && ["todo", "note", "links"].includes(b.type)) out.title = str(b.title, 60);
       if (b.type === "todo")

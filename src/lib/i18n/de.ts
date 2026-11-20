@@ -1202,4 +1202,13 @@ export const de: Record<string, string> = {
   "Tus clases, entregas y repasos de los próximos 7 días": "Deine Kurse, Abgaben und Wiederholungen der nächsten 7 Tage",
   "Las últimas páginas de esta libreta": "Die neuesten Seiten in diesem Notizbuch",
   "Editar bloques": "Blöcke bearbeiten",
+  "El test final de cada asignatura y los tests que has guardado para repetir.": "Der Abschlusstest jedes Fachs und deine gespeicherten Tests zum Wiederholen.",
+  "Preguntas de respuesta escrita que la IA corrige. Se abre al repasar todas las tarjetas de la asignatura.": "Fragen mit schriftlicher Antwort, von der KI korrigiert. Öffnet sich, wenn du alle Karten des Fachs wiederholt hast.",
+  "{0} de {1} listos": "{0} von {1} bereit",
+  "Faltan {0} de {1} tarjetas": "Noch {0} von {1} Karten",
+  "Empezar test final": "Abschlusstest starten",
+  "Hacerlo ya": "Jetzt machen",
+  "Tus quizzes y tests finales guardados, para rehacerlos.": "Deine gespeicherten Quizze und Abschlusstests zum Wiederholen.",
+  "Al acabar un quiz o un test final, pulsa «Guardar test» y aparecerá aquí.": "Wenn du ein Quiz oder einen Abschlusstest beendest, tippe auf „Test speichern“, dann erscheint er hier.",
+  "La IA puede crearlas para que los tests los cubran todos.": "Die KI kann sie erstellen, damit deine Tests alles abdecken.",
 };

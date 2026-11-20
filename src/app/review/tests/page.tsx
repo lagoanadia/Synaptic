@@ -35,16 +35,30 @@ export default async function TestsPage() {
   const count = (rows: typeof all, id: string) => rows.find((r) => r.pursuitId === id)?._count._all ?? 0;
   const subjects = folders.map((f) => ({ ...f, total: count(all, f.id), seen: count(seen, f.id), color: folderColor(f.id, f.cover) })).filter((f) => f.total > 0);
 
+  // Ready first, then the closest to ready.
+  subjects.sort((a, b) => Number(b.seen >= b.total) - Number(a.seen >= a.total) || b.seen / b.total - a.seen / a.total);
+  const readyCount = subjects.filter((s) => s.seen >= s.total).length;
+
   const ring = (color: string, v: number) => {
-    const r = 10;
+    const r = 15;
     const c = 2 * Math.PI * r;
     return (
-      <svg width="26" height="26" viewBox="0 0 26 26" className="shrink-0" aria-hidden>
-        <circle cx="13" cy="13" r={r} fill="none" stroke="#ebebea" strokeWidth="3.5" />
-        <circle cx="13" cy="13" r={r} fill="none" stroke={color} strokeWidth="3.5" strokeLinecap="round" strokeDasharray={`${c * v} ${c}`} transform="rotate(-90 13 13)" />
+      <svg width="38" height="38" viewBox="0 0 38 38" className="shrink-0" aria-hidden>
+        <circle cx="19" cy="19" r={r} fill="none" stroke="var(--color-chip)" strokeWidth="4" />
+        {v > 0 && <circle cx="19" cy="19" r={r} fill="none" stroke={color} strokeWidth="4" strokeLinecap="round" strokeDasharray={`${c * v} ${c}`} transform="rotate(-90 19 19)" />}
+        {v >= 1 && <path d="m14 19.5 3.3 3.3 6.7-6.8" fill="none" stroke={color} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />}
       </svg>
     );
   };
+  const head = (title: string, hint: string, side?: React.ReactNode) => (
+    <div className="flex items-end gap-3 border-b border-border-subtle pb-2">
+      <div className="min-w-0 flex-1">
+        <h2 className="text-[15px] font-semibold">{title}</h2>
+        <p className="text-[13px] text-ink-faint">{hint}</p>
+      </div>
+      {side}
+    </div>
+  );
 
   return (
     <div className="mx-auto flex w-full max-w-[1000px] flex-1 flex-col gap-10 px-6 py-8 sm:px-12 lg:py-12">
@@ -56,45 +70,45 @@ export default async function TestsPage() {
           / <span className="text-ink-muted">{t("Mis tests")}</span>
         </nav>
         <h1 className="text-[2rem] font-bold tracking-tight">{t("Mis tests")}</h1>
+        <p className="text-sm text-ink-muted">{t("El test final de cada asignatura y los tests que has guardado para repetir.")}</p>
       </div>
 
-      <section className="flex flex-col gap-3">
-        <div className="border-b border-border-subtle pb-2">
-          <h2 className="text-sm font-semibold">{t("Preguntas de todos tus apuntes")}</h2>
-          <p className="text-[13px] text-ink-faint">{t("La IA lee los apuntes que aún no tienen preguntas y las crea, para que los quizzes y el test final los cubran todos.")}</p>
-        </div>
-        <MakeAllCards pending={withoutCards} />
-      </section>
+      {/* Only when some notes still have no questions. */}
+      {withoutCards > 0 && <MakeAllCards pending={withoutCards} />}
 
       <section className="flex flex-col gap-3">
-        <div className="border-b border-border-subtle pb-2">
-          <h2 className="text-sm font-semibold">{t("Test final")}</h2>
-          <p className="text-[13px] text-ink-faint">{t("Preguntas de respuesta escrita que la IA corrige con criterio. Se abre cuando ya has repasado todas las tarjetas de la asignatura.")}</p>
-        </div>
-        {subjects.length === 0 && <p className="text-[13px] text-ink-faint">{t("Aún no tienes tarjetas en ninguna asignatura.")}</p>}
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        {head(
+          t("Test final"),
+          t("Preguntas de respuesta escrita que la IA corrige. Se abre al repasar todas las tarjetas de la asignatura."),
+          subjects.length > 0 && <span className="shrink-0 text-xs text-ink-faint">{t("{0} de {1} listos", { 0: readyCount, 1: subjects.length })}</span>,
+        )}
+        {subjects.length === 0 && <p className="py-2 text-[13px] text-ink-faint">{t("Aún no tienes tarjetas en ninguna asignatura.")}</p>}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {subjects.map((s) => {
             const ready = s.seen >= s.total;
+            const left = s.total - s.seen;
             return (
-              <div key={s.id} className="flex items-center gap-3 rounded-lg border border-border-subtle bg-white px-4 py-3">
-                {ring(s.color, s.total ? s.seen / s.total : 0)}
-                <span className="flex min-w-0 flex-1 flex-col">
-                  <b className="truncate text-sm">{s.title}</b>
-                  <span className="text-xs text-ink-faint">{ready ? t("Todo repasado ✓") : t("{0} de {1} tarjetas repasadas", { 0: s.seen, 1: s.total })}</span>
-                </span>
+              <div key={s.id} className="flex flex-col gap-4 rounded-xl bg-white p-4 shadow-[0_0_0_1px_rgba(15,15,15,.07),0_1px_2px_rgba(15,15,15,.04)]">
+                <div className="flex items-center gap-3">
+                  {ring(s.color, s.total ? s.seen / s.total : 0)}
+                  <span className="flex min-w-0 flex-1 flex-col">
+                    <b className="truncate text-[15px]">{s.title}</b>
+                    <span className="text-xs text-ink-faint">{ready ? t("Todo repasado ✓") : t("Faltan {0} de {1} tarjetas", { 0: left, 1: s.total })}</span>
+                  </span>
+                </div>
                 {ready ? (
-                  <Link href={`/review/final?pursuit=${s.id}`} className="shrink-0 rounded-md bg-ink px-3 py-1.5 text-xs font-semibold text-white">
-                    {t("Empezar")}
+                  <Link href={`/review/final?pursuit=${s.id}`} className="rounded-lg bg-accent px-3 py-2 text-center text-sm font-semibold text-white hover:brightness-95">
+                    {t("Empezar test final")}
                   </Link>
                 ) : (
-                  <span className="flex shrink-0 flex-col items-end gap-0.5">
-                    <Link href={`/review?pursuit=${s.id}&practice=1`} className="rounded-md border border-border-subtle px-3 py-1.5 text-xs font-medium hover:bg-chip">
+                  <div className="flex items-center gap-2">
+                    <Link href={`/review?pursuit=${s.id}&practice=1`} className="flex-1 rounded-lg bg-chip px-3 py-2 text-center text-sm font-medium hover:bg-hover">
                       {t("Repasar lo que falta")}
                     </Link>
-                    <Link href={`/review/final?pursuit=${s.id}`} className="text-[11px] text-ink-faint hover:text-ink hover:underline">
-                      {t("Hacerlo igualmente")}
+                    <Link href={`/review/final?pursuit=${s.id}`} title={t("Hacerlo igualmente")} className="rounded-lg px-2.5 py-2 text-xs text-ink-faint hover:bg-chip hover:text-ink">
+                      {t("Hacerlo ya")}
                     </Link>
-                  </span>
+                  </div>
                 )}
               </div>
             );
@@ -102,27 +116,32 @@ export default async function TestsPage() {
         </div>
       </section>
 
-      <section className="flex flex-col gap-1">
-        <h2 className="border-b border-border-subtle pb-2 text-sm font-semibold">{t("Guardados")}</h2>
+      <section className="flex flex-col gap-3">
+        {head(t("Guardados"), t("Tus quizzes y tests finales guardados, para rehacerlos."))}
         {tests.length === 0 ? (
-          <p className="py-2 text-[13px] text-ink-faint">{t("Al acabar un quiz o un test final, pulsa «Guardar test» y aparecerá aquí para rehacerlo.")}</p>
+          <p className="py-2 text-[13px] text-ink-faint">{t("Al acabar un quiz o un test final, pulsa «Guardar test» y aparecerá aquí.")}</p>
         ) : (
-          <ul className="flex flex-col">
+          <ul className="flex flex-col overflow-hidden rounded-xl bg-white shadow-[0_0_0_1px_rgba(15,15,15,.07),0_1px_2px_rgba(15,15,15,.04)]">
             {tests.map((x) => {
               const max = x.kind === "final" ? x.total * 2 : x.total;
               const pct = (n: number | null) => (n === null || !max ? "—" : `${Math.round((n / max) * 100)}%`);
+              const href = x.kind === "final" ? `/review/final?test=${x.id}` : `/review?test=${x.id}`;
               return (
-                <li key={x.id} className="flex items-center gap-3 border-b border-[#f1f1ef] px-1 py-2.5 text-sm">
-                  <span className={`shrink-0 rounded px-1.5 py-0.5 text-[11px] font-semibold ${x.kind === "final" ? "bg-ink text-white" : "bg-chip text-ink-muted"}`}>{x.kind === "final" ? t("Final") : t("Quiz")}</span>
-                  <Link href={x.kind === "final" ? `/review/final?test=${x.id}` : `/review?test=${x.id}`} className="min-w-0 flex-1 truncate font-medium hover:underline">
-                    {x.title}
-                  </Link>
-                  <span className="hidden text-xs text-ink-faint sm:inline">{t("{0} preguntas", { 0: x.total })}</span>
-                  <span className="w-24 text-right text-xs text-ink-muted" title={t("Mejor · última")}>
-                    {pct(x.bestScore)} · {pct(x.lastScore)}
+                <li key={x.id} className="flex items-center gap-3 border-b border-border-subtle px-4 py-3 text-sm last:border-b-0">
+                  <span className={`shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-semibold ${x.kind === "final" ? "bg-accent-soft text-accent" : "bg-chip text-ink-muted"}`}>{x.kind === "final" ? t("Final") : t("Quiz")}</span>
+                  <span className="flex min-w-0 flex-1 flex-col">
+                    <Link href={href} className="truncate font-medium hover:underline">
+                      {x.title}
+                    </Link>
+                    <span className="text-xs text-ink-faint">
+                      {t("{0} preguntas", { 0: x.total })} · {x.updatedAt.toLocaleDateString(locale, { day: "numeric", month: "short" })}
+                    </span>
                   </span>
-                  <span className="hidden w-16 text-right text-xs text-ink-faint sm:inline">{x.updatedAt.toLocaleDateString(locale, { day: "numeric", month: "short" })}</span>
-                  <Link href={x.kind === "final" ? `/review/final?test=${x.id}` : `/review?test=${x.id}`} className="shrink-0 rounded-md border border-border-subtle px-2.5 py-1 text-xs hover:bg-chip">
+                  <span className="text-right text-xs leading-tight" title={t("Mejor · última")}>
+                    <b className="block text-sm font-semibold">{pct(x.bestScore)}</b>
+                    <span className="text-ink-faint">{pct(x.lastScore)}</span>
+                  </span>
+                  <Link href={href} className="shrink-0 rounded-lg bg-chip px-3 py-1.5 text-xs font-medium hover:bg-hover">
                     {t("Rehacer")}
                   </Link>
                   <TestRowMenu id={x.id} title={x.title} />

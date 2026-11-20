@@ -84,8 +84,12 @@ export function NotebookHeader({
       )}
       <span className="relative flex items-center gap-2">
         {study && (
-          <Link href={`/review?section=${id}`} className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-white">
-            {t("▶ Repasar")}
+          <Link href="/review/tests" title={t("Mis tests")} aria-label={t("Mis tests")} className="grid size-8 place-items-center rounded-md bg-accent text-white hover:brightness-95">
+            {/* A test sheet with ticks */}
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <rect x="5" y="3.5" width="14" height="17" rx="2.5" />
+              <path d="m8.5 9 1.5 1.5L12.5 8M8.5 15l1.5 1.5 2.5-2.5M14.5 9.5H16M14.5 15.5H16" />
+            </svg>
           </Link>
         )}
         {editable && (

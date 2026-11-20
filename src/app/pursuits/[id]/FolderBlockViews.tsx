@@ -4,29 +4,6 @@ import { CheckIcon } from "@/app/icons";
 import { LANGUAGE_INFO, asLanguage } from "@/lib/challenge";
 import { LANGUAGE_STYLE, difficultyOf } from "@/app/challenges/look";
 
-// "Repaso": today's small batch as a stack of cards, and one button to
-// play it. No counts.
-export async function ReviewToday({ pursuitId }: { pursuitId: string }) {
-  const t = await getT();
-  const q = `pursuit=${pursuitId}`;
-  return (
-    <div className="flex flex-wrap items-center gap-8 rounded-lg bg-sidebar px-6 py-5">
-      <div className="relative h-20 w-32 shrink-0" aria-hidden>
-        {[-6, 3, 0].map((rot, i) => (
-          <span
-            key={i}
-            className="absolute inset-0 rounded-md bg-white shadow-[0_0_0_1px_rgba(15,15,15,.06),0_4px_10px_rgba(15,15,15,.06)]"
-            style={{ transform: `rotate(${rot}deg)`, backgroundImage: "repeating-linear-gradient(var(--paper) 0 15px, var(--paper-line) 15px 16px)" }}
-          />
-        ))}
-      </div>
-      <Link href={`/review?${q}`} className="flex items-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-medium text-white">
-        {t("▶ Repasar")}
-      </Link>
-    </div>
-  );
-}
-
 // "Retos": this subject's coding challenges, and a way to get more.
 export async function ChallengeCards({
   pursuitId,

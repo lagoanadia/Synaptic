@@ -1418,7 +1418,7 @@ export async function setFolderStudy(pursuitId: string, on: boolean) {
   const p = await prisma.pursuit.findUnique({ where: { id: pursuitId }, select: { blocks: true, section: { select: { study: true } }, _count: { select: { projects: true } } } });
   if (!p) return;
   const current = folderBlocks(p.blocks, p.section?.study ?? true, p._count.projects > 0);
-  const blocks = on ? [...current, ...(["map", "review"] as const).filter((t) => !current.some((b) => b.type === t)).map((t) => ({ id: t, type: t }))] : current;
+  const blocks = on ? [...current, ...(["map"] as const).filter((t) => !current.some((b) => b.type === t)).map((t) => ({ id: t, type: t }))] : current;
   await prisma.pursuit.update({ where: { id: pursuitId }, data: { study: on, blocks } });
   revalidatePath(`/pursuits/${pursuitId}`);
   revalidatePath("/pursuits", "layout");

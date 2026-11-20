@@ -23,7 +23,7 @@ describe("folderBlocks", () => {
     expect(folderBlocks(saved, true).map((b) => b.type)).toEqual(["pages", "challenges"]);
   });
   it("has sensible defaults", () => {
-    expect(folderBlocks(undefined, true).map((b) => b.type)).toEqual(["pages", "map", "review"]);
+    expect(folderBlocks(undefined, true).map((b) => b.type)).toEqual(["pages", "map"]);
     expect(folderBlocks(undefined, false).map((b) => b.type)).toEqual(["project", "pages"]);
     expect(folderBlocks(undefined, false, true).map((b) => b.type)).toEqual(["project", "tasks", "pages"]);
   });
