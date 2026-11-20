@@ -8,6 +8,9 @@ import { TASK_COLUMNS, dueLabel, progress, type ProjectItem, type TaskItem, type
 import type { FolderCover } from "@/lib/covers";
 import { TrashIcon } from "@/app/icons";
 import { addTask, deleteTask, updateTask } from "./actions";
+import { toggleNotebookTodo } from "@/app/pursuits/actions";
+import { MiniNotebook } from "@/app/Covers";
+import type { HomeTodoGroup } from "@/app/pursuits/HomeTodos";
 
 // Always visible (faint): hover-only buttons never show on touch screens.
 function Trash({ onClick }: { onClick: () => void }) {
@@ -99,12 +102,26 @@ export function ProjectChecklist({ project, today }: { project: ProjectItem; tod
 
 // Today's focus: started, due today or late, and done today, from every
 // project, as three small columns.
-export function TodayFocus({ projects, today, focus }: { projects: ProjectItem[]; today: string; focus: TaskItem[] }) {
+// todos: the notebooks' to-do lists, in "Por hacer" with the project tasks
+// (ticked here, ticked in the notebook; it moves to "Hecho").
+export function TodayFocus({ projects, today, focus, todos = [] }: { projects: ProjectItem[]; today: string; focus: TaskItem[]; todos?: HomeTodoGroup[] }) {
   const locale = useLocale();
   const t = useT();
   const tr = t; // `t` is a task inside the lists below
   const [tasks, setTasks] = useState(focus);
   const [, start] = useTransition();
+  const [ticked, setTicked] = useState<Set<string>>(new Set());
+  const notes = todos.flatMap((g) => g.items.map((it) => ({ ...it, group: g })));
+  const tick = (it: (typeof notes)[number]) => {
+    const now = !ticked.has(it.id);
+    setTicked((d) => {
+      const n = new Set(d);
+      if (now) n.add(it.id);
+      else n.delete(it.id);
+      return n;
+    });
+    start(() => toggleNotebookTodo(it.group.sectionId, it.blockId, it.id, now));
+  };
   const byId = new Map(projects.map((p) => [p.id, p]));
   const set = (t: TaskItem, status: TaskStatus) => {
     setTasks((ts) => ts.map((x) => (x.id === t.id ? { ...x, status } : x)));
@@ -114,18 +131,41 @@ export function TodayFocus({ projects, today, focus }: { projects: ProjectItem[]
     setTasks((ts) => ts.filter((x) => x.id !== t.id));
     start(() => deleteTask(t.id));
   };
-  if (projects.length === 0) return <p className="py-6 text-sm text-ink-faint">{t("Crea una libreta sin herramientas de estudio para tus proyectos y sus tareas saldrán aquí.")}</p>;
+  if (projects.length === 0 && notes.length === 0) return <p className="py-6 text-sm text-ink-faint">{t("Crea una libreta sin herramientas de estudio para tus proyectos y sus tareas saldrán aquí.")}</p>;
   return (
     <div className="grid gap-3 md:grid-cols-3">
       {TASK_COLUMNS.map((c) => {
         const items = tasks.filter((t) => t.status === c.status);
+        const mine = c.status === "TODO" ? notes.filter((n) => !ticked.has(n.id)) : c.status === "DONE" ? notes.filter((n) => ticked.has(n.id)) : [];
         return (
           <div key={c.status} className="rounded-xl bg-[#f7f7f5] p-2.5">
             <div className="flex items-center gap-2 px-1 pb-1.5 text-[13px] font-semibold">
               <span className="size-2 rounded-full" style={{ background: c.dot }} />
               {t(c.label)}
-              <span className="font-normal text-ink-faint">{items.length}</span>
+              <span className="font-normal text-ink-faint">{items.length + mine.length}</span>
             </div>
+            {mine.map((n) => {
+              const done = ticked.has(n.id);
+              return (
+                <div key={n.id} className="mb-2 flex items-start gap-2.5 rounded-lg bg-white px-3 py-2 text-sm shadow-[0_0_0_1px_rgba(15,15,15,.06)]">
+                  <button
+                    type="button"
+                    onClick={() => tick(n)}
+                    aria-label={tr("Hecha")}
+                    className={`mt-0.5 grid size-4 shrink-0 place-items-center rounded-full border-[1.5px] text-[9px] text-white ${done ? "border-[#448361] bg-[#448361]" : "border-[#c7c6c2] hover:border-[#448361]"}`}
+                  >
+                    {done && "✓"}
+                  </button>
+                  <span className="min-w-0 flex-1">
+                    <span className={done ? "text-ink-faint line-through" : ""}>{n.text}</span>
+                    <a href={`/pursuits/s/${n.group.sectionId}`} className="mt-1 flex items-center gap-1.5 text-xs text-ink-faint hover:text-ink">
+                      <MiniNotebook cover={n.group.cover} size={11} />
+                      <span className="truncate">{n.group.name}</span>
+                    </a>
+                  </span>
+                </div>
+              );
+            })}
             {items.map((t) => {
               const p = byId.get(t.pursuitId);
               const due = t.dueDate && t.status !== "DONE" ? dueLabel(t.dueDate, today, tr, locale) : null;
@@ -156,7 +196,7 @@ export function TodayFocus({ projects, today, focus }: { projects: ProjectItem[]
                 </div>
               );
             })}
-            {items.length === 0 && <p className="px-1 py-2 text-xs text-ink-faint">{t("Nada por aquí.")}</p>}
+            {items.length + mine.length === 0 && <p className="px-1 py-2 text-xs text-ink-faint">{t("Nada por aquí.")}</p>}
           </div>
         );
       })}
