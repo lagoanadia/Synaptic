@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_NAMING, normName, parseMaterialName, placeMaterial, statementWins, subjectOf } from "./materialName";
+import { DEFAULT_NAMING, guessSubjectFromCourse, normName, parseMaterialName, placeMaterial, statementWins, subjectOf, unitFromText } from "./materialName";
 
 const me = { ...DEFAULT_NAMING, studentNames: ["Nadia", "NadiaLV"] };
 const where = (name: string, opts: Parameters<typeof placeMaterial>[1] = {}) => {
@@ -68,5 +68,21 @@ describe("subjectOf", () => {
     expect(subjectOf("Proyecto", DEFAULT_NAMING.folders)).toBe("PROY");
     expect(subjectOf("Itinerario II", DEFAULT_NAMING.folders)).toBe("IT2");
     expect(subjectOf("Larder", DEFAULT_NAMING.folders)).toBeNull();
+  });
+});
+
+describe("from Classroom course names", () => {
+  it("guesses the subject from a course or class-folder name", () => {
+    expect(guessSubjectFromCourse("2º DAM · Acceso a datos (AD)")).toBe("AD");
+    expect(guessSubjectFromCourse("PSP 25-26")).toBe("PSP");
+    expect(guessSubjectFromCourse("SGE - Sistemas de gestión empresarial")).toBe("SXE");
+    expect(guessSubjectFromCourse("Proyecto intermodular DAM")).toBe("PROY");
+    expect(guessSubjectFromCourse("Inglés técnico")).toBe("ING");
+    expect(guessSubjectFromCourse("Tutoría 2º DAM")).toBeNull();
+  });
+  it("reads a unit from an assignment title", () => {
+    expect(unitFromText("UD2 - Cuaderno de actividades")).toBe(2);
+    expect(unitFromText("Unidad 3: hilos")).toBe(3);
+    expect(unitFromText("Entrega final")).toBeNull();
   });
 });

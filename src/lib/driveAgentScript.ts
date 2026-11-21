@@ -4,23 +4,36 @@
 // class files, asks Synaptic what to do with them, converts and places
 // them, and reports back. Never deletes: old versions go to the bin.
 
-// appsscript.json: only the permissions it needs (and Gmail read-only, not
-// full mail access, which GmailApp would otherwise ask for).
-export const AGENT_MANIFEST = JSON.stringify(
-  {
-    timeZone: "Europe/Madrid",
-    exceptionLogging: "STACKDRIVER",
-    runtimeVersion: "V8",
-    oauthScopes: [
-      "https://www.googleapis.com/auth/drive",
-      "https://www.googleapis.com/auth/gmail.readonly",
-      "https://www.googleapis.com/auth/script.external_request",
-      "https://www.googleapis.com/auth/script.scriptapp",
-    ],
-  },
-  null,
-  2,
-);
+// appsscript.json: only the permissions it needs. Two versions, because a
+// school that blocks Classroom for outside apps blocks the whole consent if
+// the script asks for it:
+// - "classroom": Classroom read-only (courses, materials, your submissions);
+// - "gmail": Gmail read-only (Classroom's notification emails) instead —
+//   read-only, not the full mail access GmailApp would otherwise ask for.
+export type AgentMode = "classroom" | "gmail";
+const manifest = (mode: AgentMode) =>
+  JSON.stringify(
+    {
+      timeZone: "Europe/Madrid",
+      exceptionLogging: "STACKDRIVER",
+      runtimeVersion: "V8",
+      oauthScopes: [
+        "https://www.googleapis.com/auth/drive",
+        ...(mode === "classroom"
+          ? [
+              "https://www.googleapis.com/auth/classroom.courses.readonly",
+              "https://www.googleapis.com/auth/classroom.coursework.me.readonly",
+              "https://www.googleapis.com/auth/classroom.courseworkmaterials.readonly",
+            ]
+          : ["https://www.googleapis.com/auth/gmail.readonly"]),
+        "https://www.googleapis.com/auth/script.external_request",
+        "https://www.googleapis.com/auth/script.scriptapp",
+      ],
+    },
+    null,
+    2,
+  );
+export const agentManifest = (mode: AgentMode) => manifest(mode);
 
 export function agentScript(baseUrl: string, token: string): string {
   return `// Synaptic · Unificar con Drive
@@ -44,8 +57,12 @@ function instalar() {
 function sincronizar() {
   T0 = Date.now();
   var runId = new Date().toISOString();
-  var found = fuentes_();
-  var res = api_({ op: 'sync', found: found.map(function (f) { return { id: f.getId(), name: f.getName(), mimeType: f.getMimeType(), createdAt: f.getDateCreated().toISOString() }; }) });
+  var src = fuentes_();
+  var found = src.files;
+  var res = api_({ op: 'sync', mode: src.mode, stats: src.stats, found: found.map(function (f) {
+    var m = src.meta[f.getId()] || {};
+    return { id: f.getId(), name: f.getName(), mimeType: f.getMimeType(), createdAt: f.getDateCreated().toISOString(), course: m.course || null, hint: m.hint || null, submission: !!m.submission };
+  }) });
   if (!res) return;
   // Los enlaces que pegaste en Synaptic: se buscan desde la próxima vez.
   PropertiesService.getUserProperties().setProperty('extraIds', JSON.stringify(res.extraIds || []));
@@ -92,35 +109,97 @@ function api_(body) {
 }
 
 // ---- de dónde salen los archivos de los profes ----
-// Los adjuntos de Classroom no salen en "Compartido conmigo", pero se pueden
-// abrir por su id: los sacamos de los avisos de Classroom en Gmail, de las
-// carpetas de clase ya conocidas y de los enlaces que pegues en Synaptic.
+// 1) Si tu centro permite Classroom (el manifiesto «con Classroom»): sus
+//    materiales, tareas y tus entregas, cada uno con su curso y su tarea.
+// 2) Si lo bloquea: los avisos de Classroom en Gmail (manifiesto «Gmail»).
+// Siempre, además: «Compartido conmigo», las carpetas de clase ya conocidas
+// y los enlaces que pegues en Synaptic. El curso de un archivo sin él sale
+// de la carpeta de clase donde Classroom lo guarda (se llama como la clase).
 function fuentes_() {
   var props = PropertiesService.getUserProperties();
   var known = JSON.parse(props.getProperty('carpetas') || '{}');
-  var byId = {};
-  // Solo lo de otros (profes); tus propios borradores no se tocan.
+  var byId = {}, meta = {};
+  var stats = { classroom: 0, gmail: 0, error: null };
+  // Solo lo de otros (profes); tus propios borradores no se tocan,
+  // salvo lo que Classroom dice que entregaste.
   var me = DriveApp.getRootFolder().getOwner().getEmail();
-  var add = function (f) { try { if (!f.isTrashed() && !(f.getOwner() && f.getOwner().getEmail() === me)) byId[f.getId()] = f; } catch (e) {} };
-  lista_(DriveApp.searchFiles('sharedWithMe = true and trashed = false')).forEach(add);
-  var walk = function (d, depth) { lista_(d.getFiles()).forEach(add); if (depth < 2) lista_(d.getFolders()).forEach(function (x) { walk(x, depth + 1); }); };
+  var add = function (f, m, mine) {
+    try {
+      if (f.isTrashed()) return;
+      if (!mine && f.getOwner() && f.getOwner().getEmail() === me) return;
+      byId[f.getId()] = f;
+      if (m) meta[f.getId()] = m;
+    } catch (e) {}
+  };
+  var porId = function (id, m, mine) { if (!byId[id]) { try { add(DriveApp.getFileById(id), m, mine); } catch (e) {} } else if (m && !meta[id]) meta[id] = m; };
+
+  var mode = 'gmail';
+  try { stats.classroom = classroom_(porId); mode = 'classroom'; } catch (e) { stats.error = String(e.message || e).slice(0, 200); }
+
+  lista_(DriveApp.searchFiles('sharedWithMe = true and trashed = false')).forEach(function (f) { add(f); });
+  var walk = function (d, depth) { lista_(d.getFiles()).forEach(function (f) { add(f); }); if (depth < 2) lista_(d.getFolders()).forEach(function (x) { walk(x, depth + 1); }); };
   Object.keys(known).forEach(function (id) { try { walk(DriveApp.getFolderById(id), 0); } catch (e) {} });
-  var porId = function (id) { if (!byId[id]) { try { add(DriveApp.getFileById(id)); } catch (e) {} } };
-  var extra = JSON.parse(props.getProperty('extraIds') || '[]');
-  extra.forEach(porId);
-  try {
-    var dias = props.getProperty('gmailVisto') ? 7 : 120;
-    GmailApp.search('from:classroom.google.com newer_than:' + dias + 'd', 0, 100).forEach(function (t) {
-      t.getMessages().forEach(function (m) {
-        (m.getBody().match(/drive\\.google\\.com\\/(?:file\\/d\\/|open\\?id=)([A-Za-z0-9_-]{20,})/g) || []).forEach(function (u) { porId(u.match(/([A-Za-z0-9_-]{20,})$/)[1]); });
+  JSON.parse(props.getProperty('extraIds') || '[]').forEach(function (id) { porId(id); });
+
+  if (mode === 'gmail') {
+    try {
+      var dias = props.getProperty('gmailVisto') ? 7 : 120;
+      GmailApp.search('from:classroom.google.com newer_than:' + dias + 'd', 0, 100).forEach(function (t) {
+        t.getMessages().forEach(function (m) {
+          stats.gmail++;
+          (m.getBody().match(/drive\\.google\\.com\\/(?:file\\/d\\/|open\\?id=)([A-Za-z0-9_-]{20,})/g) || []).forEach(function (u) { porId(u.match(/([A-Za-z0-9_-]{20,})$/)[1], { hint: m.getSubject() }); });
+        });
       });
-    });
-    props.setProperty('gmailVisto', '1');
-  } catch (e) { console.log('Gmail no disponible: ' + e.message); }
-  // Aprender las carpetas de clase de donde vienen.
-  Object.keys(byId).forEach(function (id) { try { var ps = byId[id].getParents(); while (ps.hasNext()) { var p = ps.next(); known[p.getId()] = p.getName(); } } catch (e) {} });
+      props.setProperty('gmailVisto', '1');
+    } catch (e) { stats.error = (stats.error ? stats.error + ' · ' : '') + 'Gmail: ' + String(e.message || e).slice(0, 120); }
+  }
+
+  // Aprender las carpetas de clase, y el curso por su nombre.
+  Object.keys(byId).forEach(function (id) {
+    try {
+      var ps = byId[id].getParents();
+      while (ps.hasNext()) {
+        var p = ps.next();
+        known[p.getId()] = p.getName();
+        if (!meta[id]) meta[id] = {};
+        if (!meta[id].course && p.getName() !== 'Classroom') meta[id].course = p.getName();
+      }
+    } catch (e) {}
+  });
   props.setProperty('carpetas', JSON.stringify(known));
-  return Object.keys(byId).map(function (k) { return byId[k]; });
+  return { files: Object.keys(byId).map(function (k) { return byId[k]; }), meta: meta, mode: mode, stats: stats };
+}
+
+// La API de Classroom (solo si tu centro la permite y el manifiesto la pide).
+// Lanza un error si no se puede: entonces se usa Gmail.
+function classroom_(porId) {
+  var H = { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() };
+  var get = function (u) {
+    var r = UrlFetchApp.fetch('https://classroom.googleapis.com/v1/' + u, { headers: H, muteHttpExceptions: true });
+    if (r.getResponseCode() >= 300) throw new Error('Classroom ' + r.getResponseCode());
+    return JSON.parse(r.getContentText());
+  };
+  var n = 0;
+  (get('courses?studentId=me&courseStates=ACTIVE&pageSize=50').courses || []).forEach(function (c) {
+    var titles = {};
+    [['courseWorkMaterials', 'courseWorkMaterial'], ['courseWork', 'courseWork']].forEach(function (k) {
+      try {
+        (get('courses/' + c.id + '/' + k[0] + '?pageSize=100')[k[1]] || []).forEach(function (w) {
+          titles[w.id] = w.title;
+          (w.materials || []).forEach(function (m) { var d = m.driveFile && m.driveFile.driveFile; if (d && d.id) { porId(d.id, { course: c.name, hint: w.title }); n++; } });
+        });
+      } catch (e) {}
+    });
+    // Tus entregas: lo que entregaste (y ya es del profe) es la oficial.
+    try {
+      (get('courses/' + c.id + '/courseWork/-/studentSubmissions?states=TURNED_IN&states=RETURNED&pageSize=100').studentSubmissions || []).forEach(function (sub) {
+        ((sub.assignmentSubmission && sub.assignmentSubmission.attachments) || []).forEach(function (a) {
+          var d = a.driveFile; if (d && d.id) { porId(d.id, { course: c.name, hint: titles[sub.courseWorkId] || '', submission: true }, true); n++; }
+        });
+      });
+    } catch (e) {}
+  });
+  return n;
 }
 
 // ---- colocar un archivo donde dice Synaptic ----

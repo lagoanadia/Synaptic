@@ -86,3 +86,19 @@ describe("topic pages", () => {
     expect(readConfig({ pages: false }).pages).toBe(false);
   });
 });
+
+describe("phase e: courses", () => {
+  it("files without a subject in their name take their course's", () => {
+    const r = resolve([c("u", "UD1_T1_ficheros.pptx", 1, { course: "2º DAM · Acceso a datos (AD)" })], config, true);
+    expect(by(r, "u").target?.name).toBe("AD_UD1_T1_Ficheros.pdf");
+  });
+  it("a course the student mapped by hand wins; an ignored course skips its files", () => {
+    const mapped = { ...config, courses: { "Clase de Marta": "DI", Tutoría: "" } };
+    expect(by(resolve([c("m", "UD2_T1_eventos.pptx", 1, { course: "Clase de Marta" })], mapped, true), "m").target?.name).toBe("DI_UD2_T1_Eventos.pdf");
+    expect(by(resolve([c("x", "normas.pdf", 1, { course: "Tutoría" })], mapped, true), "x")).toMatchObject({ status: "skipped", reason: "curso ignorado" });
+  });
+  it("a submission from Classroom takes its unit from the assignment title", () => {
+    const r = resolve([c("s", "mi-trabajo.pdf", 1, { course: "PSP 25-26", hint: "UD2 - Cuaderno de actividades", submission: true })], config, true);
+    expect(by(r, "s").target?.name).toBe("PSP_UD2_Entrega.pdf");
+  });
+});

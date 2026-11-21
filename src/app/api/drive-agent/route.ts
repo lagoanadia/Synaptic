@@ -2,6 +2,7 @@ import { NextResponse, after } from "next/server";
 import { agentFor, needText, pendingUndo, plan, report, type Report } from "@/lib/driveAgent";
 import { processTopicPages } from "@/lib/driveTopics";
 import { readConfig, type Candidate } from "@/lib/driveAgentPlan";
+import { prisma } from "@/lib/prisma";
 
 // The student's Apps Script talks to Synaptic here (lib/driveAgentScript.ts).
 // Authorization: Bearer <its token>. Two calls:
@@ -26,10 +27,15 @@ export async function POST(request: Request) {
         name: String(f.name).slice(0, 300),
         mimeType: typeof f.mimeType === "string" ? f.mimeType.slice(0, 120) : null,
         createdAt: new Date(String(f.createdAt)),
-        course: typeof f.course === "string" ? f.course.slice(0, 20) : null,
+        course: typeof f.course === "string" ? f.course.slice(0, 120) : null,
+        hint: typeof f.hint === "string" ? f.hint.slice(0, 200) : null,
         submission: f.submission === true,
       }));
     const config = readConfig(agent.config);
+    // How it found them: the Classroom API, or Gmail and class folders.
+    const mode = body.mode === "classroom" || body.mode === "gmail" ? body.mode : null;
+    const stats = body.stats && typeof body.stats === "object" ? { gmail: Number(body.stats.gmail) || 0, classroom: Number(body.stats.classroom) || 0, error: typeof body.stats.error === "string" ? body.stats.error.slice(0, 200) : null } : null;
+    if (mode) await prisma.driveAgent.update({ where: { id: agent.id }, data: { mode, stats: stats ?? undefined } });
     const [actions, undo, textFor] = await Promise.all([plan(agent.userId, found), pendingUndo(agent.userId), needText(agent.userId)]);
     // Topic pages waiting from earlier runs (after the answer: they take a while).
     after(() => processTopicPages(agent.userId).catch(() => {}));

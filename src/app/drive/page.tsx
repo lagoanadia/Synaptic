@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { getT } from "@/lib/i18n/server";
-import { readConfig, type Target } from "@/lib/driveAgentPlan";
+import { readConfig, subjectForCourse, type Target } from "@/lib/driveAgentPlan";
 import { DriveView, type SourceRow } from "./DriveView";
 
 export async function generateMetadata() {
@@ -36,6 +36,11 @@ export default async function DrivePage() {
       subjects={[...new Set(Object.values(config.aliases))].sort()}
       sources={rows}
       pagesOn={config.pages}
+      mode={agent?.mode ?? null}
+      stats={(agent?.stats as { classroom?: number; gmail?: number; error?: string | null } | null) ?? null}
+      courses={[...new Set(sources.map((s) => s.course).filter((c): c is string => !!c))]
+        .map((name) => ({ name, files: sources.filter((s) => s.course === name).length, subject: subjectForCourse(name, config), set: name in config.courses }))
+        .sort((a, b) => b.files - a.files)}
       pages={{
         done: sources.filter((s) => s.pageStatus === "done").length,
         pending: sources.filter((s) => s.pageStatus === "pending").length,

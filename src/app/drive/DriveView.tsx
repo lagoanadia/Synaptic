@@ -2,7 +2,7 @@
 
 import { useLocale, useT } from "@/app/LangProvider";
 import { useState, useTransition } from "react";
-import { approveAll, fixSource, makeScript, retry, retryPage, saveSettings, undo } from "./actions";
+import { approveAll, fixSource, makeScript, retry, retryPage, saveSettings, setCourse, undo } from "./actions";
 import { Select } from "@/app/ui/Select";
 import { ask } from "@/app/ui/PopupHost";
 
@@ -26,6 +26,9 @@ export function DriveView({
   changes,
   pagesOn,
   pages,
+  mode,
+  stats,
+  courses,
 }: {
   installed: boolean;
   lastSeen: string | null;
@@ -37,6 +40,9 @@ export function DriveView({
   changes: Change[];
   pagesOn: boolean;
   pages: { done: number; pending: number; errors: { id: string; name: string; error: string }[] };
+  mode: string | null;
+  stats: { classroom?: number; gmail?: number; error?: string | null } | null;
+  courses: { name: string; files: number; subject: string | null; set: boolean }[];
 }) {
   const t = useT();
   const locale = useLocale();
@@ -46,6 +52,7 @@ export function DriveView({
   const [pasted, setPasted] = useState(links.join("\n"));
   const [auto, setAuto] = useState(autoApply);
   const [makePages, setMakePages] = useState(pagesOn);
+  const [school, setSchool] = useState<"classroom" | "gmail">(mode === "classroom" ? "classroom" : "gmail");
   const [copied, setCopied] = useState<string | null>(null);
   const run = (fn: () => Promise<unknown>) => start(async () => void (await fn()));
   const when = (iso: string) => new Date(iso).toLocaleString(locale, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
@@ -87,10 +94,41 @@ export function DriveView({
         </ol>
         <ul className="flex flex-col gap-1 rounded-lg bg-callout px-4 py-3 text-[13px] text-ink-muted">
           <li><b className="font-semibold text-ink">Drive</b> · {t("crear tus carpetas y copiar el material del profe en PDF. No borra nada.")}</li>
-          <li><b className="font-semibold text-ink">Gmail ({t("solo lectura")})</b> · {t("leer los avisos de Classroom para encontrar los adjuntos.")}</li>
+          {school === "classroom" ? (
+            <li><b className="font-semibold text-ink">Classroom ({t("solo lectura")})</b> · {t("ver tus cursos, sus materiales y lo que entregaste.")}</li>
+          ) : (
+            <li><b className="font-semibold text-ink">Gmail ({t("solo lectura")})</b> · {t("leer los avisos de Classroom para encontrar los adjuntos.")}</li>
+          )}
           <li><b className="font-semibold text-ink">{t("Conectar a un servicio externo")}</b> · {t("hablar con Synaptic.")}</li>
           <li><b className="font-semibold text-ink">{t("Ejecutarse cuando no estás")}</b> · {t("repetirse cada hora.")}</li>
         </ul>
+        {!script && (
+          <div className="flex flex-col gap-2 text-sm">
+            <span className="font-medium">{t("¿Tu centro deja que otras apps lean Classroom?")}</span>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {(
+                [
+                  ["classroom", t("Sí, o no lo sé"), t("Lee tus cursos, materiales y entregas directamente. Si al aceptar permisos sale «Acceso bloqueado», vuelve y elige la otra.")],
+                  ["gmail", t("No: sale «Acceso bloqueado»"), t("Encuentra los adjuntos en los avisos de Classroom de tu correo. Necesita las notificaciones por email activadas en Classroom.")],
+                ] as const
+              ).map(([k, label, hint]) => (
+                <button key={k} type="button" onClick={() => setSchool(k)} className={`flex flex-col gap-0.5 rounded-lg px-3.5 py-2.5 text-left ${school === k ? "bg-accent-soft shadow-[0_0_0_1.5px_var(--color-accent)]" : "bg-chip hover:bg-hover"}`}>
+                  <span className="font-medium">{label}</span>
+                  <span className="text-xs text-ink-faint">{hint}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        {mode && (
+          <p className="rounded-lg bg-callout px-3.5 py-2.5 text-[13px] text-ink-muted">
+            {mode === "classroom"
+              ? t("Modo Classroom: {0} archivos encontrados en tus cursos.", { 0: stats?.classroom ?? 0 })
+              : t("Modo Gmail: {0} avisos de Classroom leídos.", { 0: stats?.gmail ?? 0 })}
+            {mode === "gmail" && (stats?.gmail ?? 0) === 0 && <span className="block text-[#a8740f]">{t("No ha encontrado avisos: activa en Classroom → Ajustes → Notificaciones por correo, o pega los enlaces en Ajustes.")}</span>}
+            {stats?.error && mode === "gmail" && stats.error.startsWith("Gmail") && <span className="block text-red-600">{stats.error}</span>}
+          </p>
+        )}
         {script ? (
           <div className="grid gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
             {[["script", "Código.gs", script.script], ["manifest", "appsscript.json", script.manifest]].map(([key, label, text]) => (
@@ -109,7 +147,7 @@ export function DriveView({
             disabled={pending}
             onClick={async () => {
               if (installed && !(await ask.confirm(t("Se generará un script nuevo y el que tienes instalado dejará de funcionar. ¿Seguir?")))) return;
-              start(async () => setScript(await makeScript()));
+              start(async () => setScript(await makeScript(school)));
             }}
             className={`${primary} self-start`}
           >
@@ -128,6 +166,31 @@ export function DriveView({
               <span className="text-xs text-ink-faint">{t("Los archivos con este nombre son tuyos: van a Entrega como tu entrega oficial. Separa con comas.")}</span>
               <input value={names} onChange={(e) => setNames(e.target.value)} placeholder="Nadia, NadiaLV" className="rounded-lg border border-border-subtle bg-transparent px-3 py-2 outline-none focus:border-accent" />
             </label>
+            {courses.length > 0 && (
+              <div className="flex flex-col gap-1.5 text-sm">
+                <span className="font-medium">{t("Cursos detectados")}</span>
+                <span className="text-xs text-ink-faint">{t("De qué asignatura es cada curso o carpeta de clase. Sirve para los archivos cuyo nombre no lo dice.")}</span>
+                <ul className="flex flex-col">
+                  {courses.map((c) => (
+                    <li key={c.name} className="flex items-center gap-3 border-b border-border-subtle py-1.5 last:border-0">
+                      <span className="min-w-0 flex-1 truncate" title={c.name}>{c.name}</span>
+                      <span className="text-xs text-ink-faint">{t("{0} archivos", { 0: c.files })}</span>
+                      <Select
+                        value={c.set ? (c.subject ?? "") : c.subject ? `?${c.subject}` : "?"}
+                        onChange={(v) => run(() => setCourse(c.name, v.startsWith("?") ? null : v))}
+                        ariaLabel={t("Asignatura de {0}", { 0: c.name })}
+                        options={[
+                          { value: c.subject && !c.set ? `?${c.subject}` : "?", label: c.subject && !c.set ? t("{0} (deducida)", { 0: c.subject }) : t("Sin asignatura") },
+                          ...subjects.map((x) => ({ value: x, label: x })),
+                          { value: "", label: t("No es una asignatura") },
+                        ]}
+                        className="w-40 rounded-md bg-chip px-2 py-1 text-xs"
+                      />
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
             <label className="flex flex-col gap-1 text-sm">
               <span className="font-medium">{t("Adjuntos de Classroom que no encuentra")}</span>
               <span className="text-xs text-ink-faint">{t("Pega enlaces de Drive (uno por línea). Se buscan en la próxima sincronización.")}</span>

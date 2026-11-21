@@ -871,6 +871,11 @@ model DriveAgent {
   config     Json?
   // Apply new files on their own once the first plan was approved.
   autoApply  Boolean   @default(false)
+  // Phase e: how the script found files last time — "classroom" (the API
+  // works) or "gmail" (blocked: Classroom emails and class folders) — and
+  // what it saw: { courses, gmail, error }.
+  mode       String?
+  stats      Json?
   lastSeenAt DateTime?
   createdAt  DateTime  @default(now())
 
@@ -888,8 +893,10 @@ model DriveSource {
   mimeType  String?
   // When the original was made: the newer one wins a slot.
   createdAt DateTime
-  // "AD": the subject of the course it came from, when known.
+  // The Classroom course or class folder it came from (a name), and the
+  // post or assignment title (it may say the unit).
   course    String?
+  hint      String?
   // { kind, subject, folder: [..], name, pdf } from placeMaterial, or null.
   placement Json?
   reason    String?

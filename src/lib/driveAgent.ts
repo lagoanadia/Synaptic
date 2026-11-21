@@ -32,7 +32,7 @@ export async function replan(userId: string, opts: { approveAll?: boolean } = {}
   const config = readConfig(agent.config);
   const rows = await prisma.driveSource.findMany({ where: { userId } });
   const resolved = resolve(
-    rows.map((r) => ({ id: r.sourceId, name: r.name, mimeType: r.mimeType, createdAt: r.createdAt, course: r.course, submission: asTarget(r.placement)?.kind === "submission" && !!r.placement, status: opts.approveAll && r.status === "planned" ? "approved" : r.status })),
+    rows.map((r) => ({ id: r.sourceId, name: r.name, mimeType: r.mimeType, createdAt: r.createdAt, course: r.course, hint: r.hint, submission: asTarget(r.placement)?.kind === "submission" && !!r.placement, status: opts.approveAll && r.status === "planned" ? "approved" : r.status })),
     config,
     agent.autoApply || !!opts.approveAll,
   );
@@ -51,11 +51,23 @@ export type ScriptAction = { id: string; target: Target };
 
 // The script's hourly call: here are the files I found; what do I do?
 export async function plan(userId: string, found: Candidate[]): Promise<ScriptAction[]> {
-  const known = new Set((await prisma.driveSource.findMany({ where: { userId, sourceId: { in: found.map((f) => f.id) } }, select: { sourceId: true } })).map((r) => r.sourceId));
+  const knownRows = await prisma.driveSource.findMany({ where: { userId, sourceId: { in: found.map((f) => f.id) } }, select: { sourceId: true, course: true, hint: true, placement: true } });
+  const known = new Set(knownRows.map((r) => r.sourceId));
+  // Something now known that wasn't (its course, its assignment, that it was
+  // handed in): keep it, so the file can be placed.
+  const byId = new Map(found.map((f) => [f.id, f]));
+  for (const r of knownRows) {
+    const f = byId.get(r.sourceId)!;
+    const data: Prisma.DriveSourceUpdateManyMutationInput = {};
+    if (f.course && !r.course) data.course = f.course;
+    if (f.hint && !r.hint) data.hint = f.hint;
+    if (f.submission && !(r.placement && typeof r.placement === "object" && (r.placement as { kind?: string }).kind === "submission")) data.placement = { kind: "submission" };
+    if (Object.keys(data).length) await prisma.driveSource.updateMany({ where: { userId, sourceId: r.sourceId, status: { notIn: ["done"] } }, data: { ...data, status: "planned" } });
+  }
   const fresh = found.filter((f) => !known.has(f.id)).slice(0, 300);
   if (fresh.length)
     await prisma.driveSource.createMany({
-      data: fresh.map((f) => ({ userId, sourceId: f.id, name: f.name.slice(0, 300), mimeType: f.mimeType ?? null, createdAt: f.createdAt, course: f.course ?? null, status: "planned", placement: f.submission ? ({ kind: "submission" } as Prisma.InputJsonValue) : undefined })),
+      data: fresh.map((f) => ({ userId, sourceId: f.id, name: f.name.slice(0, 300), mimeType: f.mimeType ?? null, createdAt: f.createdAt, course: f.course ?? null, hint: f.hint ?? null, status: "planned", placement: f.submission ? ({ kind: "submission" } as Prisma.InputJsonValue) : undefined })),
       skipDuplicates: true,
     });
   await replan(userId);

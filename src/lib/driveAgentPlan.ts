@@ -2,7 +2,7 @@
 // finds class files and does the Drive work; this decides what happens to
 // each one. Pure (tested); lib/driveAgent.ts is the database side.
 
-import { DEFAULT_NAMING, placeMaterial, statementWins, type MaterialKind, type NamingConfig } from "./materialName";
+import { DEFAULT_NAMING, guessSubjectFromCourse, placeMaterial, statementWins, unitFromText, type MaterialKind, type NamingConfig } from "./materialName";
 import { pdfMarker, withTitle } from "./text";
 
 // What the student set in Synaptic: names, folders, and per-file fixes.
@@ -16,9 +16,12 @@ export type AgentConfig = NamingConfig & {
   offered: string[];
   // Phase d: make a page (summary, concepts, questions) for each topic.
   pages: boolean;
+  // Phase e: a Classroom course (or class folder) name → subject code; "" =
+  // not a subject (ignore its files). Unlisted ones are guessed.
+  courses: Record<string, string>;
 };
 
-export const DEFAULT_AGENT_CONFIG: AgentConfig = { ...DEFAULT_NAMING, overrides: {}, extraIds: [], offered: [], pages: true };
+export const DEFAULT_AGENT_CONFIG: AgentConfig = { ...DEFAULT_NAMING, overrides: {}, extraIds: [], offered: [], pages: true, courses: {} };
 
 export function readConfig(raw: unknown): AgentConfig {
   const c = (raw && typeof raw === "object" ? raw : {}) as Partial<AgentConfig>;
@@ -30,6 +33,7 @@ export function readConfig(raw: unknown): AgentConfig {
     studentNames: Array.isArray(c.studentNames) ? c.studentNames.filter((n): n is string => typeof n === "string" && n.trim().length > 1).map((n) => n.trim()).slice(0, 10) : [],
     overrides: c.overrides && typeof c.overrides === "object" ? (c.overrides as AgentConfig["overrides"]) : {},
     pages: c.pages !== false,
+    courses: c.courses && typeof c.courses === "object" ? Object.fromEntries(Object.entries(c.courses as Record<string, unknown>).filter(([, v]) => typeof v === "string").map(([k, v]) => [k.slice(0, 120), String(v)])) : {},
     offered: Array.isArray(c.offered) ? c.offered.filter((x): x is string => typeof x === "string").slice(-500) : [],
     extraIds: Array.isArray(c.extraIds) ? c.extraIds.filter((x): x is string => typeof x === "string" && /^[\w-]{20,}$/.test(x)).slice(0, 500) : [],
   };
@@ -41,7 +45,16 @@ export function driveId(link: string): string | null {
   return m ? m[1] : null;
 }
 
-export type Candidate = { id: string; name: string; mimeType?: string | null; createdAt: Date; course?: string | null; submission?: boolean };
+// course: the Classroom course or class folder it came from (a name);
+// hint: the Classroom post or assignment title ("UD2 · Cuaderno…").
+export type Candidate = { id: string; name: string; mimeType?: string | null; createdAt: Date; course?: string | null; hint?: string | null; submission?: boolean };
+
+/** A course name → its subject: what the student set, else a guess. */
+export function subjectForCourse(course: string | null | undefined, config: AgentConfig): string | null {
+  if (!course) return null;
+  if (course in config.courses) return config.courses[course] || null;
+  return guessSubjectFromCourse(course, config);
+}
 export type Target = { kind: MaterialKind; subject: string; folder: string[]; name: string; pdf: boolean; workbook: boolean };
 export type SourceState = Candidate & { status: string; target: Target | null; reason?: string | null };
 
@@ -56,7 +69,8 @@ export function resolve(sources: (Candidate & { status?: string })[], config: Ag
   const out: SourceState[] = sources.map((s) => {
     const o = config.overrides[s.id] ?? {};
     if (o.skip) return { ...s, status: "skipped", target: null, reason: "ignorado" };
-    const p = placeMaterial(s.name, { config, courseSubject: o.subject ?? s.course, unit: o.unit ?? null, submission: s.submission });
+    if (s.course && config.courses[s.course] === "") return { ...s, status: "skipped", target: null, reason: "curso ignorado" };
+    const p = placeMaterial(s.name, { config, courseSubject: o.subject ?? subjectForCourse(s.course, config), unit: o.unit ?? unitFromText(s.hint), submission: s.submission });
     if (!p.ok) return { ...s, status: "review", target: null, reason: p.reason };
     return { ...s, status: s.status ?? "planned", target: { kind: p.kind, subject: p.subject, folder: p.folder, name: p.name, pdf: p.pdf, workbook: p.parsed.isWorkbook }, reason: null };
   });

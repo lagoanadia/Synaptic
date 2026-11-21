@@ -168,3 +168,25 @@ export function subjectOf(title: string, folders: Record<string, string>): strin
   for (const [code, folder] of Object.entries(folders)) if (normName(code) === t || normName(folder) === t) return code;
   return null;
 }
+
+/**
+ * A Classroom course (or the Drive folder Classroom keeps its files in,
+ * named after the class) → a subject code: "2º DAM · Acceso a datos (AD)"
+ * → "AD", "Proyecto Intermodular" → "PROY". null when it doesn't say.
+ */
+export function guessSubjectFromCourse(course: string, config: NamingConfig = DEFAULT_NAMING): string | null {
+  const tokens = plain(course).toUpperCase().split(/[^A-Z0-9]+/).filter(Boolean);
+  for (const tk of tokens) if (config.aliases[tk]) return config.aliases[tk];
+  const whole = normName(course);
+  for (const [code, folder] of Object.entries(config.folders)) {
+    const f = normName(folder);
+    if (f.length >= 4 && whole.includes(f)) return code;
+  }
+  return null;
+}
+
+/** "UD2 - Cuaderno de actividades", "Unidad 3: …" → 2, 3 (a unit the file name doesn't say). */
+export function unitFromText(text: string | null | undefined): number | null {
+  const m = /\b(?:UD|U|unidad)\s*\.?\s*0?(\d{1,2})\b/i.exec(plain(text ?? ""));
+  return m ? Number(m[1]) : null;
+}

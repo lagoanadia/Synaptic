@@ -6,7 +6,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { newAgentToken, replan } from "@/lib/driveAgent";
 import { driveId, readConfig } from "@/lib/driveAgentPlan";
-import { AGENT_MANIFEST, agentScript } from "@/lib/driveAgentScript";
+import { agentManifest, agentScript, type AgentMode } from "@/lib/driveAgentScript";
 import type { Prisma } from "@/generated/prisma/client";
 
 async function me() {
@@ -17,13 +17,13 @@ async function me() {
 const done = () => revalidatePath("/drive");
 
 // A fresh script (with a new token: an older copy stops working).
-export async function makeScript(): Promise<{ script: string; manifest: string }> {
+export async function makeScript(mode: AgentMode = "gmail"): Promise<{ script: string; manifest: string }> {
   const userId = await me();
   const token = await newAgentToken(userId);
   const h = await headers();
   const base = `${h.get("x-forwarded-proto") ?? "https"}://${h.get("x-forwarded-host") ?? h.get("host")}`;
   done();
-  return { script: agentScript(base, token), manifest: AGENT_MANIFEST };
+  return { script: agentScript(base, token), manifest: agentManifest(mode === "classroom" ? "classroom" : "gmail") };
 }
 
 async function updateConfig(userId: string, change: (c: ReturnType<typeof readConfig>) => void) {
@@ -42,6 +42,19 @@ export async function saveSettings(data: { studentNames: string; links: string; 
     c.pages = data.pages;
   });
   await prisma.driveAgent.update({ where: { userId }, data: { autoApply: data.autoApply } });
+  await replan(userId);
+  done();
+}
+
+// A Classroom course (or class folder) → its subject; "" = not a subject
+// (its files are left alone); null = let Synaptic guess again.
+export async function setCourse(course: string, subject: string | null) {
+  const userId = await me();
+  await updateConfig(userId, (c) => {
+    if (subject === null) delete c.courses[course];
+    else c.courses[course.slice(0, 120)] = subject;
+  });
+  await prisma.driveSource.updateMany({ where: { userId, course, status: { in: ["skipped", "review", "planned"] } }, data: { status: "planned" } });
   await replan(userId);
   done();
 }
