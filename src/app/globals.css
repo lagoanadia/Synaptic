@@ -142,7 +142,18 @@ html.dark .hover\:bg-\[\#f7f6f3\]:hover { background-color: #252525; }
 html.dark .hover\:bg-\[\#fbfbfa\]:hover { background-color: #202020; }
 html.dark .hover\:border-\[\#d3d1cb\]:hover { border-color: rgba(255,255,255,.12); }
 
+html {
+  /* Non-visible here so body's overflow isn't moved to the viewport. */
+  overflow: auto;
+  background: var(--background);
+}
+/* The page ends at the footer: anything positioned past it (a stray
+   absolute element, a label pushed off the map) is clipped instead of
+   stretching the document into an empty band below the copyright.
+   `clip` (not hidden) keeps sticky elements working. */
 body {
+  position: relative;
+  overflow: clip;
   background: var(--background);
   color: var(--foreground);
 }
