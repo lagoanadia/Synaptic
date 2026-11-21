@@ -125,12 +125,14 @@ export async function pageTerms(pursuitId: string, unitId: string | null): Promi
 // A subject's units as a path (UD1 → UD2 → …): how much of each is learned
 // (known = 1, fading = ½) and where to learn it. Units in their order;
 // maps without a unit go last.
-export type PathUnit = { id: string; label: string; name: string; pct: number; href: string };
+// unit: a real unit (UD1, UD2…); Entregas, General and the like are stops
+// on the path but don't count as units.
+export type PathUnit = { id: string; label: string; name: string; pct: number; href: string; unit: boolean };
 export type SubjectPath = { id: string; title: string; color: string; units: PathUnit[] };
 
 // "UD2", "U2", "Unidad 2", "Tema 2" → "UD2"; anything else (Entregas, a
 // map's own title…) is not a unit and goes under "General".
-const unitLabel = (name: string): string | null => {
+export const unitLabel = (name: string): string | null => {
   const m = /^(?:ud|unidad|tema|t|u)\s*\.?\s*(\d+)/i.exec(name.trim());
   return m ? `UD${Number(m[1])}` : null;
 };
@@ -155,7 +157,7 @@ async function pathsOf(where: { id?: string; ownerId?: string; sectionId?: strin
         const key = m.unit?.id ?? "general";
         const name = m.unit?.name ?? "General";
         const label = m.unit ? (unitLabel(m.unit.name) ?? m.unit.name) : "General";
-        const u = units.get(key) ?? { id: key, label, name, pct: 0, href: `/pursuits/${p.id}/learn/${m.id}`, order: m.unit?.order ?? 1e6, known: 0, total: 0 };
+        const u = units.get(key) ?? { id: key, label, name, pct: 0, href: `/pursuits/${p.id}/learn/${m.id}`, order: m.unit?.order ?? 1e6, known: 0, total: 0, unit: !!m.unit && unitLabel(m.unit.name) !== null };
         for (const c of m.concepts) {
           const s = dotState(c, now);
           u.known += s === "known" ? 1 : s === "fading" ? 0.5 : 0;
@@ -165,8 +167,9 @@ async function pathsOf(where: { id?: string; ownerId?: string; sectionId?: strin
       }
       const list = [...units.values()]
         .filter((u) => u.total > 0)
-        .sort((a, b) => a.order - b.order)
-        .map(({ id, label, name, href, known, total }) => ({ id, label, name, href, pct: Math.round((known / total) * 100) / 100 }));
+        // Real units first, in their order; Entregas, General… after them.
+        .sort((a, b) => Number(!unitLabel(a.name)) - Number(!unitLabel(b.name)) || a.order - b.order)
+        .map(({ id, label, name, href, known, total }) => ({ id, label, name, href, pct: Math.round((known / total) * 100) / 100, unit: unitLabel(name) !== null }));
       return { id: p.id, title: p.title, color: folderColor(p.id, p.cover), units: list };
     })
     .filter((s) => s.units.length > 0);

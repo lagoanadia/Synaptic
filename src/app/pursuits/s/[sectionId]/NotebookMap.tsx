@@ -32,9 +32,12 @@ function Node({ pct, color, current, size = 48 }: { pct: number; color: string; 
 // without a line.
 export function PathCard({ path: p, link = false }: { path: SubjectPath; link?: boolean }) {
   const t = useT();
-  const cur = p.units.findIndex((u) => u.pct < DONE);
+  // Only real units (UD1, UD2…) count and can be "now"; Entregas and
+  // General show on the path but aren't units.
+  const real = p.units.filter((u) => u.unit);
+  const cur = p.units.findIndex((u) => u.unit && u.pct < DONE);
   const now = cur === -1 ? null : p.units[cur];
-  const done = p.units.filter((u) => u.pct >= DONE).length;
+  const done = real.filter((u) => u.pct >= DONE).length;
   const cols = Math.min(p.units.length, 6);
   const size = cols > 4 ? 40 : 48;
   return (
@@ -47,7 +50,7 @@ export function PathCard({ path: p, link = false }: { path: SubjectPath; link?: 
         ) : (
           <span className="truncate text-sm font-semibold text-ink">{t("Unidades")}</span>
         )}
-        <span className="ml-auto shrink-0 text-xs text-ink-faint">{t("{0}/{1} unidades", { 0: done, 1: p.units.length })}</span>
+        <span className="ml-auto shrink-0 text-xs text-ink-faint">{t("{0}/{1} unidades", { 0: done, 1: real.length })}</span>
       </div>
       <div className="grid gap-y-4 pb-1" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
         {p.units.map((u, i) => (
