@@ -1291,4 +1291,9 @@ export const de: Record<string, string> = {
   "Los enunciados son del profe: no los edites, porque una versión nueva los sustituye. Tus trabajos sin entregar siguen siendo Docs editables en tu Drive.": "Aufgabenstellungen gehören der Lehrkraft: Nicht bearbeiten, eine neue Version ersetzt sie. Nicht abgegebene Arbeiten bleiben bearbeitbare Docs in deinem Drive.",
   "Mis entregas": "Meine Abgaben",
   "Enunciado, tu entrega y el código de cada unidad, desde Drive": "Aufgabenstellung, deine Abgabe und der Code jeder Einheit, aus Drive",
+  "Crear una página por tema": "Eine Seite pro Thema erstellen",
+  "En su asignatura y unidad: el PDF, un resumen, los conceptos clave y preguntas para Repasar.": "In ihrem Fach und ihrer Einheit: das PDF, eine Zusammenfassung, die Schlüsselbegriffe und Fragen zum Wiederholen.",
+  "{0} temas ya son páginas": "{0} Themen sind schon Seiten",
+  "{0} en camino": "{0} unterwegs",
+  "Conceptos clave": "Schlüsselbegriffe",
 };

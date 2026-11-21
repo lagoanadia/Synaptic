@@ -32,6 +32,7 @@ var SYNAPTIC = ${JSON.stringify(baseUrl)};
 var TOKEN = ${JSON.stringify(token)};
 var LIMIT_MS = 300000; // 5 minutos por ejecución; lo que falte, la próxima hora
 var T0 = 0;
+var LAST_TEXT = null; // texto del último tema convertido, para Synaptic
 
 function instalar() {
   ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'sincronizar') ScriptApp.deleteTrigger(t); });
@@ -73,6 +74,12 @@ function sincronizar() {
       results.push({ id: a.id, ok: false, error: String(e && e.message || e).slice(0, 300) });
     }
   }
+  // Temas colocados antes: su texto, para que Synaptic haga sus páginas.
+  (res.textFor || []).forEach(function (x) {
+    if (Date.now() - T0 > LIMIT_MS) return;
+    var text = textoDePdf_(x.fileId);
+    if (text) results.push({ id: x.id, ok: true, textOnly: true, text: text });
+  });
   if (results.length || undone.length) api_({ op: 'report', runId: runId, results: results, undone: undone });
   console.log('Hecho: ' + results.filter(function (r) { return r.ok; }).length + ' colocados, ' + results.filter(function (r) { return !r.ok; }).length + ' con error, ' + undone.length + ' deshechos');
 }
@@ -122,6 +129,7 @@ function colocar_(src, target) {
   var path = target.folder.concat([target.name]).join('/');
   var old = buscar_(dir, target.name);
   if (old && fechaOrigen_(old) >= src.getDateCreated()) return { id: src.getId(), ok: true, outputId: old.getId(), path: path, oldId: null };
+  LAST_TEXT = null;
   var copia = src.makeCopy(target.name + ' (nuevo)', dir);
   copia.setDescription('src:' + src.getId() + '|' + src.getDateCreated().toISOString() + (target.workbook ? '|cuaderno' : ''));
   var final = target.pdf ? aPdf_(copia, dir, target.name) : (copia.setName(target.name), copia);
@@ -140,7 +148,11 @@ function colocar_(src, target) {
       trashed.push({ id: x.getId(), path: target.folder.concat([x.getName()]).join('/') });
     });
   }
-  return { id: src.getId(), ok: true, outputId: final.getId(), path: path, oldId: old ? old.getId() : null, trashed: trashed };
+  // El texto del tema: de la copia de Google que ya se hizo para el PDF, o
+  // del propio PDF (Drive lo lee al pasarlo a Doc).
+  var text = null;
+  if (target.kind === 'topic' || target.kind === 'session') text = LAST_TEXT || textoDePdf_(final.getId());
+  return { id: src.getId(), ok: true, outputId: final.getId(), path: path, oldId: old ? old.getId() : null, trashed: trashed, text: text };
 }
 
 // La carpeta de la asignatura se busca en "Mi unidad" ignorando emojis y
@@ -173,12 +185,27 @@ function aPdf_(f, dir, name) {
     gid = JSON.parse(r.getContentText()).id; temp = true;
   }
   var ex = reintentar_(function () { return UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files/' + gid + '/export?mimeType=application/pdf', { headers: H, muteHttpExceptions: true }); });
+  var tx = UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files/' + gid + '/export?mimeType=text/plain', { headers: H, muteHttpExceptions: true });
+  if (tx.getResponseCode() < 300) LAST_TEXT = tx.getContentText().slice(0, 30000);
   if (temp) DriveApp.getFileById(gid).setTrashed(true);
   if (ex.getResponseCode() >= 300) { f.setTrashed(true); return null; }
   var nf = dir.createFile(ex.getBlob().setName(name));
   nf.setDescription(desc);
   f.setTrashed(true);
   return nf;
+}
+// El texto de un PDF: una copia como Doc de Google (Drive reconoce el
+// texto), exportada a texto y a la papelera. null si no se puede.
+function textoDePdf_(fileId) {
+  try {
+    var H = { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() };
+    var r = reintentar_(function () { return UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files/' + fileId + '/copy?ocrLanguage=es', { method: 'post', contentType: 'application/json', headers: H, muteHttpExceptions: true, payload: JSON.stringify({ name: 'synaptic-texto (temp)', mimeType: 'application/vnd.google-apps.document' }) }); });
+    if (r.getResponseCode() >= 300) return null;
+    var gid = JSON.parse(r.getContentText()).id;
+    var tx = UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files/' + gid + '/export?mimeType=text/plain', { headers: H, muteHttpExceptions: true });
+    DriveApp.getFileById(gid).setTrashed(true);
+    return tx.getResponseCode() < 300 ? tx.getContentText().slice(0, 30000) : null;
+  } catch (e) { return null; }
 }
 function reintentar_(fn) {
   var r;

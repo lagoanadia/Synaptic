@@ -3,6 +3,7 @@
 // each one. Pure (tested); lib/driveAgent.ts is the database side.
 
 import { DEFAULT_NAMING, placeMaterial, statementWins, type MaterialKind, type NamingConfig } from "./materialName";
+import { pdfMarker, withTitle } from "./text";
 
 // What the student set in Synaptic: names, folders, and per-file fixes.
 export type AgentConfig = NamingConfig & {
@@ -13,9 +14,11 @@ export type AgentConfig = NamingConfig & {
   extraIds: string[];
   // Folders where "Mis entregas" was already added once (so removing it sticks).
   offered: string[];
+  // Phase d: make a page (summary, concepts, questions) for each topic.
+  pages: boolean;
 };
 
-export const DEFAULT_AGENT_CONFIG: AgentConfig = { ...DEFAULT_NAMING, overrides: {}, extraIds: [], offered: [] };
+export const DEFAULT_AGENT_CONFIG: AgentConfig = { ...DEFAULT_NAMING, overrides: {}, extraIds: [], offered: [], pages: true };
 
 export function readConfig(raw: unknown): AgentConfig {
   const c = (raw && typeof raw === "object" ? raw : {}) as Partial<AgentConfig>;
@@ -26,6 +29,7 @@ export function readConfig(raw: unknown): AgentConfig {
     folders: strMap(c.folders, DEFAULT_NAMING.folders),
     studentNames: Array.isArray(c.studentNames) ? c.studentNames.filter((n): n is string => typeof n === "string" && n.trim().length > 1).map((n) => n.trim()).slice(0, 10) : [],
     overrides: c.overrides && typeof c.overrides === "object" ? (c.overrides as AgentConfig["overrides"]) : {},
+    pages: c.pages !== false,
     offered: Array.isArray(c.offered) ? c.offered.filter((x): x is string => typeof x === "string").slice(-500) : [],
     extraIds: Array.isArray(c.extraIds) ? c.extraIds.filter((x): x is string => typeof x === "string" && /^[\w-]{20,}$/.test(x)).slice(0, 500) : [],
   };
@@ -76,5 +80,25 @@ export function resolve(sources: (Candidate & { status?: string })[], config: Ag
     }
   }
   return out;
+}
+
+
+// ─── phase d: a topic's page ───────────────────────────────────────────
+
+// "AD_UD2_T9_Capa_datos.pdf" → "T9 · Capa datos"
+export const topicTitle = (fileName: string) => {
+  const m = /_(T\d+|S\d+)_?(.*)\.[a-z0-9]+$/i.exec(fileName);
+  return m ? `${m[1]} · ${m[2].replace(/_/g, " ").trim() || m[1]}` : fileName.replace(/\.[a-z0-9]+$/i, "").replace(/_/g, " ");
+};
+
+export function pageContent(title: string, fileId: string, ai: { summary: string; concepts: { term: string; definition: string }[] }) {
+  const body = [
+    pdfMarker(`https://drive.google.com/file/d/${fileId}/view`, title.toUpperCase(), ""),
+    ai.summary,
+    ai.concepts.length ? `## Conceptos clave\n${ai.concepts.map((c) => `- **${c.term.trim()}**: ${c.definition.trim()}`).join("\n")}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+  return withTitle(title, body);
 }
 

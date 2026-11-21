@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_AGENT_CONFIG, driveId, readConfig, resolve, type Candidate } from "./driveAgentPlan";
+import { DEFAULT_AGENT_CONFIG, driveId, pageContent, readConfig, resolve, topicTitle, type Candidate } from "./driveAgentPlan";
+import { textToDoc } from "./richText";
 
 const config = { ...DEFAULT_AGENT_CONFIG, studentNames: ["Nadia"] };
 const c = (id: string, name: string, day: number, extra: Partial<Candidate> & { status?: string } = {}) => ({ id, name, createdAt: new Date(2026, 9, day), ...extra });
@@ -59,5 +60,29 @@ describe("helpers", () => {
     expect(r.studentNames).toEqual(["Nadia"]);
     expect(r.aliases).toEqual({ SGE: "SXE" });
     expect(readConfig(null).folders.PROY).toBe("Proyecto");
+  });
+});
+
+describe("topic pages", () => {
+  it("titles topics and sessions from their file name", () => {
+    expect(topicTitle("AD_UD2_T9_Capa_datos.pdf")).toBe("T9 · Capa datos");
+    expect(topicTitle("PROY_S01_Necesidades_al_producto_minimo.pdf")).toBe("S01 · Necesidades al producto minimo");
+  });
+  it("a page opens in the editor with the PDF card on top, the summary and the key concepts", () => {
+    const content = pageContent("T9 · Capa datos", "1nTfW006UU02UNpm4TvtWuwfuWuUnzYVS", {
+      summary: "## Idea\n- La **capa de datos** separa el acceso.\n! Clave: un repositorio por entidad.",
+      concepts: [{ term: "Repositorio", definition: "Clase que guarda y recupera entidades." }],
+    });
+    expect(content.startsWith("# T9 · Capa datos\n\n")).toBe(true);
+    const types = textToDoc(content.replace(/^# .*\n\n/, "")).content?.map((n) => n.type);
+    expect(types?.[0]).toBe("pdfCard");
+    expect(types).toContain("bulletList");
+    const card = textToDoc(content.replace(/^# .*\n\n/, "")).content?.[0];
+    expect(card?.attrs).toMatchObject({ src: "https://drive.google.com/file/d/1nTfW006UU02UNpm4TvtWuwfuWuUnzYVS/view", title: "T9 · CAPA DATOS" });
+    expect(content).toContain("## Conceptos clave\n- **Repositorio**: Clase que guarda y recupera entidades.");
+  });
+  it("pages are on unless switched off", () => {
+    expect(readConfig(null).pages).toBe(true);
+    expect(readConfig({ pages: false }).pages).toBe(false);
   });
 });

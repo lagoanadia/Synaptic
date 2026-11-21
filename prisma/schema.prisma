@@ -896,6 +896,12 @@ model DriveSource {
   status    String   @default("planned")
   outputId  String?
   error     String?
+  // Phase d: a topic's text (from Drive, for the AI), the page made from it,
+  // and whether that page is "pending" | "done" | "error" | "skipped".
+  text       String?
+  noteId     String?
+  pageStatus String?
+  pageError  String?
   seenAt    DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -904,6 +910,7 @@ model DriveSource {
 
   @@unique([userId, sourceId])
   @@index([userId, status])
+  @@index([userId, pageStatus])
 }
 
 // Every change the script made, to show and to undo. action: "create" (a

@@ -2,7 +2,7 @@
 
 import { useLocale, useT } from "@/app/LangProvider";
 import { useState, useTransition } from "react";
-import { approveAll, fixSource, makeScript, retry, saveSettings, undo } from "./actions";
+import { approveAll, fixSource, makeScript, retry, retryPage, saveSettings, undo } from "./actions";
 import { Select } from "@/app/ui/Select";
 import { ask } from "@/app/ui/PopupHost";
 
@@ -24,6 +24,8 @@ export function DriveView({
   subjects,
   sources,
   changes,
+  pagesOn,
+  pages,
 }: {
   installed: boolean;
   lastSeen: string | null;
@@ -33,6 +35,8 @@ export function DriveView({
   subjects: string[];
   sources: SourceRow[];
   changes: Change[];
+  pagesOn: boolean;
+  pages: { done: number; pending: number; errors: { id: string; name: string; error: string }[] };
 }) {
   const t = useT();
   const locale = useLocale();
@@ -41,6 +45,7 @@ export function DriveView({
   const [names, setNames] = useState(studentNames.join(", "));
   const [pasted, setPasted] = useState(links.join("\n"));
   const [auto, setAuto] = useState(autoApply);
+  const [makePages, setMakePages] = useState(pagesOn);
   const [copied, setCopied] = useState<string | null>(null);
   const run = (fn: () => Promise<unknown>) => start(async () => void (await fn()));
   const when = (iso: string) => new Date(iso).toLocaleString(locale, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
@@ -135,7 +140,14 @@ export function DriveView({
                 <span className="block text-xs text-ink-faint">{t("Recomendado cuando ya hayas revisado el primer plan.")}</span>
               </span>
             </label>
-            <button type="button" disabled={pending} onClick={() => run(() => saveSettings({ studentNames: names, links: pasted, autoApply: auto }))} className={`${btn} self-start`}>
+            <label className="flex cursor-pointer items-center gap-3 text-sm">
+              <input type="checkbox" checked={makePages} onChange={(e) => setMakePages(e.target.checked)} className="size-4 accent-[var(--color-accent)]" />
+              <span>
+                <span className="font-medium">{t("Crear una página por tema")}</span>
+                <span className="block text-xs text-ink-faint">{t("En su asignatura y unidad: el PDF, un resumen, los conceptos clave y preguntas para Repasar.")}</span>
+              </span>
+            </label>
+            <button type="button" disabled={pending} onClick={() => run(() => saveSettings({ studentNames: names, links: pasted, autoApply: auto, pages: makePages }))} className={`${btn} self-start`}>
               {t("Guardar ajustes")}
             </button>
           </section>
@@ -151,6 +163,20 @@ export function DriveView({
                 </button>
               )}
             </div>
+            {pagesOn && (pages.done > 0 || pages.pending > 0 || pages.errors.length > 0) && (
+              <div className="flex flex-col gap-1 rounded-lg bg-accent-soft px-3.5 py-2.5 text-sm">
+                <span>
+                  📄 {t("{0} temas ya son páginas", { 0: pages.done })}
+                  {pages.pending > 0 && <span className="text-ink-muted"> · {t("{0} en camino", { 0: pages.pending })}</span>}
+                </span>
+                {pages.errors.map((e) => (
+                  <span key={e.id} className="flex items-center gap-2 text-xs">
+                    <span className="min-w-0 flex-1 truncate text-ink-muted">{e.name}: <span className="text-red-600">{e.error}</span></span>
+                    <button type="button" onClick={() => run(() => retryPage(e.id))} className="text-accent hover:underline">{t("Reintentar")}</button>
+                  </span>
+                ))}
+              </div>
+            )}
             {sources.length === 0 && <p className="text-sm text-ink-faint">{t("Todavía no ha llegado nada. Cuando el script se ejecute, aquí verás cada archivo y adónde irá.")}</p>}
 
             {review.length > 0 && (

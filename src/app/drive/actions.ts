@@ -34,11 +34,12 @@ async function updateConfig(userId: string, change: (c: ReturnType<typeof readCo
   await prisma.driveAgent.update({ where: { userId }, data: { config: config as unknown as Prisma.InputJsonValue } });
 }
 
-export async function saveSettings(data: { studentNames: string; links: string; autoApply: boolean }) {
+export async function saveSettings(data: { studentNames: string; links: string; autoApply: boolean; pages: boolean }) {
   const userId = await me();
   await updateConfig(userId, (c) => {
     c.studentNames = data.studentNames.split(/[,\n]/).map((s) => s.trim()).filter((s) => s.length > 1).slice(0, 10);
     c.extraIds = [...new Set(data.links.split(/\s+/).map(driveId).filter((x): x is string => !!x))].slice(0, 500);
+    c.pages = data.pages;
   });
   await prisma.driveAgent.update({ where: { userId }, data: { autoApply: data.autoApply } });
   await replan(userId);
@@ -65,6 +66,13 @@ export async function fixSource(sourceId: string, fix: { unit?: number | null; s
 export async function approveAll() {
   const userId = await me();
   await replan(userId, { approveAll: true });
+  done();
+}
+
+// A topic whose page failed (no folder yet, AI busy…): try again.
+export async function retryPage(sourceId: string) {
+  const userId = await me();
+  await prisma.driveSource.updateMany({ where: { userId, sourceId, pageStatus: "error" }, data: { pageStatus: null, pageError: null } });
   done();
 }
 

@@ -1291,4 +1291,9 @@ export const en: Record<string, string> = {
   "Los enunciados son del profe: no los edites, porque una versión nueva los sustituye. Tus trabajos sin entregar siguen siendo Docs editables en tu Drive.": "Assignments are the teacher's: don't edit them, a new version replaces them. Work you haven't handed in stays as editable Docs in your Drive.",
   "Mis entregas": "My submissions",
   "Enunciado, tu entrega y el código de cada unidad, desde Drive": "Each unit's assignment, your submission and the code, from Drive",
+  "Crear una página por tema": "Make a page for each topic",
+  "En su asignatura y unidad: el PDF, un resumen, los conceptos clave y preguntas para Repasar.": "In its subject and unit: the PDF, a summary, the key concepts and questions for Review.",
+  "{0} temas ya son páginas": "{0} topics are pages already",
+  "{0} en camino": "{0} on the way",
+  "Conceptos clave": "Key concepts",
 };

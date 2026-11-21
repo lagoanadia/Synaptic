@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
-import { agentFor, pendingUndo, plan, report, type Report } from "@/lib/driveAgent";
+import { NextResponse, after } from "next/server";
+import { agentFor, needText, pendingUndo, plan, report, type Report } from "@/lib/driveAgent";
+import { processTopicPages } from "@/lib/driveTopics";
 import { readConfig, type Candidate } from "@/lib/driveAgentPlan";
 
 // The student's Apps Script talks to Synaptic here (lib/driveAgentScript.ts).
@@ -29,14 +30,17 @@ export async function POST(request: Request) {
         submission: f.submission === true,
       }));
     const config = readConfig(agent.config);
-    const [actions, undo] = await Promise.all([plan(agent.userId, found), pendingUndo(agent.userId)]);
-    return NextResponse.json({ folders: config.folders, extraIds: config.extraIds, actions, undo });
+    const [actions, undo, textFor] = await Promise.all([plan(agent.userId, found), pendingUndo(agent.userId), needText(agent.userId)]);
+    // Topic pages waiting from earlier runs (after the answer: they take a while).
+    after(() => processTopicPages(agent.userId).catch(() => {}));
+    return NextResponse.json({ folders: config.folders, extraIds: config.extraIds, actions, undo, textFor });
   }
 
   if (body.op === "report") {
     const results: Report[] = (Array.isArray(body.results) ? body.results : []).filter((r: unknown): r is Report => !!r && typeof r === "object" && typeof (r as Report).id === "string");
     const undone = (Array.isArray(body.undone) ? body.undone : []).filter((x: unknown): x is string => typeof x === "string");
     await report(agent.userId, String(body.runId ?? "").slice(0, 40) || new Date().toISOString(), results, undone);
+    after(() => processTopicPages(agent.userId).catch(() => {}));
     return NextResponse.json({ ok: true });
   }
 

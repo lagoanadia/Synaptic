@@ -65,11 +65,20 @@ export async function plan(userId: string, found: Candidate[]): Promise<ScriptAc
 
 // trashed: the student's drafts the script put in the bin once the
 // official submission arrived (undo takes them back out).
-export type Report = { id: string; ok: boolean; error?: string; outputId?: string; path?: string; oldId?: string | null; trashed?: { id: string; path: string }[] };
+// text: a topic's text (phase d). textOnly: just that, for a topic placed
+// before (nothing else changes).
+export type Report = { id: string; ok: boolean; error?: string; outputId?: string; path?: string; oldId?: string | null; trashed?: { id: string; path: string }[]; text?: string | null; textOnly?: boolean };
 
 // The script did (or failed) these; log every change for undo.
 export async function report(userId: string, runId: string, results: Report[], undone: string[]) {
+  const pages = readConfig((await prisma.driveAgent.findUnique({ where: { userId }, select: { config: true } }))?.config).pages;
   for (const r of results.slice(0, 100)) {
+    const text = typeof r.text === "string" && r.text.trim().length > 200 ? r.text.slice(0, 30000) : null;
+    if (r.textOnly) {
+      await prisma.driveSource.updateMany({ where: { userId, sourceId: r.id, noteId: null }, data: text && pages ? { text, pageStatus: "pending" } : { pageStatus: "skipped" } });
+      continue;
+    }
+    if (r.ok && text && pages) await prisma.driveSource.updateMany({ where: { userId, sourceId: r.id }, data: { text, pageStatus: "pending" } });
     await prisma.driveSource.updateMany({
       where: { userId, sourceId: r.id },
       data: r.ok ? { status: "done", outputId: r.outputId ?? null, error: null } : { status: "error", error: (r.error ?? "error").slice(0, 300) },
@@ -81,6 +90,19 @@ export async function report(userId: string, runId: string, results: Report[], u
       await prisma.driveChange.createMany({ data: drafts.map((d) => ({ userId, runId, action: "trash", path: d.path.slice(0, 500), fileId: d.id.slice(0, 100), sourceId: r.id })) });
   }
   if (undone.length) await prisma.driveChange.updateMany({ where: { userId, id: { in: undone.slice(0, 200) } }, data: { undo: "done" } });
+}
+
+// Topics placed before pages existed: the script sends their text (a few per run).
+export async function needText(userId: string) {
+  const agent = await prisma.driveAgent.findUnique({ where: { userId }, select: { config: true } });
+  if (!readConfig(agent?.config).pages) return [];
+  const rows = await prisma.driveSource.findMany({
+    where: { userId, status: "done", outputId: { not: null }, pageStatus: null, OR: [{ placement: { path: ["kind"], equals: "topic" } }, { placement: { path: ["kind"], equals: "session" } }] },
+    orderBy: { createdAt: "asc" },
+    take: 5,
+    select: { sourceId: true, outputId: true },
+  });
+  return rows.map((r) => ({ id: r.sourceId, fileId: r.outputId! }));
 }
 
 // Undo requests waiting for the script.

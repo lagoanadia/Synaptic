@@ -35,6 +35,12 @@ export default async function DrivePage() {
       links={config.extraIds.map((id) => `https://drive.google.com/file/d/${id}`)}
       subjects={[...new Set(Object.values(config.aliases))].sort()}
       sources={rows}
+      pagesOn={config.pages}
+      pages={{
+        done: sources.filter((s) => s.pageStatus === "done").length,
+        pending: sources.filter((s) => s.pageStatus === "pending").length,
+        errors: sources.filter((s) => s.pageStatus === "error").map((s) => ({ id: s.sourceId, name: s.name, error: s.pageError ?? "" })),
+      }}
       changes={changes.map((c) => ({ id: c.id, runId: c.runId, action: c.action, path: c.path, fileId: c.fileId, undo: c.undo, at: c.createdAt.toISOString() }))}
     />
   );
