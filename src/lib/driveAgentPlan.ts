@@ -11,9 +11,11 @@ export type AgentConfig = NamingConfig & {
   // Drive file ids the student pasted (Classroom attachments that show up
   // nowhere else).
   extraIds: string[];
+  // Folders where "Mis entregas" was already added once (so removing it sticks).
+  offered: string[];
 };
 
-export const DEFAULT_AGENT_CONFIG: AgentConfig = { ...DEFAULT_NAMING, overrides: {}, extraIds: [] };
+export const DEFAULT_AGENT_CONFIG: AgentConfig = { ...DEFAULT_NAMING, overrides: {}, extraIds: [], offered: [] };
 
 export function readConfig(raw: unknown): AgentConfig {
   const c = (raw && typeof raw === "object" ? raw : {}) as Partial<AgentConfig>;
@@ -24,6 +26,7 @@ export function readConfig(raw: unknown): AgentConfig {
     folders: strMap(c.folders, DEFAULT_NAMING.folders),
     studentNames: Array.isArray(c.studentNames) ? c.studentNames.filter((n): n is string => typeof n === "string" && n.trim().length > 1).map((n) => n.trim()).slice(0, 10) : [],
     overrides: c.overrides && typeof c.overrides === "object" ? (c.overrides as AgentConfig["overrides"]) : {},
+    offered: Array.isArray(c.offered) ? c.offered.filter((x): x is string => typeof x === "string").slice(-500) : [],
     extraIds: Array.isArray(c.extraIds) ? c.extraIds.filter((x): x is string => typeof x === "string" && /^[\w-]{20,}$/.test(x)).slice(0, 500) : [],
   };
 }

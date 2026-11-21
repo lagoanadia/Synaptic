@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_NAMING, normName, parseMaterialName, placeMaterial, statementWins } from "./materialName";
+import { DEFAULT_NAMING, normName, parseMaterialName, placeMaterial, statementWins, subjectOf } from "./materialName";
 
 const me = { ...DEFAULT_NAMING, studentNames: ["Nadia", "NadiaLV"] };
 const where = (name: string, opts: Parameters<typeof placeMaterial>[1] = {}) => {
@@ -58,5 +58,15 @@ describe("normName", () => {
     expect(normName("📌DI")).toBe("DI");
     expect(normName("Itinerario II")).toBe("ITINERARIOII");
     expect(normName("Inglés")).toBe("INGLES");
+  });
+});
+
+describe("subjectOf", () => {
+  it("matches a Synaptic folder to its subject by code or Drive folder name", () => {
+    expect(subjectOf("AD", DEFAULT_NAMING.folders)).toBe("AD");
+    expect(subjectOf("📌 PMDM", DEFAULT_NAMING.folders)).toBe("PMDM");
+    expect(subjectOf("Proyecto", DEFAULT_NAMING.folders)).toBe("PROY");
+    expect(subjectOf("Itinerario II", DEFAULT_NAMING.folders)).toBe("IT2");
+    expect(subjectOf("Larder", DEFAULT_NAMING.folders)).toBeNull();
   });
 });

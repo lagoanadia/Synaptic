@@ -63,7 +63,9 @@ export async function plan(userId: string, found: Candidate[]): Promise<ScriptAc
   return todo.map((r) => ({ id: r.sourceId, target: asTarget(r.placement)! })).filter((a) => a.target?.folder);
 }
 
-export type Report = { id: string; ok: boolean; error?: string; outputId?: string; path?: string; oldId?: string | null };
+// trashed: the student's drafts the script put in the bin once the
+// official submission arrived (undo takes them back out).
+export type Report = { id: string; ok: boolean; error?: string; outputId?: string; path?: string; oldId?: string | null; trashed?: { id: string; path: string }[] };
 
 // The script did (or failed) these; log every change for undo.
 export async function report(userId: string, runId: string, results: Report[], undone: string[]) {
@@ -74,10 +76,13 @@ export async function report(userId: string, runId: string, results: Report[], u
     });
     if (r.ok && r.outputId && r.path)
       await prisma.driveChange.create({ data: { userId, runId, action: r.oldId ? "replace" : "create", path: r.path.slice(0, 500), fileId: r.outputId, oldId: r.oldId ?? null, sourceId: r.id } });
+    const drafts = (Array.isArray(r.trashed) ? r.trashed : []).filter((d) => d && typeof d.id === "string" && typeof d.path === "string").slice(0, 50);
+    if (r.ok && drafts.length)
+      await prisma.driveChange.createMany({ data: drafts.map((d) => ({ userId, runId, action: "trash", path: d.path.slice(0, 500), fileId: d.id.slice(0, 100), sourceId: r.id })) });
   }
   if (undone.length) await prisma.driveChange.updateMany({ where: { userId, id: { in: undone.slice(0, 200) } }, data: { undo: "done" } });
 }
 
 // Undo requests waiting for the script.
 export const pendingUndo = (userId: string) =>
-  prisma.driveChange.findMany({ where: { userId, undo: "requested" }, select: { id: true, fileId: true, oldId: true, sourceId: true }, take: 100 });
+  prisma.driveChange.findMany({ where: { userId, undo: "requested" }, select: { id: true, action: true, fileId: true, oldId: true, sourceId: true }, take: 100 });

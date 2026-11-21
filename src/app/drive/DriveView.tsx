@@ -221,7 +221,7 @@ export function DriveView({
                   <ul>
                     {list.map((c) => (
                       <li key={c.id} className="flex items-center gap-2 py-1 text-[13px]">
-                        <span className="w-20 shrink-0 text-xs text-ink-faint">{c.action === "replace" ? t("sustituido") : t("creado")}</span>
+                        <span className="w-20 shrink-0 text-xs text-ink-faint">{c.action === "replace" ? t("sustituido") : c.action === "trash" ? t("a la papelera") : t("creado")}</span>
                         <a href={`https://drive.google.com/file/d/${c.fileId}`} target="_blank" rel="noopener noreferrer" className="min-w-0 flex-1 truncate hover:underline">{c.path}</a>
                         {c.undo === "requested" ? (
                           <span className="text-xs text-ink-faint">{t("se deshará la próxima hora")}</span>

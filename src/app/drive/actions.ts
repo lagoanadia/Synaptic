@@ -78,10 +78,11 @@ export async function retry(sourceId: string) {
 export async function undo(target: { changeId?: string; runId?: string }) {
   const userId = await me();
   const where = target.changeId ? { userId, id: target.changeId } : { userId, runId: target.runId ?? "-" };
-  const changes = await prisma.driveChange.findMany({ where: { ...where, undo: null }, select: { id: true, sourceId: true } });
+  const changes = await prisma.driveChange.findMany({ where: { ...where, undo: null }, select: { id: true, sourceId: true, action: true } });
   await prisma.driveChange.updateMany({ where: { id: { in: changes.map((c) => c.id) } }, data: { undo: "requested" } });
   // Don't put them back on the next run.
-  const ids = changes.map((c) => c.sourceId).filter((x): x is string => !!x);
+  // Taking a draft out of the bin isn't undoing the file it made way for.
+  const ids = changes.filter((c) => c.action !== "trash").map((c) => c.sourceId).filter((x): x is string => !!x);
   await updateConfig(userId, (c) => ids.forEach((id) => (c.overrides[id] = { ...(c.overrides[id] ?? {}), skip: true })));
   await prisma.driveSource.updateMany({ where: { userId, sourceId: { in: ids } }, data: { status: "skipped", reason: "deshecho" } });
   done();

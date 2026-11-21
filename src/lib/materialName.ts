@@ -160,3 +160,11 @@ export function statementWins(next: { isWorkbook: boolean; createdAt: Date }, cu
 
 /** Same slot, topics or code: the newer original wins (versions, PDF vs PPTX). */
 export const newerWins = (next: Date, current: Date | null) => !current || next > current;
+
+// Which subject code a folder is ("AD", or "PROY" for a folder called
+// "Proyecto"), from the student's naming config.
+export function subjectOf(title: string, folders: Record<string, string>): string | null {
+  const t = normName(title);
+  for (const [code, folder] of Object.entries(folders)) if (normName(code) === t || normName(folder) === t) return code;
+  return null;
+}

@@ -52,8 +52,11 @@ function sincronizar() {
   // Deshacer lo que pediste en Synaptic.
   (res.undo || []).forEach(function (u) {
     try {
-      try { DriveApp.getFileById(u.fileId).setTrashed(true); } catch (e) {}
-      if (u.oldId) DriveApp.getFileById(u.oldId).setTrashed(false);
+      if (u.action === 'trash') DriveApp.getFileById(u.fileId).setTrashed(false); // sacar de la papelera
+      else {
+        try { DriveApp.getFileById(u.fileId).setTrashed(true); } catch (e) {}
+        if (u.oldId) DriveApp.getFileById(u.oldId).setTrashed(false);
+      }
       undone.push(u.id);
     } catch (e) { console.log('No se pudo deshacer ' + u.fileId + ': ' + e.message); }
   });
@@ -124,7 +127,20 @@ function colocar_(src, target) {
   var final = target.pdf ? aPdf_(copia, dir, target.name) : (copia.setName(target.name), copia);
   if (!final) throw new Error('no se pudo convertir a PDF (se reintentará si lo pides)');
   if (old && old.getId() !== final.getId()) old.setTrashed(true);
-  return { id: src.getId(), ok: true, outputId: final.getId(), path: path, oldId: old ? old.getId() : null };
+  // Entrega oficial: tus borradores de esa unidad van a la papelera
+  // (recuperables 30 días, y con «Deshacer» en Synaptic). Solo los tuyos;
+  // el enunciado y la carpeta Código no se tocan.
+  var trashed = [];
+  if (target.kind === 'submission') {
+    var me = DriveApp.getRootFolder().getOwner().getEmail();
+    lista_(dir.getFiles()).forEach(function (x) {
+      if (x.getId() === final.getId() || /_Enunciado\.pdf$/.test(x.getName())) return;
+      try { if (!x.getOwner() || x.getOwner().getEmail() !== me) return; } catch (e) { return; }
+      x.setTrashed(true);
+      trashed.push({ id: x.getId(), path: target.folder.concat([x.getName()]).join('/') });
+    });
+  }
+  return { id: src.getId(), ok: true, outputId: final.getId(), path: path, oldId: old ? old.getId() : null, trashed: trashed };
 }
 
 // La carpeta de la asignatura se busca en "Mi unidad" ignorando emojis y

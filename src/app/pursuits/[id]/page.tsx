@@ -39,7 +39,8 @@ import { DatesBlock, ExpensesBlock, SavingsBlock } from "./SharedBlocks";
 import { dayOf } from "@/lib/projects";
 import { ProjectInfo } from "@/app/projects/ProjectInfo";
 import { TaskBoard } from "@/app/projects/TaskBoard";
-import { ChallengeCards } from "./FolderBlockViews";
+import { ChallengeCards, DeliveryRows } from "./FolderBlockViews";
+import { offerDeliveryBlock, unitDeliveries } from "@/lib/driveDeliveries";
 import { BudgetBlock, Faces, OptionsBlock, PeopleCount, VotesBanner, type Person } from "./TripBlocks";
 
 const CLASSROOM_ERROR_COPY: Record<string, string> = {
@@ -207,7 +208,16 @@ export default async function PursuitPage({
   // (map, review, ask, challenges) stay out of the way until there are some.
   const empty = pursuit.brainDumps.length === 0 && pursuit.notes.length === 0;
   const NEEDS_NOTES = ["map", "ask", "challenges"];
-  const blocks = folderBlocks(pursuit.blocks, study, pursuit.projects.length > 0).filter((b) => !empty || !NEEDS_NOTES.includes(b.type));
+  const shown = folderBlocks(pursuit.blocks, study, pursuit.projects.length > 0).filter((b) => !empty || !NEEDS_NOTES.includes(b.type));
+  // "Unificar con Drive" placed this subject's assignments: "Mis entregas"
+  // joins the folder once, on its own; then it moves or goes like any block.
+  const deliveries = pursuit.owner.id === session.user.id ? await unitDeliveries(session.user.id, pursuit.title) : [];
+  // Saved from the blocks as stored (not just the ones shown now), so none is lost.
+  const stored = Array.isArray(pursuit.blocks) ? (pursuit.blocks as { id: string; type: string }[]) : folderBlocks(null, study, pursuit.projects.length > 0);
+  const blocks =
+    deliveries.length && !shown.some((b) => b.type === "delivery")
+      ? folderBlocks(await offerDeliveryBlock(session.user.id, pursuit.id, stored), study, pursuit.projects.length > 0).filter((b) => !empty || !NEEDS_NOTES.includes(b.type))
+      : shown;
   const isOwner = pursuit.owner.id === session.user.id;
   // Your friends who aren't in this folder yet, to share with in one tap.
   const inFolder = new Set([pursuit.owner.id, ...pursuit.members.map((m) => m.user.id)]);
@@ -354,6 +364,7 @@ export default async function PursuitPage({
       if (project?.tasks.length) summaries[b.id] = t("{0} de {1} hechas", { 0: project.tasks.filter((t) => t.status === "DONE").length, 1: project.tasks.length });
     } else if (b.type === "ask") content[b.id] = <AskPursuit pursuitId={pursuit.id} />;
     else if (b.type === "challenges") content[b.id] = <ChallengeCards pursuitId={pursuit.id} items={challenges} />;
+    else if (b.type === "delivery") content[b.id] = <DeliveryRows units={deliveries} />;
     else if (b.type === "deadlines")
       content[b.id] = <UpcomingDeadlines pursuitId={pursuit.id} hasCourse={pursuit.classroomEnabled && !!pursuit.classroomCourseId} />;
     else if (b.type === "tasks")
