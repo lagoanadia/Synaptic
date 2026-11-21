@@ -7,7 +7,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { aiBudget } from "@/lib/access";
 import { addNamedConcept } from "@/lib/autoMap";
-import { answerQuestion, deepen, writeConceptQuiz } from "@/lib/internalizeAi";
+import { answerQuestion, deepen, plainTitle, writeConceptQuiz } from "@/lib/internalizeAi";
 import { quizVerdict, type QuizQuestion } from "@/lib/conceptQuiz";
 import { statusAfterCheck, statusAfterOpen, statusAfterReview, type Status } from "@/lib/internalize";
 
@@ -171,7 +171,7 @@ export async function addConcept(mapId: string, title: string, parentId: string 
   const map = await prisma.conceptMap.findFirst({
     where: { id: mapId, pursuit: { OR: [{ ownerId: session.user.id }, { members: { some: { userId: session.user.id } } }] } },
   });
-  const clean = title.trim().slice(0, 120);
+  const clean = plainTitle(title).slice(0, 120);
   if (!map || !clean) return null;
   const parent = parentId ? await prisma.concept.findFirst({ where: { id: parentId, mapId } }) : null;
   const order = await prisma.concept.count({ where: { mapId, parentId: parent?.id ?? null } });

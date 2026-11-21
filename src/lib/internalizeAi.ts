@@ -3,6 +3,15 @@ import { arr, askJson, obj, str } from "@/lib/ai";
 import { excerptInSource } from "@/lib/internalize";
 import { parseQuiz, type QuizQuestion } from "@/lib/conceptQuiz";
 
+// Titles are shown as plain text: the model sometimes writes them in
+// Markdown ("Qué es **open source**"), so drop bold/italic/code markers.
+export const plainTitle = (s: string) =>
+  s
+    .replace(/\*\*|__|`/g, "")
+    .replace(/(^|\s)[*_](\S[^*_]*?\S|\S)[*_](?=\s|$|[.,:;!?])/g, "$1$2")
+    .replace(/\s+/g, " ")
+    .trim();
+
 export const MAX_SOURCE_CHARS = 60000;
 
 export type DraftConcept = {
@@ -41,7 +50,7 @@ function readConcepts(data: Record<string, unknown>, source: string): DraftConce
       const real = excerpt && excerptInSource(excerpt, source);
       return {
         key: str(o.key, 60) || `c${i}`,
-        title: str(o.title, 120),
+        title: plainTitle(str(o.title, 120)),
         summary: str(o.summary, 400),
         explanation: str(o.explanation, 3000),
         excerpt: real ? excerpt : null,
@@ -77,7 +86,7 @@ ${source}`,
   const links = arr(data.links)
     .map((l) => ({ from: str(obj(l).from, 60), to: str(obj(l).to, 60), label: str(obj(l).label, 30) || null }))
     .filter((l) => keys.has(l.from) && keys.has(l.to) && l.from !== l.to);
-  return { title: str(data.title, 120) || "Mapa de conceptos", concepts, links };
+  return { title: plainTitle(str(data.title, 120)) || "Mapa de conceptos", concepts, links };
 }
 
 // A map grows with the notes: only the concepts in SOURCE that the map
@@ -103,7 +112,7 @@ ${source}`,
   const concepts = readConcepts(data, source);
   const keys = new Set(concepts.map((c) => c.key));
   const links = arr(data.links)
-    .map((l) => ({ from: str(obj(l).from, 60), toTitle: str(obj(l).to_title, 120), label: str(obj(l).label, 30) || null }))
+    .map((l) => ({ from: str(obj(l).from, 60), toTitle: plainTitle(str(obj(l).to_title, 120)), label: str(obj(l).label, 30) || null }))
     .filter((l) => keys.has(l.from) && existing.includes(l.toTitle));
   return { concepts, links };
 }
