@@ -1,7 +1,7 @@
 "use client";
 
 import { useT } from "@/app/LangProvider";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CheckIcon, XIcon } from "@/app/icons";
 import { isCorrect, shuffledOrder, type QuizAnswer, type QuizQuestion } from "@/lib/conceptQuiz";
 import type { Status } from "@/lib/internalize";
@@ -32,6 +32,11 @@ export function ConceptQuiz({
   const [answer, setAnswer] = useState<QuizAnswer>(null);
   const [checked, setChecked] = useState(false);
   const [results, setResults] = useState<boolean[]>([]);
+  // What was answered to each question, for the results screen.
+  const [given, setGiven] = useState<QuizAnswer[]>([]);
+  // Set once the last answer is in and the score is saved.
+  const [final, setFinal] = useState<{ status: Status | null } | null>(null);
+  const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -46,6 +51,8 @@ export function ConceptQuiz({
     setAnswer(null);
     setChecked(false);
     setResults([]);
+    setGiven([]);
+    setFinal(null);
   }
 
   // Mount-time start for Aprender's ✓ (data fetch, not derived state).
@@ -56,12 +63,13 @@ export function ConceptQuiz({
   }, []);
 
   const q = questions?.[i];
-  const done = !!questions && results.length === questions.length && !checked;
+  const done = !!final;
 
   function check() {
     if (!q || answer === null || answer === "") return;
     setChecked(true);
     setResults((r) => [...r, isCorrect(q, answer)]);
+    setGiven((g) => [...g, answer]);
   }
 
   function next() {
@@ -71,9 +79,11 @@ export function ConceptQuiz({
     if (i + 1 < questions.length) setI(i + 1);
     else {
       const correct = results.filter(Boolean).length;
+      setSaving(true);
       recordConceptQuiz(conceptId, correct, questions.length).then((r) => {
+        setSaving(false);
         if (r.error === null) onStatus(r.status);
-        onFinish?.(correct / questions.length >= 0.8, r.error === null ? r.status : null);
+        setFinal({ status: r.error === null ? r.status : null });
       });
     }
   }
@@ -137,36 +147,19 @@ export function ConceptQuiz({
     );
   }
 
-  if (done && onFinish) return null;
-
   if (done) {
     const correct = results.filter(Boolean).length;
-    const pct = correct / questions.length;
+    const passed = correct / questions.length >= 0.8;
     return (
-      <section className={card} aria-label={t("Resultado del examen")}>
-        <div className="flex items-baseline gap-3">
-          <span className={`text-4xl font-extrabold ${pct >= 0.8 ? "text-mint" : pct >= 0.5 ? "text-amber" : "text-crimson"}`}>
-            {correct}/{questions.length}
-          </span>
-          <span className="text-sm font-semibold text-ink-muted">
-            {pct >= 0.8 ? t("Entendido") : pct >= 0.5 ? t("Casi") : t("Repásalo")}
-          </span>
-        </div>
-        <ol className="flex flex-col gap-1.5 text-sm">
-          {questions.map((x, k) => (
-            <li key={k} className="flex items-start gap-2">
-              <span className={results[k] ? "text-mint" : "text-crimson"}>{results[k] ? <CheckIcon size={16} /> : <XIcon size={16} />}</span>
-              <span className={results[k] ? "text-ink-muted" : ""}>
-                {x.prompt}
-                {!results[k] && x.why && <span className="block text-xs text-ink-muted">{x.why}</span>}
-              </span>
-            </li>
-          ))}
-        </ol>
-        <button type="button" onClick={start} disabled={loading} className="self-start rounded-full bg-chip px-5 py-2.5 text-sm font-semibold disabled:opacity-50">
-          {loading ? t("Escribiendo…") : t("Nuevo examen")}
-        </button>
-      </section>
+      <Results
+        questions={questions}
+        results={results}
+        given={given}
+        loading={loading}
+        onRetry={start}
+        onNext={onFinish && passed ? () => onFinish(true, final.status) : undefined}
+        onExplain={onFinish && !passed ? () => onFinish(false, final.status) : undefined}
+      />
     );
   }
 
@@ -237,7 +230,6 @@ export function ConceptQuiz({
             aria-label={t("Tu respuesta")}
             className={`rounded-2xl border-2 px-4 py-3 text-sm ${checked ? (right ? "border-mint bg-mint/10" : "border-crimson bg-crimson-soft") : "border-border-subtle"}`}
           />
-          {checked && !right && <span className="text-sm font-semibold">{q.accepted[0]}</span>}
         </form>
       )}
 
@@ -245,17 +237,38 @@ export function ConceptQuiz({
         <Match key={i} pairs={q.pairs} seed={q.prompt} checked={checked} value={(answer as Record<number, number>) ?? {}} onChange={setAnswer} />
       )}
 
-      {checked && q?.why && <p className="text-sm leading-relaxed text-ink-muted">{q.why}</p>}
+      {checked && q && (
+        <div
+          key={`fb-${i}`}
+          role="status"
+          className={`flex items-start gap-3 rounded-2xl px-4 py-3 ${right ? "bg-mint/10" : "bg-crimson-soft"}`}
+          style={{ animation: right ? "pop-in .25s ease-out" : "shake .35s" }}
+        >
+          <span className={`grid size-8 shrink-0 place-items-center rounded-full text-white ${right ? "bg-mint" : "bg-crimson"}`}>
+            {right ? <CheckIcon size={16} /> : <XIcon size={16} />}
+          </span>
+          <span className="flex min-w-0 flex-col gap-0.5 text-sm">
+            <span className={`font-bold ${right ? "text-mint" : "text-crimson"}`}>{right ? t("¡Correcto!") : t("No era esa")}</span>
+            {!right && q.kind !== "match" && (
+              <span>
+                <span className="text-ink-muted">{t("Respuesta correcta")}: </span>
+                <span className="font-semibold">{solution(q, t)}</span>
+              </span>
+            )}
+            {q.why && <span className="leading-relaxed text-ink-muted">{q.why}</span>}
+          </span>
+        </div>
+      )}
 
       <button
         type="button"
         onClick={checked ? next : check}
-        disabled={!checked && (answer === null || answer === "" || (q?.kind === "match" && Object.keys(answer as object).length < q.pairs.length))}
+        disabled={saving || (!checked && (answer === null || answer === "" || (q?.kind === "match" && Object.keys(answer as object).length < q.pairs.length)))}
         className={`self-end rounded-full px-6 py-2.5 text-sm font-bold text-white disabled:opacity-40 ${
           checked ? (right ? "bg-mint" : "bg-crimson") : "bg-ink"
         }`}
       >
-        {checked ? (i + 1 < questions.length ? t("Siguiente") : t("Ver resultado")) : t("Comprobar")}
+        {checked ? (i + 1 < questions.length ? t("Siguiente") : saving ? t("Guardando…") : t("Ver resultado")) : t("Comprobar")}
       </button>
     </section>
   );
@@ -332,5 +345,217 @@ function Match({
         })}
       </div>
     </div>
+  );
+}
+
+type T = ReturnType<typeof useT>;
+
+// The right answer, as text.
+function solution(q: QuizQuestion, t: T): string {
+  switch (q.kind) {
+    case "choice":
+      return q.options[q.answer];
+    case "truefalse":
+      return q.answer ? t("Verdadero") : t("Falso");
+    case "blank":
+      return q.accepted[0];
+    case "match":
+      return q.pairs.map((p) => `${p.left} → ${p.right}`).join(" · ");
+  }
+}
+
+// What the student answered, as text.
+function said(q: QuizQuestion, a: QuizAnswer, t: T): string {
+  if (a === null || a === "") return "—";
+  switch (q.kind) {
+    case "choice":
+      return typeof a === "number" ? (q.options[a] ?? "—") : "—";
+    case "truefalse":
+      return a === true ? t("Verdadero") : a === false ? t("Falso") : "—";
+    case "blank":
+      return typeof a === "string" ? a : "—";
+    case "match": {
+      const m = (a ?? {}) as Record<number, number>;
+      return q.pairs.map((p, l) => `${p.left} → ${q.pairs[m[l]]?.right ?? "—"}`).join(" · ");
+    }
+  }
+}
+
+// The end of the exam: the score fills a ring and counts up, then every
+// question drops in, ticked or crossed. Missed ones open to show what you
+// answered next to the right answer and why; right ones stay compact.
+function Results({
+  questions,
+  results,
+  given,
+  loading,
+  onRetry,
+  onNext,
+  onExplain,
+}: {
+  questions: QuizQuestion[];
+  results: boolean[];
+  given: QuizAnswer[];
+  loading: boolean;
+  onRetry: () => void;
+  onNext?: () => void;
+  onExplain?: () => void;
+}) {
+  const t = useT();
+  const total = questions.length;
+  const correct = results.filter(Boolean).length;
+  const pct = total ? correct / total : 0;
+  const tone = pct >= 0.8 ? "mint" : pct >= 0.5 ? "amber" : "crimson";
+  const color = { mint: "var(--color-mint)", amber: "var(--color-amber)", crimson: "var(--color-crimson)" }[tone];
+  const [shown, setShown] = useState(0);
+  const [filled, setFilled] = useState(false);
+  const [open, setOpen] = useState<Set<number>>(() => new Set(results.flatMap((r, k) => (r ? [] : [k]))));
+  const nextBtn = useRef<HTMLButtonElement>(null);
+
+  // Count up and fill the ring (one animation frame at a time).
+  useEffect(() => {
+    let raf = 0;
+    const t0 = performance.now();
+    const step = (now: number) => {
+      const k = Math.min(1, (now - t0) / 900);
+      setFilled(true);
+      setShown(Math.round(correct * (1 - Math.pow(1 - k, 3))));
+      if (k < 1) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    nextBtn.current?.focus({ preventScroll: true });
+    return () => cancelAnimationFrame(raf);
+  }, [correct]);
+
+  const R = 34;
+  const C = 2 * Math.PI * R;
+  const headline = pct === 1 ? t("¡Perfecto!") : pct >= 0.8 ? t("¡Lo tienes!") : pct >= 0.5 ? t("Casi") : t("Repásalo");
+  const sub =
+    pct >= 0.8
+      ? t("Has acertado {0} de {1}. Sigue con el siguiente concepto.", { 0: correct, 1: total })
+      : t("Has acertado {0} de {1}. Mira en qué fallaste antes de seguir.", { 0: correct, 1: total });
+
+  return (
+    <section className="flex flex-col gap-5 rounded-lg border border-border-subtle bg-white p-5" aria-label={t("Resultado del examen")} style={{ animation: "pop-in .3s ease-out" }}>
+      <div className="flex items-center gap-5">
+        <div className="relative grid size-[88px] shrink-0 place-items-center">
+          <svg width="88" height="88" viewBox="0 0 88 88" className="absolute inset-0 -rotate-90" aria-hidden>
+            <circle cx="44" cy="44" r={R} fill="none" stroke="var(--color-chip)" strokeWidth="8" />
+            <circle
+              cx="44"
+              cy="44"
+              r={R}
+              fill="none"
+              stroke={color}
+              strokeWidth="8"
+              strokeLinecap="round"
+              strokeDasharray={C}
+              strokeDashoffset={filled ? C * (1 - pct) : C}
+              style={{ transition: "stroke-dashoffset .9s cubic-bezier(.2,.8,.2,1)" }}
+            />
+          </svg>
+          <span className="relative text-2xl font-extrabold tabular-nums" style={{ color }}>
+            {shown}
+            <span className="text-base text-ink-faint">/{total}</span>
+          </span>
+          {pct >= 0.8 &&
+            Array.from({ length: 12 }, (_, k) => (
+              <span
+                key={k}
+                aria-hidden
+                className="pointer-events-none absolute top-1/2 left-1/2 size-1.5 rounded-full"
+                style={
+                  {
+                    "--a": `${k * 30}deg`,
+                    "--d": `${52 + (k % 3) * 12}px`,
+                    background: ["var(--color-mint)", "var(--color-accent)", "var(--color-amber)", "#e255a1"][k % 4],
+                    animation: "spark .8s ease-out .5s both",
+                  } as React.CSSProperties
+                }
+              />
+            ))}
+        </div>
+        <div className="flex min-w-0 flex-col gap-1">
+          <span className="text-2xl font-extrabold tracking-tight" style={{ color }}>
+            {headline}
+          </span>
+          <span className="text-sm text-ink-muted">{sub}</span>
+          <span className="mt-1 flex gap-1" aria-hidden>
+            {results.map((r, k) => (
+              <span key={k} className={`h-1.5 w-6 rounded-full ${r ? "bg-mint" : "bg-crimson"}`} style={{ animation: `pop-in .25s ease-out ${0.15 + k * 0.08}s both` }} />
+            ))}
+          </span>
+        </div>
+      </div>
+
+      <ol className="flex flex-col gap-2">
+        {questions.map((q, k) => {
+          const ok = results[k];
+          const isOpen = open.has(k);
+          return (
+            <li key={k} style={{ animation: `pop-in .3s ease-out ${0.35 + k * 0.09}s both` }}>
+              <button
+                type="button"
+                aria-expanded={isOpen}
+                onClick={() =>
+                  setOpen((o) => {
+                    const n = new Set(o);
+                    if (n.has(k)) n.delete(k);
+                    else n.add(k);
+                    return n;
+                  })
+                }
+                className={`flex w-full flex-col gap-2 rounded-2xl border-2 px-4 py-3 text-left transition-colors ${ok ? "border-mint/30 bg-mint/5 hover:bg-mint/10" : "border-crimson/30 bg-crimson-soft/60 hover:bg-crimson-soft"}`}
+              >
+                <span className="flex items-start gap-3">
+                  <span className={`mt-0.5 grid size-6 shrink-0 place-items-center rounded-full text-white ${ok ? "bg-mint" : "bg-crimson"}`}>
+                    {ok ? <CheckIcon size={13} /> : <XIcon size={13} />}
+                  </span>
+                  <span className={`min-w-0 flex-1 text-sm font-semibold ${ok ? "text-ink-muted" : "text-ink"}`}>
+                    {q.kind === "blank" ? q.prompt.replace(/_{3,}/g, "____") : q.prompt}
+                  </span>
+                  <span className={`mt-1 shrink-0 text-ink-faint transition-transform ${isOpen ? "rotate-180" : ""}`} aria-hidden>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="m6 9 6 6 6-6" />
+                    </svg>
+                  </span>
+                </span>
+                {isOpen && (
+                  <span className="flex flex-col gap-1.5 pl-9 text-[13px] leading-relaxed" style={{ animation: "fade-in .2s ease-out" }}>
+                    {!ok && (
+                      <span className="flex flex-wrap items-baseline gap-x-2">
+                        <span className="text-[11px] font-bold tracking-wide text-crimson uppercase">{t("Tu respuesta")}</span>
+                        <span className="text-ink-muted line-through decoration-crimson/60">{said(q, given[k], t)}</span>
+                      </span>
+                    )}
+                    <span className="flex flex-wrap items-baseline gap-x-2">
+                      <span className="text-[11px] font-bold tracking-wide text-mint uppercase">{t("Correcta")}</span>
+                      <span className="font-semibold text-ink">{solution(q, t)}</span>
+                    </span>
+                    {q.why && <span className="text-ink-muted">{q.why}</span>}
+                  </span>
+                )}
+              </button>
+            </li>
+          );
+        })}
+      </ol>
+
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <button type="button" onClick={onRetry} disabled={loading} className="rounded-full px-4 py-2.5 text-sm font-semibold text-ink-muted hover:bg-chip hover:text-ink disabled:opacity-50">
+          {loading ? t("Escribiendo…") : t("Otro examen")}
+        </button>
+        {onExplain && (
+          <button ref={nextBtn} type="button" onClick={onExplain} className="rounded-full bg-ink px-5 py-2.5 text-sm font-bold text-white">
+            {t("Explícamelo de otra forma")}
+          </button>
+        )}
+        {onNext && (
+          <button ref={nextBtn} type="button" onClick={onNext} className="rounded-full bg-mint px-5 py-2.5 text-sm font-bold text-white">
+            {t("Siguiente concepto")} →
+          </button>
+        )}
+      </div>
+    </section>
   );
 }
