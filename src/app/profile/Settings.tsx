@@ -154,6 +154,11 @@ export function Settings({
           </a>
         )}
       </Row>
+      <Row title={t("Unificar con Drive")} hint={t("Ordena el material de clase en tu Drive, en PDF, cada hora")}>
+        <a href="/drive" className={button}>
+          {t("Abrir")}
+        </a>
+      </Row>
       {/* Ways to sign in: add another, or remove one while another is left. */}
       {(["google", "github"] as const).map((p) => {
         const on = providers.includes(p);

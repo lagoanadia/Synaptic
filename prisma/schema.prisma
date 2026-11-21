@@ -54,6 +54,9 @@ model User {
 
   ownedPursuits Pursuit[]
   savedTests    SavedTest[]
+  driveAgent    DriveAgent?
+  driveSources  DriveSource[]
+  driveChanges  DriveChange[]
   memberships   PursuitMember[]
   pursuitTags   PursuitTag[]
   sections      Section[]
@@ -847,6 +850,75 @@ model SavedTest {
   bestScore Int?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+// ─── Unificar con Drive (lib/driveAgent.ts) ────────────────────────────
+// A small Apps Script in the student's own Google account does the Drive
+// work (it can, where a school blocks third-party apps); Synaptic decides
+// where each file goes, shows the plan, keeps the log and the undo.
+
+// The student's script: how it signs in (hash of its token), when it last
+// called, and the naming rules (lib/materialName.ts NamingConfig plus
+// per-file overrides).
+model DriveAgent {
+  id         String    @id @default(cuid())
+  tokenHash  String    @unique
+  config     Json?
+  // Apply new files on their own once the first plan was approved.
+  autoApply  Boolean   @default(false)
+  lastSeenAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// A file the script found (by its Drive id) and what to do with it.
+// status: "review" (Synaptic can't tell where it goes) | "planned" (waits
+// for approval) | "approved" | "done" | "skipped" | "error".
+model DriveSource {
+  id        String   @id @default(cuid())
+  sourceId  String
+  name      String
+  mimeType  String?
+  // When the original was made: the newer one wins a slot.
+  createdAt DateTime
+  // "AD": the subject of the course it came from, when known.
+  course    String?
+  // { kind, subject, folder: [..], name, pdf } from placeMaterial, or null.
+  placement Json?
+  reason    String?
+  status    String   @default("planned")
+  outputId  String?
+  error     String?
+  seenAt    DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, sourceId])
+  @@index([userId, status])
+}
+
+// Every change the script made, to show and to undo. action: "create" (a
+// new file) | "replace" (new file; oldId went to the bin) | "trash".
+// undo: "requested" → the script does it → "done".
+model DriveChange {
+  id        String   @id @default(cuid())
+  runId     String
+  action    String
+  path      String
+  fileId    String
+  oldId     String?
+  sourceId  String?
+  undo      String?
+  createdAt DateTime @default(now())
 
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
