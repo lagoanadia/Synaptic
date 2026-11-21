@@ -3,7 +3,7 @@
 import { useT } from "@/app/LangProvider";
 import { useEffect, useRef, useState } from "react";
 import { CheckIcon, XIcon } from "@/app/icons";
-import { isCorrect, shuffledOrder, type QuizAnswer, type QuizQuestion } from "@/lib/conceptQuiz";
+import { GAP, isCorrect, normalize, shuffledOrder, type QuizAnswer, type QuizQuestion } from "@/lib/conceptQuiz";
 import type { Status } from "@/lib/internalize";
 import { makeConceptQuiz, recordConceptQuiz } from "../actions";
 
@@ -66,7 +66,7 @@ export function ConceptQuiz({
   const done = !!final;
 
   function check() {
-    if (!q || answer === null || answer === "") return;
+    if (!q || !ready(q, answer)) return;
     setChecked(true);
     setResults((r) => [...r, isCorrect(q, answer)]);
     setGiven((g) => [...g, answer]);
@@ -188,7 +188,7 @@ export function ConceptQuiz({
         ))}
       </div>
 
-      {q && <p className="text-lg leading-snug font-bold">{q.kind === "blank" ? q.prompt.replace(/_{3,}/g, "____") : q.prompt}</p>}
+      {q && q.kind !== "blank" && <p className="text-lg leading-snug font-bold">{q.prompt}</p>}
 
       {q?.kind === "choice" && (
         <div className="grid gap-2 sm:grid-cols-2">
@@ -212,26 +212,7 @@ export function ConceptQuiz({
         </div>
       )}
 
-      {q?.kind === "blank" && (
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            check();
-          }}
-          className="flex flex-col gap-2"
-        >
-          <input
-            key={i}
-            autoFocus
-            disabled={checked}
-            value={typeof answer === "string" ? answer : ""}
-            onChange={(e) => setAnswer(e.target.value)}
-            placeholder={t("Tu respuesta")}
-            aria-label={t("Tu respuesta")}
-            className={`rounded-2xl border-2 px-4 py-3 text-sm ${checked ? (right ? "border-mint bg-mint/10" : "border-crimson bg-crimson-soft") : "border-border-subtle"}`}
-          />
-        </form>
-      )}
+      {q?.kind === "blank" && <Blanks key={i} q={q} value={answer} checked={checked} onChange={setAnswer} onSubmit={check} />}
 
       {q?.kind === "match" && (
         <Match key={i} pairs={q.pairs} seed={q.prompt} checked={checked} value={(answer as Record<number, number>) ?? {}} onChange={setAnswer} />
@@ -263,7 +244,7 @@ export function ConceptQuiz({
       <button
         type="button"
         onClick={checked ? next : check}
-        disabled={saving || (!checked && (answer === null || answer === "" || (q?.kind === "match" && Object.keys(answer as object).length < q.pairs.length)))}
+        disabled={saving || (!checked && !!q && !ready(q, answer))}
         className={`self-end rounded-full px-6 py-2.5 text-sm font-bold text-white disabled:opacity-40 ${
           checked ? (right ? "bg-mint" : "bg-crimson") : "bg-ink"
         }`}
@@ -358,7 +339,7 @@ function solution(q: QuizQuestion, t: T): string {
     case "truefalse":
       return q.answer ? t("Verdadero") : t("Falso");
     case "blank":
-      return q.accepted[0];
+      return q.gaps.map((g) => g[0]).join(" · ");
     case "match":
       return q.pairs.map((p) => `${p.left} → ${p.right}`).join(" · ");
   }
@@ -373,7 +354,7 @@ function said(q: QuizQuestion, a: QuizAnswer, t: T): string {
     case "truefalse":
       return a === true ? t("Verdadero") : a === false ? t("Falso") : "—";
     case "blank":
-      return typeof a === "string" ? a : "—";
+      return (Array.isArray(a) ? a : [String(a)]).map((x) => x || "—").join(" · ");
     case "match": {
       const m = (a ?? {}) as Record<number, number>;
       return q.pairs.map((p, l) => `${p.left} → ${q.pairs[m[l]]?.right ?? "—"}`).join(" · ");
@@ -512,7 +493,7 @@ function Results({
                     {ok ? <CheckIcon size={13} /> : <XIcon size={13} />}
                   </span>
                   <span className={`min-w-0 flex-1 text-sm font-semibold ${ok ? "text-ink-muted" : "text-ink"}`}>
-                    {q.kind === "blank" ? q.prompt.replace(/_{3,}/g, "____") : q.prompt}
+                    {q.kind === "blank" ? q.prompt.replace(GAP, "____") : q.prompt}
                   </span>
                   <span className={`mt-1 shrink-0 text-ink-faint transition-transform ${isOpen ? "rotate-180" : ""}`} aria-hidden>
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
@@ -557,5 +538,78 @@ function Results({
         )}
       </div>
     </section>
+  );
+}
+
+// Whether there's something to check yet.
+function ready(q: QuizQuestion, a: QuizAnswer): boolean {
+  if (a === null || a === "") return false;
+  if (q.kind === "blank") return Array.isArray(a) && a.length === q.gaps.length && a.every((x) => x.trim() !== "");
+  if (q.kind === "match") return Object.keys(a as object).length >= q.pairs.length;
+  return true;
+}
+
+// The sentence with a box in each gap, written in place. Enter jumps to the
+// next empty gap, or checks once they're all filled. Once checked, each gap
+// turns green or red on its own.
+function Blanks({
+  q,
+  value,
+  checked,
+  onChange,
+  onSubmit,
+}: {
+  q: Extract<QuizQuestion, { kind: "blank" }>;
+  value: QuizAnswer;
+  checked: boolean;
+  onChange: (v: string[]) => void;
+  onSubmit: () => void;
+}) {
+  const t = useT();
+  const vals = Array.isArray(value) ? value : q.gaps.map(() => "");
+  const boxes = useRef<(HTMLInputElement | null)[]>([]);
+  const parts = q.prompt.split(GAP);
+  const many = q.gaps.length > 1;
+
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        const empty = vals.findIndex((v) => !v.trim());
+        if (empty >= 0) boxes.current[empty]?.focus();
+        else onSubmit();
+      }}
+      className="text-lg leading-[2.4] font-bold"
+    >
+      {parts.map((text, k) => (
+        <span key={k}>
+          {text}
+          {k < q.gaps.length && (
+            <span className="relative inline-block align-baseline">
+              <input
+                ref={(el) => {
+                  boxes.current[k] = el;
+                }}
+                autoFocus={k === 0}
+                disabled={checked}
+                value={vals[k] ?? ""}
+                onChange={(e) => onChange(vals.map((v, j) => (j === k ? e.target.value : v)))}
+                aria-label={many ? t("Hueco {0}", { 0: k + 1 }) : t("Tu respuesta")}
+                placeholder={many ? String(k + 1) : "…"}
+                style={{ fieldSizing: "content" } as React.CSSProperties}
+                className={`mx-1 min-w-[7ch] max-w-full rounded-xl border-2 px-2.5 py-0.5 text-center text-base font-semibold outline-none ${
+                  checked
+                    ? q.gaps[k].some((x) => normalize(x) === normalize(vals[k] ?? ""))
+                      ? "border-mint bg-mint/10 text-mint"
+                      : "border-crimson bg-crimson-soft text-crimson line-through decoration-2"
+                    : "border-border-subtle bg-chip focus:border-tile-sky focus:bg-accent-soft"
+                }`}
+              />
+            </span>
+          )}
+        </span>
+      ))}
+      <button type="submit" hidden />
+    </form>
   );
 }

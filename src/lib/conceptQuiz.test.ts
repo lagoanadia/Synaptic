@@ -10,6 +10,7 @@ describe("parseQuiz", () => {
       { kind: "truefalse", prompt: "bad", answer: "yes" },
       { kind: "blank", prompt: "La pregunta de Técnica es ¿Qué ___?", accepted: ["construye"] },
       { kind: "blank", prompt: "no gap", accepted: ["x"] },
+      { kind: "blank", prompt: "uno ___ y otro ___", accepted: ["solo uno"] },
       { kind: "match", prompt: "Une", pairs: [{ left: "A", right: "1" }, { left: "B", right: "2" }, { left: "C", right: "3" }] },
       { kind: "match", prompt: "too few", pairs: [{ left: "A", right: "1" }] },
     ]);
@@ -23,6 +24,15 @@ describe("grading", () => {
     const [blank] = parseQuiz([{ kind: "blank", prompt: "¿Qué ___?", accepted: ["construye"] }]);
     expect(isCorrect(blank, "Construye")).toBe(true);
     expect(isCorrect(blank, "diseña")).toBe(false);
+  });
+  it("grades every gap of a blank", () => {
+    const [nested] = parseQuiz([{ kind: "blank", prompt: "Libre pone el acento en la ___ y open source en el ___.", accepted: [["libertad"], ["código abierto", "codigo"]] }]);
+    expect(isCorrect(nested, ["Libertad", "codigo abierto"])).toBe(true);
+    expect(isCorrect(nested, ["libertad", "precio"])).toBe(false);
+    const [flat] = parseQuiz([{ kind: "blank", prompt: "a ___ b ___", accepted: ["libertad", "código abierto"] }]);
+    expect(flat.kind === "blank" && flat.gaps).toEqual([["libertad"], ["código abierto"]]);
+    const [joined] = parseQuiz([{ kind: "blank", prompt: "a ___ b ___", accepted: ["libertad y código abierto"] }]);
+    expect(isCorrect(joined, ["libertad", "código abierto"])).toBe(true);
   });
   it("needs every pair right in a match", () => {
     const [m] = parseQuiz([{ kind: "match", prompt: "Une", pairs: [{ left: "A", right: "1" }, { left: "B", right: "2" }, { left: "C", right: "3" }] }]);

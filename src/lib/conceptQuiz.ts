@@ -5,10 +5,15 @@ import type { Verdict } from "@/lib/internalize";
 export type QuizQuestion =
   | { kind: "choice"; prompt: string; options: string[]; answer: number; why: string }
   | { kind: "truefalse"; prompt: string; answer: boolean; why: string }
-  | { kind: "blank"; prompt: string; accepted: string[]; why: string }
+  // One list of accepted answers per gap (___), in order.
+  | { kind: "blank"; prompt: string; gaps: string[][]; why: string }
   | { kind: "match"; prompt: string; pairs: { left: string; right: string }[]; why: string };
 
-export type QuizAnswer = number | boolean | string | Record<number, number> | null;
+// A blank's answer is one string per gap.
+export type QuizAnswer = number | boolean | string | string[] | Record<number, number> | null;
+
+export const GAP = /_{3,}/g;
+export const gapCount = (prompt: string) => prompt.match(GAP)?.length ?? 0;
 
 const s = (v: unknown, max = 400) => (typeof v === "string" ? v.trim().slice(0, max) : "");
 const list = (v: unknown) => (Array.isArray(v) ? v : []);
@@ -30,8 +35,8 @@ export function parseQuiz(raw: unknown): QuizQuestion[] {
     } else if (q.kind === "truefalse") {
       if (typeof q.answer === "boolean") out.push({ kind: "truefalse", prompt, answer: q.answer, why });
     } else if (q.kind === "blank") {
-      const accepted = list(q.accepted).map((a) => s(a, 100)).filter(Boolean);
-      if (accepted.length > 0 && prompt.includes("___")) out.push({ kind: "blank", prompt, accepted, why });
+      const gaps = readGaps(q.accepted, gapCount(prompt));
+      if (gaps) out.push({ kind: "blank", prompt, gaps, why });
     } else if (q.kind === "match") {
       const pairs = list(q.pairs)
         .map((p) => (p && typeof p === "object" ? { left: s((p as Record<string, unknown>).left, 150), right: s((p as Record<string, unknown>).right, 200) } : null))
@@ -40,6 +45,25 @@ export function parseQuiz(raw: unknown): QuizQuestion[] {
     }
   }
   return out;
+}
+
+// The AI's "accepted" → one list per gap, or null when it doesn't fit the
+// sentence (e.g. two gaps but a single answer), so the question is dropped
+// rather than marking right answers wrong.
+function readGaps(raw: unknown, n: number): string[][] | null {
+  if (n < 1 || n > 4) return null;
+  const items = list(raw);
+  const strs = (v: unknown) => list(v).map((a) => s(a, 100)).filter(Boolean);
+  let gaps: string[][];
+  if (items.length && items.every(Array.isArray)) gaps = items.map(strs);
+  else {
+    const flat = strs(items);
+    if (n === 1) gaps = [flat];
+    else if (flat.length === n) gaps = flat.map((a) => [a]);
+    else if (flat.length === 1) gaps = flat[0].split(/\s*[,;/]\s*|\s+(?:y|e|and)\s+/).filter(Boolean).map((a) => [a]);
+    else return null;
+  }
+  return gaps.length === n && gaps.every((g) => g.length > 0) ? gaps : null;
 }
 
 // Forgiving comparison for typed answers: case, accents, punctuation and
@@ -61,8 +85,10 @@ export function isCorrect(q: QuizQuestion, a: QuizAnswer): boolean {
       return a === q.answer;
     case "truefalse":
       return a === q.answer;
-    case "blank":
-      return typeof a === "string" && q.accepted.some((x) => normalize(x) === normalize(a));
+    case "blank": {
+      const given = Array.isArray(a) ? a : typeof a === "string" ? [a] : [];
+      return given.length === q.gaps.length && q.gaps.every((ok, i) => ok.some((x) => normalize(x) === normalize(given[i] ?? "")));
+    }
     case "match": {
       if (!a || typeof a !== "object") return false;
       const m = a as Record<number, number>;

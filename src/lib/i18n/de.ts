@@ -1238,4 +1238,5 @@ export const de: Record<string, string> = {
   "Correcta": "Richtig",
   "Otro examen": "Noch ein Test",
   "Siguiente concepto": "Nächstes Konzept",
+  "Hueco {0}": "Lücke {0}",
 };

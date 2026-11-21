@@ -1238,4 +1238,5 @@ export const en: Record<string, string> = {
   "Correcta": "Correct",
   "Otro examen": "Another exam",
   "Siguiente concepto": "Next concept",
+  "Hueco {0}": "Gap {0}",
 };
