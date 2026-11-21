@@ -14,7 +14,7 @@ export const HOME_BLOCK_TYPES: { type: HomeBlockType; label: string }[] = [
   { type: "recent", label: "Recientes" },
 ];
 
-export type FolderBlockType = "project" | "pages" | "map" | "review" | "ask" | "challenges" | "deadlines" | "tasks" | "options" | "budget" | "expenses" | "dates" | "savings" | "delivery";
+export type FolderBlockType = "project" | "pages" | "map" | "review" | "ask" | "challenges" | "deadlines" | "tasks" | "options" | "budget" | "expenses" | "dates" | "savings";
 // title/icon: what an "options" block is about (Alojamiento, bed…);
 // people: how many a "budget" block splits between (null = the members).
 export type FolderBlock = { id: string; type: FolderBlockType; view?: "list" | "board"; title?: string; icon?: BlockIcon; people?: number | null; exclude?: string[]; columns?: OptionColumn[]; goal?: number | null };
@@ -42,7 +42,6 @@ export const FOLDER_BLOCK_TYPES: { type: FolderBlockType; label: string; hint: s
   { type: "ask", label: "Preguntar", hint: "Pregunta a tus apuntes" },
   { type: "challenges", label: "Retos", hint: "Ejercicios de código · programación", study: true },
   { type: "deadlines", label: "Entregas", hint: "Lo que viene de Classroom" },
-  { type: "delivery", label: "Mis entregas", hint: "Enunciado, tu entrega y el código de cada unidad, desde Drive" },
   { type: "tasks", label: "Tableros por entrega", hint: "Un tablero por cada entrega" },
   { type: "options", label: "Opciones", hint: "Enlaces con precio y votos: alojamiento, vuelos, planes…" },
   { type: "budget", label: "Presupuesto", hint: "Suma lo elegido y lo reparte por persona" },
