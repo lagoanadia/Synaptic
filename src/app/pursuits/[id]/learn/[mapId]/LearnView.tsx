@@ -67,6 +67,16 @@ export function LearnView({
     openConcept(concept.id).catch(() => {});
   }, [concept.id]);
 
+  // Keep this concept in the address. Without ?c= the server picks the
+  // next one to learn, so saving an exam result (which refreshes the page)
+  // would jump to another concept before you see how you did.
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("c") === concept.id) return;
+    url.searchParams.set("c", concept.id);
+    window.history.replaceState(window.history.state, "", url);
+  }, [concept.id]);
+
   function explainDifferently() {
     setMode("explain");
     if (explanation) return;
