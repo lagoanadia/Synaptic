@@ -9,9 +9,11 @@ import { getLang } from "@/lib/i18n/server";
 // The vision model's image cap lives in visionLimits.ts.
 export const TEXT_MODEL = "openai/gpt-oss-120b";
 export const VISION_MODEL = "qwen/qwen3.8-27b";
-// Used when the main text model is over its limit (Groq limits each model
-// on its own) or briefly down, so the AI doesn't just stop working.
-export const FALLBACK_MODEL = "llama-3.3-70b-versatile";
+// Tried in order when the main text model is over its limit (Groq limits
+// each model on its own, e.g. 200K tokens a day) or down, so the AI doesn't
+// just stop working. Only models open to the free/developer tier: Llama
+// 3.3 70B went Enterprise-only and started answering 404.
+export const FALLBACK_MODELS = ["openai/gpt-oss-20b", VISION_MODEL];
 
 // Everything the AI writes for the user is in the app's language (the
 // ES/EN/DE picker), unless a prompt explicitly asks for another one (e.g. a
@@ -47,12 +49,16 @@ export async function chat(params: ChatCompletionCreateParamsNonStreaming) {
     console.error("Groq failed", params.model, status, err instanceof Error ? err.message : err);
     const limited = status === 429 || status >= 500 || status === 404;
     if (limited && params.model === TEXT_MODEL) {
-      try {
-        return await groq.chat.completions.create({ ...params, model: FALLBACK_MODEL });
-      } catch (err2) {
-        console.error("Groq fallback failed", FALLBACK_MODEL, (err2 as { status?: number }).status, err2 instanceof Error ? err2.message : err2);
-        throw err2;
+      let last: unknown = err;
+      for (const model of FALLBACK_MODELS) {
+        try {
+          return await groq.chat.completions.create({ ...params, model });
+        } catch (err2) {
+          last = err2;
+          console.error("Groq fallback failed", model, (err2 as { status?: number }).status, err2 instanceof Error ? err2.message : err2);
+        }
       }
+      throw last;
     }
     // A one-off hiccup (e.g. JSON mode rejecting its own output): once more.
     return await groq.chat.completions.create(params);
