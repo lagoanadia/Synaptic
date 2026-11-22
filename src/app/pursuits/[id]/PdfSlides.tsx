@@ -6,6 +6,31 @@ import { useEffect, useRef, useState } from "react";
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import { SEGMENT_LABEL, classifyArea, segmentsToDoc, toSegments, type Kind, type SelectionInfo } from "@/lib/pdfSelection";
 
+// Where each PDF was left (page and zoom), so switching tabs or coming
+// back later opens it there instead of on page 1. Kept for this visit and
+// in the browser (best effort: private windows may not keep it).
+const KEY = "synaptic:pdf-at:";
+const leftAt = new Map<string, { page: number; zoom: number }>();
+function readLeftAt(src: string): { page: number; zoom: number } {
+  const mem = leftAt.get(src);
+  if (mem) return mem;
+  try {
+    const v = JSON.parse(localStorage.getItem(KEY + src) ?? "null");
+    if (v && Number.isInteger(v.page) && v.page >= 1 && typeof v.zoom === "number" && v.zoom >= 0.5 && v.zoom <= 4) return v;
+  } catch {
+    // no storage: start at the top
+  }
+  return { page: 1, zoom: 1 };
+}
+function saveLeftAt(src: string, at: { page: number; zoom: number }) {
+  leftAt.set(src, at);
+  try {
+    localStorage.setItem(KEY + src, JSON.stringify(at));
+  } catch {
+    // no storage: kept for this visit only
+  }
+}
+
 // How a selection can be pasted; "auto" is what was detected.
 const KINDS: { id: Kind; label: string }[] = [
   { id: "auto", label: "Auto" },
@@ -46,9 +71,12 @@ export function PdfSlides({
   const [drag, setDrag] = useState<{ x: number; y: number } | null>(null);
   const [cssH, setCssH] = useState(0);
   const [doc, setDoc] = useState<PDFDocumentProxy | null>(null);
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(() => (typeof window === "undefined" ? 1 : readLeftAt(src).page));
   // 1 = fit the width; up to 4×.
-  const [zoom, setZoom] = useState(1);
+  const [zoom, setZoom] = useState(() => (typeof window === "undefined" ? 1 : readLeftAt(src).zoom));
+  useEffect(() => {
+    saveLeftAt(src, { page, zoom });
+  }, [src, page, zoom]);
   const [error, setError] = useState(false);
   const canvas = useRef<HTMLCanvasElement>(null);
   const box = useRef<HTMLDivElement>(null);
@@ -71,7 +99,10 @@ export function PdfSlides({
         const pdfjs = await import("pdfjs-dist");
         pdfjs.GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/build/pdf.worker.min.mjs", import.meta.url).toString();
         const d = await pdfjs.getDocument(src).promise;
-        if (!cancelled) setDoc(d);
+        if (cancelled) return;
+        setDoc(d);
+        // A PDF that got shorter since: stay inside it.
+        setPage((p) => Math.min(p, d.numPages));
       } catch {
         if (!cancelled) {
           setError(true);
