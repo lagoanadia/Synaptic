@@ -34,6 +34,10 @@ describe("grading", () => {
     const [joined] = parseQuiz([{ kind: "blank", prompt: "a ___ b ___", accepted: ["libertad y código abierto"] }]);
     expect(isCorrect(joined, ["libertad", "código abierto"])).toBe(true);
   });
+  it("decodes HTML entities the AI writes", () => {
+    const [q] = parseQuiz([{ kind: "truefalse", prompt: "El script &quot;gradlew.bat&quot; &amp; &#39;x&#39; &#x2192;", answer: false }]);
+    expect(q.prompt).toBe(`El script "gradlew.bat" & 'x' →`);
+  });
   it("takes the key word of a longer answer", () => {
     expect(gapOk(["sala del restaurante"], "restaurante")).toBe(true);
     expect(gapOk(["despensa"], "la despensa")).toBe(true);

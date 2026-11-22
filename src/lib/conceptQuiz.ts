@@ -15,7 +15,18 @@ export type QuizAnswer = number | boolean | string | string[] | Record<number, n
 export const GAP = /_{3,}/g;
 export const gapCount = (prompt: string) => prompt.match(GAP)?.length ?? 0;
 
-const s = (v: unknown, max = 400) => (typeof v === "string" ? v.trim().slice(0, max) : "");
+// The AI sometimes writes HTML entities ("&quot;gradlew.bat&quot;"): turn
+// them back into the characters they stand for.
+const NAMED: Record<string, string> = { quot: '"', amp: "&", lt: "<", gt: ">", apos: "'", nbsp: " ", laquo: "«", raquo: "»", ndash: "–", mdash: "—", hellip: "…" };
+export const decodeEntities = (t: string) =>
+  t.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (m, e: string) => {
+    if (e[0] === "#") {
+      const n = e[1].toLowerCase() === "x" ? parseInt(e.slice(2), 16) : parseInt(e.slice(1), 10);
+      return Number.isFinite(n) && n > 0 && n < 0x110000 ? String.fromCodePoint(n) : m;
+    }
+    return NAMED[e.toLowerCase()] ?? m;
+  });
+const s = (v: unknown, max = 400) => (typeof v === "string" ? decodeEntities(v).trim().slice(0, max) : "");
 const list = (v: unknown) => (Array.isArray(v) ? v : []);
 
 // The AI's JSON → questions we can trust: anything malformed is dropped.
