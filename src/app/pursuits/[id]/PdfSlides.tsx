@@ -4,7 +4,7 @@ import { useT } from "@/app/LangProvider";
 import { ChevronLeft, ChevronRight } from "@/app/icons";
 import { useEffect, useRef, useState } from "react";
 import type { PDFDocumentProxy } from "pdfjs-dist";
-import { SEGMENT_LABEL, classifySelection, segmentsToDoc, toSegments, type Kind, type SelectionInfo } from "@/lib/pdfSelection";
+import { SEGMENT_LABEL, classifyArea, segmentsToDoc, toSegments, type Kind, type SelectionInfo } from "@/lib/pdfSelection";
 
 // How a selection can be pasted; "auto" is what was detected.
 const KINDS: { id: Kind; label: string }[] = [
@@ -23,8 +23,9 @@ type Box = { x0: number; y0: number; x1: number; y1: number };
 // while the pointer is over it. With onTranscribe: "Seleccionar", drag a
 // box over part of the slide (or take it whole) and send that image off
 // to be written into the note.
-// Selecting text on the page offers "Añadir a la página": it's pasted as it
-// looks in the PDF (titles, lists, tables, paragraphs — lib/pdfSelection),
+// Dragging a box over the page takes the text inside it (the words light up
+// as the box covers them) and offers "Añadir a la página": it's pasted as
+// it looks in the PDF (titles, lists, tables, paragraphs — lib/pdfSelection),
 // with a chip to paste it as another kind instead.
 export function PdfSlides({
   src,
@@ -54,7 +55,13 @@ export function PdfSlides({
   const [size, setSize] = useState({ w: 0, h: 0 });
   const textLayer = useRef<HTMLDivElement>(null);
   const holder = useRef<HTMLDivElement>(null);
-  const [pick, setPick] = useState<{ x: number; y: number; text: string; info: SelectionInfo; kind: Kind } | null>(null);
+  const [pick, setPick] = useState<{ x: number; y: number; info: SelectionInfo; kind: Kind } | null>(null);
+  // The box being drawn over the text (CSS px inside the page) and the
+  // words it covers, lit up while dragging.
+  const [area, setArea] = useState<Box | null>(null);
+  const [areaDrag, setAreaDrag] = useState(false);
+  const [marks, setMarks] = useState<{ x: number; y: number; w: number; h: number }[]>([]);
+  const words = useRef<{ x: number; y: number; w: number; h: number }[]>([]);
   const [added, setAdded] = useState(false);
 
   useEffect(() => {
@@ -135,38 +142,69 @@ export function PdfSlides({
     };
   }, [doc, page, size, zoom]);
 
-  // A text selection inside the page → the button, and the lines it covers.
-  useEffect(() => {
-    if (!onAddText) return;
-    const check = () => {
-      const s = window.getSelection();
-      const layer = textLayer.current;
-      if (!s || s.isCollapsed || !layer || !layer.contains(s.anchorNode) || !layer.contains(s.focusNode)) return setPick(null);
-      const info = classifySelection(layer, s);
-      if (!info) return setPick(null);
-      const text = s.toString();
-      const r = s.getRangeAt(0).getBoundingClientRect();
-      const h = holder.current!.getBoundingClientRect();
-      setAdded(false);
-      // The same selection keeps the kind picked for it.
-      setPick((cur) => ({ x: Math.max(4, r.left - h.left), y: Math.min(r.bottom - h.top + 6, h.height - 34), text, info, kind: cur?.text === text ? cur.kind : "auto" }));
-    };
-    document.addEventListener("mouseup", check);
-    document.addEventListener("keyup", check);
-    document.addEventListener("touchend", check);
-    return () => {
-      document.removeEventListener("mouseup", check);
-      document.removeEventListener("keyup", check);
-      document.removeEventListener("touchend", check);
-    };
-  }, [onAddText]);
+  const clearArea = () => {
+    setArea(null);
+    setMarks([]);
+    setPick(null);
+  };
+  const inBox = (b: Box) => {
+    const [l, r, top, bottom] = [Math.min(b.x0, b.x1), Math.max(b.x0, b.x1), Math.min(b.y0, b.y1), Math.max(b.y0, b.y1)];
+    const hit = words.current.filter((w) => w.x + w.w / 2 >= l && w.x + w.w / 2 <= r && w.y + w.h / 2 >= top && w.y + w.h / 2 <= bottom);
+    // One smooth bar per run of words on a line, not a box per word.
+    const bars: { x: number; y: number; w: number; h: number }[] = [];
+    for (const w of [...hit].sort((a, b) => a.y - b.y || a.x - b.x)) {
+      const bar = bars.find((b) => Math.abs(b.y + b.h / 2 - (w.y + w.h / 2)) < w.h / 2 && w.x - (b.x + b.w) < w.h);
+      if (bar) {
+        const right = Math.max(bar.x + bar.w, w.x + w.w);
+        bar.y = Math.min(bar.y, w.y);
+        bar.h = Math.max(bar.h, w.h);
+        bar.w = right - bar.x;
+      } else bars.push({ ...w });
+    }
+    return bars;
+  };
+  function areaDown(e: React.PointerEvent<HTMLDivElement>) {
+    if (e.button !== 0) return;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    const h = holder.current!.getBoundingClientRect();
+    // Where every word is, once per drag (the page doesn't move meanwhile).
+    words.current = [...(textLayer.current?.querySelectorAll<HTMLElement>("span") ?? [])]
+      .filter((sp) => sp.textContent?.trim() && !sp.classList.contains("markedContent"))
+      .map((sp) => {
+        const r = sp.getBoundingClientRect();
+        return { x: r.left - h.left, y: r.top - h.top, w: r.width, h: r.height };
+      });
+    const x = e.clientX - h.left;
+    const y = e.clientY - h.top;
+    setPick(null);
+    setAdded(false);
+    setMarks([]);
+    setArea({ x0: x, y0: y, x1: x, y1: y });
+    setAreaDrag(true);
+  }
+  function areaMove(e: React.PointerEvent<HTMLDivElement>) {
+    if (!areaDrag || !area) return;
+    const h = holder.current!.getBoundingClientRect();
+    const next = { ...area, x1: Math.min(Math.max(0, e.clientX - h.left), h.width), y1: Math.min(Math.max(0, e.clientY - h.top), h.height) };
+    setArea(next);
+    setMarks(inBox(next));
+  }
+  function areaUp() {
+    if (!areaDrag || !area) return;
+    setAreaDrag(false);
+    const layer = textLayer.current;
+    const h = holder.current!.getBoundingClientRect();
+    const [l, r, top, bottom] = [Math.min(area.x0, area.x1), Math.max(area.x0, area.x1), Math.min(area.y0, area.y1), Math.max(area.y0, area.y1)];
+    const info = layer && r - l > 6 && bottom - top > 6 ? classifyArea(layer, { left: h.left + l, right: h.left + r, top: h.top + top, bottom: h.top + bottom }) : null;
+    if (!info) return clearArea();
+    setPick({ x: Math.max(4, l), y: Math.min(bottom + 8, h.height - 34), info, kind: "auto" });
+  }
 
   function addText() {
     if (!onAddText || !pick || added) return;
     onAddText(segmentsToDoc(toSegments(pick.info, pick.kind)));
     setAdded(true);
-    window.getSelection()?.removeAllRanges();
-    setTimeout(() => setPick(null), 900);
+    setTimeout(clearArea, 900);
   }
   const kindLabel = (p: NonNullable<typeof pick>) =>
     p.kind === "auto"
@@ -190,7 +228,7 @@ export function PdfSlides({
   const total = doc?.numPages ?? 0;
   const go = (d: number) => {
     setSel(null);
-    setPick(null);
+    clearArea();
     setPage((p) => Math.min(Math.max(1, p + d), total || 1));
   };
 
@@ -244,6 +282,31 @@ export function PdfSlides({
           <div ref={holder} className="relative m-auto">
             <canvas ref={canvas} className="block shadow-lg" />
             <div ref={textLayer} className="textLayer" />
+            {onAddText && !selecting && (
+              <div
+                className="absolute inset-0 cursor-crosshair touch-none select-none"
+                onPointerDown={areaDown}
+                onPointerMove={areaMove}
+                onPointerUp={areaUp}
+                onPointerCancel={areaUp}
+                onKeyDown={(e) => e.key === "Escape" && clearArea()}
+              >
+                {marks.map((m, k) => (
+                  <span key={k} className="pointer-events-none absolute rounded-[3px] bg-[#2383e2]/20" style={{ left: m.x - 2, top: m.y - 1, width: m.w + 4, height: m.h + 2 }} />
+                ))}
+                {area && (
+                  <span
+                    className={`pointer-events-none absolute rounded-md border-[1.5px] border-[#2383e2] ${areaDrag ? "bg-[#2383e2]/[.06]" : "border-dashed bg-transparent"}`}
+                    style={{ left: Math.min(area.x0, area.x1), top: Math.min(area.y0, area.y1), width: Math.abs(area.x1 - area.x0), height: Math.abs(area.y1 - area.y0) }}
+                  />
+                )}
+                {!area && !pick && (
+                  <span className="pointer-events-none absolute top-2 left-1/2 -translate-x-1/2 rounded-full bg-black/55 px-3 py-1 text-[11px] whitespace-nowrap text-white opacity-0 transition-opacity [div:hover>&]:opacity-100">
+                    {t("Arrastra un recuadro sobre lo que quieras pasar")}
+                  </span>
+                )}
+              </div>
+            )}
             {pick && !selecting && (
               <span
                 className="absolute z-10 flex items-center gap-1 rounded-lg bg-[#2383e2] p-0.5 text-xs font-semibold whitespace-nowrap text-white shadow-lg"

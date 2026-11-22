@@ -1242,4 +1242,5 @@ export const en: Record<string, string> = {
   "Cambiar cómo se pega (título, lista, tabla, texto)": "Change how it's pasted (title, list, table, text)",
   "Contada como bien": "Counted as right",
   "Lo hice bien": "I got it right",
+  "Arrastra un recuadro sobre lo que quieras pasar": "Drag a box over what you want to bring over",
 };

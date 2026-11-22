@@ -25,11 +25,16 @@ export type SelectionInfo = { lines: Line[]; ratio: number; segments: Segment[] 
 
 export const SEGMENT_LABEL: Record<Segment["type"], string> = { h1: "Título", h2: "Título", h3: "Título", text: "Texto", bullet: "Lista", numbered: "Lista", table: "Tabla" };
 
-// The text layer's pieces the selection touches, measured, and the page's
-// usual (body) letter size.
+// The text layer's pieces, and the page's usual (body) letter size.
+const pieces = (layer: HTMLElement) => [...layer.querySelectorAll<HTMLElement>("span")].filter((s) => s.textContent?.trim() && !s.classList.contains("markedContent"));
+const fsOf = (s: HTMLElement) => parseFloat(getComputedStyle(s).fontSize) || s.getBoundingClientRect().height;
+const measure = (s: HTMLElement): Span => {
+  const r = s.getBoundingClientRect();
+  return { text: s.textContent ?? "", left: r.left, right: r.right, top: r.top, bottom: r.bottom, fs: fsOf(s) };
+};
+
 function selectedSpans(layer: HTMLElement, sel: Selection): { mine: Span[]; body: number } {
-  const all = [...layer.querySelectorAll<HTMLElement>("span")].filter((s) => s.textContent?.trim() && !s.classList.contains("markedContent"));
-  const fsOf = (s: HTMLElement) => parseFloat(getComputedStyle(s).fontSize) || s.getBoundingClientRect().height;
+  const all = pieces(layer);
   const mine = all.filter((s) => {
     try {
       return sel.containsNode(s, true);
@@ -37,11 +42,22 @@ function selectedSpans(layer: HTMLElement, sel: Selection): { mine: Span[]; body
       return false;
     }
   });
-  const measure = (s: HTMLElement): Span => {
-    const r = s.getBoundingClientRect();
-    return { text: s.textContent ?? "", left: r.left, right: r.right, top: r.top, bottom: r.bottom, fs: fsOf(s) };
-  };
   return { mine: mine.map(measure), body: median(all.map(fsOf).filter(Boolean)) };
+}
+
+export type Area = { left: number; top: number; right: number; bottom: number };
+
+// The pieces inside a box drawn on the page (screen coordinates): a piece
+// counts when its middle is in the box, so a box that grazes the line
+// above or below doesn't drag it in.
+export function spansInArea(layer: HTMLElement, a: Area): { mine: Span[]; body: number } {
+  const all = pieces(layer).map((s) => ({ s, m: measure(s) }));
+  const mine = all.filter(({ m }) => {
+    const x = (m.left + m.right) / 2;
+    const y = (m.top + m.bottom) / 2;
+    return x >= a.left && x <= a.right && y >= a.top && y <= a.bottom;
+  });
+  return { mine: mine.map((x) => x.m), body: median(all.map((x) => x.m.fs).filter(Boolean)) };
 }
 
 // Pieces → lines (same height), and each line → cells (split by a wide gap).
@@ -250,14 +266,16 @@ function segment(lines: Line[], body: number): Segment[] {
 // Lines broken by the page width → one paragraph; "infor-" + "mación" → "información".
 const joinWrapped = (parts: string[]) => parts.reduce((acc, p) => (acc && /\p{L}-$/u.test(acc) ? acc.slice(0, -1) + p : acc ? `${acc} ${p}` : p), "");
 
-export function classifySelection(layer: HTMLElement, sel: Selection): SelectionInfo | null {
-  const { mine, body } = selectedSpans(layer, sel);
+function classify({ mine, body }: { mine: Span[]; body: number }): SelectionInfo | null {
   if (!mine.length) return null;
   const lines = toLines(mine).filter((l) => l.text);
   if (!lines.length) return null;
   const fs = median(lines.map((l) => l.fs));
   return { lines, ratio: body ? fs / body : 1, segments: segment(lines, body) };
 }
+
+export const classifySelection = (layer: HTMLElement, sel: Selection) => classify(selectedSpans(layer, sel));
+export const classifyArea = (layer: HTMLElement, a: Area) => classify(spansInArea(layer, a));
 
 // The selection pasted as one chosen kind ("auto" keeps each piece's own).
 export function toSegments(info: SelectionInfo, kind: Kind): Segment[] {

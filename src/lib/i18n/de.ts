@@ -1242,4 +1242,5 @@ export const de: Record<string, string> = {
   "Cambiar cómo se pega (título, lista, tabla, texto)": "Ändern, wie es eingefügt wird (Titel, Liste, Tabelle, Text)",
   "Contada como bien": "Als richtig gezählt",
   "Lo hice bien": "Ich hatte es richtig",
+  "Arrastra un recuadro sobre lo que quieras pasar": "Zieh einen Rahmen über das, was du übernehmen willst",
 };
