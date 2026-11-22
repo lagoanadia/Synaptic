@@ -79,9 +79,14 @@ export default async function ReviewPage({
       after(() => job.catch(() => {}));
       // Most of the round without its quiz version: worth waiting a little
       // longer than when it's just one or two cards.
-      const wait = start.filter(needsQuizText).length > start.length / 2 ? 8000 : 2500;
+      const wait = start.filter(needsQuizText).length > start.length / 2 ? 6000 : 2500;
       pool = await Promise.race([job.catch(() => start), new Promise<typeof start>((r) => setTimeout(() => r(start), wait))]);
     }
+    // Cards still without their quiz version sit this round out (they're
+    // being written for the next one) rather than show other cards'
+    // answers as options — unless that would leave almost nothing.
+    const ready = pool.filter((c) => !needsQuizText(c));
+    if (ready.length >= Math.min(4, pool.length)) pool = ready;
   }
   const cardItems: LearnItem[] = pool.map((c) => ({
     id: c.id,

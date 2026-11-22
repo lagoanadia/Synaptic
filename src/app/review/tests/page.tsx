@@ -2,7 +2,10 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { accessiblePursuits } from "@/lib/reviewData";
+import { accessiblePursuits, getCards } from "@/lib/reviewData";
+import { after } from "next/server";
+import { aiBudget } from "@/lib/access";
+import { needsQuizText, withDistractors } from "@/lib/quizDistractors";
 import { folderColor } from "@/lib/covers";
 import { getLang, getT } from "@/lib/i18n/server";
 import { LOCALE } from "@/lib/i18n";
@@ -17,6 +20,17 @@ export default async function TestsPage() {
   const userId = session.user.id;
   const t = await getT();
   const locale = LOCALE[await getLang()];
+  // While you look at this list, the quiz versions of cards that don't have
+  // one yet get written, so "Repasar lo que falta" starts without waiting.
+  const email = session.user.email;
+  after(async () => {
+    const todo = (await getCards(userId, { kind: "all" })).filter(needsQuizText).slice(0, 12);
+    if (!todo.length) return;
+    const budget = await aiBudget(userId, email);
+    if (await budget.check()) return;
+    const done = await withDistractors(todo);
+    if (done !== todo) await budget.charge();
+  });
 
   const [tests, folders, withoutCards] = await Promise.all([
     prisma.savedTest.findMany({ where: { userId }, orderBy: { updatedAt: "desc" }, take: 100 }),

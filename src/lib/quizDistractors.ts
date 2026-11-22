@@ -6,14 +6,25 @@ import { answerStandsOut } from "@/lib/learn";
 
 // Fills in what a quiz needs per card and the card doesn't have yet: a
 // short question and 2-6 word answer for the quiz, three equally short
-// plausible wrong answers, and a vague hint. One AI call for up to
-// 12 cards; results are saved. On failure the cards come back unchanged
+// plausible wrong answers, and a vague hint. Up to 12 cards, in batches
+// of 4 at once; results are saved. On failure the cards come back unchanged
 // (the quiz then uses same-subject answers and no hint).
 export async function withDistractors(cards: ReviewCard[], limit = 12): Promise<ReviewCard[]> {
   // Also cards whose right answer gives itself away by being the longest.
   const missing = cards.filter((c) => needsQuizText(c)).slice(0, limit);
   if (missing.length === 0) return cards;
+  // Small batches side by side: a round's worth comes back in a few
+  // seconds instead of one long answer for all of them.
+  const batches: ReviewCard[][] = [];
+  for (let i = 0; i < missing.length; i += 4) batches.push(missing.slice(i, i + 4));
+  const done = await Promise.all(batches.map((b) => quizTextFor(b).catch(() => new Map<string, Partial<ReviewCard>>())));
+  const byId = new Map(done.flatMap((m) => [...m]));
+  if (byId.size === 0) return cards;
+  return cards.map((c) => (byId.has(c.id) ? { ...c, ...byId.get(c.id) } : c));
+}
 
+// One AI call for a few cards; what it wrote is saved and returned by id.
+async function quizTextFor(missing: ReviewCard[]): Promise<Map<string, Partial<ReviewCard>>> {
   const data = obj(
     await askJson(
       `For each flashcard below, write a SHORT multiple-choice version, read on a phone in a second:
@@ -28,7 +39,7 @@ All in the card's language.
 ${missing.map((c) => `id: ${c.id}\nsubject: ${c.pursuitTitle}${c.context ? ` / ${c.context}` : ""}\nQ: ${c.question}\nA: ${c.answer}`).join("\n\n")}
 
 Respond with ONLY JSON: {"items": [{"id": "...", "q": "...", "a": "...", "wrong": ["...", "...", "..."], "tf": {"s": "...", "t": true}, "hint": "..."}]}`,
-      { maxTokens: 5000 },
+      { maxTokens: 2200 },
     ),
   );
   const byId = new Map<string, { distractors?: string[]; hint?: string; quizQuestion?: string; quizAnswer?: string; tfStatement?: string; tfTrue?: boolean }>();
@@ -47,10 +58,9 @@ Respond with ONLY JSON: {"items": [{"id": "...", "q": "...", "a": "...", "wrong"
     if (Object.keys(update).length) byId.set(str(o.id, 60), update);
   }
   const updates = [...byId].filter(([id]) => missing.some((c) => c.id === id));
-  if (updates.length === 0) return cards;
-
+  if (updates.length === 0) return new Map();
   await prisma.$transaction(updates.map(([id, data]) => prisma.flashcard.update({ where: { id }, data })));
-  return cards.map((c) => (byId.has(c.id) ? { ...c, ...byId.get(c.id) } : c));
+  return new Map(updates);
 }
 
 // A card still lacking its short quiz version, wrong answers or hint.
