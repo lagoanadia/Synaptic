@@ -1,7 +1,7 @@
 import "server-only";
 import { arr, askJson, obj, str } from "@/lib/ai";
 import { excerptInSource } from "@/lib/internalize";
-import { parseQuiz, type QuizQuestion } from "@/lib/conceptQuiz";
+import { parseQuiz, shuffleQuiz, type QuizQuestion } from "@/lib/conceptQuiz";
 
 // Titles are shown as plain text: the model sometimes writes them in
 // Markdown ("Qué es **open source**"), so drop bold/italic/code markers.
@@ -178,7 +178,7 @@ export async function writeConceptQuiz(
 What it is: ${concept.explanation}
 ${parts ? `What it contains:\n${parts}\n` : ""}${concept.excerpt ? `Excerpt from the source:\n${concept.excerpt}\n` : ""}
 Mix the question types — use each at least once:
-- "choice": 4 options, exactly one right; wrong options must be plausible (common confusions), as long and as detailed as the right one (±20%), so it never stands out as the longest
+- "choice": 4 options, exactly one right; wrong options must be plausible (common confusions a student really makes). All four about the same length and detail — write the right one SHORT and plain and give the wrong ones the same amount of detail, so length never gives it away; don't let only the right one echo the question's words
 - "truefalse": a statement that is clearly true or clearly false per the material — make about half false
 - "blank": a sentence with one or two gaps, each written as ___ ; "accepted" has ONE list per gap, in order, with that gap's key word or term (1-2 words) and every reasonable way to write it (singular/plural, with or without article, the short form: e.g. ["sala del restaurante","sala","restaurante"])
 - "match": 3-5 pairs to connect (term → definition, item → its role…)
@@ -198,7 +198,7 @@ ${source.slice(0, 20000)}`,
       { maxTokens: 4000 },
     ),
   );
-  return parseQuiz(data.questions);
+  return shuffleQuiz(parseQuiz(data.questions));
 }
 
 // "Añadir al mapa": one concept the student names, explained from their

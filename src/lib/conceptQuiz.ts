@@ -112,6 +112,24 @@ export function isCorrect(q: QuizQuestion, a: QuizAnswer): boolean {
   }
 }
 
+// The AI tends to put the right option first: shuffle every question's
+// options (moving the answer with them), and the questions' order too.
+export function shuffleQuiz(qs: QuizQuestion[], rand: () => number = Math.random): QuizQuestion[] {
+  const mix = <T,>(a: T[]) => {
+    const b = [...a];
+    for (let i = b.length - 1; i > 0; i--) {
+      const j = Math.floor(rand() * (i + 1));
+      [b[i], b[j]] = [b[j], b[i]];
+    }
+    return b;
+  };
+  return mix(qs).map((q) => {
+    if (q.kind !== "choice") return q;
+    const order = mix(q.options.map((_, k) => k));
+    return { ...q, options: order.map((k) => q.options[k]), answer: order.indexOf(q.answer) };
+  });
+}
+
 // Score → the same verdicts "explain it back" used, so status rules stay.
 export function quizVerdict(correct: number, total: number): Verdict {
   if (total === 0) return "partly";

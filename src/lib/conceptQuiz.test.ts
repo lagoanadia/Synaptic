@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { gapOk, isCorrect, normalize, parseQuiz, quizVerdict, shuffledOrder } from "./conceptQuiz";
+import { gapOk, isCorrect, normalize, shuffleQuiz, parseQuiz, quizVerdict, shuffledOrder } from "./conceptQuiz";
 
 describe("parseQuiz", () => {
   it("keeps valid questions of every kind and drops broken ones", () => {
@@ -44,6 +44,17 @@ describe("grading", () => {
     const [m] = parseQuiz([{ kind: "match", prompt: "Une", pairs: [{ left: "A", right: "1" }, { left: "B", right: "2" }, { left: "C", right: "3" }] }]);
     expect(isCorrect(m, { 0: 0, 1: 1, 2: 2 })).toBe(true);
     expect(isCorrect(m, { 0: 1, 1: 0, 2: 2 })).toBe(false);
+  });
+  it("shuffles options and keeps the right one right", () => {
+    const [q] = parseQuiz([{ kind: "choice", prompt: "¿?", options: ["bien", "mal 1", "mal 2", "mal 3"], answer: 0 }]);
+    const seen = new Set<number>();
+    for (let n = 0; n < 40; n++) {
+      const [s] = shuffleQuiz([q]);
+      if (s.kind !== "choice") throw new Error();
+      expect(s.options[s.answer]).toBe("bien");
+      seen.add(s.answer);
+    }
+    expect(seen.size).toBeGreaterThan(1);
   });
   it("turns a score into a verdict", () => {
     expect(quizVerdict(5, 6)).toBe("got_it");
