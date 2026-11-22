@@ -65,7 +65,7 @@ export default async function ReviewPage({
   const practice = params.practice === "1" || (scope.kind === "pursuit" && dueCards.slice(0, left).length === 0);
   let pool = practice ? shuffle(allCards).slice(0, DAILY_CAP) : dueCards.slice(0, left);
   // Cards still without their short quiz version get it from the AI — but
-  // the game doesn't wait more than a moment for it: past that it starts
+  // the game doesn't wait long for it: past that it starts
   // with what there is (wrong answers borrowed from other cards, below) and
   // the AI finishes in the background, saved for next time.
   if (pool.some(needsQuizText)) {
@@ -77,7 +77,10 @@ export default async function ReviewPage({
         return filled;
       });
       after(() => job.catch(() => {}));
-      pool = await Promise.race([job.catch(() => start), new Promise<typeof start>((r) => setTimeout(() => r(start), 2500))]);
+      // Most of the round without its quiz version: worth waiting a little
+      // longer than when it's just one or two cards.
+      const wait = start.filter(needsQuizText).length > start.length / 2 ? 8000 : 2500;
+      pool = await Promise.race([job.catch(() => start), new Promise<typeof start>((r) => setTimeout(() => r(start), wait))]);
     }
   }
   const cardItems: LearnItem[] = pool.map((c) => ({

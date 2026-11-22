@@ -17,10 +17,11 @@ export async function withDistractors(cards: ReviewCard[], limit = 12): Promise<
   const data = obj(
     await askJson(
       `For each flashcard below, write a SHORT multiple-choice version, read on a phone in a second:
-- "q": the question in at most 16 words, same meaning (rephrase it so a short answer works).
+First, what to ask. Test the CONCEPT the card is about: what it is, what it's for, why, how it differs from a close one, when it applies. If the card asks about a detail of an example used to explain it (a price, an amount, "la licencia X", "la empresa A", a name or number someone picked), ask about the idea that example shows instead. Every question and statement must make sense on its own months later, with no notes in front: name the topic, and never lean on "el ejemplo", "la recomendación", "el caso", "esta empresa" or anything only the notes define.
+- "q": the question in at most 16 words.
 - "a": the correct answer in 4-10 words: a short phrase that fully answers, with the key detail ("El de hilos: comparten la memoria del proceso"). Not a long sentence, not a bare word.
-- "wrong": exactly 3 WRONG answers, each 4-10 words, same shape and length as "a" (±2 words), plausible to someone who half-remembers. Never correct or partially correct; no "all/none of the above".
-- "tf": a true/false version: "s" = one statement of at most 16 words about the same idea, "t" = whether it's true. Make it FALSE about half the time, by changing one key idea (never by adding "no"). It must test understanding (what something does, why, how things relate), never a specific number, version, name or value: if the card is about such a detail, state the concept behind it instead.
+- "wrong": exactly 3 WRONG answers, each 4-10 words, same shape and length as "a" (±2 words), plausible to someone who half-remembers (common confusions). Never correct or partially correct; no "all/none of the above". The four must differ in their idea, not just in one swapped word or letter ("licencia X / licencia Y"), and don't let only the right one echo the question.
+- "tf": a true/false version: "s" = one statement of at most 16 words about the same idea, clearly true or clearly false from the subject itself (not a vague claim), "t" = whether it's true. Make it FALSE about half the time, by changing one key idea (never by adding "no"). It must test understanding (what something does, why, how things relate), never a specific number, version, name or value: if the card is about such a detail, state the concept behind it instead.
 - "hint": one short sentence that nudges toward the answer WITHOUT giving it away.
 All in the card's language.
 
