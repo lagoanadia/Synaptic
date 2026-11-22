@@ -47,7 +47,7 @@ export function parseQuiz(raw: unknown): QuizQuestion[] {
       if (typeof q.answer === "boolean") out.push({ kind: "truefalse", prompt, answer: q.answer, why });
     } else if (q.kind === "blank") {
       const gaps = readGaps(q.accepted, gapCount(prompt));
-      if (gaps) out.push({ kind: "blank", prompt, gaps, why });
+      if (gaps) out.push({ kind: "blank", prompt, gaps: trimToGaps(prompt, gaps), why });
     } else if (q.kind === "match") {
       const pairs = list(q.pairs)
         .map((p) => (p && typeof p === "object" ? { left: s((p as Record<string, unknown>).left, 150), right: s((p as Record<string, unknown>).right, 200) } : null))
@@ -93,12 +93,51 @@ export function normalize(text: string): string {
 // A typed gap is right when it matches an accepted answer, or one holds the
 // other as whole words ("restaurante" for "sala del restaurante") — the
 // key word is what counts, not how much of the phrase was typed.
+// Singular and plural are the same answer ("conflicto" / "conflictos",
+// "versión" / "versiones"): words are compared without their plural ending.
+const stem = (w: string) => (w.length > 3 ? w.replace(/s$/, "").replace(/e$/, "") : w);
+const stems = (t: string) => normalize(t).split(" ").filter(Boolean).map(stem).join(" ");
+
+// The AI sometimes repeats in the answer words the sentence already has
+// around the gap ("evitando ___ de versiones" with the answer "conflictos
+// de versiones"): those words come off, so "conflictos" is the answer.
+export function trimToGaps(prompt: string, gaps: string[][]): string[][] {
+  const pieces = prompt.split(GAP);
+  const ws = (t: string) => normalize(t).split(" ").filter(Boolean);
+  return gaps.map((alts, k) => {
+    const before = ws(pieces[k] ?? "");
+    const after = ws(pieces[k + 1] ?? "");
+    const trimmed = alts.map((alt) => {
+      const raw = alt.trim().split(/\s+/);
+      const norm = raw.map((w) => normalize(w));
+      let start = 0;
+      let end = raw.length;
+      // Longest run at the end of the answer that starts the text after the gap.
+      for (let n = Math.min(after.length, end - 1); n > 0; n--) {
+        if (norm.slice(end - n, end).join(" ") === after.slice(0, n).join(" ")) {
+          end -= n;
+          break;
+        }
+      }
+      // And at its start, what ends the text before the gap.
+      for (let n = Math.min(before.length, end - 1); n > 0; n--) {
+        if (norm.slice(0, n).join(" ") === before.slice(before.length - n).join(" ")) {
+          start = n;
+          break;
+        }
+      }
+      return raw.slice(start, end).join(" ");
+    });
+    return [...new Set(trimmed.filter(Boolean))];
+  });
+}
+
 export function gapOk(accepted: string[], given: string): boolean {
-  const g = normalize(given);
+  const g = stems(given);
   if (!g) return false;
   const words = (s: string) => ` ${s} `;
   return accepted.some((x) => {
-    const a = normalize(x);
+    const a = stems(x);
     if (a === g) return true;
     const [short, long] = a.length < g.length ? [a, g] : [g, a];
     return short.length >= 4 && words(long).includes(words(short));
@@ -121,6 +160,17 @@ export function isCorrect(q: QuizQuestion, a: QuizAnswer): boolean {
       return q.pairs.every((_, i) => m[i] === i);
     }
   }
+}
+
+// The right option gives itself away by length: clearly longer than every
+// wrong one (or clearly shorter). Students learn to just pick the longest.
+export function lengthGiveaway(q: QuizQuestion): boolean {
+  if (q.kind !== "choice") return false;
+  const right = q.options[q.answer].length;
+  const wrong = q.options.filter((_, k) => k !== q.answer).map((o) => o.length);
+  const longest = Math.max(...wrong);
+  const shortest = Math.min(...wrong);
+  return (right > longest * 1.3 && right - longest > 12) || (right < shortest * 0.6 && shortest - right > 12);
 }
 
 // The AI tends to put the right option first: shuffle every question's

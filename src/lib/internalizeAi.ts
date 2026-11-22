@@ -1,7 +1,7 @@
 import "server-only";
 import { arr, askJson, obj, str } from "@/lib/ai";
 import { excerptInSource } from "@/lib/internalize";
-import { parseQuiz, shuffleQuiz, type QuizQuestion } from "@/lib/conceptQuiz";
+import { lengthGiveaway, parseQuiz, shuffleQuiz, type QuizQuestion } from "@/lib/conceptQuiz";
 
 // Titles are shown as plain text: the model sometimes writes them in
 // Markdown ("Qué es **open source**"), so drop bold/italic/code markers.
@@ -180,7 +180,7 @@ ${parts ? `What it contains:\n${parts}\n` : ""}${concept.excerpt ? `Excerpt from
 Mix the question types — use each at least once:
 - "choice": 4 options, exactly one right; wrong options must be plausible (common confusions a student really makes). All four about the same length and detail — write the right one SHORT and plain and give the wrong ones the same amount of detail, so length never gives it away; don't let only the right one echo the question's words
 - "truefalse": a statement that is clearly true or clearly false per the material — make about half false
-- "blank": a sentence with one or two gaps, each written as ___ ; "accepted" has ONE list per gap, in order, with that gap's key word or term (1-2 words) and every reasonable way to write it (singular/plural, with or without article, the short form: e.g. ["sala del restaurante","sala","restaurante"])
+- "blank": a sentence with one or two gaps, each written as ___ ; "accepted" has ONE list per gap, in order, with that gap's key word or term (1-2 words, only what goes IN the gap — never words the sentence already has around it) and every reasonable way to write it (singular/plural, with or without article, the short form: e.g. ["sala del restaurante","sala","restaurante"])
 - "match": 3-5 pairs to connect (term → definition, item → its role…)
 
 Ask about the concept itself: what it is, what it's for, how it differs from close ones, when it applies, what happens if it's missing. Analogies, metaphors and examples in the material only help explain it: at most ONE question may touch one, and never ask which part of an analogy maps to what. Not trivia or exact wording. Each question checks something different. Everything must be answerable from the material. Write in ${language}. "why" is a one-sentence explanation shown after answering.
@@ -198,7 +198,36 @@ ${source.slice(0, 20000)}`,
       { maxTokens: 4000 },
     ),
   );
-  return shuffleQuiz(parseQuiz(data.questions));
+  return shuffleQuiz(await evenOptions(parseQuiz(data.questions), language));
+}
+
+// Multiple-choice questions whose right option stands out by length get
+// their options rewritten to match (one short extra call, only when
+// needed). A rewrite that changes which option is right, or still gives
+// it away, is ignored and the question stays as it was.
+async function evenOptions(qs: QuizQuestion[], language: string): Promise<QuizQuestion[]> {
+  const bad = qs.flatMap((q, k) => (lengthGiveaway(q) && q.kind === "choice" ? [{ k, q }] : []));
+  if (!bad.length) return qs;
+  const data = obj(
+    await askJson(
+      `In these multiple-choice questions the right option is much longer (or shorter) than the wrong ones, so it's easy to guess. Rewrite the options so all 4 have about the same length (±15%) and detail: trim the right one to its essentials and give each wrong one plausible, specific detail of the same kind. Keep the same order and keep which option is right (index "answer"). Write in ${language}.
+
+${JSON.stringify(bad.map(({ q }) => (q.kind === "choice" ? { prompt: q.prompt, options: q.options, answer: q.answer } : null)))}
+
+Respond with ONLY JSON: {"questions": [{"options": ["...","...","...","..."]}]} — one entry per question, in the same order.`,
+      { maxTokens: 1500 },
+    ),
+  );
+  const fixed = arr(data.questions);
+  const out = [...qs];
+  bad.forEach(({ k, q }, i) => {
+    if (q.kind !== "choice") return;
+    const options = arr(obj(fixed[i]).options).map((o) => str(o, 200)).filter(Boolean);
+    if (options.length !== q.options.length || new Set(options).size !== options.length) return;
+    const next = { ...q, options };
+    if (!lengthGiveaway(next)) out[k] = next;
+  });
+  return out;
 }
 
 // "Añadir al mapa": one concept the student names, explained from their

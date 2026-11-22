@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { gapOk, isCorrect, normalize, shuffleQuiz, parseQuiz, quizVerdict, shuffledOrder } from "./conceptQuiz";
+import { gapOk, isCorrect, lengthGiveaway, normalize, shuffleQuiz, parseQuiz, quizVerdict, shuffledOrder } from "./conceptQuiz";
 
 describe("parseQuiz", () => {
   it("keeps valid questions of every kind and drops broken ones", () => {
@@ -33,6 +33,21 @@ describe("grading", () => {
     expect(flat.kind === "blank" && flat.gaps).toEqual([["libertad"], ["código abierto"]]);
     const [joined] = parseQuiz([{ kind: "blank", prompt: "a ___ b ___", accepted: ["libertad y código abierto"] }]);
     expect(isCorrect(joined, ["libertad", "código abierto"])).toBe(true);
+  });
+  it("spots a right option that stands out by length", () => {
+    const [long] = parseQuiz([{ kind: "choice", prompt: "¿Función de gradlew.bat?", options: ["Compila la app directamente sin usar Gradle", "Instala Gradle en el sistema operativo", "Lanza Gradle con la versión fijada por el proyecto sin necesidad de instalarlo en la máquina", "Elimina Gradle del sistema"], answer: 2 }]);
+    expect(lengthGiveaway(long)).toBe(true);
+    const [even] = parseQuiz([{ kind: "choice", prompt: "¿?", options: ["Lanza la versión fijada del proyecto", "Instala Gradle en todo el sistema", "Compila sin pasar nunca por Gradle", "Borra la caché global de Gradle"], answer: 0 }]);
+    expect(lengthGiveaway(even)).toBe(false);
+  });
+  it("takes off words the sentence already has, and forgives plurals", () => {
+    const [q] = parseQuiz([{ kind: "blank", prompt: "El wrapper evita ___ de versiones.", accepted: ["conflictos de versiones"] }]);
+    expect(q.kind === "blank" && q.gaps).toEqual([["conflictos"]]);
+    expect(isCorrect(q, ["conflicto"])).toBe(true);
+    expect(isCorrect(q, ["conflictos de versiones"])).toBe(true);
+    expect(gapOk(["versiones"], "versión")).toBe(true);
+    expect(gapOk(["clases"], "clase")).toBe(true);
+    expect(gapOk(["conflictos"], "errores")).toBe(false);
   });
   it("decodes HTML entities the AI writes", () => {
     const [q] = parseQuiz([{ kind: "truefalse", prompt: "El script &quot;gradlew.bat&quot; &amp; &#39;x&#39; &#x2192;", answer: false }]);
