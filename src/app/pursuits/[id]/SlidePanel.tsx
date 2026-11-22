@@ -60,7 +60,7 @@ export function SlidePanel({
   // Selected part of a slide (JPEG data URL) → into the note; an error or null.
   onTranscribe?: (image: string, page: number) => Promise<string | null>;
   // Text selected in a PDF (lines with sizes) → structured into the note.
-  onAddText?: (lines: string) => Promise<string | null>;
+  onAddText?: React.ComponentProps<typeof PdfSlides>["onAddText"];
   children: React.ReactNode;
 }) {
   const t = useT();

@@ -4,6 +4,16 @@ import { useT } from "@/app/LangProvider";
 import { ChevronLeft, ChevronRight } from "@/app/icons";
 import { useEffect, useRef, useState } from "react";
 import type { PDFDocumentProxy } from "pdfjs-dist";
+import { SEGMENT_LABEL, classifySelection, segmentsToDoc, toSegments, type Kind, type SelectionInfo } from "@/lib/pdfSelection";
+
+// How a selection can be pasted; "auto" is what was detected.
+const KINDS: { id: Kind; label: string }[] = [
+  { id: "auto", label: "Auto" },
+  { id: "text", label: "Texto" },
+  { id: "title", label: "Título" },
+  { id: "list", label: "Lista" },
+  { id: "table", label: "Tabla" },
+];
 
 type Box = { x0: number; y0: number; x1: number; y1: number };
 
@@ -13,8 +23,9 @@ type Box = { x0: number; y0: number; x1: number; y1: number };
 // while the pointer is over it. With onTranscribe: "Seleccionar", drag a
 // box over part of the slide (or take it whole) and send that image off
 // to be written into the note.
-// Selecting text on the page offers "Añadir a la página": the selected
-// lines (with their size and columns) go to onAddText to be structured.
+// Selecting text on the page offers "Añadir a la página": it's pasted as it
+// looks in the PDF (titles, lists, tables, paragraphs — lib/pdfSelection),
+// with a chip to paste it as another kind instead.
 export function PdfSlides({
   src,
   onTranscribe,
@@ -23,7 +34,7 @@ export function PdfSlides({
 }: {
   src: string;
   onTranscribe?: (image: string, page: number) => Promise<string | null>;
-  onAddText?: (lines: string) => Promise<string | null>;
+  onAddText?: (blocks: ReturnType<typeof segmentsToDoc>) => void;
   onFail?: () => void;
 }) {
   const t = useT();
@@ -43,8 +54,8 @@ export function PdfSlides({
   const [size, setSize] = useState({ w: 0, h: 0 });
   const textLayer = useRef<HTMLDivElement>(null);
   const holder = useRef<HTMLDivElement>(null);
-  const [pick, setPick] = useState<{ x: number; y: number; lines: string } | null>(null);
-  const [adding, setAdding] = useState<"idle" | "busy" | "done">("idle");
+  const [pick, setPick] = useState<{ x: number; y: number; text: string; info: SelectionInfo; kind: Kind } | null>(null);
+  const [added, setAdded] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -77,8 +88,13 @@ export function PdfSlides({
   useEffect(() => {
     if (!doc || !canvas.current || size.w === 0) return;
     let task: { cancel: () => void } | null = null;
+    // This pass's text layer: cancelled if the page is redrawn before it's
+    // done (otherwise two passes both fill it and the text comes out twice).
+    let layerTask: { cancel: () => void } | null = null;
+    let dead = false;
     (async () => {
       const p = await doc.getPage(page);
+      if (dead) return;
       const base = p.getViewport({ scale: 1 });
       const dpr = Math.max(window.devicePixelRatio || 1, 2);
       // Fit the width (less a margin), times the zoom; keep the canvas under
@@ -101,11 +117,22 @@ export function PdfSlides({
         const view = p.getViewport({ scale: css });
         layer.style.setProperty("--scale-factor", String(view.scale));
         const pdfjs = await import("pdfjs-dist");
-        new pdfjs.TextLayer({ textContentSource: p.streamTextContent(), container: layer, viewport: view }).render().catch(() => {});
+        if (dead) return;
+        const tl = new pdfjs.TextLayer({ textContentSource: p.streamTextContent(), container: layer, viewport: view });
+        layerTask = tl;
+        tl.render().catch(() => {});
       }
       await r.promise.catch(() => {});
     })();
-    return () => task?.cancel();
+    return () => {
+      dead = true;
+      task?.cancel();
+      try {
+        layerTask?.cancel();
+      } catch {
+        // already finished
+      }
+    };
   }, [doc, page, size, zoom]);
 
   // A text selection inside the page → the button, and the lines it covers.
@@ -115,12 +142,14 @@ export function PdfSlides({
       const s = window.getSelection();
       const layer = textLayer.current;
       if (!s || s.isCollapsed || !layer || !layer.contains(s.anchorNode) || !layer.contains(s.focusNode)) return setPick(null);
-      const lines = selectedLines(layer, s);
-      if (!lines) return setPick(null);
+      const info = classifySelection(layer, s);
+      if (!info) return setPick(null);
+      const text = s.toString();
       const r = s.getRangeAt(0).getBoundingClientRect();
       const h = holder.current!.getBoundingClientRect();
-      setAdding("idle");
-      setPick({ x: Math.max(4, r.left - h.left), y: Math.min(r.bottom - h.top + 6, h.height - 34), lines });
+      setAdded(false);
+      // The same selection keeps the kind picked for it.
+      setPick((cur) => ({ x: Math.max(4, r.left - h.left), y: Math.min(r.bottom - h.top + 6, h.height - 34), text, info, kind: cur?.text === text ? cur.kind : "auto" }));
     };
     document.addEventListener("mouseup", check);
     document.addEventListener("keyup", check);
@@ -132,19 +161,17 @@ export function PdfSlides({
     };
   }, [onAddText]);
 
-  async function addText() {
-    if (!onAddText || !pick || adding === "busy") return;
-    setAdding("busy");
-    setErr(null);
-    const e = await onAddText(pick.lines);
-    if (e) {
-      setAdding("idle");
-      return setErr(e);
-    }
-    setAdding("done");
+  function addText() {
+    if (!onAddText || !pick || added) return;
+    onAddText(segmentsToDoc(toSegments(pick.info, pick.kind)));
+    setAdded(true);
     window.getSelection()?.removeAllRanges();
     setTimeout(() => setPick(null), 900);
   }
+  const kindLabel = (p: NonNullable<typeof pick>) =>
+    p.kind === "auto"
+      ? `Auto · ${[...new Set(p.info.segments.map((x) => t(SEGMENT_LABEL[x.type])))].slice(0, 4).join(" + ")}`
+      : t(KINDS.find((k) => k.id === p.kind)!.label);
 
   // Ctrl/⌘ + wheel zooms (also a trackpad pinch, which arrives the same way).
   useEffect(() => {
@@ -218,16 +245,25 @@ export function PdfSlides({
             <canvas ref={canvas} className="block shadow-lg" />
             <div ref={textLayer} className="textLayer" />
             {pick && !selecting && (
-              <button
-                type="button"
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={addText}
-                disabled={adding === "busy"}
-                className="absolute z-10 rounded-lg bg-[#2383e2] px-3 py-1.5 text-xs font-semibold whitespace-nowrap text-white shadow-lg disabled:opacity-70"
+              <span
+                className="absolute z-10 flex items-center gap-1 rounded-lg bg-[#2383e2] p-0.5 text-xs font-semibold whitespace-nowrap text-white shadow-lg"
                 style={{ left: pick.x, top: pick.y }}
+                onMouseDown={(e) => e.preventDefault()}
               >
-                {adding === "busy" ? t("Ordenando…") : adding === "done" ? t("✓ Añadido") : t("+ Añadir a la página")}
-              </button>
+                {!added && (
+                  <button
+                    type="button"
+                    onClick={() => setPick((p) => p && { ...p, kind: KINDS[(KINDS.findIndex((k) => k.id === p.kind) + 1) % KINDS.length].id })}
+                    title={t("Cambiar cómo se pega (título, lista, tabla, texto)")}
+                    className="rounded-md bg-white/15 px-2 py-1 hover:bg-white/25"
+                  >
+                    {kindLabel(pick)}
+                  </button>
+                )}
+                <button type="button" onClick={addText} className="rounded-md px-2.5 py-1 hover:bg-white/10">
+                  {added ? t("✓ Añadido") : t("+ Añadir a la página")}
+                </button>
+              </span>
             )}
             {selecting && (
               <div
@@ -307,49 +343,4 @@ export function PdfSlides({
       {err && <p className="bg-[#2a2a2a] px-3 pb-2 text-center text-xs text-[#ff9b94]">{err}</p>}
     </div>
   );
-}
-
-// The selected text as lines: "[1.4] Title" (size next to the page's body
-// text) and " ⇥ " between cells that sit in separate columns.
-function selectedLines(layer: HTMLElement, sel: Selection): string | null {
-  const all = [...layer.querySelectorAll<HTMLElement>("span")].filter((s) => s.textContent?.trim() && !s.classList.contains("markedContent"));
-  const size = (s: HTMLElement) => s.getBoundingClientRect().height;
-  const sizes = all.map(size).filter(Boolean).sort((a, b) => a - b);
-  const body = sizes[Math.floor(sizes.length / 2)] || 1;
-  const mine = all
-    .filter((s) => {
-      try {
-        return sel.containsNode(s, true);
-      } catch {
-        return false;
-      }
-    })
-    .map((s) => {
-      const r = s.getBoundingClientRect();
-      return { text: s.textContent ?? "", left: r.left, right: r.right, mid: (r.top + r.bottom) / 2, h: r.height };
-    })
-    .sort((a, b) => a.mid - b.mid || a.left - b.left);
-  if (!mine.length) return null;
-  const rows: { mid: number; h: number; parts: typeof mine }[] = [];
-  for (const m of mine) {
-    const row = rows.find((r) => Math.abs(r.mid - m.mid) < m.h * 0.5);
-    if (row) {
-      row.parts.push(m);
-      row.h = Math.max(row.h, m.h);
-    } else rows.push({ mid: m.mid, h: m.h, parts: [m] });
-  }
-  return rows
-    .sort((a, b) => a.mid - b.mid)
-    .map((r) => {
-      const parts = r.parts.sort((a, b) => a.left - b.left);
-      let line = "";
-      parts.forEach((p, i) => {
-        const gap = i ? p.left - parts[i - 1].right : 0;
-        line += i === 0 ? p.text : gap > p.h * 0.9 ? ` ⇥ ${p.text}` : gap > p.h * 0.15 && !/\s$/.test(line) ? ` ${p.text}` : p.text;
-      });
-      return `[${(r.h / body).toFixed(1)}] ${line.replace(/\s+/g, " ").trim()}`;
-    })
-    .filter((l) => l.length > 6)
-    .join("\n")
-    .slice(0, 12000);
 }

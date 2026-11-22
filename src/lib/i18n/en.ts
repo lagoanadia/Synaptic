@@ -1239,4 +1239,5 @@ export const en: Record<string, string> = {
   "Otro examen": "Another exam",
   "Siguiente concepto": "Next concept",
   "Hueco {0}": "Gap {0}",
+  "Cambiar cómo se pega (título, lista, tabla, texto)": "Change how it's pasted (title, list, table, text)",
 };

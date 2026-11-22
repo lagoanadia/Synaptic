@@ -1239,4 +1239,5 @@ export const de: Record<string, string> = {
   "Otro examen": "Noch ein Test",
   "Siguiente concepto": "Nächstes Konzept",
   "Hueco {0}": "Lücke {0}",
+  "Cambiar cómo se pega (título, lista, tabla, texto)": "Ändern, wie es eingefügt wird (Titel, Liste, Tabelle, Text)",
 };

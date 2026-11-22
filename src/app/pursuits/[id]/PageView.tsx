@@ -28,7 +28,7 @@ import {
   organizeDumps,
   reorganizeDump,
   updateBrainDump,
-  structurePdfSelection, transcribeSlide,
+  transcribeSlide,
   updateNote,
 } from "./actions";
 
@@ -411,11 +411,8 @@ export function PageView({ pursuit, crumbs, dump, note, slides, terms, stale: st
             editorRef.current?.chain().focus().insertContent(textToDoc(r.text).content ?? []).run();
             return null;
           }}
-          onAddText={async (lines) => {
-            const r = await structurePdfSelection(pursuit.id, lines);
-            if (r.error || !r.text) return r.error ?? t("Inténtalo de nuevo");
-            editorRef.current?.chain().focus().insertContent(textToDoc(r.text).content ?? []).run();
-            return null;
+          onAddText={(blocks) => {
+            editorRef.current?.chain().focus().insertContent(blocks).run();
           }}
         >
           <div className="lg:pl-6">{page}</div>
