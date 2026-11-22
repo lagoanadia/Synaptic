@@ -172,6 +172,7 @@ export function RichEditor({
   terms = [],
   onBoard,
   onMindMap,
+  onImageToText,
 }: {
   initialText: string;
   onChange: (text: string) => void;
@@ -197,6 +198,9 @@ export function RichEditor({
   onBoard?: () => Promise<string>;
   // Toolbar mind map: the AI maps the page into a board (its URL) or an error.
   onMindMap?: () => Promise<{ error: string | null; src?: string }>;
+  // A pasted screenshot can be turned into text: the image (a JPEG data
+  // URL) → its text, or an error.
+  onImageToText?: (image: string) => Promise<{ error: string | null; text?: string }>;
 }) {
   const t = useT();
   const placeholder = placeholderProp ?? t("Escribe, o usa # para un título, - para una lista, ! para un aviso…");
@@ -206,10 +210,14 @@ export function RichEditor({
   const [blockMenu, setBlockMenu] = useState(false);
   const hideHint = useRef<number | null>(null);
   const uploadRef = useRef(onUploadImage);
+  const toTextRef = useRef(onImageToText);
+  // A screenshot just pasted: offer to write it out as text.
+  const [offer, setOffer] = useState<{ src: string; file: File } | null>(null);
   const pdfRef = useRef(onUploadPdf);
   const onChangeRef = useRef(onChange);
   useEffect(() => {
     uploadRef.current = onUploadImage;
+    toTextRef.current = onImageToText;
     pdfRef.current = onUploadPdf;
     onChangeRef.current = onChange;
   });
@@ -230,7 +238,7 @@ export function RichEditor({
     return (f.type.startsWith("image/") && !!uploadRef.current) || (isPdf(f) && !!pdfRef.current);
   }
   // Images and PDFs (as cards), in the order given.
-  async function insertImages(editor: Editor, files: File[]) {
+  async function insertImages(editor: Editor, files: File[], pasted = false) {
     setUploading(true);
     try {
       for (const file of files) {
@@ -241,6 +249,7 @@ export function RichEditor({
         } else if (uploadRef.current) {
           const url = await uploadRef.current(file);
           editor.chain().focus().setImage({ src: url }).run();
+          if (pasted && files.length === 1 && toTextRef.current) setOffer({ src: url, file });
         }
       }
     } finally {
@@ -279,7 +288,7 @@ export function RichEditor({
       handlePaste: (view, event) => {
         const files = [...(event.clipboardData?.files ?? [])].filter(accepted);
         if (files.length && editorInstance.current) {
-          insertImages(editorInstance.current, files);
+          insertImages(editorInstance.current, files, true);
           return true;
         }
         // Plain text with "- ", "1. ", "# " lines (notes, ChatGPT, a .txt):
@@ -520,6 +529,7 @@ export function RichEditor({
           </div>
         )}
         {uploading && <span className="absolute top-0 right-0 text-xs text-ink-faint">{t("Subiendo…")}</span>}
+        {offer && onImageToText && <ImageToText editor={editor} wrap={wrap} offer={offer} onImageToText={onImageToText} onDone={() => setOffer(null)} />}
       </div>
       </>
     );
@@ -961,6 +971,106 @@ function BlockMenu({ editor, pos, onMove, onDone }: { editor: Editor; pos: numbe
           )}
         </>
       )}
+    </div>
+  );
+}
+
+// The pasted image as a JPEG data URL, at most 1600px wide (what the
+// slide reader takes).
+async function asJpeg(file: File): Promise<string> {
+  const bmp = await createImageBitmap(file);
+  const f = Math.min(1, 1600 / bmp.width);
+  const c = document.createElement("canvas");
+  c.width = Math.round(bmp.width * f);
+  c.height = Math.round(bmp.height * f);
+  const g = c.getContext("2d")!;
+  g.fillStyle = "#fff";
+  g.fillRect(0, 0, c.width, c.height);
+  g.drawImage(bmp, 0, 0, c.width, c.height);
+  return c.toDataURL("image/jpeg", 0.85);
+}
+
+// Under a screenshot just pasted: "¿Es texto? Lo puedo escribir por ti" —
+// the AI reads it and the text takes the image's place; or keep the image.
+function ImageToText({
+  editor,
+  wrap,
+  offer,
+  onImageToText,
+  onDone,
+}: {
+  editor: Editor;
+  wrap: React.RefObject<HTMLDivElement | null>;
+  offer: { src: string; file: File };
+  onImageToText: (image: string) => Promise<{ error: string | null; text?: string }>;
+  onDone: () => void;
+}) {
+  const t = useT();
+  const [at, setAt] = useState<{ top: number; left: number; width: number } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const findImage = () => {
+    let pos = -1;
+    editor.state.doc.descendants((n, p) => {
+      if (pos < 0 && n.type.name === "image" && n.attrs.src === offer.src) pos = p;
+      return pos < 0;
+    });
+    return pos;
+  };
+
+  // Follow the image as the page changes; gone (deleted, undone) → gone too.
+  useEffect(() => {
+    const place = () => {
+      const img = editor.view.dom.querySelector<HTMLImageElement>(`img[src="${CSS.escape(offer.src)}"]`);
+      const box = wrap.current?.getBoundingClientRect();
+      if (!img || !box) return onDone();
+      const r = img.getBoundingClientRect();
+      setAt({ top: r.bottom - box.top + 6, left: r.left - box.left, width: Math.max(300, r.width) });
+    };
+    const first = requestAnimationFrame(place);
+    const img = editor.view.dom.querySelector<HTMLImageElement>(`img[src="${CSS.escape(offer.src)}"]`);
+    img?.addEventListener("load", place);
+    editor.on("update", place);
+    window.addEventListener("resize", place);
+    return () => {
+      cancelAnimationFrame(first);
+      img?.removeEventListener("load", place);
+      editor.off("update", place);
+      window.removeEventListener("resize", place);
+    };
+  }, [editor, wrap, offer.src, onDone]);
+
+  async function toText() {
+    setBusy(true);
+    setError(null);
+    try {
+      const r = await onImageToText(await asJpeg(offer.file));
+      if (r.error || !r.text) throw new Error(r.error ?? t("Inténtalo de nuevo"));
+      const pos = findImage();
+      if (pos < 0) return onDone();
+      const nodes = editor.schema.nodeFromJSON({ type: "doc", content: textToDoc(r.text).content ?? [] }).content;
+      editor.view.dispatch(editor.state.tr.replaceWith(pos, pos + 1, nodes));
+      onDone();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t("Inténtalo de nuevo"));
+      setBusy(false);
+    }
+  }
+
+  if (!at) return null;
+  return (
+    <div
+      className="pop-panel absolute z-20 flex flex-wrap items-center gap-1.5 rounded-xl bg-white py-1.5 pr-1.5 pl-3 text-[13px] shadow-[0_0_0_1px_rgba(15,15,15,.07),0_8px_20px_-8px_rgba(15,15,15,.3)] animate-[pop-in_140ms_ease-out]"
+      style={{ top: at.top, left: at.left, width: at.width }}
+      onMouseDown={(e) => e.preventDefault()}
+    >
+      <span className={`min-w-0 flex-1 ${error ? "text-red-500" : "text-ink-muted"}`}>{error ?? (busy ? t("Leyendo la captura…") : t("¿Es texto? Lo puedo escribir por ti."))}</span>
+      <button type="button" onClick={toText} disabled={busy} className="rounded-full bg-accent px-3 py-1.5 font-semibold text-white hover:brightness-95 disabled:opacity-60">
+        {t("Aa Pasar a texto")}
+      </button>
+      <button type="button" onClick={onDone} disabled={busy} className="rounded-full bg-chip px-3 py-1.5 font-semibold text-ink hover:bg-hover disabled:opacity-60">
+        {t("Dejar imagen")}
+      </button>
     </div>
   );
 }

@@ -307,6 +307,7 @@ export function PageView({ pursuit, crumbs, dump, note, slides, terms, stale: st
           setDirty((d) => (d[view] === changed ? d : { ...d, [view]: changed }));
         }}
         onUploadImage={(file) => uploadToBlob(pursuit.id, file, file.name, "image")}
+        onImageToText={(image) => transcribeSlide(pursuit.id, image)}
         onUploadPdf={async (file) => {
           const url = await uploadToBlob(pursuit.id, file, file.name, "slides");
           // Also among the folder's slides, so the panel's "+" lists it.

@@ -1258,4 +1258,7 @@ export const en: Record<string, string> = {
   "Verde": "Green",
   "Rojo": "Red",
   "Gris": "Grey",
+  "¿Es texto? Lo puedo escribir por ti.": "Is it text? I can write it out for you.",
+  "Aa Pasar a texto": "Aa Turn into text",
+  "Dejar imagen": "Keep image",
 };

@@ -1258,4 +1258,7 @@ export const de: Record<string, string> = {
   "Verde": "Grün",
   "Rojo": "Rot",
   "Gris": "Grau",
+  "¿Es texto? Lo puedo escribir por ti.": "Ist das Text? Ich kann ihn für dich abtippen.",
+  "Aa Pasar a texto": "Aa In Text umwandeln",
+  "Dejar imagen": "Bild behalten",
 };
