@@ -34,6 +34,11 @@ model User {
   // Home page blocks (lib/blocks.ts); null = defaults.
   homeBlocks Json?
 
+  // Repasar's rewards: ✦ earned from each test, and the avatar costumes
+  // bought with them (ids from lib/avatar.ts COSTUMES).
+  stars    Int      @default(0)
+  costumes String[] @default([])
+
   // What the welcome flow wrote as an example ({ topic, dumps, notes,
   // flashcards } ids), so "Quitar lo de ejemplo" can remove exactly that.
   sampleContent Json?

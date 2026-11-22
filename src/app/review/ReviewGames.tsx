@@ -1,5 +1,7 @@
 "use client";
 
+import { STARS_EVENT, Wardrobe } from "./Wardrobe";
+import { earnStars } from "./wardrobe";
 import { useT } from "@/app/LangProvider";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
@@ -83,6 +85,7 @@ export function Stage({
           ))}
         </div>
         {streak !== undefined && <Streak n={streak} className="hidden sm:flex" />}
+        <Wardrobe />
       </header>
       <main className="flex flex-1 flex-col items-center justify-center gap-4 px-4 pb-10 sm:gap-7">{children}</main>
       </div>
@@ -194,6 +197,10 @@ function shuffled<T>(xs: T[]): T[] {
 
 // Each item goes to spaced repetition once, when the session ends.
 function report(items: LearnItem[], misses: Record<string, number>) {
+  // ✦ for the avatar's costumes: by how many were right first time.
+  earnStars(items.filter((i) => !misses[i.id]).length, items.length)
+    .then((stars) => stars !== null && window.dispatchEvent(new CustomEvent(STARS_EVENT, { detail: stars })))
+    .catch(() => {});
   for (const item of items) {
     const m = misses[item.id] ?? 0;
     if (item.kind === "card") reviewFlashcard(item.pursuitId, item.id, qualityFor(m)).catch(() => {});

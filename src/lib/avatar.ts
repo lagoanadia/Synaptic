@@ -141,6 +141,54 @@ const OUTFIT: Record<string, (c: string, id: string) => string> = {
   esmoquin: () => `<path d="${TORSO}" fill="#1e1e1e" ${S()}/><path d="M84,170 L100,226 L116,170 Z" fill="#fff" ${S()}/><path d="M88,180 L100,186 L112,180 L112,192 L100,186 L88,192 Z" fill="#1e1e1e" ${S(5)}/><circle cx="100" cy="204" r="2.2" fill="${INK}"/><circle cx="100" cy="214" r="2.2" fill="${INK}"/>`,
 };
 
+// Costumes: exclusive, only won in Repasar (✦ from each test buys them,
+// review/wardrobe.ts). Each one replaces the clothes and may put something
+// on the head: [body, on the head].
+const sparkle = (cx: number, cy: number, r: number) => {
+  let d = "";
+  for (let i = 0; i < 10; i++) {
+    const a = -Math.PI / 2 + (i * Math.PI) / 5;
+    const rr = i % 2 ? r * 0.45 : r;
+    d += (i ? "L" : "M") + (cx + Math.cos(a) * rr).toFixed(1) + "," + (cy + Math.sin(a) * rr).toFixed(1);
+  }
+  return d + "Z";
+};
+const COSTUME: Record<string, [string, string]> = {
+  graduado: [
+    `<path d="${TORSO}" fill="#1f2433" ${S()}/><path d="M80,170 L100,212 L120,170" fill="#2a78d6" ${S()}/><path d="M86,172 L100,200 L114,172" fill="#fff" ${S(2.4)}/>`,
+    `<path d="M70,70 L70,86 C86,96 114,96 130,86 L130,70" fill="#1f2433" ${S()}/><path d="M34,62 L100,36 L166,62 L100,88 Z" fill="#1f2433" ${S()}/><path d="M52,61 L100,42 L148,61" fill="none" stroke="#3a4257" stroke-width="3" stroke-linecap="round"/><circle cx="100" cy="62" r="4" fill="#f5b82e" ${S(2)}/><path d="M100,62 C122,66 150,70 156,78 L158,104" fill="none" stroke="#f5b82e" stroke-width="3" stroke-linecap="round"/><path d="M153,100 L163,100 L161,114 L155,114 Z" fill="#f5b82e" ${S(2)}/>`,
+  ],
+  mago: [
+    `<path d="${TORSO}" fill="#5b3fc4" ${S()}/><path d="M58,178 C70,168 84,166 90,172 L100,190 L110,172 C116,166 130,168 142,178 C132,190 116,194 100,196 C84,194 68,190 58,178 Z" fill="#7a5ce0" ${S()}/><circle cx="100" cy="192" r="5" fill="#f5d36a" ${S(2.4)}/>${[[50, 214], [140, 206], [96, 236], [160, 236]].map(([x, y]) => `<path d="${sparkle(x, y, 7)}" fill="#f5d36a"/>`).join("")}`,
+    `<path d="M52,70 C70,60 130,60 148,70 C130,76 70,76 52,70 Z" fill="#5b3fc4" ${S()}/><path d="M66,68 C80,40 92,8 118,-4 C112,20 128,44 134,68 Z" fill="#5b3fc4" ${S()}/><path d="${sparkle(104, 34, 8)}" fill="#f5d36a"/>`,
+  ],
+  astronauta: [
+    `<path d="${TORSO}" fill="#eef1f5" ${S()}/><path d="M66,168 C76,186 124,186 134,168 L134,178 C124,196 76,196 66,178 Z" fill="#9aa5b4" ${S()}/><rect x="112" y="204" width="34" height="22" rx="5" fill="#cfd6df" ${S(2.4)}/><circle cx="121" cy="215" r="3.5" fill="#e16259"/><circle cx="135" cy="215" r="3.5" fill="#2a78d6"/><path d="M60,206 L84,206 L84,222 L60,222 Z" fill="#2a78d6" ${S(2)}/>`,
+    `<circle cx="100" cy="112" r="68" fill="#bfe3ff" fill-opacity=".28" ${S()}/><path d="M60,88 C70,66 88,58 104,58" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" opacity=".8"/>`,
+  ],
+  heroe: [
+    `<path d="M24,250 C30,214 56,186 100,184 C144,186 170,214 176,250 Z" fill="#c0392b" ${S()}/><path d="${TORSO}" fill="#2a78d6" ${S()}/><path d="M84,196 L116,196 L100,224 Z" fill="#f5d36a" ${S(2.4)}/><path d="M76,172 L68,186 M124,172 L132,186" ${S()}/>`,
+    `<path fill-rule="evenodd" d="M60,110 C72,100 90,102 100,108 C110,102 128,100 140,110 L136,130 C124,126 112,128 100,132 C88,128 76,126 64,130 Z M70,118 a8,7 0 1,0 16,0 a8,7 0 1,0 -16,0 Z M114,118 a8,7 0 1,0 16,0 a8,7 0 1,0 -16,0 Z" fill="#c0392b" ${S(2.4)}/>`,
+  ],
+  dinosaurio: [
+    `<path d="${TORSO}" fill="#4caf6a" ${S()}/><path d="M70,250 C72,212 84,192 100,192 C116,192 128,212 130,250 Z" fill="#c9eab0" ${S(2.4)}/><path d="M80,210 L120,210 M76,226 L124,226" fill="none" stroke="#9fcf86" stroke-width="3" stroke-linecap="round"/>`,
+    `<path fill-rule="evenodd" d="M30,118 C30,72 62,44 100,44 C138,44 170,72 170,118 C170,150 154,170 130,176 L70,176 C46,170 30,150 30,118 Z M54,120 C54,90 74,74 100,74 C126,74 146,90 146,120 C146,148 126,164 100,164 C74,164 54,148 54,120 Z" fill="#4caf6a" ${S()}/>${[[62, 58], [82, 44], [104, 40], [126, 46], [144, 60]].map(([x, y], i) => `<path d="M${x - 9},${y + 10} L${x + 2 - (i - 2) * 2},${y - 12} L${x + 11},${y + 8} Z" fill="#f2c94c" ${S(2.4)}/>`).join("")}<circle cx="64" cy="96" r="3" fill="#2f7a47"/><circle cx="136" cy="96" r="3" fill="#2f7a47"/>`,
+  ],
+  realeza: [
+    `<path d="M14,250 C18,206 50,184 100,182 C150,184 182,206 186,250 Z" fill="#b3263a" ${S()}/><path d="${TORSO}" fill="#6a2c91" ${S()}/><path d="M50,186 C70,172 130,172 150,186 C140,200 60,200 50,186 Z" fill="#fff" ${S()}/>${[62, 82, 100, 118, 138].map((x) => `<path d="M${x},188 l2,5 l-4,0 Z" fill="${INK}"/>`).join("")}<circle cx="100" cy="216" r="6" fill="#f5b82e" ${S(2.4)}/>`,
+    `<path d="M62,72 L58,40 L78,56 L100,32 L122,56 L142,40 L138,72 Z" fill="#f5b82e" ${S()}/><path d="M62,72 L138,72 L136,82 L64,82 Z" fill="#e0a21f" ${S()}/><circle cx="100" cy="66" r="5" fill="#e16259" ${S(2)}/><circle cx="78" cy="68" r="3.5" fill="#2a78d6" ${S(2)}/><circle cx="122" cy="68" r="3.5" fill="#1baf7a" ${S(2)}/>`,
+  ],
+};
+// What each one costs in ✦, cheapest first.
+export const COSTUMES: { id: string; name: string; price: number }[] = [
+  { id: "graduado", name: "Graduado", price: 50 },
+  { id: "mago", name: "Mago", price: 120 },
+  { id: "astronauta", name: "Astronauta", price: 250 },
+  { id: "heroe", name: "Superhéroe", price: 400 },
+  { id: "dinosaurio", name: "Dinosaurio", price: 600 },
+  { id: "realeza", name: "Rey o reina", price: 800 },
+];
+
 export const HAIRS = Object.keys(HAIR_PARTS);
 export const EYES = Object.keys(EYE);
 export const BROWS = Object.keys(BROW);
@@ -162,11 +210,13 @@ export type Avatar = {
   extra: string;
   bg: number;
   star: boolean;
+  // A costume won in Repasar ("" = none): replaces the clothes.
+  costume: string;
 };
 
 export const DEFAULT_AVATAR: Avatar = {
   skin: 2, hair: "rizos", hairColor: 1, eyes: "puntos", brows: "arco", mouth: "sonrisa",
-  outfit: "camiseta", cloth: 2, glasses: "ninguna", extra: "nada", bg: 1, star: false,
+  outfit: "camiseta", cloth: 2, glasses: "ninguna", extra: "nada", bg: 1, star: false, costume: "",
 };
 
 const pick = (xs: readonly string[], v: unknown, d: string) => (typeof v === "string" && xs.includes(v) ? v : d);
@@ -189,6 +239,7 @@ export function parseAvatar(raw: unknown): Avatar {
     extra: pick(EXTRAS, o.extra, d.extra),
     bg: idx(BG_COLORS.length, o.bg, d.bg),
     star: o.star === true,
+    costume: typeof o.costume === "string" && o.costume in COSTUME ? o.costume : "",
   };
 }
 
@@ -200,7 +251,7 @@ export function randomAvatar(rand: () => number = Math.random): Avatar {
     skin: n(SKINS.length), hair: one(HAIRS), hairColor: n(HAIR_COLORS.length), eyes: one(EYES), brows: one(BROWS),
     mouth: one(MOUTHS), outfit: one(OUTFITS), cloth: n(CLOTH_COLORS.length),
     glasses: rand() < 0.7 ? "ninguna" : one(GLASSES), extra: rand() < 0.5 ? "nada" : one(EXTRAS),
-    bg: n(BG_COLORS.length), star: rand() < 0.3,
+    bg: n(BG_COLORS.length), star: rand() < 0.3, costume: "",
   };
 }
 
@@ -231,12 +282,12 @@ export function avatarSvg(input: Avatar, uid: string, view = "0 0 200 200", plai
 <g transform="translate(100 106) scale(0.86) translate(-100 -100)">
 <g transform="translate(0 -14)">${back && back !== "coletaAlta" ? BACK[back](hair) : ""}</g>
 <path d="M88,136 L112,136 L112,176 L88,176 Z" fill="${skin}"/><path d="M89,146 L89,174 M111,146 L111,174" ${S()}/>
-${OUTFIT[a.outfit](cloth, id)}
+${a.costume ? COSTUME[a.costume][0] : OUTFIT[a.outfit](cloth, id)}
 <g transform="translate(0 -14)">${back === "coletaAlta" ? BACK.coletaAlta(hair) : ""}${ears}<path d="${FACE}" fill="${skin}" ${S()}/>${capSvg}${a.extra === "pecas" ? FRECKLES : ""}
 <ellipse cx="74" cy="132" rx="11" ry="7" fill="url(#ck${id})"/><ellipse cx="126" cy="132" rx="11" ry="7" fill="url(#ck${id})"/>
 <g transform="translate(78 102) scale(0.7 1)">${BROW[a.brows](-1)}</g><g transform="translate(122 102) scale(0.7 1)">${BROW[a.brows](1)}</g>
 ${eye(pair[0], 78)}${eye(pair[1], 122)}<path d="M97,128 Q100,133 103,128" fill="none" ${S(4)}/>
-<g transform="translate(100 145) scale(1.18)">${MOUTH[a.mouth]}</g>${GLASS[a.glasses]}${EXTRA[a.extra]}</g></g></g></svg>`;
+<g transform="translate(100 145) scale(1.18)">${MOUTH[a.mouth]}</g>${GLASS[a.glasses]}${a.costume ? "" : EXTRA[a.extra]}${a.costume ? COSTUME[a.costume][1] : ""}</g></g></g></svg>`;
 }
 
 // @handle: 3-20 lowercase letters, digits, dot or underscore.

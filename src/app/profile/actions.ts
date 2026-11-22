@@ -18,7 +18,11 @@ async function me() {
 
 export async function saveAvatar(raw: unknown) {
   const id = await me();
-  await prisma.user.update({ where: { id }, data: { avatar: parseAvatar(raw) } });
+  // A costume can only be put on if it was won (Repasar's wardrobe).
+  const owned = await prisma.user.findUnique({ where: { id }, select: { costumes: true } });
+  const avatar = parseAvatar(raw);
+  if (avatar.costume && !owned?.costumes.includes(avatar.costume)) avatar.costume = "";
+  await prisma.user.update({ where: { id }, data: { avatar } });
   revalidatePath("/", "layout");
 }
 
