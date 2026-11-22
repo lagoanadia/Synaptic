@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { SHARED, UNSORTED, getCards, getLearnConcepts, type ReviewScope } from "@/lib/reviewData";
@@ -63,12 +64,20 @@ export default async function ReviewPage({
   // brush up on notes you already know.
   const practice = params.practice === "1" || (scope.kind === "pursuit" && dueCards.slice(0, left).length === 0);
   let pool = practice ? shuffle(allCards).slice(0, DAILY_CAP) : dueCards.slice(0, left);
+  // Cards still without their short quiz version get it from the AI — but
+  // the game doesn't wait more than a moment for it: past that it starts
+  // with what there is (wrong answers borrowed from other cards, below) and
+  // the AI finishes in the background, saved for next time.
   if (pool.some(needsQuizText)) {
     const budget = await aiBudget(userId, session.user.email);
     if (!(await budget.check())) {
-      const filled = await withDistractors(pool);
-      if (filled !== pool) await budget.charge();
-      pool = filled;
+      const start = pool;
+      const job = withDistractors(start).then(async (filled) => {
+        if (filled !== start) await budget.charge();
+        return filled;
+      });
+      after(() => job.catch(() => {}));
+      pool = await Promise.race([job.catch(() => start), new Promise<typeof start>((r) => setTimeout(() => r(start), 2500))]);
     }
   }
   const cardItems: LearnItem[] = pool.map((c) => ({

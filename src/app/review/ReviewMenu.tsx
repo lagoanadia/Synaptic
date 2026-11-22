@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link, { useLinkStatus } from "next/link";
 import { useState } from "react";
 import { useT } from "@/app/LangProvider";
 import { FOLDER_COVERS, type FolderCover } from "@/lib/covers";
@@ -55,10 +55,12 @@ export function ReviewMenu({ folders, pursuitId, unitId }: { folders: MenuFolder
               </button>
               <Link href={`/review?pursuit=${folder.id}`} title={t("Toda la asignatura")} aria-label={t("Toda la asignatura")} className={`${dot} ${ring(pursuitId === folder.id && !unitId)}`} style={{ ...drop(), background: color(folder) }}>
                 ∗
+                <Busy />
               </Link>
               {folder.units.map((u) => (
                 <Link key={u.id} href={`/review?pursuit=${folder.id}&unit=${u.id}`} title={u.name} aria-label={u.name} className={`${dot} bg-[#2383e2] ${ring(unitId === u.id)}`} style={drop()}>
                   {short(u.name)}
+                  <Busy />
                 </Link>
               ))}
             </>
@@ -66,6 +68,7 @@ export function ReviewMenu({ folders, pursuitId, unitId }: { folders: MenuFolder
             <>
               <Link href="/review" title={t("Todo")} aria-label={t("Todo")} className={`${dot} bg-white/15 ${ring(!pursuitId)}`} style={drop()}>
                 ∗
+                <Busy />
               </Link>
               {folders.map((f) => (
                 <button key={f.id} type="button" onClick={() => setInside(f.id)} title={f.title} aria-label={f.title} className={`${dot} ${ring(pursuitId === f.id)}`} style={{ ...drop(), background: color(f) }}>
@@ -78,4 +81,10 @@ export function ReviewMenu({ folders, pursuitId, unitId }: { folders: MenuFolder
       )}
     </div>
   );
+}
+
+// The dot just tapped spins while its questions load, so the tap shows.
+function Busy() {
+  const { pending } = useLinkStatus();
+  return pending ? <span aria-hidden className="pointer-events-none absolute -inset-1 animate-spin rounded-full border-2 border-white/25 border-t-white" /> : null;
 }
