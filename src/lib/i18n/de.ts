@@ -1252,4 +1252,10 @@ export const de: Record<string, string> = {
   "Todo IA": "Alles KI",
   "Todo mío": "Alles meins",
   "Fijar así": "So festlegen",
+  "Cambiar icono y color": "Symbol und Farbe ändern",
+  "Amarillo": "Gelb",
+  "Azul": "Blau",
+  "Verde": "Grün",
+  "Rojo": "Rot",
+  "Gris": "Grau",
 };

@@ -1252,4 +1252,10 @@ export const en: Record<string, string> = {
   "Todo IA": "All AI",
   "Todo mío": "All mine",
   "Fijar así": "Keep it like this",
+  "Cambiar icono y color": "Change icon and colour",
+  "Amarillo": "Yellow",
+  "Azul": "Blue",
+  "Verde": "Green",
+  "Rojo": "Red",
+  "Gris": "Grey",
 };

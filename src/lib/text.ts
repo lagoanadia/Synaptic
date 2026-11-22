@@ -66,7 +66,8 @@ export type ListBlock =
 
 export type NoteBlock =
   | { type: "heading"; level: 1 | 2 | 3; inline: InlineNode[] }
-  | { type: "callout"; inline: InlineNode[] }
+  // emoji/color: the callout's look (💡 yellow when not set).
+  | { type: "callout"; inline: InlineNode[]; emoji?: string; color?: CalloutColor }
   | ListBlock
   // indent: Tab levels (stored as two leading spaces each).
   | { type: "paragraph"; inline: InlineNode[]; indent?: number }
@@ -111,8 +112,18 @@ function parseInline(line: string): InlineNode[] {
 
 // Any number of #s (level clamped to 3), space optional: "#02 Licencias" counts.
 const HEADING = /^(#+)\s*(.*)$/;
-// "! texto" or "!texto" — but not an image, "![…](…)".
+// "! texto" or "!texto" — but not an image, "![…](…)". Optionally a colour
+// right after the "!" and an emoji first: "!blue 📌 texto".
 const CALLOUT = /^!(?!\[)\s*(\S.*)$/;
+export const CALLOUT_COLORS = ["yellow", "blue", "green", "red", "gray"] as const;
+export type CalloutColor = (typeof CALLOUT_COLORS)[number];
+const CALLOUT_LOOK = /^!(yellow|blue|green|red|gray)?\s*(\p{Extended_Pictographic}\uFE0F?)?\s*(.*)$/u;
+export function calloutLook(line: string): { color?: CalloutColor; emoji?: string; text: string } {
+  const m = CALLOUT_LOOK.exec(line);
+  if (!m) return { text: line.replace(/^!\s*/, "") };
+  return { color: (m[1] as CalloutColor) || undefined, emoji: m[2] || undefined, text: m[3] };
+}
+export const calloutPrefix = (emoji?: string, color?: string) => `!${color && color !== "yellow" ? color : ""} ${emoji ? `${emoji} ` : ""}`;
 // Indentation (spaces) sets nesting. ○ and ▪ are nested bullet markers.
 const LIST_LINE = /^( *)(-|○|▪|\d+\.|[a-zA-Z]\.)\s+(.*)$/;
 // A table row is typed as `| cell | cell | cell |` — leading and trailing
@@ -209,7 +220,8 @@ function parseTextBlocks(text: string): NoteBlock[] {
 
     const callout = CALLOUT.exec(trimmed);
     if (callout) {
-      blocks.push({ type: "callout", inline: parseInline(callout[1]) });
+      const look = calloutLook(trimmed);
+      blocks.push({ type: "callout", inline: parseInline(look.text), ...(look.emoji ? { emoji: look.emoji } : {}), ...(look.color ? { color: look.color } : {}) });
       i++;
       continue;
     }

@@ -237,12 +237,23 @@ body:has(#landing, #login) .app-pad {
 .rich-editor ol[type="a"] { list-style: lower-alpha; }
 .rich-editor li > p { margin: 0.1em 0; }
 .rich-editor a { color: var(--color-accent); text-decoration: underline; }
-.rich-editor blockquote {
-  background: var(--color-callout);
-  border-left: 3px solid var(--color-accent);
-  border-radius: 0.75rem;
-  padding: 0.6em 0.9em;
-}
+/* Callouts (editor/callout.tsx, RichContent): an emoji and a soft colour,
+   no border. */
+.callout { display: flex; gap: 0.7em; align-items: flex-start; border-radius: 10px; padding: 0.75em 1em; margin: 0.35em 0; }
+.callout-emoji { flex: none; font-size: 1.2em; line-height: 1.45; border-radius: 6px; padding: 0 2px; cursor: pointer; }
+.callout-emoji:hover:not(:disabled) { background: rgb(0 0 0 / 0.06); }
+.callout-emoji:disabled { cursor: default; }
+.callout-yellow { background: #fbf3db; }
+.callout-blue { background: #e7f3f8; }
+.callout-green { background: #edf3ec; }
+.callout-red { background: #fdebec; }
+.callout-gray { background: #f1f1ef; }
+html.dark .callout-yellow { background: #3a3424; }
+html.dark .callout-blue { background: #1f3340; }
+html.dark .callout-green { background: #233529; }
+html.dark .callout-red { background: #3d2629; }
+html.dark .callout-gray { background: #2c2c2c; }
+html.dark .callout-emoji:hover:not(:disabled) { background: rgb(255 255 255 / 0.08); }
 .rich-editor pre {
   background: #1e1e2e;
   color: #e4e4ef;

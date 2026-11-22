@@ -20,6 +20,7 @@ import { ImageWithBoards } from "./Whiteboard";
 import { Column, Columns, convertBlock, setColumns, unsetColumns, type BlockKind } from "./columns";
 import { Placeholder } from "@tiptap/extensions";
 import { PdfCard, pdfTitle } from "./pdfCard";
+import { Callout } from "./callout";
 import { Indentation } from "./indentation";
 import { docToText, textToDoc } from "@/lib/richText";
 import { termMatches, type TermHint } from "@/lib/terms";
@@ -253,10 +254,12 @@ export function RichEditor({
     extensions: [
       StarterKit.configure({
         orderedList: false,
+        blockquote: false,
         link: { openOnClick: false, autolink: true, defaultProtocol: "https" },
         heading: { levels: [1, 2, 3] },
       }),
       LetterableOrderedList,
+      Callout,
       CalloutShortcut,
       TableKit.configure({ table: { resizable: false } }),
       ImageWithBoards,

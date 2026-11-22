@@ -1,5 +1,5 @@
 import type { JSONContent } from "@tiptap/core";
-import { COLS_CLOSE, COLS_NEXT, COLS_OPEN, parseNoteBlocks, pdfMarker, type InlineNode, type ListBlock, type NoteBlock } from "@/lib/text";
+import { COLS_CLOSE, COLS_NEXT, COLS_OPEN, calloutPrefix, parseNoteBlocks, pdfMarker, type InlineNode, type ListBlock, type NoteBlock } from "@/lib/text";
 
 // Stored text format (lib/text.ts shortcuts) ⇄ the editor's document tree.
 // Storage is unchanged; only editing is visual.
@@ -46,7 +46,7 @@ function blockToNode(b: NoteBlock): JSONContent {
     case "heading":
       return { type: "heading", attrs: { level: b.level }, content: inlineToNodes(b.inline) };
     case "callout":
-      return { type: "blockquote", content: [para(b.inline)] };
+      return { type: "blockquote", attrs: { emoji: b.emoji ?? null, color: b.color ?? null }, content: [para(b.inline)] };
     case "bulletList":
     case "numberedList":
     case "letteredList":
@@ -150,7 +150,7 @@ function nodeToText(n: JSONContent): string {
       return (n.content ?? [])
         .map((p) => inlineToText(p.content).replace(/\n/g, " "))
         .filter(Boolean)
-        .map((line) => `! ${line}`)
+        .map((line) => `${calloutPrefix(n.attrs?.emoji ? String(n.attrs.emoji) : undefined, n.attrs?.color ? String(n.attrs.color) : undefined)}${line}`)
         .join("\n");
     case "bulletList":
     case "orderedList":

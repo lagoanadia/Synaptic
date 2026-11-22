@@ -340,3 +340,13 @@ describe("inline code and loose callouts", () => {
     expect(c).toEqual({ type: "callout", inline: [{ type: "text", value: "Ojo con el Bundle" }] });
   });
 });
+
+describe("callout look", () => {
+  it("reads an emoji and a colour, and old callouts stay plain", async () => {
+    const { parseNoteBlocks } = await import("./text");
+    const { docToText, textToDoc } = await import("./richText");
+    expect(parseNoteBlocks("!blue 📌 En el oral")).toEqual([{ type: "callout", inline: [{ type: "text", value: "En el oral" }], emoji: "📌", color: "blue" }]);
+    expect(parseNoteBlocks("! ⚠️ Ojo")).toEqual([{ type: "callout", inline: [{ type: "text", value: "Ojo" }], emoji: "⚠️" }]);
+    for (const t of ["! Remember this", "!blue 📌 En el oral", "! ✅ Hecho", "!red Sin emoji"]) expect(docToText(textToDoc(t)).trim()).toBe(t);
+  });
+});

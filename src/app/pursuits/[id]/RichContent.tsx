@@ -141,9 +141,9 @@ function Blocks({ blocks, paragraphClassName }: { blocks: NoteBlock[]; paragraph
           }
           case "callout":
             return (
-              <div key={i} className="flex gap-3 rounded-md bg-callout p-4">
-                <span className="text-ink-faint">▤</span>
-                <p className="text-sm leading-relaxed">
+              <div key={i} className={`callout callout-${block.color ?? "yellow"}`}>
+                <span className="callout-emoji" aria-hidden>{block.emoji ?? "💡"}</span>
+                <p className="min-w-0 flex-1 leading-relaxed">
                   <Inline nodes={block.inline} />
                 </p>
               </div>
