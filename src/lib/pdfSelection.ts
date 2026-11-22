@@ -130,13 +130,18 @@ export function tablesFromLines(slice: Line[], lefts: number[]): string[][][] {
   // Key → definition tables (the usual kind): a row starts where the first
   // column has text, and lines with nothing there carry on the row above.
   // A first-column line in lower case only carries on when it sits as close
-  // as wrapped text does (a key that wraps), not a row's distance away.
-  if (cols >= 2 && rows.some((r) => r[0] != null) && rows.some((r) => r[0] == null)) {
-    const step = (k: number) => slice[k].mid - slice[k - 1].mid;
-    const tight = Math.min(...slice.slice(1).map((_, k) => step(k + 1)));
+  // as wrapped text does (a key that wraps: "Programa, proceso," then
+  // "servicio"), clearly closer than rows sit to each other.
+  const step = (k: number) => slice[k].mid - slice[k - 1].mid;
+  const allSteps = slice.slice(1).map((_, k) => step(k + 1));
+  const tight = Math.min(...allSteps);
+  const wide = Math.max(...allSteps);
+  const wrapped = (k: number) => k > 0 && step(k) < tight * 1.2 && step(k) < wide * 0.75;
+  const keyWraps = rows.some((r, k) => r[0] != null && CONT.test(r[0]) && wrapped(k));
+  if (cols >= 2 && rows.some((r) => r[0] != null) && (keyWraps || rows.some((r) => r[0] == null))) {
     const out: (string | null)[][] = [];
     rows.forEach((r, k) => {
-      const fresh = r[0] != null && !(k > 0 && CONT.test(r[0]) && step(k) < tight * 1.2);
+      const fresh = r[0] != null && !(CONT.test(r[0]) && wrapped(k));
       if (fresh || !out.length) out.push([...r]);
       else
         r.forEach((x, c) => {

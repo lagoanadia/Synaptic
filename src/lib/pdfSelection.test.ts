@@ -49,6 +49,32 @@ describe("pdf selection", () => {
     ]);
   });
 
+  it("keeps rows apart when a key wraps onto two lines", () => {
+    const s = segmentsFromSpans(
+      [
+        at("Programa, proceso,", 23, 0), at("Programa: fichero quieto. Proceso: programa ejecutándose. Servicio: proceso", 175, 0),
+        at("servicio", 23, 11), at("de fondo que arranca el sistema.", 175, 11),
+        at("PID", 23, 36), at("El número que identifica un proceso.", 175, 36),
+        at("Hilo", 23, 61), at("Una línea de ejecución dentro de un proceso.", 175, 61),
+        at("waitFor()", 23, 86), at("Espera a que acabe el hijo y da su código de salida.", 175, 86),
+        at("Interbloqueo por", 23, 111), at("El hijo espera a que lean su salida y el padre espera a que el hijo acabe.", 175, 111),
+        at("tubería", 23, 122),
+      ],
+      14,
+    );
+    expect(s).toEqual([
+      {
+        type: "table",
+        rows: [
+          ["Programa, proceso, servicio", "Programa: fichero quieto. Proceso: programa ejecutándose. Servicio: proceso de fondo que arranca el sistema."],
+          ["PID", "El número que identifica un proceso."],
+          ["Hilo", "Una línea de ejecución dentro de un proceso."],
+          ["waitFor()", "Espera a que acabe el hijo y da su código de salida."],
+          ["Interbloqueo por tubería", "El hijo espera a que lean su salida y el padre espera a que el hijo acabe."],
+        ],
+      },
+    ]);
+  });
   it("lines up centred columns and keeps empty cells", () => {
     const s = segmentsFromSpans(
       [
