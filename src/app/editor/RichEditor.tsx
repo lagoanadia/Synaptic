@@ -6,7 +6,7 @@ import type { T } from "@/lib/i18n";
 import { ArrowDown, CardsIcon, CheckIcon, ImageIcon, LinkIcon, MapIcon, QuoteIcon, SparkIcon, TrashIcon, XIcon } from "@/app/icons";
 import { BlockMoves, blockAt, deleteBlock, dropBlock, endDrag, moveBlock, startDrag } from "./blocks";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { EditorContent, useEditor, useEditorState, type Editor } from "@tiptap/react";
 import { Extension, wrappingInputRule } from "@tiptap/core";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
@@ -851,6 +851,20 @@ const KINDS: { kind: BlockKind; label: string; icon: React.ReactNode }[] = [
 function BlockMenu({ editor, pos, onMove, onDone }: { editor: Editor; pos: number; onMove: (dir: -1 | 1) => void; onDone: () => void }) {
   const t = useT();
   const [cols, setCols] = useState(false);
+  // Opens downwards; near the bottom of the window it opens upwards
+  // instead, and if it fits neither way it scrolls inside.
+  const box = useRef<HTMLDivElement>(null);
+  const [place, setPlace] = useState<{ up: boolean; max?: number } | null>(null);
+  useLayoutEffect(() => {
+    const el = box.current;
+    if (!el) return;
+    const handle = el.parentElement!.getBoundingClientRect();
+    const h = el.scrollHeight;
+    const below = window.innerHeight - handle.bottom - 12;
+    const above = handle.top - 12;
+    const up = h > below && above > below;
+    setPlace({ up, max: h > (up ? above : below) ? Math.max(120, up ? above : below) : undefined });
+  }, [cols]);
   // A list item's handle: converting and columns act on its whole list.
   const $p = editor.state.doc.resolve(pos);
   const top = $p.depth > 0 ? $p.before(1) : pos;
@@ -868,7 +882,13 @@ function BlockMenu({ editor, pos, onMove, onDone }: { editor: Editor; pos: numbe
     </span>
   );
   return (
-    <div className="absolute top-7 left-0 z-20 w-60 rounded-xl bg-white p-1.5 shadow-[0_0_0_1px_rgba(15,15,15,.05),0_10px_26px_rgba(15,15,15,.16)]" onMouseLeave={onDone} onMouseDown={(e) => e.preventDefault()}>
+    <div
+      ref={box}
+      className={`absolute left-0 z-20 w-60 overflow-y-auto rounded-xl bg-white p-1.5 shadow-[0_0_0_1px_rgba(15,15,15,.05),0_10px_26px_rgba(15,15,15,.16)] ${place?.up ? "bottom-7" : "top-7"}`}
+      style={{ maxHeight: place?.max, visibility: place ? "visible" : "hidden" }}
+      onMouseLeave={onDone}
+      onMouseDown={(e) => e.preventDefault()}
+    >
       <div className="mb-1 flex gap-0.5 border-b border-border-subtle pb-1.5">
         <Btn onClick={() => onMove(-1)} title={t("Subir (Ctrl+Shift+↑)")}><ArrowDown size={14} className="rotate-180" /></Btn>
         <Btn onClick={() => onMove(1)} title={t("Bajar (Ctrl+Shift+↓)")}><ArrowDown size={14} /></Btn>
