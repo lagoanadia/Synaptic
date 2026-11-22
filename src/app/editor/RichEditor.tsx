@@ -509,7 +509,9 @@ export function RichEditor({
           >
             <span className="font-semibold">{hinted.title}</span>
             {hinted.summary && <p className="text-ink-muted">{hinted.summary}</p>}
-            <Link href={hinted.href} className="mt-1 flex items-center gap-1.5 self-start text-xs text-accent hover:underline">
+            {/* Full prefetch: the card is up for a moment before the click,
+                enough to have the concept page ready when it comes. */}
+            <Link href={hinted.href} prefetch className="mt-1 flex items-center gap-1.5 self-start text-xs text-accent hover:underline">
               <MapIcon size={14} /> {hinted.where}
             </Link>
           </div>
