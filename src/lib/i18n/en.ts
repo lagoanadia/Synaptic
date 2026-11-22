@@ -1243,4 +1243,13 @@ export const en: Record<string, string> = {
   "Contada como bien": "Counted as right",
   "Lo hice bien": "I got it right",
   "Arrastra un recuadro sobre lo que quieras pasar": "Drag a box over what you want to bring over",
+  "Más sobre las versiones": "More on the versions",
+  "Versiones": "Versions",
+  "Elegir versión definitiva": "Choose the final version",
+  "Organizar de nuevo": "Organize again",
+  "Mía": "Mine",
+  "Esta parte no estará": "This part will be left out",
+  "Todo IA": "All AI",
+  "Todo mío": "All mine",
+  "Fijar así": "Keep it like this",
 };

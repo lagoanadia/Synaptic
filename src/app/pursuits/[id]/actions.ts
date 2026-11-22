@@ -1587,3 +1587,50 @@ export async function reorderPages(pursuitId: string, sectionId: string | null, 
   mapLater(session.user.id, pursuitId, [target]);
   revalidatePath(`/pursuits/${pursuitId}`);
 }
+
+// "Elegir versión definitiva": the page keeps only `content` (the parts the
+// student picked from their own notes and the organized one) and stops
+// having two versions. The organized note goes away unless it also came
+// from other pages (then this page just leaves it). Its flashcards stay.
+export async function settleVersion(pursuitId: string, dumpId: string, content: string): Promise<{ error: string | null; updatedAt?: string }> {
+  const t = await getT();
+  await requireAccess(pursuitId);
+  const text = content.trim();
+  if (!text) return { error: t("Escribe algo primero") };
+  const dump = await prisma.brainDump.findFirst({ where: { id: dumpId, pursuitId }, select: { id: true, notes: { select: { id: true, _count: { select: { sourceDumps: true } } } } } });
+  if (!dump) return { error: t("Página no encontrada") };
+  const images = Array.from(text.matchAll(/!\[image\]\(([^)]+)\)/g)).map((m) => m[1]);
+  const now = new Date();
+  await prisma.$transaction([
+    prisma.brainDump.update({ where: { id: dumpId }, data: { content: text, images, processed: false, organizedAt: null, lineAuthorIds: [], updatedAt: now } }),
+    ...dump.notes.map((n) =>
+      n._count.sourceDumps <= 1 ? prisma.note.delete({ where: { id: n.id } }) : prisma.note.update({ where: { id: n.id }, data: { sourceDumps: { disconnect: { id: dumpId } } } }),
+    ),
+  ]);
+  revalidatePath(`/pursuits/${pursuitId}`);
+  revalidatePath(`/pursuits/${pursuitId}/dump/${dumpId}`);
+  return { error: null, updatedAt: now.toISOString() };
+}
+
+// "Organizar de nuevo": a fresh organized version from the page as it is
+// now. The old one is only removed once the new one exists, so a failed
+// attempt (AI down, over the limit) leaves everything as it was.
+export async function reorganizeFromScratch(pursuitId: string, dumpId: string): Promise<{ error: string | null }> {
+  const t = await getT();
+  await requireAccess(pursuitId);
+  const old = await prisma.note.findMany({ where: { pursuitId, sourceDumps: { some: { id: dumpId } } }, select: { id: true, _count: { select: { sourceDumps: true } } } });
+  await prisma.brainDump.updateMany({ where: { id: dumpId, pursuitId }, data: { processed: false } });
+  const r = await organizeDumps(pursuitId, [dumpId]);
+  if (r.error) {
+    if (old.length) await prisma.brainDump.updateMany({ where: { id: dumpId, pursuitId }, data: { processed: true } });
+    return r;
+  }
+  const fresh = await prisma.note.findFirst({ where: { pursuitId, sourceDumps: { some: { id: dumpId } }, id: { notIn: old.map((n) => n.id) } }, select: { id: true } });
+  if (!fresh) return { error: t("Inténtalo de nuevo") };
+  for (const n of old) {
+    if (n._count.sourceDumps <= 1) await prisma.note.delete({ where: { id: n.id } });
+    else await prisma.note.update({ where: { id: n.id }, data: { sourceDumps: { disconnect: { id: dumpId } } } });
+  }
+  revalidatePath(`/pursuits/${pursuitId}/dump/${dumpId}`);
+  return { error: null };
+}

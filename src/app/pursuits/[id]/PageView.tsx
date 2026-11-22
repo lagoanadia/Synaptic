@@ -17,6 +17,9 @@ import { OPEN_PDF_EVENT, type OpenPdfDetail } from "@/app/editor/pdfCard";
 import { saveSlideDeck } from "./actions";
 import { VoiceNote } from "./VoiceNote";
 import { ExportPdfDialog } from "./ExportPdfDialog";
+import { RichContent } from "./RichContent";
+import { Popover } from "@/app/ui/Popover";
+import { compose, defaultChoices, pairParts, type Choice, type Part } from "@/lib/versionParts";
 import type { TermHint } from "@/lib/terms";
 import {
   addToMap,
@@ -27,6 +30,8 @@ import {
   generateFlashcards,
   organizeDumps,
   reorganizeDump,
+  reorganizeFromScratch,
+  settleVersion,
   updateBrainDump,
   transcribeSlide,
   updateNote,
@@ -98,6 +103,11 @@ export function PageView({ pursuit, crumbs, dump, note, slides, terms, stale: st
   }, []);
   const [saved, setSaved] = useState(false);
   const [menu, setMenu] = useState(false);
+  // ▾ next to ✦ / ✎: "Elegir versión definitiva" and "Organizar de nuevo".
+  const [versionMenu, setVersionMenu] = useState(false);
+  const caret = useRef<HTMLButtonElement>(null);
+  // Choose mode: the page in parts, each the AI's or the student's.
+  const [choosing, setChoosing] = useState<{ parts: Part[]; choices: Choice[] } | null>(null);
   const [exporting, setExporting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   // The handwritten version has changes the organized one doesn't have yet.
@@ -235,6 +245,42 @@ export function PageView({ pursuit, crumbs, dump, note, slides, terms, stale: st
     });
   }
 
+  function startChoosing() {
+    setVersionMenu(false);
+    setMessage(null);
+    start(async () => {
+      // Unsaved changes first, so the parts are what's really there.
+      for (const v of ["original", "organized"] as const) {
+        if (!dirty[v]) continue;
+        const err = await persist(v);
+        if (err) return setMessage(err);
+      }
+      const parts = pairParts(drafts.original, drafts.organized);
+      setChoosing({ parts, choices: defaultChoices(parts) });
+    });
+  }
+
+  function settle() {
+    if (!choosing || !dump) return;
+    const body = compose(choosing.parts, choosing.choices);
+    const title = titles.organized || titles.original;
+    setMessage(null);
+    start(async () => {
+      const r = await settleVersion(pursuit.id, dump.id, withTitle(title, body));
+      if (r.error) return setMessage(r.error);
+      // One page from now on: the original holds it, no ✦ / ✎.
+      if (r.updatedAt) versions.current.original = r.updatedAt;
+      setDrafts((d) => ({ ...d, original: body }));
+      setSavedBodies((b) => ({ ...b, original: body }));
+      setTitles((tt) => ({ ...tt, original: title }));
+      setStale(false);
+      setView("original");
+      setChoosing(null);
+      setRev((n) => n + 1);
+      router.refresh();
+    });
+  }
+
   const icon = "grid size-8 place-items-center rounded-md text-ink-muted hover:bg-chip hover:text-ink disabled:opacity-40";
   const content = drafts[view];
 
@@ -283,6 +329,59 @@ export function PageView({ pursuit, crumbs, dump, note, slides, terms, stale: st
     </article>
   );
 
+  // Choose mode: every part shows the AI's version or the student's; a tap
+  // on ✦ IA / ✎ Mía swaps it. The bar below sets the page for good.
+  const pick = (k: number, c: Choice) => setChoosing((ch) => ch && { ...ch, choices: ch.choices.map((x, j) => (j === k ? c : x)) });
+  const chooser = choosing && (
+    <article className="flex min-w-0 flex-col gap-2 pb-24">
+      <h1 className="mb-2 text-[2.1rem] leading-tight font-bold tracking-tight">{titles.organized || titles.original || t("Sin título")}</h1>
+      {choosing.parts.map((p, k) => {
+        const c = choosing.choices[k];
+        const text = c === "mine" ? p.mine : p.ia;
+        return (
+          <section key={k} className={`relative rounded-xl px-4 py-3 pr-32 transition-colors ${c === "mine" ? "bg-[#fbf7ee] dark:bg-[#2b261c]" : "bg-[#f4f9fe] dark:bg-[#1c2531]"}`}>
+            <span className="absolute top-3 right-3 flex gap-1 text-[11.5px] font-bold">
+              <button
+                type="button"
+                disabled={!p.ia}
+                onClick={() => pick(k, "ia")}
+                aria-pressed={c === "ia"}
+                className={`rounded-full px-2.5 py-1 disabled:opacity-30 ${c === "ia" ? "bg-[#2383e2] text-white" : "bg-chip text-ink-faint hover:text-ink"}`}
+              >
+                ✦ IA
+              </button>
+              <button
+                type="button"
+                disabled={!p.mine}
+                onClick={() => pick(k, "mine")}
+                aria-pressed={c === "mine"}
+                className={`rounded-full px-2.5 py-1 disabled:opacity-30 ${c === "mine" ? "bg-[#c99a2e] text-white" : "bg-chip text-ink-faint hover:text-ink"}`}
+              >
+                ✎ {t("Mía")}
+              </button>
+            </span>
+            {text ? <RichContent content={text} paragraphClassName="text-[15px] leading-relaxed whitespace-pre-wrap" /> : <p className="text-sm text-ink-faint italic">{t("Esta parte no estará")}</p>}
+          </section>
+        );
+      })}
+      <div className="pop-panel sticky bottom-4 z-20 mx-auto mt-4 flex flex-wrap items-center justify-center gap-2 rounded-2xl bg-white p-2 shadow-[0_0_0_1px_rgba(15,15,15,.07),0_12px_30px_-10px_rgba(15,15,15,.3)]">
+        <button type="button" onClick={() => setChoosing((ch) => ch && { ...ch, choices: ch.parts.map((p) => (p.ia ? "ia" : "mine")) })} className="rounded-full bg-[#e1effc] px-4 py-2 text-[13px] font-bold text-[#1a6fc4] hover:brightness-95 dark:bg-[#1d3550] dark:text-[#8cc4ff]">
+          ✦ {t("Todo IA")}
+        </button>
+        <button type="button" onClick={() => setChoosing((ch) => ch && { ...ch, choices: ch.parts.map((p) => (p.mine ? "mine" : "ia")) })} className="rounded-full bg-[#fdebd6] px-4 py-2 text-[13px] font-bold text-[#c2620f] hover:brightness-95 dark:bg-[#43301a] dark:text-[#f5b36b]">
+          ✎ {t("Todo mío")}
+        </button>
+        <button type="button" onClick={() => setChoosing(null)} className="rounded-full bg-[#fbe3ee] px-4 py-2 text-[13px] font-bold text-[#c02f74] hover:brightness-95 dark:bg-[#45202f] dark:text-[#f59ac4]">
+          {t("Cancelar")}
+        </button>
+        <button type="button" onClick={settle} disabled={pending} className="rounded-full bg-[#1baf7a] px-4 py-2 text-[13px] font-bold text-white hover:brightness-95 disabled:opacity-60">
+          ✓ {t("Fijar así")}
+        </button>
+      </div>
+    </article>
+  );
+  const body = chooser || page;
+
   return (
     <div className={`mx-auto flex w-full flex-1 flex-col gap-6 px-6 py-8 sm:px-12 ${split ? "max-w-[1800px]" : "max-w-[900px]"}`}>
       <header className="flex items-center gap-3">
@@ -317,6 +416,41 @@ export function PageView({ pursuit, crumbs, dump, note, slides, terms, stale: st
                   {v === "organized" ? <SparklesIcon /> : <PencilIcon />}
                 </button>
               ))}
+              <button
+                ref={caret}
+                type="button"
+                onClick={() => setVersionMenu((o) => !o)}
+                aria-expanded={versionMenu}
+                title={t("Más sobre las versiones")}
+                aria-label={t("Más sobre las versiones")}
+                className={`ml-0.5 grid h-7 w-4 place-items-center rounded-md border-l border-border-subtle text-ink-faint hover:text-ink ${versionMenu ? "text-ink" : ""}`}
+              >
+                <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                  <path d="M5 8h14l-7 9z" />
+                </svg>
+              </button>
+              <Popover anchor={caret} open={versionMenu} onClose={() => setVersionMenu(false)} align="end" label={t("Versiones")}>
+                <div className="flex min-w-52 flex-col p-1 text-sm">
+                  <button type="button" disabled={pending} onClick={startChoosing} className="flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-left hover:bg-hover disabled:opacity-50">
+                    <CheckIcon size={14} />
+                    {t("Elegir versión definitiva")}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={pending}
+                    onClick={() => {
+                      setVersionMenu(false);
+                      run(() => reorganizeFromScratch(pursuit.id, dump.id));
+                    }}
+                    className="flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-left hover:bg-hover disabled:opacity-50"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                      <path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v4h-4" />
+                    </svg>
+                    {t("Organizar de nuevo")}
+                  </button>
+                </div>
+              </Popover>
             </span>
           ) : (
             dump && (
@@ -415,10 +549,10 @@ export function PageView({ pursuit, crumbs, dump, note, slides, terms, stale: st
             editorRef.current?.chain().focus().insertContent(blocks).run();
           }}
         >
-          <div className="lg:pl-6">{page}</div>
+          <div className="lg:pl-6">{body}</div>
         </SlidePanel>
       ) : (
-        page
+        body
       )}
     </div>
   );

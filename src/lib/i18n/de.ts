@@ -1243,4 +1243,13 @@ export const de: Record<string, string> = {
   "Contada como bien": "Als richtig gezählt",
   "Lo hice bien": "Ich hatte es richtig",
   "Arrastra un recuadro sobre lo que quieras pasar": "Zieh einen Rahmen über das, was du übernehmen willst",
+  "Más sobre las versiones": "Mehr zu den Versionen",
+  "Versiones": "Versionen",
+  "Elegir versión definitiva": "Endgültige Version wählen",
+  "Organizar de nuevo": "Neu ordnen",
+  "Mía": "Meine",
+  "Esta parte no estará": "Dieser Teil fällt weg",
+  "Todo IA": "Alles KI",
+  "Todo mío": "Alles meins",
+  "Fijar así": "So festlegen",
 };
