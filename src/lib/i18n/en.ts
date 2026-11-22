@@ -1240,4 +1240,6 @@ export const en: Record<string, string> = {
   "Siguiente concepto": "Next concept",
   "Hueco {0}": "Gap {0}",
   "Cambiar cómo se pega (título, lista, tabla, texto)": "Change how it's pasted (title, list, table, text)",
+  "Contada como bien": "Counted as right",
+  "Lo hice bien": "I got it right",
 };

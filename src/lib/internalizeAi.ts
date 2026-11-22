@@ -180,10 +180,10 @@ ${parts ? `What it contains:\n${parts}\n` : ""}${concept.excerpt ? `Excerpt from
 Mix the question types — use each at least once:
 - "choice": 4 options, exactly one right; wrong options must be plausible (common confusions), as long and as detailed as the right one (±20%), so it never stands out as the longest
 - "truefalse": a statement that is clearly true or clearly false per the material — make about half false
-- "blank": a sentence with one or two gaps, each written as ___ ; "accepted" has ONE list per gap, in order, with that gap's short answer (1-3 words) and its obvious variants
+- "blank": a sentence with one or two gaps, each written as ___ ; "accepted" has ONE list per gap, in order, with that gap's key word or term (1-2 words) and every reasonable way to write it (singular/plural, with or without article, the short form: e.g. ["sala del restaurante","sala","restaurante"])
 - "match": 3-5 pairs to connect (term → definition, item → its role…)
 
-Test understanding (why, what for, which one applies), not trivia or exact wording. Everything must be answerable from the material. Write in ${language}. "why" is a one-sentence explanation shown after answering.
+Ask about the concept itself: what it is, what it's for, how it differs from close ones, when it applies, what happens if it's missing. Analogies, metaphors and examples in the material only help explain it: at most ONE question may touch one, and never ask which part of an analogy maps to what. Not trivia or exact wording. Each question checks something different. Everything must be answerable from the material. Write in ${language}. "why" is a one-sentence explanation shown after answering.
 
 Respond with ONLY JSON:
 {"questions": [

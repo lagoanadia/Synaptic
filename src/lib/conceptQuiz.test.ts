@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isCorrect, normalize, parseQuiz, quizVerdict, shuffledOrder } from "./conceptQuiz";
+import { gapOk, isCorrect, normalize, parseQuiz, quizVerdict, shuffledOrder } from "./conceptQuiz";
 
 describe("parseQuiz", () => {
   it("keeps valid questions of every kind and drops broken ones", () => {
@@ -33,6 +33,12 @@ describe("grading", () => {
     expect(flat.kind === "blank" && flat.gaps).toEqual([["libertad"], ["código abierto"]]);
     const [joined] = parseQuiz([{ kind: "blank", prompt: "a ___ b ___", accepted: ["libertad y código abierto"] }]);
     expect(isCorrect(joined, ["libertad", "código abierto"])).toBe(true);
+  });
+  it("takes the key word of a longer answer", () => {
+    expect(gapOk(["sala del restaurante"], "restaurante")).toBe(true);
+    expect(gapOk(["despensa"], "la despensa")).toBe(true);
+    expect(gapOk(["sala del restaurante"], "cocina")).toBe(false);
+    expect(gapOk(["base de datos"], "de")).toBe(false);
   });
   it("needs every pair right in a match", () => {
     const [m] = parseQuiz([{ kind: "match", prompt: "Une", pairs: [{ left: "A", right: "1" }, { left: "B", right: "2" }, { left: "C", right: "3" }] }]);

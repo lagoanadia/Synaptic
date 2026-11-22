@@ -79,6 +79,21 @@ export function normalize(text: string): string {
     .trim();
 }
 
+// A typed gap is right when it matches an accepted answer, or one holds the
+// other as whole words ("restaurante" for "sala del restaurante") — the
+// key word is what counts, not how much of the phrase was typed.
+export function gapOk(accepted: string[], given: string): boolean {
+  const g = normalize(given);
+  if (!g) return false;
+  const words = (s: string) => ` ${s} `;
+  return accepted.some((x) => {
+    const a = normalize(x);
+    if (a === g) return true;
+    const [short, long] = a.length < g.length ? [a, g] : [g, a];
+    return short.length >= 4 && words(long).includes(words(short));
+  });
+}
+
 export function isCorrect(q: QuizQuestion, a: QuizAnswer): boolean {
   switch (q.kind) {
     case "choice":
@@ -87,7 +102,7 @@ export function isCorrect(q: QuizQuestion, a: QuizAnswer): boolean {
       return a === q.answer;
     case "blank": {
       const given = Array.isArray(a) ? a : typeof a === "string" ? [a] : [];
-      return given.length === q.gaps.length && q.gaps.every((ok, i) => ok.some((x) => normalize(x) === normalize(given[i] ?? "")));
+      return given.length === q.gaps.length && q.gaps.every((ok, i) => gapOk(ok, given[i] ?? ""));
     }
     case "match": {
       if (!a || typeof a !== "object") return false;

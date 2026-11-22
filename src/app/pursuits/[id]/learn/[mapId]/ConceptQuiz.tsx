@@ -3,7 +3,7 @@
 import { useT } from "@/app/LangProvider";
 import { useEffect, useRef, useState } from "react";
 import { CheckIcon, XIcon } from "@/app/icons";
-import { GAP, isCorrect, normalize, shuffledOrder, type QuizAnswer, type QuizQuestion } from "@/lib/conceptQuiz";
+import { GAP, gapOk, isCorrect, shuffledOrder, type QuizAnswer, type QuizQuestion } from "@/lib/conceptQuiz";
 import type { Status } from "@/lib/internalize";
 import { makeConceptQuiz, recordConceptQuiz } from "../actions";
 
@@ -37,6 +37,8 @@ export function ConceptQuiz({
   // Set once the last answer is in and the score is saved.
   const [final, setFinal] = useState<{ status: Status | null } | null>(null);
   const [saving, setSaving] = useState(false);
+  // "Lo hice bien": the student says the AI marked a right answer wrong.
+  const [forgiven, setForgiven] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -72,9 +74,15 @@ export function ConceptQuiz({
     setGiven((g) => [...g, answer]);
   }
 
+  function forgive() {
+    setForgiven(true);
+    setResults((r) => [...r.slice(0, -1), true]);
+  }
+
   function next() {
     if (!questions) return;
     setChecked(false);
+    setForgiven(false);
     setAnswer(null);
     if (i + 1 < questions.length) setI(i + 1);
     else {
@@ -163,7 +171,7 @@ export function ConceptQuiz({
     );
   }
 
-  const right = checked && q ? isCorrect(q, answer) : null;
+  const right = checked && q ? forgiven || isCorrect(q, answer) : null;
   const opt = (selected: boolean, isAnswer: boolean) =>
     `rounded-2xl border-2 px-4 py-3 text-left text-sm font-semibold ${
       checked
@@ -212,7 +220,7 @@ export function ConceptQuiz({
         </div>
       )}
 
-      {q?.kind === "blank" && <Blanks key={i} q={q} value={answer} checked={checked} onChange={setAnswer} onSubmit={check} />}
+      {q?.kind === "blank" && <Blanks key={i} q={q} value={answer} checked={checked} forgiven={forgiven} onChange={setAnswer} onSubmit={check} />}
 
       {q?.kind === "match" && (
         <Match key={i} pairs={q.pairs} seed={q.prompt} checked={checked} value={(answer as Record<number, number>) ?? {}} onChange={setAnswer} />
@@ -229,7 +237,7 @@ export function ConceptQuiz({
             {right ? <CheckIcon size={16} /> : <XIcon size={16} />}
           </span>
           <span className="flex min-w-0 flex-col gap-0.5 text-sm">
-            <span className={`font-bold ${right ? "text-mint" : "text-crimson"}`}>{right ? t("¡Correcto!") : t("No era esa")}</span>
+            <span className={`font-bold ${right ? "text-mint" : "text-crimson"}`}>{forgiven ? t("Contada como bien") : right ? t("¡Correcto!") : t("No era esa")}</span>
             {!right && q.kind !== "match" && (
               <span>
                 <span className="text-ink-muted">{t("Respuesta correcta")}: </span>
@@ -238,6 +246,20 @@ export function ConceptQuiz({
             )}
             {q.why && <span className="leading-relaxed text-ink-muted">{q.why}</span>}
           </span>
+          {!right && (
+            <button
+              type="button"
+              onClick={forgive}
+              title={t("Lo hice bien")}
+              aria-label={t("Lo hice bien")}
+              className="ml-auto grid size-8 shrink-0 place-items-center rounded-full text-ink-muted transition hover:bg-mint/15 hover:text-mint"
+            >
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M7 10v11H4a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1h3Z" />
+                <path d="M7 10 11 3a2.5 2.5 0 0 1 3 3l-.6 3.5H19a2 2 0 0 1 2 2.3l-1.2 7A2 2 0 0 1 17.8 21H7" />
+              </svg>
+            </button>
+          )}
         </div>
       )}
 
@@ -556,12 +578,14 @@ function Blanks({
   q,
   value,
   checked,
+  forgiven,
   onChange,
   onSubmit,
 }: {
   q: Extract<QuizQuestion, { kind: "blank" }>;
   value: QuizAnswer;
   checked: boolean;
+  forgiven: boolean;
   onChange: (v: string[]) => void;
   onSubmit: () => void;
 }) {
@@ -599,7 +623,7 @@ function Blanks({
                 style={{ fieldSizing: "content" } as React.CSSProperties}
                 className={`mx-1 min-w-[7ch] max-w-full rounded-xl border-2 px-2.5 py-0.5 text-center text-base font-semibold outline-none ${
                   checked
-                    ? q.gaps[k].some((x) => normalize(x) === normalize(vals[k] ?? ""))
+                    ? forgiven || gapOk(q.gaps[k], vals[k] ?? "")
                       ? "border-mint bg-mint/10 text-mint"
                       : "border-crimson bg-crimson-soft text-crimson line-through decoration-2"
                     : "border-border-subtle bg-chip focus:border-tile-sky focus:bg-accent-soft"
