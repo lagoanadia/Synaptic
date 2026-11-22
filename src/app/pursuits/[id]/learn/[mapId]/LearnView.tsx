@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { CheckIcon } from "@/app/icons";
-import { DraggableMap } from "@/app/DraggableMap";
+import { CalmMap } from "@/app/CalmMap";
 import { looksLikeCode } from "@/lib/internalize";
 import type { MapCluster } from "@/lib/knowledgeMap";
 import { CodeBlock } from "../../CodeBlock";
@@ -98,11 +98,13 @@ export function LearnView({
     });
   }
 
+  // Repasar for this unit (the map's button, and after a failed exam).
+  const reviewHref = `/review?pursuit=${pursuitId}${map[0] && !map[0].id.startsWith("map-") ? `&unit=${map[0].id}` : ""}&practice=1`;
   const roundMain = "grid size-[52px] place-items-center rounded-full bg-accent text-white shadow-[0_4px_12px_rgba(35,131,226,.35)] disabled:opacity-50";
   const roundAlt = "grid size-11 place-items-center rounded-full border border-[#e3e2de] text-ink-muted hover:bg-chip hover:text-ink";
 
   return (
-    <div className="mx-auto flex w-full max-w-[1200px] flex-1 flex-col gap-4 px-6 py-8 sm:px-12">
+    <div className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col gap-4 px-6 py-8 sm:px-12">
       <nav className="text-sm text-ink-faint" aria-label={t("Ruta")}>
         {crumbs.map((c, i) => (
           <span key={i}>
@@ -118,12 +120,13 @@ export function LearnView({
         ))}
       </nav>
 
-      <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-2">
+      <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
         <div className="lg:sticky lg:top-6">
           {map[0] && (
-            <DraggableMap
+            <CalmMap
               cluster={map[0]}
               currentId={concept.id}
+              reviewHref={reviewHref}
               onAdd={async (text) => {
                 const r = await addConceptByName(mapId, text);
                 if (r.error !== null) return r.error;
@@ -233,6 +236,7 @@ export function LearnView({
               auto
               onStatus={() => {}}
               onDontKnow={explainDifferently}
+              reviewHref={reviewHref}
               onFinish={(passed) => {
                 // Passed: the server picks what comes next.
                 if (passed) {

@@ -1275,4 +1275,11 @@ export const en: Record<string, string> = {
   "No disponible": "Not available",
   "Te faltan ✦": "Not enough ✦",
   "Aún no lo tienes": "You don't have it yet",
+  "Otros conceptos": "Other concepts",
+  "Lo sabes": "You know it",
+  "A medias": "Half",
+  "Nuevo": "New",
+  "Repasar · {0} en rojo": "Review · {0} in red",
+  "Repasar este tema": "Review this topic",
+  "Ir a Repasar": "Go to Review",
 };

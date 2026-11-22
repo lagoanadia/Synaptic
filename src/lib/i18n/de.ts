@@ -1275,4 +1275,11 @@ export const de: Record<string, string> = {
   "No disponible": "Nicht verfügbar",
   "Te faltan ✦": "Nicht genug ✦",
   "Aún no lo tienes": "Hast du noch nicht",
+  "Otros conceptos": "Weitere Konzepte",
+  "Lo sabes": "Kannst du",
+  "A medias": "Halb",
+  "Nuevo": "Neu",
+  "Repasar · {0} en rojo": "Wiederholen · {0} rot",
+  "Repasar este tema": "Dieses Thema wiederholen",
+  "Ir a Repasar": "Zum Wiederholen",
 };

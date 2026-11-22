@@ -1,6 +1,7 @@
 "use client";
 
 import { useT } from "@/app/LangProvider";
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { CheckIcon, XIcon } from "@/app/icons";
 import { GAP, gapOk, isCorrect, shuffledOrder, type QuizAnswer, type QuizQuestion } from "@/lib/conceptQuiz";
@@ -16,6 +17,7 @@ export function ConceptQuiz({
   onDontKnow,
   auto = false,
   onFinish,
+  reviewHref,
 }: {
   conceptId: string;
   startRef: React.RefObject<HTMLButtonElement | null>;
@@ -25,6 +27,8 @@ export function ConceptQuiz({
   // showing a score screen.
   auto?: boolean;
   onFinish?: (passed: boolean, status: Status | null) => void;
+  // Repasar for this unit, offered when the exam didn't go well.
+  reviewHref?: string;
 }) {
   const t = useT();
   const [questions, setQuestions] = useState<QuizQuestion[] | null>(null);
@@ -167,6 +171,7 @@ export function ConceptQuiz({
         onRetry={start}
         onNext={onFinish && passed ? () => onFinish(true, final.status) : undefined}
         onExplain={onFinish && !passed ? () => onFinish(false, final.status) : undefined}
+        reviewHref={!passed ? reviewHref : undefined}
       />
     );
   }
@@ -395,6 +400,7 @@ function Results({
   onRetry,
   onNext,
   onExplain,
+  reviewHref,
 }: {
   questions: QuizQuestion[];
   results: boolean[];
@@ -403,6 +409,7 @@ function Results({
   onRetry: () => void;
   onNext?: () => void;
   onExplain?: () => void;
+  reviewHref?: string;
 }) {
   const t = useT();
   const total = questions.length;
@@ -548,6 +555,11 @@ function Results({
         <button type="button" onClick={onRetry} disabled={loading} className="rounded-full px-4 py-2.5 text-sm font-semibold text-ink-muted hover:bg-chip hover:text-ink disabled:opacity-50">
           {loading ? t("Escribiendo…") : t("Otro examen")}
         </button>
+        {reviewHref && (
+          <Link href={reviewHref} className="rounded-full bg-[#fdebec] px-4 py-2.5 text-sm font-bold text-[#c53030] hover:brightness-95 dark:bg-[#3d2629] dark:text-[#ff9b94]">
+            {t("Ir a Repasar")}
+          </Link>
+        )}
         {onExplain && (
           <button ref={nextBtn} type="button" onClick={onExplain} className="rounded-full bg-ink px-5 py-2.5 text-sm font-bold text-white">
             {t("Explícamelo de otra forma")}
