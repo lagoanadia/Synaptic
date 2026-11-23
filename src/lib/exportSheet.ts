@@ -95,9 +95,11 @@ export async function printSheet(html: string, st: SheetStyle, title: string) {
   document.body.appendChild(frame);
   const d = frame.contentDocument!;
   d.open();
-  d.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title>
+  // Always a white sheet: in dark mode the frame otherwise took the app's dark
+  // background behind the first page (with the sheet's dark text on it).
+  d.write(`<!doctype html><html style="color-scheme:light;background:#fff"><head><meta charset="utf-8"><meta name="color-scheme" content="light only"><title>${esc(title)}</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Lora:wght@400;700&display=swap" rel="stylesheet">
-<style>@page { size: A4; margin: 0; } html, body { margin: 0; background: #fff; } * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+<style>@page { size: A4; margin: 0; } :root { color-scheme: light only; } html, body { margin: 0; background: #fff !important; color: #37352f; } * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 .pg { width: 100%; border-collapse: collapse; } .pg td { padding: 0; } .sp { height: 20mm; } .pg-in { padding: 0 20mm; }
 ${sheetCss(st)}</style></head><body><table class="pg"><thead><tr><td><div class="sp"></div></td></tr></thead><tbody><tr><td><div class="pg-in">${html}</div></td></tr></tbody><tfoot><tr><td><div class="sp"></div></td></tr></tfoot></table></body></html>`);
   d.close();

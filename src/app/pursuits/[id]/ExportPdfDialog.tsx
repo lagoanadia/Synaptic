@@ -89,7 +89,7 @@ export function ExportPdfDialog({ title, content, onClose }: { title: string; co
           <div ref={wrap} className="min-h-0 flex-1 overflow-auto bg-[#eceae5] p-4">
             <style>{sheetCss(st)}</style>
             <div style={{ width: A4.w * scale, margin: "0 auto" }}>
-              <div className="bg-white shadow-lg" style={{ width: A4.w, padding: A4.pad, transform: `scale(${scale})`, transformOrigin: "top left", minHeight: 1123 }} dangerouslySetInnerHTML={{ __html: html }} />
+              <div className="shadow-lg" style={{ width: A4.w, padding: A4.pad, transform: `scale(${scale})`, transformOrigin: "top left", minHeight: 1123, background: "#fff", colorScheme: "light" }} dangerouslySetInnerHTML={{ __html: html }} />
             </div>
           </div>
           <aside className="flex shrink-0 flex-col gap-5 border-t border-border-subtle p-5 md:w-60 md:border-t-0 md:border-l">
