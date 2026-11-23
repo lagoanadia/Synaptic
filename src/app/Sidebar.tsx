@@ -184,7 +184,7 @@ export function Sidebar({ user, plan, notebooks, collapsed: startCollapsed = fal
           {calendar && <Link href="/calendar" className={row(active("/calendar"))}>
             <CalendarIcon size={16} className="block" />{" "}{t("Calendario")}
           </Link>}
-          {study && <Link href="/review" className={row(active("/review"))}>
+          {study && <Link href="/review/map" className={row(active("/review"))}>
             <CardsIcon size={16} className="block" />{" "}{t("Repasar")}
           </Link>}
           {codes && <Link href="/challenges" className={row(active("/challenges"))}>

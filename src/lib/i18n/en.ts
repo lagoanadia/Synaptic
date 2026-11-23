@@ -1282,4 +1282,8 @@ export const en: Record<string, string> = {
   "Repasar · {0} en rojo": "Review · {0} in red",
   "Repasar este tema": "Review this topic",
   "Ir a Repasar": "Go to Review",
+  "Cuando tus apuntes tengan conceptos, aparecerán aquí.": "Once your notes have concepts, they'll show up here.",
+  "para repasar hoy": "to review today",
+  "{0} para repasar": "{0} to review",
+  "Quiz rápido": "Quick quiz",
 };

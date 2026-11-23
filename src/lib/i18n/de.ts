@@ -1282,4 +1282,8 @@ export const de: Record<string, string> = {
   "Repasar · {0} en rojo": "Wiederholen · {0} rot",
   "Repasar este tema": "Dieses Thema wiederholen",
   "Ir a Repasar": "Zum Wiederholen",
+  "Cuando tus apuntes tengan conceptos, aparecerán aquí.": "Sobald deine Notizen Konzepte haben, erscheinen sie hier.",
+  "para repasar hoy": "heute zu wiederholen",
+  "{0} para repasar": "{0} zu wiederholen",
+  "Quiz rápido": "Schnelles Quiz",
 };

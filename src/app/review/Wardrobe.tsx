@@ -12,7 +12,7 @@ export const STARS_EVENT = "synaptic:stars";
 
 // Top right of Repasar: your avatar and ✦. Tap it for the costume shop:
 // each test gives up to 5 ✦; costumes are bought with them and worn at once.
-export function Wardrobe() {
+export function Wardrobe({ light = false }: { light?: boolean } = {}) {
   const t = useT();
   const [w, setW] = useState<W | null>(null);
   const [open, setOpen] = useState(false);
@@ -51,7 +51,7 @@ export function Wardrobe() {
         onClick={() => setOpen((o) => !o)}
         title={t("Tus trajes")}
         aria-label={t("Tus trajes")}
-        className={`flex shrink-0 items-center gap-1.5 rounded-full bg-white/10 py-1 pr-3 pl-1 text-sm font-extrabold text-white transition hover:bg-white/15 ${bump ? "scale-110" : ""}`}
+        className={`flex shrink-0 items-center gap-1.5 rounded-full py-1 pr-3 pl-1 text-sm font-extrabold transition ${light ? "bg-white text-ink shadow-[0_0_0_1px_rgba(15,15,15,.07),0_2px_6px_rgba(15,15,15,.06)] hover:bg-hover dark:bg-[#262626]" : "bg-white/10 text-white hover:bg-white/15"} ${bump ? "scale-110" : ""}`}
       >
         <AvatarFace avatar={avatar} size={26} uid="wardrobe-chip" />
         <span className="text-[#f5b82e]">✦</span>
