@@ -493,3 +493,8 @@ html.dark .shadow-sm { box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08), 0 1px 2p
   outline: 2px solid color-mix(in srgb, var(--color-accent) 45%, transparent);
   outline-offset: 0;
 }
+
+/* The text caret only where you can type: with Chrome's caret browsing
+   (F7) on, it otherwise blinks on every heading and button. */
+body { caret-color: transparent; }
+input, textarea, select, [contenteditable="true"], [contenteditable=""], .ProseMirror { caret-color: auto; }
