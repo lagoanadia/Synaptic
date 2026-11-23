@@ -416,6 +416,9 @@ model Note {
   id        String   @id @default(cuid())
   content   String
   createdAt DateTime @default(now())
+  // When its flashcards were trimmed to the few that matter and rewritten
+  // to read clearly (lib/curateCards.ts); null = not yet.
+  cardsCuratedAt DateTime?
   // Same optimistic-concurrency guard as BrainDump.updatedAt — Organized
   // notes are exactly where two collaborators editing at once actually
   // happened (see updateNote).

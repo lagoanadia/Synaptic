@@ -84,7 +84,7 @@ export async function getConcepts(
 export async function getCards(
   userId: string,
   scope: ReviewScope,
-  opts: { dueOnly?: boolean; take?: number } = {},
+  opts: { dueOnly?: boolean; take?: number; untrimmed?: boolean } = {},
 ): Promise<ReviewCard[]> {
   const cards = await prisma.flashcard.findMany({
     where: {
@@ -95,6 +95,8 @@ export async function getCards(
           : { note: unitNoteWhere(scope)! }
         : {}),
       ...(opts.dueOnly ? { dueDate: { lte: new Date() } } : {}),
+      // Cards of a note not trimmed yet (lib/curateCards.ts) wait for it.
+      ...(opts.untrimmed ? {} : { AND: [{ OR: [{ noteId: null }, { note: { cardsCuratedAt: { not: null } } }] }] }),
     },
     orderBy: { dueDate: "asc" },
     take: opts.take ?? 500,
