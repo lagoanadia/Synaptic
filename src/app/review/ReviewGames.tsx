@@ -67,7 +67,7 @@ export function Stage({
   const t = useT();
   return (
     <div
-      className="fixed inset-x-0 top-0 bottom-16 z-40 flex bg-[#18181b] text-white lg:bottom-0 lg:z-50"
+      className="fixed inset-x-0 top-0 bottom-16 z-40 flex bg-[#18181b] text-white select-none caret-transparent lg:bottom-0 lg:z-50 [&_input]:select-text [&_input]:caret-auto [&_textarea]:select-text [&_textarea]:caret-auto"
       style={{ backgroundImage: "radial-gradient(rgba(255,255,255,.07) 1px, transparent 1.3px)", backgroundSize: "22px 22px" }}
     >
       {menu && <div className="absolute top-14 right-4 z-10 sm:top-16 sm:right-8">{menu}</div>}

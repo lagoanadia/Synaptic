@@ -79,14 +79,16 @@ export default async function ReviewPage({
       after(() => job.catch(() => {}));
       // Most of the round without its quiz version: worth waiting a little
       // longer than when it's just one or two cards.
-      const wait = start.filter(needsQuizText).length > start.length / 2 ? 6000 : 2500;
+      const missing = start.filter(needsQuizText).length;
+      const wait = missing === start.length ? 15000 : missing > start.length / 2 ? 8000 : 2500;
       pool = await Promise.race([job.catch(() => start), new Promise<typeof start>((r) => setTimeout(() => r(start), wait))]);
     }
     // Cards still without their quiz version sit this round out (they're
     // being written for the next one) rather than show other cards'
     // answers as options — unless that would leave almost nothing.
-    const ready = pool.filter((c) => !needsQuizText(c));
-    if (ready.length >= Math.min(4, pool.length)) pool = ready;
+    // (Borrowing other cards' answers made nonsense options.)
+    const ready = pool.filter((c) => (c.distractors?.length ?? 0) >= 3);
+    if (ready.length > 0) pool = ready;
   }
   const cardItems: LearnItem[] = pool.map((c) => ({
     id: c.id,
@@ -118,15 +120,10 @@ export default async function ReviewPage({
       answer: c.title,
       distractors: shuffle(concepts.filter((o) => o.pursuitId === c.pursuitId && o.id !== c.id).map((o) => o.title)).slice(0, 3),
     }));
-  // Anything still short of wrong answers borrows others of the same kind:
-  // a concept other concepts' names, a card other cards' answers.
-  const cardAnswers = [...new Set(allCards.map((c) => c.answer))];
-  const conceptNames = [...new Set(concepts.map((c) => c.title))];
-  const items = [...cardItems, ...conceptItems].map((i) => {
-    if (i.distractors.length >= 3) return i;
-    const pool = i.kind === "concept" ? [...shuffle(conceptNames), ...shuffle(cardAnswers)] : [...shuffle(cardAnswers), ...shuffle(conceptNames)];
-    return { ...i, distractors: [...i.distractors, ...pool.filter((a) => a !== i.answer && !i.distractors.includes(a))].slice(0, 3) };
-  });
+  // Wrong options are never borrowed from other cards' answers (they were
+  // about something else entirely). A concept's options are other concepts
+  // of the same subject; an item without 3 real ones sits this round out.
+  const items = [...cardItems, ...conceptItems].filter((i) => i.distractors.length >= 3);
 
   // The side menu: every folder, and each one's units.
   const folders = await prisma.pursuit.findMany({
