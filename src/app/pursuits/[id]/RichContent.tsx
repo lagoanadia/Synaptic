@@ -1,3 +1,4 @@
+import { BOARD_COLORS } from "@/lib/whiteboard";
 import { parseNoteBlocks, type InlineNode, type ListBlock, type ListItem, type NoteBlock } from "@/lib/text";
 import { CodeBlock } from "./CodeBlock";
 
@@ -33,6 +34,12 @@ function Inline({ nodes }: { nodes: InlineNode[] }) {
               >
                 {n.text}
               </a>
+            );
+          case "color":
+            return (
+              <span key={i} style={{ color: BOARD_COLORS[n.color] ?? undefined }} className={n.bold ? "font-semibold" : undefined}>
+                {n.value}
+              </span>
             );
           case "text":
             return n.value;

@@ -1,3 +1,4 @@
+import { BOARD_COLORS } from "@/lib/whiteboard";
 import { parseNoteBlocks, type InlineNode, type ListBlock, type NoteBlock } from "@/lib/text";
 
 // Export a page to PDF in Synaptic's look, with the reader's choice of
@@ -18,6 +19,7 @@ function inline(nodes: InlineNode[]): string {
     .map((n) => {
       if (n.type === "link") return `<a href="${esc(n.url)}">${esc(n.text)}</a>`;
       const v = esc(n.value);
+      if (n.type === "color") return `<span style="color:${BOARD_COLORS[n.color] ?? "inherit"}">${n.bold ? `<b>${v}</b>` : v}</span>`;
       return n.type === "bold" ? `<b>${v}</b>` : n.type === "italic" ? `<i>${v}</i>` : n.type === "underline" ? `<u>${v}</u>` : n.type === "code" ? `<code>${v}</code>` : v;
     })
     .join("");

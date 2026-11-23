@@ -54,7 +54,10 @@ export type InlineNode =
   | { type: "underline"; value: string }
   | { type: "link"; text: string; url: string }
   // `onCreate`: a short bit of code inside a sentence.
-  | { type: "code"; value: string };
+  | { type: "code"; value: string }
+  // Coloured text, one of the whiteboard's colours by index: {c2}text{/c}
+  // (bold inside: {c2}**text**{/c}).
+  | { type: "color"; value: string; color: number; bold?: boolean };
 
 // Only lists nest inside a list item (lettered under numbered, ○ under -).
 export type ListItem = { inline: InlineNode[]; children: ListBlock[] };
@@ -84,7 +87,7 @@ export type NoteBlock =
 // as two *italics*. Image markers were already removed by parseContent.
 function parseInline(line: string): InlineNode[] {
   const nodes: InlineNode[] = [];
-  const pattern = /`([^`\n]+)`|\*\*(.+?)\*\*|__(.+?)__|\[(.+?)\]\((.+?)\)|\*(.+?)\*/g;
+  const pattern = /\{c(\d)\}(.+?)\{\/c\}|`([^`\n]+)`|\*\*(.+?)\*\*|__(.+?)__|\[(.+?)\]\((.+?)\)|\*(.+?)\*/g;
   let lastIndex = 0;
   let match: RegExpExecArray | null;
   while ((match = pattern.exec(line)) !== null) {
@@ -92,15 +95,18 @@ function parseInline(line: string): InlineNode[] {
       nodes.push({ type: "text", value: line.slice(lastIndex, match.index) });
     }
     if (match[1] !== undefined) {
-      nodes.push({ type: "code", value: match[1] });
-    } else if (match[2] !== undefined) {
-      nodes.push({ type: "bold", value: match[2].trim() });
+      const b = /^\*\*(.+)\*\*$/.exec(match[2]);
+      nodes.push({ type: "color", color: Number(match[1]), value: b ? b[1] : match[2], ...(b ? { bold: true } : {}) });
     } else if (match[3] !== undefined) {
-      nodes.push({ type: "underline", value: match[3] });
+      nodes.push({ type: "code", value: match[3] });
     } else if (match[4] !== undefined) {
-      nodes.push({ type: "link", text: match[4], url: match[5] });
+      nodes.push({ type: "bold", value: match[4].trim() });
+    } else if (match[5] !== undefined) {
+      nodes.push({ type: "underline", value: match[5] });
+    } else if (match[6] !== undefined) {
+      nodes.push({ type: "link", text: match[6], url: match[7] });
     } else {
-      nodes.push({ type: "italic", value: match[6] });
+      nodes.push({ type: "italic", value: match[8] });
     }
     lastIndex = pattern.lastIndex;
   }

@@ -17,6 +17,7 @@ import { CodeHighlight } from "./codeHighlight";
 import { OrderedList } from "@tiptap/extension-list";
 import { TableKit } from "@tiptap/extension-table";
 import { ImageWithBoards } from "./Whiteboard";
+import { TEXT_COLORS, TextColor } from "./textColor";
 import { Column, Columns, convertBlock, setColumns, unsetColumns, type BlockKind } from "./columns";
 import { Placeholder } from "@tiptap/extensions";
 import { PdfCard, pdfTitle } from "./pdfCard";
@@ -276,6 +277,7 @@ export function RichEditor({
       Indentation,
       Columns,
       Column,
+      TextColor,
       Placeholder.configure({ placeholder }),
       KeyTerms,
       BlockMoves,
@@ -605,8 +607,12 @@ function Toolbar({
       codeLang: (e.getAttributes("codeBlock").language as string | null) ?? "",
       table: e.isActive("table"),
       link: e.isActive("link"),
+      color: (e.getAttributes("textColor").color as number | undefined) ?? null,
     }),
   });
+  const [open, setOpen] = useState<"style" | "list" | "insert" | "color" | null>(null);
+  const [mindBusy, setMindBusy] = useState(false);
+  const styleLabel = s.h1 ? t("Título 1") : s.h2 ? t("Título 2") : s.h3 ? t("Título 3") : t("Texto");
   const c = () => editor.chain().focus();
 
   function toggleLettered() {
@@ -626,52 +632,58 @@ function Toolbar({
 
   return (
     <div className={`sticky top-0 z-10 flex flex-wrap items-center gap-0.5 border-border-subtle bg-white/95 px-2 py-1.5 backdrop-blur ${bare ? "mb-3 rounded-xl border" : "rounded-t-2xl border-b"}`}>
-      <Btn on={s.h1} onClick={() => c().toggleHeading({ level: 1 }).run()} title={t("Título 1 (# )")}>H1</Btn>
-      <Btn on={s.h2} onClick={() => c().toggleHeading({ level: 2 }).run()} title={t("Título 2 (## )")}>H2</Btn>
-      <Btn on={s.h3} onClick={() => c().toggleHeading({ level: 3 }).run()} title={t("Título 3 (### )")}>H3</Btn>
+      {/* Grouped: text style, formatting, lists, and one menu for inserting.
+          Table options live on the table itself, never here. */}
+      <Drop id="style" open={open} setOpen={setOpen} label={<>{styleLabel} <Caret /></>} title={t("Tipo de texto")} wide>
+        <Item on={!s.h1 && !s.h2 && !s.h3} icon="Aa" label={t("Texto")} onClick={() => c().setParagraph().run()} />
+        <Item on={s.h1} icon="H1" label={t("Título 1")} onClick={() => c().setHeading({ level: 1 }).run()} />
+        <Item on={s.h2} icon="H2" label={t("Título 2")} onClick={() => c().setHeading({ level: 2 }).run()} />
+        <Item on={s.h3} icon="H3" label={t("Título 3")} onClick={() => c().setHeading({ level: 3 }).run()} />
+      </Drop>
       <Sep />
       <Btn on={s.bold} onClick={() => c().toggleBold().run()} title={t("Negrita (Ctrl+B)")}><b>{t("N")}</b></Btn>
       <Btn on={s.italic} onClick={() => c().toggleItalic().run()} title={t("Cursiva (Ctrl+I)")}><i>{t("K")}</i></Btn>
       <Btn on={s.underline} onClick={() => c().toggleUnderline().run()} title={t("Subrayado (Ctrl+U)")}><u>{t("S")}</u></Btn>
       <Btn on={s.inlineCode} onClick={() => c().toggleCode().run()} title={t("Código en línea (Ctrl+E)")}><span className="font-mono text-[12px]">{"`c`"}</span></Btn>
       <Btn on={s.link} onClick={setLink} title={t("Enlace")}><LinkIcon /></Btn>
+      <Drop id="color" open={open} setOpen={setOpen} title={t("Color del texto")} label={<span className="flex flex-col items-center leading-none"><span className="text-[13px] font-semibold">A</span><span className="mt-0.5 h-[3px] w-3.5 rounded-full" style={{ background: s.color ? TEXT_COLORS.find((x) => x.i === s.color)?.c : "currentColor" }} /></span>}>
+        <div className="flex items-center gap-1.5 p-1.5">
+          <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => { c().unsetMark("textColor").run(); setOpen(null); }} title={t("Por defecto")} aria-label={t("Por defecto")} className={`grid size-7 place-items-center rounded-full border border-border-subtle text-xs font-semibold ${s.color === null ? "ring-2 ring-ink ring-offset-1" : ""}`}>A</button>
+          {TEXT_COLORS.map((x) => (
+            <button key={x.i} type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => { c().setMark("textColor", { color: x.i }).run(); setOpen(null); }} aria-label={x.c} className={`size-7 rounded-full ${s.color === x.i ? "ring-2 ring-ink ring-offset-1" : ""}`} style={{ background: x.c }} />
+          ))}
+        </div>
+      </Drop>
       <Sep />
-      <Btn on={s.bullet} onClick={() => c().toggleBulletList().run()} title={t("Lista (- )")}>•</Btn>
-      <Btn on={s.numbered} onClick={toggleNumbered} title={t("Lista numerada (1. )")}>1.</Btn>
-      <Btn on={s.lettered} onClick={toggleLettered} title={t("Lista con letras")}>a.</Btn>
-      <Btn on={s.callout} onClick={() => c().toggleBlockquote().run()} title={t("Aviso (! )")}><QuoteIcon /></Btn>
-      <Btn on={s.code} onClick={() => c().toggleCodeBlock().run()} title={t("Bloque de código (```)")}>{"</>"}</Btn>
-      {s.code && (
-        <CodeLangMenu value={s.codeLang} onChange={(v) => c().updateAttributes("codeBlock", { language: v || null }).run()} />
-      )}
-      <Btn on={s.table} onClick={() => c().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()} title={t("Insertar tabla")}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden><rect x="3.5" y="4.5" width="17" height="15" rx="2" /><path d="M3.5 9.5h17M3.5 14.5h17M9.5 9.5v10M14.5 9.5v10" /></svg></Btn>
-      {s.table && (
-        <span className="flex items-center gap-0.5 rounded-md bg-chip px-1 text-xs">
-          <Btn onClick={() => c().toggleHeaderRow().run()} title={t("Primera fila como cabecera")}>{t("Cabecera")}</Btn>
-          <Btn onClick={() => c().addRowAfter().run()} title={t("Añadir fila")}>{t("+fila")}</Btn>
-          <Btn onClick={() => c().addColumnAfter().run()} title={t("Añadir columna")}>{t("+col")}</Btn>
-          <Btn onClick={() => c().deleteRow().run()} title={t("Eliminar fila")}>{t("−fila")}</Btn>
-          <Btn onClick={() => c().deleteColumn().run()} title={t("Eliminar columna")}>{t("−col")}</Btn>
-          <Btn onClick={() => c().deleteTable().run()} title={t("Eliminar tabla")}><XIcon /></Btn>
-        </span>
-      )}
-      {onImage && (
-        <Btn onClick={onImage} title={pdf ? t("Insertar imagen o PDF (o arrástralos)") : t("Insertar imagen (o pégala / arrástrala)")}>{uploading ? "…" : <ImageIcon />}</Btn>
-      )}
-      {onMindMap && <MindMapBtn run={onMindMap} />}
-      {onBoard && (
-        <Btn onClick={onBoard} title={t("Pizarra: dibuja a mano")}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-            <path d="M3 5h18v11H3zM8 20l4-4 4 4M7 12l3-3 2 2 4-4" />
-          </svg>
-        </Btn>
-      )}
-      {extras && (
-        <>
-          <Sep />
-          {extras}
-        </>
-      )}
+      <Drop id="list" open={open} setOpen={setOpen} title={t("Listas")} label={<><ListIcon /> <Caret /></>} on={s.bullet || s.numbered || s.lettered}>
+        <Item on={s.bullet} icon="•" label={t("Lista")} onClick={() => c().toggleBulletList().run()} />
+        <Item on={s.numbered} icon="1." label={t("Lista numerada")} onClick={toggleNumbered} />
+        <Item on={s.lettered} icon="a." label={t("Lista con letras")} onClick={toggleLettered} />
+      </Drop>
+      <Sep />
+      <Drop id="insert" open={open} setOpen={setOpen} title={t("Insertar")} label={<>{mindBusy || uploading ? <span className="block size-3.5 animate-spin rounded-full border-2 border-ink/20 border-t-ink/70" /> : "＋"} {t("Insertar")} <Caret /></>} wide>
+        <div className="px-2.5 pt-1.5 pb-0.5 text-[11px] font-semibold text-ink-faint">{t("Bloques")}</div>
+        <Item on={s.callout} icon={<QuoteIcon size={13} />} label={t("Aviso")} onClick={() => c().toggleBlockquote().run()} />
+        <Item on={s.code} icon="</>" label={t("Bloque de código")} onClick={() => c().toggleCodeBlock().run()} />
+        <Item on={s.table} icon="▦" label={t("Tabla")} onClick={() => c().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()} />
+        {(onImage || onBoard || onMindMap) && <div className="px-2.5 pt-1.5 pb-0.5 text-[11px] font-semibold text-ink-faint">{t("Medios")}</div>}
+        {onImage && <Item icon={<ImageIcon />} label={pdf ? t("Imagen o PDF") : t("Imagen")} onClick={onImage} />}
+        {onBoard && <Item icon="✎" label={t("Pizarra")} onClick={onBoard} />}
+        {onMindMap && (
+          <Item
+            icon="⌘"
+            label={t("Mapa mental (IA)")}
+            onClick={async () => {
+              setMindBusy(true);
+              const e = await onMindMap().catch(() => t("Inténtalo de nuevo"));
+              setMindBusy(false);
+              if (e) void ask.alert(e);
+            }}
+          />
+        )}
+      </Drop>
+      {s.code && <CodeLangMenu value={s.codeLang} onChange={(v) => c().updateAttributes("codeBlock", { language: v || null }).run()} />}
+      {extras && <span className="ml-auto flex items-center">{extras}</span>}
     </div>
   );
 }
@@ -811,43 +823,53 @@ function SelectionBar({
 }
 
 // "Mapa mental": a toolbar button that maps the page with AI (a few seconds).
-function MindMapBtn({ run }: { run: () => Promise<string | null> }) {
-  const t = useT();
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
+const Caret = () => <span className="text-[9px] opacity-60">▼</span>;
+const ListIcon = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+    <path d="M9 6h11M9 12h11M9 18h11" />
+    <circle cx="4.5" cy="6" r="1" fill="currentColor" />
+    <circle cx="4.5" cy="12" r="1" fill="currentColor" />
+    <circle cx="4.5" cy="18" r="1" fill="currentColor" />
+  </svg>
+);
+
+// A toolbar button that opens a small menu under it.
+function Drop<T extends string>({ id, open, setOpen, label, title, on, wide, children }: { id: T; open: T | null; setOpen: (v: T | null) => void; label: React.ReactNode; title: string; on?: boolean; wide?: boolean; children: React.ReactNode }) {
+  const isOpen = open === id;
   return (
     <span className="relative">
-      <Btn
-        onClick={async () => {
-          if (busy) return;
-          setBusy(true);
-          setErr(null);
-          const e = await run().catch(() => t("Inténtalo de nuevo"));
-          setBusy(false);
-          if (e) {
-            setErr(e);
-            setTimeout(() => setErr(null), 4000);
-          }
-        }}
-        title={busy ? t("Haciendo tu mapa mental…") : t("Mapa mental de esta página (IA)")}
+      <button
+        type="button"
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={() => setOpen(isOpen ? null : id)}
+        title={title}
+        aria-label={title}
+        aria-expanded={isOpen}
+        className={`flex h-7 items-center gap-1 rounded-md px-2 text-sm transition-colors ${isOpen || on ? "bg-chip text-ink" : "text-ink-muted hover:bg-chip hover:text-ink"}`}
       >
-        {busy ? (
-          <span className="block size-4 animate-spin rounded-full border-2 border-ink/20 border-t-ink/70" />
-        ) : (
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-            <circle cx="12" cy="12" r="3" />
-            <circle cx="4.5" cy="5.5" r="2" />
-            <circle cx="19.5" cy="5.5" r="2" />
-            <circle cx="4.5" cy="18.5" r="2" />
-            <circle cx="19.5" cy="18.5" r="2" />
-            <path d="M9.6 10.2 6.2 7M14.4 10.2l3.4-3.2M9.6 13.8 6.2 17M14.4 13.8l3.4 3.2" />
-          </svg>
-        )}
-      </Btn>
-      {err && <span className="absolute top-full right-0 z-30 mt-1 w-56 rounded-lg bg-ink px-2.5 py-1.5 text-xs text-white shadow-lg">{err}</span>}
+        {label}
+      </button>
+      {isOpen && (
+        <>
+          <button type="button" aria-hidden tabIndex={-1} className="fixed inset-0 z-30 cursor-default" onMouseDown={(e) => e.preventDefault()} onClick={() => setOpen(null)} />
+          <div className={`absolute top-full left-0 z-40 mt-1 rounded-xl bg-white p-1 shadow-[0_0_0_1px_rgba(15,15,15,.06),0_10px_26px_rgba(15,15,15,.16)] ${wide ? "w-52" : ""}`} onClick={(e) => (e.target as HTMLElement).closest("[data-item]") && setOpen(null)}>
+            {children}
+          </div>
+        </>
+      )}
     </span>
   );
 }
+
+function Item({ icon, label, on, onClick }: { icon: React.ReactNode; label: string; on?: boolean; onClick: () => void }) {
+  return (
+    <button type="button" data-item onMouseDown={(e) => e.preventDefault()} onClick={onClick} className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-sm whitespace-nowrap ${on ? "bg-chip text-ink" : "text-ink hover:bg-chip"}`}>
+      <span className="grid size-6 shrink-0 place-items-center rounded-md border border-border-subtle text-[11px] text-ink-muted">{icon}</span>
+      {label}
+    </button>
+  );
+}
+
 
 // The block handle's menu: move, delete, turn into another kind of block,
 // or put columns next to it.
