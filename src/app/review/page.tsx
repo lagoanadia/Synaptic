@@ -6,6 +6,7 @@ import { SHARED, UNSORTED, getCards, getLearnConcepts, type ReviewScope } from "
 import { shuffle } from "@/lib/review";
 import type { LearnItem } from "@/lib/learn";
 import { needsQuizText, withDistractors } from "@/lib/quizDistractors";
+import { curateNotes } from "@/lib/curateCards";
 import { aiBudget } from "@/lib/access";
 import { ReviewGames } from "./ReviewGames";
 import { ReviewMenu } from "./ReviewMenu";
@@ -15,7 +16,7 @@ import { getLang, getT } from "@/lib/i18n/server";
 import { LOCALE } from "@/lib/i18n";
 
 // Never more than this many cards a day, whatever the backlog.
-const DAILY_CAP = 12;
+const DAILY_CAP = 8;
 
 // Repasar: one game for any scope (?section=, ?pursuit=, &unit=; default
 // everything). Today's due cards, capped; reviewing a folder or unit with
@@ -48,11 +49,25 @@ export default async function ReviewPage({
   if (scope.kind === "pursuit") backHref = `/pursuits/${scope.pursuitId}`;
   else if (scope.kind === "section" && scope.sectionId !== UNSORTED && scope.sectionId !== SHARED) backHref = `/pursuits/s/${scope.sectionId}`;
 
+  // Notes whose cards haven't been trimmed to the few clear ones: a few now
+  // (waiting a little), the rest in the background for next time.
+  const pursuitIds = scope.kind === "pursuit" ? [scope.pursuitId] : undefined;
+  if (await prisma.note.count({ where: { cardsCuratedAt: null, flashcards: { some: {} }, pursuit: { ownerId: userId, ...(pursuitIds ? { id: { in: pursuitIds } } : {}) } } })) {
+    const curate = (await (await aiBudget(userId, session.user.email)).check()) ? null : curateNotes(userId, 6, pursuitIds);
+    if (curate) {
+      await Promise.race([curate.catch(() => 0), new Promise((r) => setTimeout(r, 12000))]);
+      after(() => curateNotes(userId, 12, pursuitIds).catch(() => 0));
+    }
+  }
+
   const startOfDay = new Date();
   startOfDay.setHours(0, 0, 0, 0);
+  // If nothing is trimmed yet (the AI couldn't), the cards as they are.
+  const trimmed = await getCards(userId, scope, { take: 1 });
+  const untrimmed = trimmed.length === 0;
   const [allCards, dueCards, concepts, reviewedToday] = await Promise.all([
-    getCards(userId, scope),
-    getCards(userId, scope, { dueOnly: true, take: DAILY_CAP }),
+    getCards(userId, scope, { untrimmed }),
+    getCards(userId, scope, { dueOnly: true, take: DAILY_CAP, untrimmed }),
     getLearnConcepts(userId, scope),
     prisma.flashcard.count({ where: { pursuit: { ownerId: userId }, reviewedAt: { gte: startOfDay } } }),
   ]);

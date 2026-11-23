@@ -18,6 +18,7 @@ import { buildOrTsQuery } from "@/lib/search";
 import { parseOrganizeResponse } from "@/lib/organize";
 import { parseJsonLoosely } from "@/lib/json";
 import { MAX_VISION_IMAGES } from "@/lib/visionLimits";
+import { CARD_STYLE, MAX_CARDS_PER_NOTE } from "@/lib/curateCards";
 import { askJson, chat, languageRule, TEXT_MODEL, VISION_MODEL, createJsonCompletion } from "@/lib/ai";
 import { parseFlashcardsResponse } from "@/lib/flashcards";
 import { computeNextReview, dueDateAfter } from "@/lib/sm2";
@@ -929,7 +930,9 @@ export async function generateFlashcards(
     return { error: t("Nota no encontrada") };
   }
 
-  const prompt = `${note.content}\n\n---\n\nGenerate 5-10 flashcards (question + answer pairs) that test understanding of the key concepts in the note above: what something is, what it is for, why it is done, how parts relate, the difference between two things. These cards prepare an exam or an oral defence, so ask about the THEORY, never about one-off details of this particular work or setup: no exact version or API numbers, file paths, device or brand names, dates, people, or values someone happened to choose (e.g. not "the target emulator uses API 30", but "why create two emulators with different API levels?"). If the note is an assignment or lab write-up, ask about the concept behind each step, not its specific result. Examples, analogies and made-up cases in the note (prices, "licencia X", "empresa A") only explain an idea: ask about the idea, never about the example's details. Never lean on "el ejemplo", "la recomendación", "el caso" — say what it is. Each question should be short and specific — no "explain everything about X" questions. Each answer should be short too — a fact, a definition, a term — not a paragraph. Write them in the same language as the note. A question must make sense on its own, months later, without the note in front of you — name the topic in it. For each card also write 3 plausible WRONG answers for multiple choice: same type, about as long as the answer (±20%) and with the same level of detail, so the right one never stands out as the longest; never partially correct. Respond with ONLY a JSON object, no other text: {"cards": [{"question": "...", "answer": "...", "wrong": ["...", "...", "..."], "hint": "one short nudge that doesn't give the answer away"}, ...]}`;
+  const prompt = `${note.content}\n\n---\n\nWrite at most ${MAX_CARDS_PER_NOTE} flashcards (fewer if the note has fewer important ideas) about the MOST important ideas of the note above — quality over quantity: what something is, what it is for, why, how it differs from a close one. These cards prepare an exam, so ask about the THEORY, never one-off details of this work (version or API numbers, file paths, names, values someone chose). If the note is an assignment, ask about the concept behind it.
+${CARD_STYLE}
+Write them in the same language as the note. For each card also write 3 plausible WRONG answers for multiple choice: they answer the same question, same type and about as long as the answer, never partially correct. Respond with ONLY a JSON object, no other text: {"cards": [{"question": "...", "answer": "...", "wrong": ["...", "...", "..."], "hint": "one short nudge that doesn't give the answer away"}]}`;
 
   let completion;
   try {
@@ -949,7 +952,7 @@ export async function generateFlashcards(
     return { error: t("La IA no ha devuelto una respuesta válida") };
   }
 
-  const cards = parseFlashcardsResponse(text);
+  const cards = parseFlashcardsResponse(text).slice(0, MAX_CARDS_PER_NOTE);
   if (cards.length === 0) {
     return { error: t("No he podido crear tarjetas de esta nota") };
   }
@@ -964,6 +967,8 @@ export async function generateFlashcards(
       hint: c.hint,
     })),
   });
+  // Made with the new rules: nothing to trim.
+  await prisma.note.update({ where: { id: noteId }, data: { cardsCuratedAt: new Date() } });
 
   await budget.charge();
 
