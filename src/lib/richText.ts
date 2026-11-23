@@ -14,7 +14,7 @@ function inlineToNodes(inline: InlineNode[]): JSONContent[] {
       continue;
     }
     const marks =
-      node.type === "bold" ? [{ type: "bold" }] : node.type === "italic" ? [{ type: "italic" }] : node.type === "underline" ? [{ type: "underline" }] : node.type === "code" ? [{ type: "code" }] : undefined;
+      node.type === "color" ? [{ type: "textColor", attrs: { color: node.color } }, ...(node.bold ? [{ type: "bold" }] : [])] : node.type === "bold" ? [{ type: "bold" }] : node.type === "italic" ? [{ type: "italic" }] : node.type === "underline" ? [{ type: "underline" }] : node.type === "code" ? [{ type: "code" }] : undefined;
     // A line break inside a paragraph is a hard break in the editor.
     node.value.split("\n").forEach((part, i) => {
       if (i > 0) out.push({ type: "hardBreak" });
@@ -97,6 +97,8 @@ function inlineToText(nodes: JSONContent[] = []): string {
       // The stored format can't nest marks, so the strongest one wins.
       const link = marks.find((m) => m.type === "link");
       if (link) return `[${n.text}](${String(link.attrs?.href ?? "")})`;
+      const color = marks.find((m) => m.type === "textColor");
+      if (color && n.text.trim()) return `{c${Number(color.attrs?.color) || 0}}${has("bold") ? `**${n.text}**` : n.text}{/c}`;
       if (has("bold")) return `**${n.text}**`;
       if (has("underline")) return `__${n.text}__`;
       if (has("italic")) return `*${n.text}*`;

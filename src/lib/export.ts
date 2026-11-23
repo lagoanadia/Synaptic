@@ -17,6 +17,8 @@ function inlineToMarkdown(nodes: InlineNode[]): string {
           // Already standard Markdown syntax — our own [text](url) shortcut
           // and GFM's link syntax are the same thing, verbatim.
           return `[${n.text}](${n.url})`;
+        case "color":
+          return n.bold ? `**${n.value}**` : n.value;
         case "text":
           return n.value;
       }

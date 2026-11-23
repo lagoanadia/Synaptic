@@ -1286,4 +1286,13 @@ export const de: Record<string, string> = {
   "para repasar hoy": "heute zu wiederholen",
   "{0} para repasar": "{0} zu wiederholen",
   "Quiz rápido": "Schnelles Quiz",
+  "Tipo de texto": "Textart",
+  "Color del texto": "Textfarbe",
+  "Por defecto": "Standard",
+  "Listas": "Listen",
+  "Insertar": "Einfügen",
+  "Bloque de código": "Codeblock",
+  "Medios": "Medien",
+  "Imagen o PDF": "Bild oder PDF",
+  "Mapa mental (IA)": "Mindmap (KI)",
 };

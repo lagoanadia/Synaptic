@@ -123,7 +123,9 @@ export default async function ReviewPage({
     // Practice: concepts too, even ones you know (more of them when there
     // are few cards).
     .filter((c) => c.summary && (practice ? true : c.status === "REREAD"))
-    .slice(0, practice ? Math.max(4, DAILY_CAP - pool.length) : 2)
+    // Only to fill in when there are few cards: "¿Qué concepto es?" with a
+    // summary as the question is easy to guess and hard to read.
+    .slice(0, pool.length >= 4 ? 0 : practice ? Math.max(4, DAILY_CAP - pool.length) : 2)
     .map((c) => ({
       id: c.id,
       kind: "concept",
