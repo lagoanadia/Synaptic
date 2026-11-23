@@ -1295,4 +1295,5 @@ export const de: Record<string, string> = {
   "Medios": "Medien",
   "Imagen o PDF": "Bild oder PDF",
   "Mapa mental (IA)": "Mindmap (KI)",
+  "Como tu dispositivo": "Wie dein Gerät",
 };
