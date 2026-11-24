@@ -60,14 +60,19 @@ export function ThemePicker({ initial }: { initial: Theme }) {
       <button type="button" onClick={() => pick("dark")} aria-label={t("Oscuro")} title={t("Oscuro")} className={`transition-colors ${theme === "dark" ? "text-[#8d90ff]" : "text-ink-faint hover:text-ink"}`}>
         <Moon />
       </button>
+      <span className="mx-0.5 h-4 w-px bg-border-subtle" />
       <button
         type="button"
         onClick={() => pick("system")}
         aria-pressed={theme === "system"}
+        aria-label={t("Auto")}
         title={t("Como tu dispositivo")}
-        className={`ml-1 rounded-full px-2 py-0.5 text-[11px] font-semibold transition-colors ${theme === "system" ? "bg-ink text-white" : "bg-chip text-ink-faint hover:text-ink"}`}
+        className={`grid size-7 place-items-center rounded-lg transition-colors ${theme === "system" ? "bg-chip text-ink" : "text-ink-faint hover:text-ink"}`}
       >
-        {t("Auto")}
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <path d="M3 5h18v11H3z" />
+          <path d="M9 20h6M12 16v4" />
+        </svg>
       </button>
     </span>
   );
