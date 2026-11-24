@@ -1296,4 +1296,13 @@ export const en: Record<string, string> = {
   "Imagen o PDF": "Image or PDF",
   "Mapa mental (IA)": "Mind map (AI)",
   "Como tu dispositivo": "Like your device",
+  "Quitar formato": "Clear formatting",
+  "Tachado": "Strikethrough",
+  "IA": "AI",
+  "Explicar": "Explain",
+  "Mejorar redacción": "Improve writing",
+  "Corregir ortografía": "Fix spelling",
+  "Resumir": "Summarise",
+  "Hacerlo más sencillo": "Make it simpler",
+  "Subrayado": "Underline",
 };
