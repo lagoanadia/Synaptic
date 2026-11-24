@@ -170,6 +170,7 @@ export function RichEditor({
   onAsk,
   onCard,
   onMap,
+  onRewrite,
   terms = [],
   onBoard,
   onMindMap,
@@ -193,6 +194,8 @@ export function RichEditor({
   onCard?: (text: string) => Promise<{ error: string | null }>;
   // "Añadir al mapa" on a selection; returns the new concept's link.
   onMap?: (text: string) => Promise<{ error: string | null; href?: string }>;
+  // The AI rewrites the selected text (better, corrected, shorter, simpler).
+  onRewrite?: (text: string, mode: RewriteMode) => Promise<{ error: string | null; text?: string }>;
   // Words that name a concept on a map: underlined, with a card on hover.
   terms?: TermHint[];
   // "/ Pizarra": makes a board and returns its image URL.
@@ -389,7 +392,9 @@ export function RichEditor({
     if (!empty) {
       const text = e.state.doc.textBetween(from, to, " ").trim();
       const a = e.view.coordsAtPos(from);
-      setSel(text ? { text, top: a.top - box.top, left: Math.max(0, a.left - box.left) } : null);
+      const z = e.view.coordsAtPos(to);
+      // Under the selection (never over the toolbar above it).
+      setSel(text ? { text, top: Math.max(a.bottom, z.bottom) - box.top, left: Math.max(0, Math.min(a.left - box.left, box.width - 260)) } : null);
       setSlash(null);
       return;
     }
@@ -513,7 +518,7 @@ export function RichEditor({
             ))}
           </div>
         )}
-        {sel && <SelectionBar editor={editor} sel={sel} onAsk={onAsk} onCard={onCard} onMap={onMap} />}
+        {sel && <SelectionBar key={`${sel.top}-${sel.left}`} editor={editor} sel={sel} onAsk={onAsk} onCard={onCard} onMap={onMap} onRewrite={onRewrite} />}
         {hint && hinted && !sel && (
           <div
             className="absolute z-20 flex w-72 flex-col gap-1 rounded-lg bg-white p-3 text-sm shadow-[0_0_0_1px_rgba(15,15,15,.05),0_10px_26px_rgba(15,15,15,.16)]"
@@ -746,25 +751,44 @@ function slashItems(t: T, images: boolean, boards = false, pdfs = false): SlashI
   ];
 }
 
-// Floats over selected text: format it, or turn it into a question/card.
+export type RewriteMode = "better" | "fix" | "shorter" | "simpler";
+
+// Under selected text, like Notion's: the block's type, formatting in a
+// grid, card / map, and the AI (explain, or rewrite the selection).
 function SelectionBar({
   editor,
   sel,
   onAsk,
   onCard,
   onMap,
+  onRewrite,
 }: {
   editor: Editor;
   sel: Sel;
   onAsk?: (text: string) => Promise<{ error: string | null; answer?: string }>;
   onCard?: (text: string) => Promise<{ error: string | null }>;
   onMap?: (text: string) => Promise<{ error: string | null; href?: string }>;
+  onRewrite?: (text: string, mode: RewriteMode) => Promise<{ error: string | null; text?: string }>;
 }) {
   const t = useT();
   const [busy, setBusy] = useState(false);
   const [out, setOut] = useState<{ text: string; tone: "answer" | "ok" | "error"; href?: string } | null>(null);
-  const s = useEditorState({ editor, selector: ({ editor: e }) => ({ bold: e.isActive("bold"), italic: e.isActive("italic"), link: e.isActive("link") }) });
+  const [sub, setSub] = useState<"type" | "color" | null>(null);
+  const s = useEditorState({
+    editor,
+    selector: ({ editor: e }) => ({
+      bold: e.isActive("bold"),
+      italic: e.isActive("italic"),
+      underline: e.isActive("underline"),
+      strike: e.isActive("strike"),
+      code: e.isActive("code"),
+      link: e.isActive("link"),
+      color: (e.getAttributes("textColor").color as number | undefined) ?? null,
+      kind: e.isActive("heading", { level: 1 }) ? "h1" : e.isActive("heading", { level: 2 }) ? "h2" : e.isActive("heading", { level: 3 }) ? "h3" : e.isActive("bulletList") ? "bullet" : e.isActive("orderedList") ? "numbered" : e.isActive("blockquote") ? "callout" : e.isActive("codeBlock") ? "code" : "text",
+    }),
+  });
   const c = () => editor.chain().focus();
+  const KIND_LABEL: Record<string, string> = { text: t("Texto"), h1: t("Título 1"), h2: t("Título 2"), h3: t("Título 3"), bullet: t("Lista"), numbered: t("Lista numerada"), callout: t("Aviso"), code: t("Código") };
   async function go(fn: () => Promise<{ error: string | null; answer?: string; href?: string }>, ok: string) {
     setBusy(true);
     setOut(null);
@@ -772,41 +796,124 @@ function SelectionBar({
     setBusy(false);
     setOut(r.error ? { text: r.error, tone: "error" } : r.answer ? { text: r.answer, tone: "answer" } : { text: ok, tone: "ok", href: r.href });
   }
+  async function rewrite(mode: RewriteMode) {
+    if (!onRewrite) return;
+    const { from, to } = editor.state.selection;
+    setBusy(true);
+    setOut(null);
+    const r = await onRewrite(sel.text, mode);
+    setBusy(false);
+    if (r.error || !r.text) return setOut({ text: r.error ?? t("Inténtalo de nuevo"), tone: "error" });
+    editor.chain().focus().insertContentAt({ from, to }, r.text).run();
+  }
+  const cell = (on: boolean) => `grid h-8 place-items-center rounded-md text-sm transition-colors ${on ? "bg-chip text-ink" : "text-ink-muted hover:bg-chip hover:text-ink"}`;
+  const row = "flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[13.5px] text-ink hover:bg-chip disabled:opacity-50";
+  const keep = (e: React.MouseEvent) => e.preventDefault();
   return (
-    <div className="absolute z-20 flex max-w-[min(420px,100%)] -translate-y-full flex-col gap-1 pb-2" style={{ top: sel.top, left: sel.left }}>
-      <div className="flex items-center gap-0.5 self-start rounded-lg bg-white p-1 text-sm shadow-[0_0_0_1px_rgba(15,15,15,.05),0_10px_26px_rgba(15,15,15,.16)]">
-        <Btn on={s.bold} onClick={() => c().toggleBold().run()} title={t("Negrita")}><b>{t("N")}</b></Btn>
-        <Btn on={s.italic} onClick={() => c().toggleItalic().run()} title={t("Cursiva")}><i>{t("K")}</i></Btn>
-        <Btn
-          on={s.link}
-          onClick={async () => {
-            if (s.link) return c().unsetLink().run();
-            const url = await ask.prompt(t("URL del enlace"), "https://");
-            if (url && url !== "https://") c().extendMarkRange("link").setLink({ href: url }).run();
-          }}
-          title={t("Enlace")}
-        >
-          <LinkIcon />
-        </Btn>
-        {(onAsk || onCard || onMap) && <Sep />}
-        {onAsk && (
-          <button type="button" disabled={busy} onMouseDown={(e) => e.preventDefault()} onClick={() => go(() => onAsk(sel.text), "")} className="flex items-center gap-1.5 rounded-md px-2 py-1 text-accent hover:bg-chip disabled:opacity-50">
-            <SparkIcon size={14} />{" "}{t("Preguntar a la IA")}
-          </button>
+    <div className="absolute z-30 mt-2 flex w-64 flex-col gap-1.5" style={{ top: sel.top, left: sel.left }} onMouseDown={keep}>
+      <div className="flex flex-col rounded-xl bg-white p-1.5 shadow-[0_0_0_1px_rgba(15,15,15,.06),0_12px_30px_rgba(15,15,15,.2)]">
+        {/* The block's type */}
+        <button type="button" onClick={() => setSub(sub === "type" ? null : "type")} className={row}>
+          <ListIcon />
+          <span className="flex-1 truncate font-medium">{KIND_LABEL[s.kind]}</span>
+          <span className={`text-ink-faint transition-transform ${sub === "type" ? "rotate-90" : ""}`}>›</span>
+        </button>
+        {sub === "type" && (
+          <div className="mb-1 grid grid-cols-4 gap-1 rounded-lg bg-chip/50 p-1">
+            {(
+              [
+                ["text", "Aa", () => c().setParagraph().run()],
+                ["h1", "H1", () => c().setHeading({ level: 1 }).run()],
+                ["h2", "H2", () => c().setHeading({ level: 2 }).run()],
+                ["h3", "H3", () => c().setHeading({ level: 3 }).run()],
+                ["bullet", "•", () => c().toggleBulletList().run()],
+                ["numbered", "1.", () => c().toggleOrderedList().run()],
+                ["callout", "!", () => c().toggleBlockquote().run()],
+                ["code", "</>", () => c().toggleCodeBlock().run()],
+              ] as const
+            ).map(([k, icon, run]) => (
+              <button key={k} type="button" title={KIND_LABEL[k]} aria-label={KIND_LABEL[k]} onClick={run} className={cell(s.kind === k)}>
+                <span className="text-xs font-semibold">{icon}</span>
+              </button>
+            ))}
+          </div>
         )}
-        {onCard && (
-          <button type="button" disabled={busy} onMouseDown={(e) => e.preventDefault()} onClick={() => go(() => onCard(sel.text), t("Tarjeta creada"))} title={t("Crear tarjeta")} aria-label={t("Crear tarjeta")} className="rounded-md px-2 py-1 text-ink-muted hover:bg-chip hover:text-ink disabled:opacity-50">
-            <CardsIcon size={15} />
+        <div className="my-1 h-px bg-border-subtle" />
+        {/* Formatting, in a grid */}
+        <div className="grid grid-cols-5 gap-0.5">
+          <button type="button" title={t("Color del texto")} aria-label={t("Color del texto")} onClick={() => setSub(sub === "color" ? null : "color")} className={cell(sub === "color")}>
+            <span className="grid size-5 place-items-center rounded border border-border-subtle text-[11px] font-bold" style={{ color: s.color ? TEXT_COLORS.find((x) => x.i === s.color)?.c : undefined }}>A</span>
           </button>
+          <button type="button" title={t("Negrita")} aria-label={t("Negrita")} onClick={() => c().toggleBold().run()} className={cell(s.bold)}><b>B</b></button>
+          <button type="button" title={t("Cursiva")} aria-label={t("Cursiva")} onClick={() => c().toggleItalic().run()} className={cell(s.italic)}><i className="font-serif">I</i></button>
+          <button type="button" title={t("Subrayado")} aria-label={t("Subrayado")} onClick={() => c().toggleUnderline().run()} className={cell(s.underline)}><u>U</u></button>
+          <button type="button" title={t("Quitar formato")} aria-label={t("Quitar formato")} onClick={() => c().unsetAllMarks().run()} className={cell(false)}><span className="text-xs">T<sub>x</sub></span></button>
+          <button
+            type="button"
+            title={t("Enlace")}
+            aria-label={t("Enlace")}
+            onClick={async () => {
+              if (s.link) return c().unsetLink().run();
+              const url = await ask.prompt(t("URL del enlace"), "https://");
+              if (url && url !== "https://") c().extendMarkRange("link").setLink({ href: url }).run();
+            }}
+            className={cell(s.link)}
+          >
+            <LinkIcon />
+          </button>
+          <button type="button" title={t("Tachado")} aria-label={t("Tachado")} onClick={() => c().toggleStrike().run()} className={cell(s.strike)}><s>S</s></button>
+          <button type="button" title={t("Código en línea (Ctrl+E)")} aria-label={t("Código")} onClick={() => c().toggleCode().run()} className={cell(s.code)}><span className="font-mono text-xs">{"</>"}</span></button>
+        </div>
+        {sub === "color" && (
+          <div className="mt-1 flex items-center justify-between rounded-lg bg-chip/50 p-1.5">
+            <button type="button" onClick={() => c().unsetMark("textColor").run()} aria-label={t("Por defecto")} title={t("Por defecto")} className={`grid size-6 place-items-center rounded-full border border-border-subtle text-[10px] font-bold ${s.color === null ? "ring-2 ring-ink ring-offset-1" : ""}`}>A</button>
+            {TEXT_COLORS.map((x) => (
+              <button key={x.i} type="button" onClick={() => c().setMark("textColor", { color: x.i }).run()} aria-label={x.c} className={`size-6 rounded-full ${s.color === x.i ? "ring-2 ring-ink ring-offset-1" : ""}`} style={{ background: x.c }} />
+            ))}
+          </div>
         )}
-        {onMap && (
-          <button type="button" disabled={busy} onMouseDown={(e) => e.preventDefault()} onClick={() => go(() => onMap(sel.text), t("En el mapa"))} title={t("Añadir al mapa")} aria-label={t("Añadir al mapa")} className="rounded-md px-2 py-1 text-ink-muted hover:bg-chip hover:text-ink disabled:opacity-50">
-            <MapIcon size={15} />
-          </button>
+        {(onCard || onMap) && (
+          <>
+            <div className="my-1 h-px bg-border-subtle" />
+            {onCard && (
+              <button type="button" disabled={busy} onClick={() => go(() => onCard(sel.text), t("Tarjeta creada"))} className={row}>
+                <CardsIcon size={15} /> {t("Crear tarjeta")}
+              </button>
+            )}
+            {onMap && (
+              <button type="button" disabled={busy} onClick={() => go(() => onMap(sel.text), t("En el mapa"))} className={row}>
+                <MapIcon size={15} /> {t("Añadir al mapa")}
+              </button>
+            )}
+          </>
+        )}
+        {(onAsk || onRewrite) && (
+          <>
+            <div className="my-1 h-px bg-border-subtle" />
+            <div className="px-2 pt-0.5 pb-1 text-[11px] font-semibold text-ink-faint">{t("IA")}</div>
+            {onAsk && (
+              <button type="button" disabled={busy} onClick={() => go(() => onAsk(sel.text), "")} className={row}>
+                <SparkIcon size={14} /> {t("Explicar")}
+              </button>
+            )}
+            {onRewrite &&
+              (
+                [
+                  ["better", t("Mejorar redacción")],
+                  ["fix", t("Corregir ortografía")],
+                  ["shorter", t("Resumir")],
+                  ["simpler", t("Hacerlo más sencillo")],
+                ] as const
+              ).map(([m, label]) => (
+                <button key={m} type="button" disabled={busy} onClick={() => rewrite(m)} className={row}>
+                  <span className="w-[15px] text-center text-ink-faint">✎</span> {label}
+                </button>
+              ))}
+          </>
         )}
       </div>
       {(busy || out) && (
-        <div className={`rounded-lg bg-white px-3 py-2 text-sm shadow-[0_0_0_1px_rgba(15,15,15,.05),0_10px_26px_rgba(15,15,15,.16)] ${out?.tone === "error" ? "text-red-500" : out?.tone === "ok" ? "text-[#448361]" : ""}`}>
+        <div className={`rounded-xl bg-white px-3 py-2 text-sm shadow-[0_0_0_1px_rgba(15,15,15,.06),0_12px_30px_rgba(15,15,15,.2)] ${out?.tone === "error" ? "text-red-500" : out?.tone === "ok" ? "text-[#448361]" : ""}`}>
           {busy ? (
             <span className="block h-2 w-28 animate-pulse rounded bg-chip" />
           ) : out?.href ? (

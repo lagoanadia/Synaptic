@@ -1639,3 +1639,28 @@ export async function reorganizeFromScratch(pursuitId: string, dumpId: string): 
   revalidatePath(`/pursuits/${pursuitId}/dump/${dumpId}`);
   return { error: null };
 }
+
+// The selection menu's AI: rewrite the selected text in place.
+export async function rewriteSelection(pursuitId: string, text: string, mode: "better" | "fix" | "shorter" | "simpler"): Promise<{ error: string | null; text?: string }> {
+  const t = await getT();
+  const { session } = await requireAccess(pursuitId);
+  const src = text.trim().slice(0, 4000);
+  if (!src) return { error: t("Selecciona un trozo de texto") };
+  const budget = await aiBudget(session.user.id, session.user.email);
+  const limited = await budget.check();
+  if (limited) return { error: limited };
+  const how = {
+    better: "Improve the writing: clearer and better structured, same meaning, same length or a bit shorter.",
+    fix: "Fix spelling, grammar and punctuation only. Change nothing else.",
+    shorter: "Summarise it in about a third of the length, keeping the key ideas.",
+    simpler: "Rewrite it in simpler words a first-year student understands, same meaning.",
+  }[mode];
+  const out = (await askJson(
+    `${how}\nKeep the original language and any code, terms or names as they are. Plain text, no markdown headings.\n\nTEXT:\n${src}\n\nRespond with ONLY JSON: {"text": "..."}`,
+    { maxTokens: 1500 },
+  )) as { text?: unknown } | null;
+  const result = typeof out?.text === "string" ? out.text.trim() : "";
+  if (!result) return { error: t("No se ha podido contactar con la IA ahora mismo") };
+  await budget.charge();
+  return { error: null, text: result.slice(0, 6000) };
+}

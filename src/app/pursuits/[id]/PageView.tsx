@@ -24,6 +24,7 @@ import type { TermHint } from "@/lib/terms";
 import {
   addToMap,
   askPursuit,
+  rewriteSelection,
   cardFromSelection,
   deleteBrainDump,
   deleteNote,
@@ -315,6 +316,7 @@ export function PageView({ pursuit, crumbs, dump, note, slides, terms, stale: st
           return url;
         }}
         onAsk={(text) => askPursuit(pursuit.id, text, true)}
+        onRewrite={(text, mode) => rewriteSelection(pursuit.id, text, mode)}
         onCard={(text) => cardFromSelection(pursuit.id, text, note?.id ?? null)}
         onMap={async (text) => {
           const r = await addToMap(pursuit.id, { dumpId: dump?.id ?? null, noteId: note?.id ?? null }, text);

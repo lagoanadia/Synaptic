@@ -1296,4 +1296,13 @@ export const de: Record<string, string> = {
   "Imagen o PDF": "Bild oder PDF",
   "Mapa mental (IA)": "Mindmap (KI)",
   "Como tu dispositivo": "Wie dein Gerät",
+  "Quitar formato": "Formatierung entfernen",
+  "Tachado": "Durchgestrichen",
+  "IA": "KI",
+  "Explicar": "Erklären",
+  "Mejorar redacción": "Text verbessern",
+  "Corregir ortografía": "Rechtschreibung korrigieren",
+  "Resumir": "Zusammenfassen",
+  "Hacerlo más sencillo": "Einfacher machen",
+  "Subrayado": "Unterstrichen",
 };
