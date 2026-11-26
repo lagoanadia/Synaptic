@@ -1305,4 +1305,8 @@ export const en: Record<string, string> = {
   "Resumir": "Summarise",
   "Hacerlo más sencillo": "Make it simpler",
   "Subrayado": "Underline",
+  "Elegir conceptos": "Choose concepts",
+  "Recomendado": "Recommended",
+  "Solo rojos": "Only red",
+  "conceptos": "concepts",
 };

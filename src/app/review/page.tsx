@@ -25,7 +25,7 @@ const DAILY_CAP = 8;
 export default async function ReviewPage({
   searchParams,
 }: {
-  searchParams: Promise<{ section?: string; pursuit?: string; unit?: string; practice?: string; test?: string }>;
+  searchParams: Promise<{ section?: string; pursuit?: string; unit?: string; practice?: string; test?: string; concepts?: string; back?: string }>;
 }) {
   const session = await auth();
   if (!session?.user?.id) redirect("/");
@@ -37,6 +37,31 @@ export default async function ReviewPage({
     const test = await prisma.savedTest.findFirst({ where: { id: params.test, userId, kind: "quiz" }, select: { id: true, items: true } });
     if (!test) redirect("/review/tests");
     return <ReviewGames key={test.id} backHref="/review/tests" items={test.items as unknown as LearnItem[]} testId={test.id} />;
+  }
+
+  // Concepts picked on a unit's map ("Elegir conceptos"): a quiz on just
+  // those — each one's definition, pick its name.
+  if (params.concepts) {
+    const ids = params.concepts.split(",").filter(Boolean).slice(0, 40);
+    const back = params.back?.startsWith("/review/map/") ? params.back : "/review/map";
+    const picked = await prisma.concept.findMany({
+      where: { id: { in: ids }, map: { pursuit: accessiblePursuits(userId) } },
+      select: { id: true, title: true, summary: true, map: { select: { pursuit: { select: { id: true, title: true } } } } },
+    });
+    const pursuitIds = [...new Set(picked.map((c) => c.map.pursuit.id))];
+    const others = await prisma.concept.findMany({ where: { map: { pursuitId: { in: pursuitIds } } }, select: { title: true, map: { select: { pursuitId: true } } }, take: 400 });
+    const tq = await getT();
+    const items: LearnItem[] = shuffle(picked.filter((c) => c.summary)).map((c) => ({
+      id: c.id,
+      kind: "concept",
+      pursuitId: c.map.pursuit.id,
+      pursuitTitle: c.map.pursuit.title,
+      context: tq("¿Qué concepto es?"),
+      prompt: c.summary,
+      answer: c.title,
+      distractors: shuffle(others.filter((o) => o.map.pursuitId === c.map.pursuit.id && o.title !== c.title).map((o) => o.title)).slice(0, 3),
+    }));
+    return <ReviewGames key={`picked-${ids.join("")}`} backHref={back} items={items} />;
   }
 
   const scope: ReviewScope = params.pursuit

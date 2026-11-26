@@ -1305,4 +1305,8 @@ export const de: Record<string, string> = {
   "Resumir": "Zusammenfassen",
   "Hacerlo más sencillo": "Einfacher machen",
   "Subrayado": "Unterstrichen",
+  "Elegir conceptos": "Konzepte wählen",
+  "Recomendado": "Empfohlen",
+  "Solo rojos": "Nur rote",
+  "conceptos": "Konzepte",
 };
