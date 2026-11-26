@@ -146,6 +146,9 @@ html {
   /* Non-visible here so body's overflow isn't moved to the viewport. */
   overflow: auto;
   background: var(--background);
+  /* No elastic "stretch" past the end: Chrome on Windows touchpads (and
+     the installed app) painted that gap black, like an endless page. */
+  overscroll-behavior: none;
 }
 /* The page ends at the footer: anything positioned past it (a stray
    absolute element, a label pushed off the map) is clipped instead of
@@ -154,6 +157,7 @@ html {
 body {
   position: relative;
   overflow: clip;
+  overscroll-behavior: none;
   background: var(--background);
   color: var(--foreground);
 }
