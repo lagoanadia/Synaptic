@@ -273,7 +273,8 @@ html.dark .callout-emoji:hover:not(:disabled) { background: rgb(255 255 255 / 0.
 .rich-editor table { border-collapse: collapse; width: 100%; table-layout: fixed; }
 .rich-editor th,
 .rich-editor td {
-  border: 1px solid rgba(13, 13, 13, 0.12);
+  /* The theme's border colour: a fixed dark one vanished in dark mode. */
+  border: 1px solid var(--color-border-subtle);
   padding: 0.4em 0.6em;
   vertical-align: top;
 }

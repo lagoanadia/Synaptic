@@ -387,7 +387,8 @@ export function RichEditor({
     const table = (at instanceof HTMLElement ? at : at.parentElement)?.closest("table");
     if (table && e.isActive("table")) {
       const r = (table.parentElement ?? table).getBoundingClientRect();
-      setTbl({ top: r.top - box.top - 30, left: r.left - box.left, header: !!table.querySelector("tr:first-child th") });
+      // Under the table: above it, it covered the toolbar.
+      setTbl({ top: r.bottom - box.top + 6, left: r.left - box.left, header: !!table.querySelector("tr:first-child th") });
     } else setTbl(null);
     if (!empty) {
       const text = e.state.doc.textBetween(from, to, " ").trim();
@@ -485,16 +486,16 @@ export function RichEditor({
               }} />}
           </div>
         )}
-        {tbl && (
-          <div className="absolute z-10 flex items-center gap-0.5 rounded-lg bg-white p-0.5 text-xs text-ink-muted shadow-[0_0_0_1px_rgba(15,15,15,.06),0_4px_12px_rgba(15,15,15,.08)]" style={{ top: tbl.top, left: tbl.left }} onMouseDown={(e) => e.preventDefault()}>
-            <Btn on={tbl.header} onClick={() => editor.chain().focus().toggleHeaderRow().run()} title={t("Primera fila como cabecera")}>{t("Cabecera")}</Btn>
-            <Btn onClick={() => editor.chain().focus().addRowAfter().run()} title={t("Añadir fila")}>{t("+fila")}</Btn>
-            <Btn onClick={() => editor.chain().focus().addColumnAfter().run()} title={t("Añadir columna")}>{t("+col")}</Btn>
-            <Btn onClick={() => editor.chain().focus().deleteRow().run()} title={t("Eliminar fila")}>{t("−fila")}</Btn>
-            <Btn onClick={() => editor.chain().focus().deleteColumn().run()} title={t("Eliminar columna")}>{t("−col")}</Btn>
-            <Btn onClick={() => editor.chain().focus().deleteTable().run()} title={t("Eliminar tabla")}><TrashIcon size={13} /></Btn>
-          </div>
-        )}
+        {tbl && <TableBar top={tbl.top} left={tbl.left}>{<>
+            <Btn on={tbl.header} onClick={() => editor.chain().focus().toggleHeaderRow().run()} title={t("Primera fila como cabecera")}>{tIcon("M4 5h16v4H4z|M4 9v10h16V9|M12 9v10")}</Btn>
+            <span className="mx-0.5 h-4 w-px bg-border-subtle" />
+            <Btn onClick={() => editor.chain().focus().addRowAfter().run()} title={t("Añadir fila")}>{tIcon("M4 5h16v8H4z|M4 9h16|M12 16v5|M9.5 18.5h5")}</Btn>
+            <Btn onClick={() => editor.chain().focus().addColumnAfter().run()} title={t("Añadir columna")}>{tIcon("M4 4h9v16H4z|M8.5 4v16|M18.5 9.5v5|M16 12h5")}</Btn>
+            <Btn onClick={() => editor.chain().focus().deleteRow().run()} title={t("Eliminar fila")}>{tIcon("M4 5h16v8H4z|M4 9h16|M9.5 18.5h5")}</Btn>
+            <Btn onClick={() => editor.chain().focus().deleteColumn().run()} title={t("Eliminar columna")}>{tIcon("M4 4h9v16H4z|M8.5 4v16|M16 12h5")}</Btn>
+            <span className="mx-0.5 h-4 w-px bg-border-subtle" />
+            <Btn onClick={() => editor.chain().focus().deleteTable().run()} title={t("Eliminar tabla")}><TrashIcon size={14} /></Btn>
+          </>}</TableBar>}
         {slash && items.length > 0 && (
           <div
             className="absolute z-20 flex w-60 flex-col rounded-lg bg-white p-1 text-sm shadow-[0_0_0_1px_rgba(15,15,15,.05),0_10px_26px_rgba(15,15,15,.16)]"
@@ -930,6 +931,83 @@ function SelectionBar({
 }
 
 // "Mapa mental": a toolbar button that maps the page with AI (a few seconds).
+// The table's bar: under the table, and you can drag it anywhere (⋮⋮) or
+// fold it into a small icon. Where you put it and whether it's folded are
+// remembered on this device.
+const BAR_KEY = "table-bar";
+function TableBar({ top, left, children }: { top: number; left: number; children: React.ReactNode }) {
+  const t = useT();
+  const [pref, setPref] = useState<{ dx: number; dy: number; min: boolean }>(() => {
+    try {
+      const v = JSON.parse(localStorage.getItem(BAR_KEY) ?? "null");
+      if (v && typeof v.dx === "number" && typeof v.dy === "number") return { dx: v.dx, dy: v.dy, min: !!v.min };
+    } catch {}
+    return { dx: 0, dy: 0, min: false };
+  });
+  const save = (p: typeof pref) => {
+    setPref(p);
+    try {
+      localStorage.setItem(BAR_KEY, JSON.stringify(p));
+    } catch {}
+  };
+  const drag = useRef<{ x: number; y: number; dx: number; dy: number } | null>(null);
+  const [live, setLive] = useState<{ dx: number; dy: number } | null>(null);
+  const pos = live ?? pref;
+  const grip = (
+    <span
+      title={t("Arrastra para mover")}
+      onPointerDown={(e) => {
+        e.preventDefault();
+        (e.target as Element).setPointerCapture(e.pointerId);
+        drag.current = { x: e.clientX, y: e.clientY, dx: pref.dx, dy: pref.dy };
+      }}
+      onPointerMove={(e) => {
+        const d = drag.current;
+        if (d) setLive({ dx: d.dx + e.clientX - d.x, dy: d.dy + e.clientY - d.y });
+      }}
+      onPointerUp={() => {
+        if (live) save({ ...pref, ...live });
+        drag.current = null;
+        setLive(null);
+      }}
+      className="grid h-7 w-4 cursor-grab touch-none place-items-center text-ink-faint active:cursor-grabbing"
+    >
+      <GripIcon />
+    </span>
+  );
+  return (
+    <div
+      className="absolute z-10 flex items-center gap-0.5 rounded-lg bg-white p-0.5 text-ink-muted shadow-[0_0_0_1px_rgba(15,15,15,.06),0_4px_12px_rgba(15,15,15,.12)]"
+      style={{ top: top + pos.dy, left: left + pos.dx }}
+      onMouseDown={(e) => e.preventDefault()}
+    >
+      {grip}
+      {pref.min ? (
+        <Btn onClick={() => save({ ...pref, min: false })} title={t("Opciones de la tabla")}>
+          {tIcon("M4 5h16v14H4z|M4 10h16|M10 10v9")}
+        </Btn>
+      ) : (
+        <>
+          {children}
+          <span className="mx-0.5 h-4 w-px bg-border-subtle" />
+          <Btn onClick={() => save({ ...pref, min: true })} title={t("Minimizar")}>{tIcon("M6 12h12")}</Btn>
+          {(pref.dx || pref.dy) !== 0 && (
+            <Btn onClick={() => save({ ...pref, dx: 0, dy: 0 })} title={t("Volver a su sitio")}>{tIcon("M9 14l-5-5 5-5|M4 9h10a6 6 0 0 1 0 12h-3")}</Btn>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+// Small line icons for the table bar.
+const tIcon = (d: string) => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="mx-auto block">
+    {d.split("|").map((x) => (
+      <path key={x} d={x} />
+    ))}
+  </svg>
+);
 const Caret = () => <span className="text-[9px] opacity-60">▼</span>;
 const ListIcon = () => (
   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>

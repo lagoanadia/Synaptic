@@ -1309,4 +1309,7 @@ export const en: Record<string, string> = {
   "Recomendado": "Recommended",
   "Solo rojos": "Only red",
   "conceptos": "concepts",
+  "Opciones de la tabla": "Table options",
+  "Minimizar": "Minimise",
+  "Volver a su sitio": "Back to its place",
 };
